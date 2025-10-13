@@ -1,5 +1,6 @@
-### VanCore
+## VanCore
 🔧 System Overview: Modular Automation Platform for Off-Grid and Mobile Living Spaces
+
  
 ## 🌍 Overview
 
@@ -9,6 +10,7 @@ It uses Home Assistant as the core automation engine and aims to provide both:
 ●	A simple, intuitive interface for average users, enabling a "works-out-of-the-box" experience with modular plug-and-play components.
 ●	Full flexibility for technical users to customise, extend, and access the full Home Assistant stack underneath.
 The goal is to provide a simple, powerful, and open-source control system for life off-grid.
+
  
 ## 🎯 Core Features and System Goals
 
@@ -46,6 +48,7 @@ who want a hardware/software system built around the ecosystem they love - but s
  
  
 ## 🧠 System Architecture
+
 ## 🧩 Core Components
 
 ## Component	Description
@@ -55,6 +58,7 @@ Comms	Wi-Fi preferred; Zigbee2MQTT where needed; MQTT supported
 Update System	Git-based update repo, with OTA support for ESPHome devices
 UI	Initial Lovelace dashboard (migratable to custom frontend later)
 
+
 ## ⚙️ Technical Standards & Practices
 ## 📡 Connectivity
 ●	Default: Wi-Fi
@@ -63,10 +67,12 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 
 ●	Central server: runs Home Assistant, Frigate, and ESPHome
 
+
 ## ⚛️ Microcontrollers
 ●	ESP32 preferred for all modules
 
 ●	Use compact, power-efficient variants with low idle draw
+
 
 ## 🧑‍💻 Firmware
 ●	ESPHome is the required standard unless justified otherwise
@@ -74,6 +80,7 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 ●	All firmware must support OTA updating via Home Assistant
 
 ●	Code must be clean, modular, and commented
+
 
 ## 🗂️ Update & Version Control
 ●	All code/config must be easily updatable via a central Git repo
@@ -110,6 +117,7 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 ●	Other environment sensors (cheap but massive value adds)
 ●	Local VPN server (or Nabu Casa) for secure remote access.
 
+
 ## 🧱 Subsystem Modules
 Each module should be:
 ●	Standalone
@@ -119,6 +127,7 @@ Each module should be:
 ●	Documented with YAML, wiring, and entity structure
 
 ●	Delivered as a logical unit with a BOM
+
 
  
 ## 1. 🔋 Electrical Monitoring
@@ -136,6 +145,7 @@ Functions:
 ●	Provide alerts for low power or critical issues.
 ●	Monitor 230V AC if shore power/inverter is included.
 
+
 ## 2. ⚡ Smart Fuse Box
 Goals: 
 ●	Combine traditional fuse panel with smart relay and monitoring features.
@@ -145,6 +155,7 @@ Functions:
 ●	Monitor current per circuit (INA219 or similar)
 ●	Switch circuits on/off via HA (PWM dimmable)
 ESP32 control via ESPHome
+
 
 ## 3. 💧 Water System
 Goals:
@@ -156,6 +167,8 @@ Functions:
 ●	Flow rate tracking (via turbine sensor).
 ●	Leak alerts or dry-run protection for pump.
 ●	Trigger automatic shutoffs or reminders (e.g., low tank).
+
+
 ## 4. 🛡 Security & Safety
 Goals:
 ●	Keep the van and its occupants safe from theft, gas leaks, fire, and intrusion.
@@ -169,6 +182,7 @@ Functions:
 ●	Smoke detector integration.
 ●	Central locking or deadbolt integration.
 
+
 ## 5. 📷 CCTV / Cameras
 Goals:
 ●	Provide remote and local visual monitoring inside and outside the van.
@@ -180,6 +194,7 @@ Functions:
 ●	Alerts on motion when armed.
 ●	Optional: recording to local SSD or NAS.
 ●	PIR motion sensors? 
+
 
 ## 6. 🌐 Networking & Remote Access
 Goals:
@@ -196,7 +211,8 @@ Functions:
  
  
 ## 🏗️ Development Standards
-##📦 Deliverables (Per Module)
+
+## 📦 Deliverables (Per Module)
 ●	✅ Bill of Materials (with links and prices)
 
 ●	✅ Wiring diagram (hand-drawn, schematic; PCB design in KiCad or similar if appropriate aswell as necessary files inc. Gerber, BOM, Pick and place, etc)
@@ -211,7 +227,8 @@ Functions:
 
 ●	✅ Documentation (README or Loom video preferred)
 
-##🧪 Testing & Validation
+
+## 🧪 Testing & Validation
 ●	I (the project owner) will test each module on a development bench
 
 ●	Prototypes must function reliably, without safety issues
@@ -247,7 +264,8 @@ Examples:
 
 ●	Suggest alternate parts or designs if they improve value or usability
 
-📢 Communication Expectations
+
+## 📢 Communication Expectations
 ●	I’m available for questions within a few hours
 
 ●	Please check in a few times during your timeline, especially if blocked for any reason
@@ -271,6 +289,7 @@ Examples:
 4.	Reliable & Offline-First: Fully functional without internet. Robust against power loss, mobile connectivity drops, and harsh conditions.
 5.	Maintainable: One-click updates via Git. OTA updates for ESP modules. Documented and versioned configs.
 
+
 ## 🧑‍💻 Developer & Freelancer Philosophy
 
 Every module should be:
@@ -279,6 +298,7 @@ Every module should be:
 ●	Built from standard, affordable parts
 ●	Easy to wire and flash
 ●	OTA update-compatible
+
  
 ## 📁 File & Code Management
 ●	Delivery via Fiverr is acceptable, but reusable code should also be kept structured
