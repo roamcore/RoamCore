@@ -1,7 +1,7 @@
-# VanCore
+### VanCore
 🔧 System Overview: Modular Automation Platform for Off-Grid and Mobile Living Spaces
  
-🌍 Overview
+## 🌍 Overview
 
 This is an open-source, modular hardware and software platform designed to monitor, control, and automate all essential systems in a self-sufficient van conversion or off-grid living space. While the initial focus is campervans, the system is easily adaptable to boats, tiny houses, cabins, trailers, overlanding rigs, expedition vehicles, and mobile workstations or surveillance vehicles.
 
@@ -10,7 +10,7 @@ It uses Home Assistant as the core automation engine and aims to provide both:
 ●	Full flexibility for technical users to customise, extend, and access the full Home Assistant stack underneath.
 The goal is to provide a simple, powerful, and open-source control system for life off-grid.
  
-🎯 Core Features and System Goals
+## 🎯 Core Features and System Goals
 
 People who live in vans or other mobile/off-grid environments often piece together partial monitoring solutions or use expensive proprietary systems that are hard to customise. This project aims to replace those with one unified platform that is:
 
@@ -33,7 +33,7 @@ People who live in vans or other mobile/off-grid environments often piece togeth
 
 
  
-👤 Target Users
+## 👤 Target Users
 ●	Everyday vanlifers, boaters, and tiny home dwellers
 who want reliable, powerful automation without having to learn code or deal with complex interfaces.
 
@@ -45,43 +45,43 @@ who want a hardware/software system built around the ecosystem they love - but s
 
  
  
-🧠 System Architecture
-🧩 Core Components
+## 🧠 System Architecture
+## 🧩 Core Components
 
-Component	Description
+## Component	Description
 Main Hub	Mini PC (GMKtec Nucbox G5) running Home Assistant OS
 Modules	ESP32-based sensor/actuator devices communicating via Wi-Fi (primary)
 Comms	Wi-Fi preferred; Zigbee2MQTT where needed; MQTT supported
 Update System	Git-based update repo, with OTA support for ESPHome devices
 UI	Initial Lovelace dashboard (migratable to custom frontend later)
 
-⚙️ Technical Standards & Practices
-📡 Connectivity
+## ⚙️ Technical Standards & Practices
+## 📡 Connectivity
 ●	Default: Wi-Fi
 
 ●	Zigbee or other protocols allowed when appropriate
 
 ●	Central server: runs Home Assistant, Frigate, and ESPHome
 
-⚛️ Microcontrollers
+## ⚛️ Microcontrollers
 ●	ESP32 preferred for all modules
 
 ●	Use compact, power-efficient variants with low idle draw
 
-🧑‍💻 Firmware
+## 🧑‍💻 Firmware
 ●	ESPHome is the required standard unless justified otherwise
 
 ●	All firmware must support OTA updating via Home Assistant
 
 ●	Code must be clean, modular, and commented
 
-🗂️ Update & Version Control
+## 🗂️ Update & Version Control
 ●	All code/config must be easily updatable via a central Git repo
 
 ●	HA dashboard, ESPHome YAMLs, and configurations will be pulled automatically
 
  
-🔐 Design & Safety Guidelines
+## 🔐 Design & Safety Guidelines
 ●	Default to 12V DC systems (future 24V/48V flexibility is welcome)
 
 ●	Prefer MOSFETs over mechanical relays (mobile safety, vibration)
@@ -95,13 +95,13 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 ●	Fail-open or fail-closed logic depends on use-case — designers must justify based on scenario
 
  
-🧠 Main Hub
+## 🧠 Main Hub
 
-Goals:
+## Goals:
 ●	Central brain of the system housing the Home Assistant core.
 ●	Reliable wireless + wired communication with modules.
 ●	Local automation and dashboard server.
-Functions:
+## Functions:
 ●	Mini PC (e.g., Intel N100/N97, Nucbox G5) running Home Assistant.
 ●	Local storage for historical data and logs.
 ●	Integrated LTE router for internet access (UMR Ultra)
@@ -110,7 +110,7 @@ Functions:
 ●	Other environment sensors (cheap but massive value adds)
 ●	Local VPN server (or Nabu Casa) for secure remote access.
 
-🧱 Subsystem Modules
+## 🧱 Subsystem Modules
 Each module should be:
 ●	Standalone
 
@@ -121,7 +121,7 @@ Each module should be:
 ●	Delivered as a logical unit with a BOM
 
  
-1. 🔋 Electrical Monitoring
+## 1. 🔋 Electrical Monitoring
 Goals: 
 ●	Monitor all aspects of the van’s 12V DC electrical system.
 ●	Enable smart automation and fault alerts.
@@ -136,7 +136,7 @@ Functions:
 ●	Provide alerts for low power or critical issues.
 ●	Monitor 230V AC if shore power/inverter is included.
 
-2. ⚡ Smart Fuse Box
+## 2. ⚡ Smart Fuse Box
 Goals: 
 ●	Combine traditional fuse panel with smart relay and monitoring features.
 ●	Enable remote on/off control per circuit and current draw monitoring.
@@ -146,7 +146,7 @@ Functions:
 ●	Switch circuits on/off via HA (PWM dimmable)
 ESP32 control via ESPHome
 
-3. 💧 Water System
+## 3. 💧 Water System
 Goals:
 ●	Provide clear tank level information and allow smart pump/heater control, as well as fixture monitoring and control. 
 Functions:
@@ -156,7 +156,7 @@ Functions:
 ●	Flow rate tracking (via turbine sensor).
 ●	Leak alerts or dry-run protection for pump.
 ●	Trigger automatic shutoffs or reminders (e.g., low tank).
-4. 🛡 Security & Safety
+## 4. 🛡 Security & Safety
 Goals:
 ●	Keep the van and its occupants safe from theft, gas leaks, fire, and intrusion.
 Functions:
@@ -169,7 +169,7 @@ Functions:
 ●	Smoke detector integration.
 ●	Central locking or deadbolt integration.
 
-5. 📷 CCTV / Cameras
+## 5. 📷 CCTV / Cameras
 Goals:
 ●	Provide remote and local visual monitoring inside and outside the van.
 Functions:
@@ -181,7 +181,7 @@ Functions:
 ●	Optional: recording to local SSD or NAS.
 ●	PIR motion sensors? 
 
-6. 🌐 Networking & Remote Access
+## 6. 🌐 Networking & Remote Access
 Goals:
 ●	Allow full remote access to dashboards, alerts, and camera feeds.
 ●	Enable mobile data connectivity in areas without Wi-Fi.
@@ -195,8 +195,8 @@ Functions:
 
  
  
-🏗️ Development Standards
-📦 Deliverables (Per Module)
+## 🏗️ Development Standards
+##📦 Deliverables (Per Module)
 ●	✅ Bill of Materials (with links and prices)
 
 ●	✅ Wiring diagram (hand-drawn, schematic; PCB design in KiCad or similar if appropriate aswell as necessary files inc. Gerber, BOM, Pick and place, etc)
@@ -211,7 +211,7 @@ Functions:
 
 ●	✅ Documentation (README or Loom video preferred)
 
-🧪 Testing & Validation
+##🧪 Testing & Validation
 ●	I (the project owner) will test each module on a development bench
 
 ●	Prototypes must function reliably, without safety issues
@@ -222,7 +222,7 @@ Functions:
 
  
  
-🧩 Naming Convention for Entity IDs
+## 🧩 Naming Convention for Entity IDs
 Standard format:
 <domain>.<device>_<function>_<location>
 Examples:
@@ -237,8 +237,8 @@ Examples:
 ●	sensor.tank_level_fresh
 
  
-👷‍♂️ Freelancer Guidelines
-🚦 Creative Freedom & Responsibility
+## 👷‍♂️ Freelancer Guidelines
+## 🚦 Creative Freedom & Responsibility
 ●	You are encouraged to propose better, cheaper, or more effective approaches
 
 ●	Consider the end user experience in your decisions
@@ -255,7 +255,7 @@ Examples:
 ●	I expect to receive partial progress updates before final delivery
 
  
-🛠 BOM Strategy
+## 🛠 BOM Strategy
 ●	Prioritize affordability and reliability - use your common sense to weigh up price, performance, size, power draw, etc
 
 ●	Prefer AliExpress, Banggood, or cheaper retailers, depending on value
@@ -264,14 +264,14 @@ Examples:
 
  
 
-🧭 Design Priorities
+## 🧭 Design Priorities
 1.	Simplicity First: Users should be able to plug in and go with no setup required. Preloaded dashboards and OTA updates.
 2.	Customisable for Power Users: Full access to Home Assistant configuration, editable automations, templates, and dashboards.
 3.	Modular by Default: Easy to add/remove subsystems. No monolithic logic — each module works independently.
 4.	Reliable & Offline-First: Fully functional without internet. Robust against power loss, mobile connectivity drops, and harsh conditions.
 5.	Maintainable: One-click updates via Git. OTA updates for ESP modules. Documented and versioned configs.
 
-🧑‍💻 Developer & Freelancer Philosophy
+## 🧑‍💻 Developer & Freelancer Philosophy
 
 Every module should be:
 ●	Standalone and testable
@@ -280,7 +280,7 @@ Every module should be:
 ●	Easy to wire and flash
 ●	OTA update-compatible
  
-📁 File & Code Management
+## 📁 File & Code Management
 ●	Delivery via Fiverr is acceptable, but reusable code should also be kept structured
 
 ●	GitHub folders will be organized by module or component
@@ -289,7 +289,7 @@ Every module should be:
 ●	I am very open to hear suggestions on how the code and update deployment should be managed. 
 
  
-🔄 Software Integration
+## 🔄 Software Integration
 ●	Home Assistant is the brain
 
 ●	ESPHome is the interface for all ESP32-based hardware
