@@ -300,5 +300,4 @@ Every module should be:
 
 ●	All modules must integrate smoothly into HA without breaking updates or naming conventions
 
- 
-<img width="468" height="632" alt="image" src="https://github.com/user-attachments/assets/f674afba-d39e-4b33-9e1f-4a5e50ec19b4" />
+
