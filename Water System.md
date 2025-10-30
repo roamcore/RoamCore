@@ -1,5 +1,7 @@
 # VanCore Water System — Step-by-Step (All Water Via Fresh Tank)
 
+[SYSTEM DESIGN FIGMA LINK](https://www.figma.com/design/mpZcB5gHA9DwzJfKYSvjSF/Plumbing-System-Design?node-id=0-1&t=gbbskgiSEq6t5rgG-1)
+
 > Assumptions: No city-water bypass. Every drop first enters the **fresh tank**, then the pump supplies the system. Grey-water handling is outside this scope.
 
 ## 1) Fill the Fresh Tank
