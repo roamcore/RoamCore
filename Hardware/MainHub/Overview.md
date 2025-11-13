@@ -22,7 +22,7 @@ The **VanCore Main Hub** is a single, serviceable enclosure built around the **P
 
 ---
 
-## Why a Single Box (VP2430) vs. Multiple Smaller Boxes
+## Why a Single Box ([VP2430](https://kb.protectli.com/kb/vp2430-hardware-overview/)) vs. Multiple Smaller Boxes
 
 - **Simpler UX & support:** One SSID, one web UI, one power input, clear labels → fewer “which network am I on?” tickets.
 - **Higher reliability:** Fewer inter-box cables, fewer failure points; cleaner grounding/EMI and thermal management.
