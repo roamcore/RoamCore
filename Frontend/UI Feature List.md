@@ -1,432 +1,479 @@
 # VanCore Demo Dashboard – Frontend Functionality Breakdown
-
-This document lists **every visible element** from the VanCore demo dashboard and explains, in plain English, what each one shows or controls.
-
-It is grouped by section, roughly matching how you might split pages in the final app:
-- Global (header, time, weather)
-- Power System
-- Lighting Control
-- Climate Control
-- Water System
-- Van Level
-- GPS & Travel
-- Network
-- Media
-- Automation
-- Security System
-
----
+This document lists all UI elements and potential UI elements for the VanCore dashboard/app.
+It is designed as an exhaustive checklist – you can remove anything you don’t need, but you shouldn’t need to add new items.
+Sections (matching the current dashboard):
+*	Global (header, time, weather)
+*	Power System
+*	Lighting Control
+*	Climate Control
+*	Water System
+*	Van Level
+*	GPS & Travel
+*	Network
+*	Media
+*	Automation
+*	Security System
 
 ## 1. Global / App Shell
-
 These elements sit at the top or are “global context”.
-
 ### 1.1 Header Bar
+*	Title – "Van Control Dashboard"
+*	Dark Mode toggle – text: "Dark Mode" + on/off control
+*	Settings button – "Settings"
 
-1. **Title – “Van Control Dashboard”**  
-   - What it is: The name of the dashboard, shown at the top.  
-   - Purpose: Makes it obvious that this screen is for controlling the van.
-
-2. **Dark Mode toggle – text: “Dark Mode” + control (on/off)**  
-   - What it is: A switch for changing the colour scheme.  
-   - What it controls: Turns the app into a dark or light look for comfort in different lighting conditions.
-
-3. **Settings button – “Settings”**  
-   - What it is: A button that opens a settings view (current or future).  
-   - What it controls: Takes the user to a place where they can adjust app-wide preferences (units, theme, alerts, etc.).
-  
-4. **Notification 'Bell' Icon**
-   - with number of outstanding notifications as a number in the corner
-
+**Global / App Shell – possible data points and controls (edit down as needed):**
+*	App logo / VanCore logo
+*	Van name or profile (e.g. "Sprinter 4x4", "Family Van")
+*	User profile / avatar (for multi-user setups)
+*	Quick navigation tabs (e.g. Overview, Power, Climate, Water, Security)
+*	Global search bar (search devices, automations, camera names, etc.)
+*	Global notifications icon (alerts, warnings, reminders)
+*	System health indicator (e.g. "All systems OK", or warning badge)
+*	Global connection state (online/offline cloud access)
+*	Global edit / layout mode toggle (switch between control mode and layout edit mode)
+*	Quick actions menu (e.g. "All lights off", "Night mode", "Leaving van")
+*	Profile switcher (for multiple vans or installations)
+*	Language selector (if needed)
 
 ### 1.2 Time & Date
+*	Section label – "Current Time"
+*	Time display – current local time (digital clock)
+*	Date display – current day and calendar date
 
-4. **Section label – “Current Time”**  
-   - What it is: Text label for the time and date block.  
-   - Purpose: Makes it clear what the following values represent.
-
-5. **Time display – e.g. “11:11 PM”**  
-   - What it is: A read-only digital clock.  
-   - What it shows: The current local time where the van is.
-
-6. **Date display – e.g. “Thursday, October 30”**  
-   - What it is: A read-only date line.  
-   - What it shows: The current day of the week and calendar date.
+**Time & Date – possible data points and controls (edit down as needed):**
+*	Current local time (digital clock)
+*	Current day and date
+*	12-hour vs 24-hour time format toggle
+*	Local timezone / location source display (e.g. "Auto via GPS" or manual)
+*	Sunrise time today
+*	Sunset time today
+*	Indication of whether it is currently day or night
+*	Quiet hours indicator (show if within user-defined quiet period)
+*	Quiet hours configuration (start/end times)
+*	Next calendar event (if calendar is connected)
+*	List of today’s events (simple, next few only)
+*	Reminder banner (e.g. "Check out by 11:00", "Service due soon")
 
 ### 1.3 Weather Summary
+*	Section label – "Weather"
+*	Outside temperature
+*	Weather condition text (e.g. sunny, cloudy, rain)
+*	Humidity
+*	Wind speed
 
-7. **Section label – “Weather”**  
-   - What it is: Text label for the weather block.  
-   - Purpose: Groups all the outside-conditions readings.
+**Weather – possible data points, forecasts and controls (edit down as needed):**
+*	Current outside temperature
+*	Feels-like temperature
+*	Short condition text plus icon (sun, cloud, rain, etc.)
+*	Today high and low temperatures
+*	Chance of rain in the next few hours
+*	Expected precipitation in the next hour
+*	Rain rate (if currently raining)
+*	Wind speed and direction
+*	Gust speed (if above a useful threshold)
+*	Humidity
+*	UV index (daytime only)
+*	Cloud cover percentage
+*	Air pressure and pressure trend (rising / steady / falling)
+*	Dew point
+*	Hourly temperature trend for the next 6–12 hours
+*	Hourly rain probability for the next 6–12 hours
+*	Simple "good driving window" indicator (time window with dry conditions and low wind)
+*	Simple "good solar window" indicator (time window with clear or mostly clear skies)
+*	Next 3–5 days forecast (day name, high/low, condition icon)
+*	Weather alerts / warnings indicator (e.g. wind, storms, extreme heat/cold)
+*	Link or button to open detailed weather page
+*	Units controls (°C/°F, km/h or mph, mm or inches)
+*	Location mode (GPS-based vs fixed location)
+*	Toggle to show/hide advanced weather metrics
+*	Notification options (e.g. freeze warning, high wind warning, "notify before sunset")
 
-8. **Outside temperature – e.g. “72°F”**  
-   - What it is: Single value display.  
-   - What it shows: The current outside air temperature near the van.
-
-9. **Weather condition text – e.g. “sunny”**  
-   - What it is: Short text description.  
-   - What it shows: Current weather condition (sunny, cloudy, raining, etc.).
-
-10. **Humidity – e.g. “45%”**  
-    - What it is: Single value display.  
-    - What it shows: Outside air humidity.
-
-11. **Wind speed – e.g. “8 mph”**  
-    - What it is: Single value display.  
-    - What it shows: Current wind speed outside the van.
-
----
-
-## 2. Power System Section – “Power System”
-
-This block summarises the electrical system state.
-
-12. **Section label – “Power System”**  
-    - What it is: Title for the power block.  
-    - Purpose: Groups all power-related items together.
+## 2. Power System Section – "Power System"
+*	Section label – "Power System"
 
 ### 2.1 Battery Card
-
-13. **Battery label – “Battery Level”**  
-    - What it is: Text label.  
-    - Purpose: Announces the battery status area.
-
-14. **Battery charging state – “charging”**  
-    - What it is: Status text and speed (inc. time to full estimate)
-    - What it shows: Whether the battery is currently being charged (vs. idle/discharging).
-
-15. **Battery percentage – e.g. “85%”**  
-    - What it is: Main number for battery fullness.  
-    - What it shows: How full the main battery bank is.
-
-16. **Battery voltage – e.g. “12.8 V”**  
-    - What it is: Secondary number, very small and faint
-    - What it shows: The current battery voltage, useful for more technical users and debugging.
+*	Battery label – "Battery Level"
+*	Battery charging state (charging / discharging / idle)
+*	Battery percentage (state of charge)
+*	Battery voltage
+*	Battery current (amps)
+*	Battery power (watts in/out)
+*	Estimated time remaining at current usage
+*	Estimated time to full when charging
+*	Battery temperature
+*	Battery health status (good / warning / critical)
+*	Battery chemistry / profile (e.g. LiFePO4, AGM)
+*	Number of battery banks / modules
+*	Per-battery-bank state of charge
+*	Per-battery-bank voltage and current
+*	Battery error or warning indicator
+*	Tap/click area to open detailed battery view
 
 ### 2.2 Input Power Card
-
-17. **Input power label – “Input Power”**  
-    - What it is: Text label.  
-    - Purpose: Marks the block that shows power coming *into* the system.
-
-18. **Input power value – e.g. “320 W”**  
-    - What it is: Single numeric display.  
-    - What it shows: How much power is currently flowing into the system (from solar, shore, alternator, etc.).
-
-19. **Input source description – e.g. “Solar/Shore Power”**  
-    - What it is: Text description.  
-    - What it shows: The source(s) currently feeding power into the system.
+*	Input power label – "Input Power"
+*	Total input power (watts)
+*	Per-source input power for:
+	◦	Solar
+	◦	Alternator / DC-DC charger
+	◦	Shore power
+	◦	Generator
+*	Input source description (e.g. "Solar + Shore")
+*	Solar status (producing / not producing)
+*	Solar array voltage and current
+*	Shore connection state (connected / disconnected)
+*	Shore current limit setting (amps)
+*	Generator status (on / off / auto)
+*	Alternator charging state (active / inactive)
+*	Policy/mode selector for input priority (e.g. "Solar first", "Shore priority")
+*	Tap/click area to open detailed input sources view
 
 ### 2.3 Output Power Card
-
-20. **Output power label – “Output Power”**  
-    - What it is: Text label.  
-    - Purpose: Marks the block for power leaving the system.
-
-21. **Output power value – e.g. “180 W”**  
-    - What it is: Single numeric display.  
-    - What it shows: How much power is currently being drawn by loads.
-
-22. **Output destination description – e.g. “To Inverter”**  
-    - What it is: Text description.  
-    - What it shows: The primary destination of that output (for example, the inverter feeding AC sockets).
+*	Output power label – "Output Power"
+*	Total output power (watts)
+*	Output destination description (e.g. "To Inverter")
+*	Per-bus output (DC bus, AC bus)
+*	Per-subsystem power use (e.g. "House loads", "Heating", "Appliances")
+*	Inverter state (on / off / standby)
+*	Inverter load percentage
+*	Inverter output voltage and frequency
+*	Critical vs non-critical loads breakdown
+*	Tap/click area to open detailed loads view
 
 ### 2.4 Total Power Draw Card
+*	Power draw label – "Power Draw"
+*	Power draw value – total live usage (watts)
+*	Sub-label – "Current Usage"
+*	Average power over last X minutes
+*	Peak power today
+*	Daily energy used (kWh) today
+*	Daily energy used (kWh) yesterday
+*	Rolling 7-day or 30-day energy usage
+*	Simple usage graph preview
+*	Tap/click area to open full history/graph view
 
-23. **Power draw label – “Power Draw”**  
-    - What it is: Text label.  
-    - Purpose: Titles the overall usage card.
+**Power System – possible extra data points and controls (edit down as needed):**
+*	System nominal voltage (12 V / 24 V / 48 V)
+*	DC bus voltage and current
+*	AC bus voltage, current and frequency
+*	Per-circuit fuse/breaker status
+*	Per-circuit on/off switches (soft switching)
+*	Error flags for overcurrent, overvoltage, undervoltage
+*	Temperature of key components (inverter, DC-DC, MPPT, etc.)
+*	"Eco mode" toggle (limit inverter, dim non-critical loads)
+*	"Shore priority" vs "Battery priority" vs "Balanced" mode toggle
+*	"Generator auto-start" toggle and configuration
+*	Charge/discharge current limit sliders
+*	SOC minimum/maximum limits for charge controller
+*	Battery equalization / maintenance controls (for non-LFP chemistries)
+*	Maintenance reminders (e.g. "Check battery terminals")
+*	Export button for power logs or CSV
+*	Quick actions such as "Turn off non-critical loads" or "Force bulk charge"
 
-24. **Power draw value – e.g. “140 W”**  
-    - What it is: Single numeric display.  
-    - What it shows: The total power being used by the system at this moment.
-
-25. **Sub-label – “Current Usage”**  
-    - What it is: Clarifying text.  
-    - What it shows: That the value is a live reading (not a daily total or average).
-
-Very visual layout of inputs/outputs/battery level flow sped up with faster power flow. Central, highly visual card. 
-
----
-
-## 3. Lighting Section – “Lighting Control”
-
-Controls and status for all lighting zones.
-
-26. **Section label – “Lighting Control”**  
-    - What it is: Title for the lighting block.  
-    - Purpose: Groups all light-related controls.
+## 3. Lighting Section – "Lighting Control"
+*	Section label – "Lighting Control"
 
 ### 3.1 Master Lighting
-
-27. **Master lighting control – “Master Control On”**  
-    - What it is: A toggle / main switch (text indicates “On”).  
-    - What it controls: Turns **all van lights** on or off in one go.
-
-28. **Overall lights status – “Lights On”**  
-    - What it is: Status text.  
-    - What it shows: The overall state of the lighting system (on vs off).
-
-29. **Active lights count – e.g. “7”**  
-    - What it is: Numeric display.  
-    - What it shows: How many lights or zones are currently switched on.
+*	Master lighting control – global lights on/off toggle
+*	Overall lights status – text state (e.g. "Lights On")
+*	Active lights count (number of zones or fixtures currently on)
 
 ### 3.2 Global Brightness
-
-30. **Brightness label – “Brightness”**  
-    - What it is: Text label.  
-    - Purpose: Titles the brightness control.
-
-31. **Brightness control/value – e.g. “75%”**  
-    - What it is: Slider (implied) and value display.  
-    - What it controls: Adjusts the brightness level of all dimmable lights together.
+*	Global brightness label – "Brightness"
+*	Global brightness slider / control (0–100%)
 
 ### 3.3 Individual Zones
+*	Kitchen lights switch – on/off
+*	Bedroom lights switch – on/off
+*	Shower lights switch – on/off
+*	Exterior lights switch – on/off
 
-32. **Kitchen lights switch – “Kitchen Lights On”**  
-    - What it is: Zone-specific toggle.  
-    - What it controls: Turns the **kitchen lighting** on or off.
+**Lighting – possible extra data points and controls (edit down as needed):**
+*	Per-zone brightness sliders (e.g. kitchen, bedroom, shower, exterior)
+*	Per-zone colour temperature controls (warm → cool white)
+*	Per-zone RGB colour controls (for strips/accent lighting)
+*	Lighting scenes (presets) such as:
+	◦	Day mode
+	◦	Night mode
+	◦	Movie mode
+	◦	Cooking mode
+	◦	Reading mode
+*	Scene selection buttons / chips
+*	"All interior off" quick action
+*	"All exterior off" quick action
+*	Occupancy-based lighting (auto on/off using motion sensors)
+*	Ambient light sensor integration (auto-dimming based on light level)
+*	Per-zone schedule (e.g. "Exterior lights on at sunset, off at 23:00")
+*	Sunrise/sunset-based automations
+*	"Red night mode" toggle (soft red lights to preserve night vision)
+*	Child lock / accidental touch lock for key lighting controls
+*	Temporary timer (e.g. "Turn all lights off in 10 minutes")
+*	Per-zone energy usage display
+*	Per-zone rename/edit feature (e.g. rename "Kitchen Lights" to "Galley")
+*	Indicator for lights left on when van is locked/armed
 
-33. **Bedroom lights switch – “Bedroom Lights Off”**  
-    - What it is: Zone-specific toggle.  
-    - What it controls: Turns the **bedroom lighting** on or off.
-
-34. **Shower lights switch – “Shower Lights Off”**  
-    - What it is: Zone-specific toggle.  
-    - What it controls: Turns the **shower/bathroom lighting** on or off.
-
-35. **Exterior lights switch – “Exterior Lights On”**  
-    - What it is: Zone-specific toggle.  
-    - What it controls: Turns the **external/awning lights** on or off.
-
----
-
-## 4. Climate Section – “Climate Control”
-
-Fan, vent and interior temperature.
-
-36. **Section label – “Climate Control”**  
-    - What it is: Title for climate controls.  
-    - Purpose: Groups fan and temperature-related items.
+## 4. Climate Section – "Climate Control"
+*	Section label – "Climate Control"
 
 ### 4.1 Roof Fan / Vent
-
-37. **Vent status line – e.g. “Maxxair Fan 45% open”**  
-    - What it is: Combined label + value.  
-    - What it shows: How far open the roof vent lid currently is (as a percentage).
-
-> Note: In the UI this likely corresponds to a slider or numeric control underneath, but visually the only element is this single status line.
+*	Vent display – e.g. "Maxxair Fan 45% open"
+*	Vent position slider (0–100% open)
+*	Vent open/close buttons (fully open / fully close)
+*	Vent direction (intake / exhaust) selector
 
 ### 4.2 Fan Speed
+*	Fan speed label – "Fan Speed"
+*	Fan speed control (step-based or slider)
+*	Fan on/off toggle
 
-38. **Fan speed label – “Fan Speed”**  
-    - What it is: Text label.  
-    - Purpose: Describes the fan speed control and value.
+### 4.3 Interior Temperature & Comfort
+*	Inside temperature display
+*	Target temperature setpoint (for heater/AC)
+*	Climate mode selector (Off / Heat / Cool / Fan only / Auto)
+*	Inside humidity display
+*	CO₂ level display (if sensor available)
+*	VOC / air quality indicator (if sensor available)
 
-39. **Fan speed value – e.g. “3”**  
-    - What it is: Numeric value display (implies steps / levels).  
-    - What it controls: The speed level of the fan (for example 0 = off, 1–10 = increasing speed).
+**Climate – possible extra data points and controls (edit down as needed):**
+*	Diesel heater control (on/off, power level)
+*	Electric heater control (on/off, power level)
+*	Air conditioning control (on/off, fan speed, swing)
+*	"Silent night" mode (reduced fan/heater noise)
+*	"Boost" mode (max power for quick heating/cooling)
+*	Thermostat schedule (time-based temperature setpoints)
+*	"Frost protection" mode (keep above a minimum temperature)
+*	Window/door open detection and energy-saving logic
+*	Automatic venting based on temperature/humidity
+*	Condensation protection mode (manage humidity and temperature)
+*	Integration with bed occupancy (reduce heating when not in bed)
+*	Graph of inside temperature over last X hours
+*	Graph of inside humidity over last X hours
+*	Alerts for high CO₂ or poor air quality
+*	Alerts for too cold / too hot conditions
 
-### 4.3 Interior Temperature
-
-40. **Inside temperature label – “Inside Temp”**  
-    - What it is: Text label.  
-    - Purpose: Explains that the next value is for the inside of the van.
-
-41. **Inside temperature value – e.g. “74°F”**  
-    - What it is: Numeric display.  
-    - What it shows: Current temperature inside the living area.
-
----
-
-## 5. Water Section – “Water System”
-
-Tank level, flow rate and pump control.
-
-42. **Section label – “Water System”**  
-    - What it is: Title for water-related elements.  
-    - Purpose: Groups tank and pump info.
+## 5. Water Section – "Water System"
+*	Section label – "Water System"
 
 ### 5.1 Tank & Flow
-
-43. **Fresh water tank line – e.g. “Fresh Water Tank 68%”**  
-    - What it is: Text label plus percentage.  
-    - What it shows: How full the **fresh water tank** is.
-
-44. **Flow rate label – “Flow Rate”**  
-    - What it is: Text label.  
-    - Purpose: Describes the usage-speed value beneath it.
-
-45. **Flow rate value – e.g. “2.3 L/min”**  
-    - What it is: Numeric display.  
-    - What it shows: How fast water is currently flowing when a tap/shower is on.
+*	Fresh water tank percentage
+*	Flow rate display (e.g. L/min)
 
 ### 5.2 Pump
+*	Pump status label – e.g. "Pump Status"
+*	Pump on/off control
 
-46. **Pump status label – “Pump Status”**  
-    - What it is: Text label.  
-    - Purpose: Titles the pump control.
-
-47. **Pump state – “Off”**  
-    - What it is: Status text (representing a toggle).  
-    - What it controls: Whether the **water pump** is on or off for the entire system.
+**Water – possible extra data points and controls (edit down as needed):**
+*	Fresh water tank absolute volume (litres or gallons)
+*	Grey water tank level
+*	Black water tank level (if applicable)
+*	Individual tank status (OK / nearly full / full)
+*	Tank temperature (for freeze risk)
+*	Leak detection sensor state
+*	Water pressure display
+*	Water pump auto-mode (on demand vs manual)
+*	Pump speed / intensity control (if variable-speed pump)
+*	Pump run-time statistics and history
+*	City water connection state
+*	City water pressure indicator
+*	Water heater on/off control
+*	Water heater temperature setpoint
+*	Water heater mode (gas / electric / boost / eco)
+*	Recirculation loop control (e.g. instant hot water)
+*	“Winterize” mode (drain tanks, blow out lines)
+*	“Tank fill” mode (with automatic stop at X%)
+*	Filter status / change filter reminder
+*	Water quality reading (TDS or similar if supported)
+*	Alerts for low fresh water
+*	Alerts for full grey/black tanks
+*	Alerts for detected leaks or freeze risk
 
 ---
 
 ## 6. Van Level Section – “Van Level”
+*	Section label – “Van Level”
+*	Pitch value (degrees, front-to-back)
+*	Roll value (degrees, side-to-side)
+*	Simple level indicator graphic
 
-Shows how level the van is front-to-back and side-to-side.
-
-48. **Section label – “Van Level”**  
-    - What it is: Title for levelling info.  
-    - Purpose: Groups pitch and roll values.
-
-49. **Pitch label – “Pitch”**  
-    - What it is: Text label.  
-    - Purpose: Describes the forward/backward tilt value.
-
-50. **Pitch value – e.g. “2.1°”**  
-    - What it is: Numeric display.  
-    - What it shows: How much the van is tilted nose-up or nose-down.
-
-51. **Roll label – “Roll”**  
-    - What it is: Text label.  
-    - Purpose: Describes the side-to-side tilt value.
-
-52. **Roll value – e.g. “-1.3°”**  
-    - What it is: Numeric display.  
-    - What it shows: How much the van is leaning left or right.
+**Van Level – possible extra data points and controls (edit down as needed):**
+*	Option to “Set current as level” (recalibration)
+*	Recommended adjustment hints (e.g. “Raise front left by 2 cm”)
+*	Numeric thresholds for “Good enough” (sleeping vs cooking)
+*	Graph/log of van angle over time (optional)
+*	Different presets for “Sleeping level” vs “Cooking level”
+*	Integration with auto-levelling jacks (if present)
+*	Warning if van is parked at unsafe angle
 
 ---
 
 ## 7. GPS & Travel Section – “GPS & Travel”
+*	Section label – “GPS & Travel”
+*	Current location name (e.g. town/area)
 
-Current location information.
-
-53. **Section label – “GPS & Travel”**  
-    - What it is: Title for travel/location info.  
-    - Purpose: Groups GPS-related items.
-
-54. **Location label – “Current Location”**  
-    - What it is: Text label.  
-    - Purpose: Explains what the place name refers to.
-
-55. **Location value – e.g. “Moab, UT”**  
-    - What it is: Text display.  
-    - What it shows: The current place name for where the van is parked/driving.
+**GPS & Travel – possible data points and controls (edit down as needed):**
+*	Latitude and longitude
+*	Altitude
+*	Current speed
+*	Current heading (N/E/S/W)
+*	Time since last movement
+*	Distance travelled today
+*	Total trip distance
+*	Total odometer (if integrated)
+*	Time driving today
+*	Time parked today
+*	Next destination name (if navigation linked)
+*	Estimated arrival time (ETA)
+*	Distance to next destination
+*	Simple route summary (major roads ahead)
+*	Button to open navigation app (Google Maps, Apple Maps, etc.)
+*	Button to “Save this spot” (favourite location)
+*	List of saved/favourite spots
+*	Parking mode indicator (e.g. “Overnight”, “Day parking”)
+*	Geofencing options (e.g. alerts when leaving/entering area)
+*	Offline map data status (downloaded/not downloaded)
 
 ---
 
 ## 8. Network Section – “Network”
+*	Section label – “Network”
+*	Connection status (e.g. “Status Connected”)
+*	Signal strength value (percentage or bars)
 
-Internet connection overview.
-
-56. **Section label – “Network”**  
-    - What it is: Title for network status.  
-    - Purpose: Groups connectivity info.
-
-57. **Connection status line – e.g. “Status Connected”**  
-    - What it is: Status text.  
-    - What it shows: Whether the van system is currently online (“Connected”) or not.
-
-58. **Signal strength value – e.g. “85%”**  
-    - What it is: Numeric display.  
-    - What it shows: Overall signal strength of the current internet connection.
+**Network – possible data points and controls (edit down as needed):**
+*	Active internet source (e.g. Starlink, LTE, Campground Wi-Fi)
+*	Backup source (fallback connection)
+*	Data usage today
+*	Data usage this month
+*	Data cap and remaining quota
+*	Simple data usage graph
+*	Ping/latency reading
+*	Simple speed test (down/up)
+*	Router status (online/offline, uptime)
+*	LAN IP address of router
+*	WAN IP address
+*	List of connected devices
+*	Per-device data usage
+*	Per-device block/allow controls
+*	Guest Wi-Fi SSID and password display
+*	QR code to join Wi-Fi
+*	SSID name and password editor
+*	Wi-Fi channel and band info
+*	VPN status (connected/disconnected)
+*	Remote access status (VanCore cloud / HA Remote / Nabu Casa)
+*	Auto-failover toggle (switch to backup when main fails)
+*	Priority rules for sources (e.g. “Use Wi-Fi if available, else LTE”)
+*	Simple firewall profile selector (e.g. Strict / Normal / Open)
 
 ---
 
 ## 9. Media Section – “Media”
+*	Section label – “Media”
+*	“Now Playing” label
+*	Track name / current media title
 
-Audio playback overview.
-
-59. **Section label – “Media”**  
-    - What it is: Title for the media/audio block.  
-    - Purpose: Groups the “now playing” information.
-
-60. **Now playing label – “Now Playing”**  
-    - What it is: Text label.  
-    - Purpose: Explains what the following text refers to.
-
-61. **Track name – e.g. “Life is a Highway”**  
-    - What it is: Text display.  
-    - What it shows: The current song or audio track playing in the van.
-
+**Media – possible data points and controls (edit down as needed):**
+*	Play / Pause button
+*	Next track button
+*	Previous track button
+*	Seek / scrub bar (track position)
+*	Elapsed time and remaining time for track
+*	Volume slider (global)
+*	Mute button
+*	Per-zone volume sliders (cab, living area, bedroom, exterior)
+*	Output zone selector (which speakers are active)
+*	Media source selector (Spotify, Bluetooth, Radio, Local files, etc.)
+*	Playlist / queue view
+*	Shuffle toggle
+*	Repeat toggle (off / one / all)
+*	Equaliser presets (e.g. Flat, Bass boost, Voice)
+*	Sleep timer (stop playback after X minutes)
+*	“Chill” / “Focus” / “Party” quick playlists
+*	Integration with phone as remote control
+*	Indicator for offline/online media availability
 
 ---
 
 ## 10. Automation Section – “Automation”
+*	Section label – “Automation”
+*	Active rules label – “Active Rules”
+*	Active rules count
 
-High-level automation summary.
-
-62. **Section label – “Automation”**  
-    - What it is: Title for automations.  
-    - Purpose: Groups rule-related information.
-
-63. **Active rules label – “Active Rules”**  
-    - What it is: Text label.  
-    - Purpose: Describes the numeric value below.
-
-64. **Active rules count – e.g. “4”**  
-    - What it is: Numeric display.  
-    - What it shows: How many automation rules are currently turned on.
+**Automation – possible data points and controls (edit down as needed):**
+*	List of all automations/rules
+*	Per-automation on/off toggle
+*	Per-automation tags (e.g. Power, Security, Comfort)
+*	Short description of each rule (natural language)
+*	Indication of which automations are currently active (conditions met)
+*	Button to add new automation
+*	Natural-language rule builder (“When X, do Y”)
+*	Template gallery (e.g. “Turn on exterior lights at sunset”)
+*	Rule details view (triggers, conditions, actions)
+*	Schedule view of time-based automations
+*	Conflict warnings (e.g. two rules fighting over same device)
+*	Log of last runs (when each automation last fired)
+*	Error indicators for failed automations
+*	Import/export automations (backup/restore)
+*	Bulk enable/disable (e.g. “Disable all climate automations”)
 
 ---
 
 ## 11. Security Section – “Security System”
+*	Section label – “Security System”
+*	System status line (e.g. “System Status Armed”)
+*	Cameras active label
+*	Camera count (e.g. “0/4”)
+*	Motion label
+*	Motion state (e.g. “Yes” / “No”)
 
-Alarm and cameras overview.
-
-65. **Section label – “Security System”**  
-    - What it is: Title for security info.  
-    - Purpose: Groups alarm/camera status.
-
-66. **System status line – e.g. “System Status Armed”**  
-    - What it is: Status text.  
-    - What it shows: The current mode of the security system (armed vs disarmed, etc.).
-
-67. **Cameras label – “Cameras Active”**  
-    - What it is: Text label.  
-    - Purpose: Describes the count value below it.
-
-68. **Camera count – e.g. “0/4”**  
-    - What it is: Numeric fraction.  
-    - What it shows: How many cameras are currently active/online out of the total number of cameras.
-
-69. **Motion label – “Motion Detected”**  
-    - What it is: Text label.  
-    - Purpose: Describes the motion status value.
-
-70. **Motion state – e.g. “Yes”**  
-    - What it is: Simple “Yes/No” display.  
-    - What it shows: Whether motion is being detected right now by any sensor or camera.
+**Security & CCTV – possible data points and controls (edit down as needed):**
+*	Arm / Disarm button
+*	Multiple arm modes (Away / Home / Night)
+*	Entry/exit delay timers
+*	Door sensor states (open/closed for each door)
+*	Window sensor states
+*	Lock status of each door
+*	Lock/unlock controls for each door or all doors
+*	Deadbolt status and control (if fitted)
+*	Panic button (trigger alarm immediately)
+*	Siren status and manual trigger
+*	Alarm countdown display when arming
+*	Alarm event history (timeline of triggers)
+*	List of recent security events (doors opened, motion detected, alarm triggered)
+*	Per-sensor bypass/ignore toggle
+*	Camera grid with live thumbnails
+*	Tap-to-open full-screen camera view
+*	Camera PTZ controls (if supported: pan/tilt/zoom)
+*	Snapshot/record controls per camera
+*	Spotlight or IR illuminator control (if camera supports)
+*	Privacy mode for cameras (disable or mask certain views)
+*	Geofenced arming (auto arm when phone leaves area)
+*	Presence simulation (fake occupancy mode – lights/music)
+*	Notification settings (push/email for motion, door, alarm, etc.)
+*	Integration with other systems (e.g. flash lights on alarm, record clip)
 
 ---
 
 ## 12. Section → Page Mapping (for Backend Planning)
 
-Even though the current demo is a single page, these sections naturally map to pages/modules in the final product:
-
-- **Global / Shell**  
-  - Title, dark mode toggle, settings button, time/date, weather.
-- **Power System**  
-  - Battery status, input power, output power, total power draw.
-- **Lighting**  
-  - Master light control, global brightness, per-zone switches.
-- **Climate**  
-  - Fan lid opening, fan speed, inside temperature.
-- **Water**  
-  - Fresh tank level, flow rate, pump state.
-- **Van Level**  
-  - Pitch and roll values.
-- **GPS & Travel**  
-  - Current location display.
-- **Network**  
-  - Online/offline status and signal strength.
-- **Media**  
-  - Now playing information.
-- **Automation**  
-  - Active rules count.
-- **Security System**  
-  - System armed state, camera count, motion status.
-
-This file should now serve as your **ground truth frontend spec** for the current demo: every label, value, and control has an entry you can work backwards from when designing the backend entities and APIs.
+These sections naturally map to pages/modules in the final product:
+*	Global / Shell
+Title, dark mode toggle, settings, navigation, time/date, weather, notifications.
+*	Power System
+Battery status, inputs, outputs, power history, protection modes, logs.
+*	Lighting
+Master lighting, zones, brightness, scenes, schedules, occupancy.
+*	Climate
+Vent and fan control, heating, cooling, comfort sensors, schedules.
+*	Water
+Fresh/grey/black tanks, pump, heater, leaks, winterization.
+*	Van Level
+Pitch/roll, levelling aids, safety.
+*	GPS & Travel
+Location, trips, saved spots, navigation.
+*	Network
+Internet source, data usage, connected devices, remote access.
+*	Media
+Now playing, control, zones, sources.
+*	Automation
+Rules, templates, logs, conflict handling.
+*	Security System
+Arming, sensors, cameras, history, notifications.
