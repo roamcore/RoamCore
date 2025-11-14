@@ -20,6 +20,7 @@ These elements sit at the top or are “global context”.
 *	Title – "Van Control Dashboard"
 *	Dark Mode toggle – text: "Dark Mode" + on/off control
 *	Settings button – "Settings"
+*	Notification 'Bell' Icon
 
 **Global / App Shell – possible data points and controls (edit down as needed):**
 *	App logo / VanCore logo
