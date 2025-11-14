@@ -483,6 +483,8 @@ Arming, sensors, cameras, history, notifications.
 
 ## 13. Settings & Admin Pages (VanCore Dashboard — exhaustive feature list to append)
 
+Link each page's settings to the respective section in the settings. 
+
 - **General & Personalisation**
   - Device name, location, timezone, language/region, units (°C/°F, 12/24-hour).
   - Theme (light/dark/auto), accent colour, density (compact/cozy), font size & accessibility presets.
