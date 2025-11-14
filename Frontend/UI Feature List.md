@@ -478,3 +478,126 @@ Now playing, control, zones, sources.
 Rules, templates, logs, conflict handling.
 *	Security System
 Arming, sensors, cameras, history, notifications.
+
+
+
+## 13. Settings & Admin Pages (VanCore Dashboard — exhaustive feature list to append)
+
+- **General & Personalisation**
+  - Device name, location, timezone, language/region, units (°C/°F, 12/24-hour).
+  - Theme (light/dark/auto), accent colour, density (compact/cozy), font size & accessibility presets.
+  - Home screen layout presets (Minimal / Standard / Power User), reorder dashboard tabs.
+
+- **User Accounts & Roles**
+  - Create/edit/remove users; roles: **Owner**, **Admin**, **User**, **Guest (view-only)**.
+  - Per-user PIN/app login, session timeout, biometric unlock (mobile app).
+  - Page-level access control (e.g., CCTV, Electrical Controls, Updates).
+  - **Kid-safe mode** toggle: hides advanced/critical actions (factory reset, SSH, firmware).
+
+- **Network – Core**
+  - **Port roles** (default): Port 1 = WAN (Starlink), Ports 2–4 = LAN (subsystem boxes).
+  - LAN IP/CIDR, DHCP ranges & reservations, DNS provider (system / custom / DoH).
+  - **mDNS reflector** toggle so HA discovery works across VLANs.
+  - VLANs: create/edit (IoT / Admin / CCTV), per-VLAN DHCP & DNS.
+  - Wi-Fi regulatory domain (country code), NTP servers.
+
+- **Multi-WAN & Failover**
+  - WAN sources: **Starlink**, **LTE/4G** (EM12-G), (optional) tethered backup.
+  - Policy: Failover (primary/secondary) or Load-balance (ratios).
+  - Health checks: ICMP targets (1.1.1.1, 8.8.8.8), HTTPS targets (select CDN endpoints).
+  - Sticky connections toggle, per-WAN weight, latency/packet-loss thresholds.
+  - Manual **Switch to LTE / Switch to Starlink / Auto** buttons + status chips (Up/Down/Jitter/RTT).
+
+- **Cellular Modem (EM12-G)**
+  - APN profile select & edit (APN, auth, roaming), SIM status (ICCID, RSSI/RSRP/RSRQ/SINR).
+  - Band lock (advanced), radio mode (LTE-only / Auto), data-usage counters & caps with alerts.
+  - Safe recovery buttons: **Reconnect modem**, **Airplane mode 30s**.
+  - Antenna diagnostics: MIMO signal balance indicators.
+  - (Advanced) AT command console with guardrails & audit log.
+
+- **Wi-Fi (if hub provides AP)**
+  - SSID(s), password, WPA3/WPA2, guest network with captive portal.
+  - Channel selection (auto/manual), bandwidth (20/40/80 MHz), transmit power.
+  - MAC allow/deny list, client list with block/unblock.
+  - Mesh/backhaul (optional): join external AP or expose backhaul SSID.
+
+- **Starlink Integration**
+  - Status (uptime, obstructions %, last-24h uptime), dish state.
+  - Bridge/Bypass mode guide (with checklist).
+  - **Test Starlink** diagnostics (latency/packet loss over 60s).
+
+- **Subsystem Modules (Electrical / Water / Safety)**
+  - **Entity naming** wizard (e.g., “Fridge 12V”, “Water Pump”, “Heater Fan 1”).
+  - Grouping & locations (Kitchen, Garage, Bed), icons & categories.
+  - Default automation templates (pump dry-run protect, heater lockouts).
+  - Calibration pages (tank level sensors, temperature offsets, IMU level).
+  - Safety interlocks (e.g., don’t energize heater unless fan RPM OK).
+
+- **CCTV & NVR**
+  - Camera discovery (RTSP/ONVIF), test streams, sub/main stream mapping.
+  - Recording modes (continuous/motion/none) per camera.
+  - **Retention presets** (e.g., 2 days @1080p30 + 3 days @720p30 + 2 days @480p).
+  - Storage target: internal/external; live **drive-fill** indicators; per-camera bitrate.
+  - **Eject external drive** (graceful stop → unmount → safe to remove).
+  - Privacy zones & motion sensitivity; snapshots/alerts toggles.
+  - Quick health: dropped frames, encode queue, disk write throughput.
+
+- **Storage & Backups**
+  - Volumes overview: NVMe (health/S.M.A.R.T.), External USB (health, FS), usage meters.
+  - **Backup plans**: nightly HA snapshot, weekly router config; destinations: local/external/cloud (WebDAV/S3/Rclone).
+  - Retention policies & encrypt-at-rest toggle (with recovery key print/export).
+  - One-click **Support Bundle** download (logs, configs, manifests; no secrets).
+
+- **Remote Access**
+  - **Nabu Casa**: connect/disconnect, remote URL test, webhook status.
+  - **Tailscale**: node status, IP, ACL tag; **Support Mode (24h)** toggle enables SSH for support only (auto-off timer visible).
+  - (Optional) Cloudflare Tunnel: connect/disconnect, service exposure list.
+
+- **Power & System Health**
+  - DC input voltage, low-voltage cutoff threshold, graceful shutdown rules (ignition sense).
+  - CPU load, RAM, temperatures (CPU/NVMe), throttling alarms, fanless thermal tips.
+  - Reboot scheduler, safe shutdown, wake on power restore.
+
+- **Notifications & Alerts**
+  - Channels: in-app, email, push, Telegram/Signal (tokens).
+  - Rules library: WAN failover, modem reconnects, disk nearly full, high temperature, intrusion.
+  - Quiet hours / do-not-disturb, per-severity routing.
+
+- **Updates**
+  - Channels: Stable/Beta (per component: **Hub OS (Proxmox)**, **Router (OPNsense)**, **HAOS**, **Add-ons**, **App-CT**).
+  - Changelog preview, pre-update backup snapshot, **Rollback** to previous version.
+  - Modem firmware update (guided, with preflight check), add-on pinning.
+
+- **Advanced Mode (Power Users)**
+  - **“I know what I’m doing”** toggle with explainer & audit logging.
+  - **Service tiles (with logos)** opening each admin UI in a new tab:
+    - **Proxmox VE** (host/VMs), **OPNsense** (router), **Home Assistant** (Supervisor),
+    - **NVR / Frigate UI**, **App-CT Console** (status/logs), **Proxmox Backup Server** (if present).
+  - Network tools: ping, traceroute, DNS lookup, speed test (choose endpoints).
+  - Packet capture (pcap) per interface (time-boxed), download pcap.
+  - Firewall rules quick-view (read-only) + link to OPNsense rule editor.
+  - HA dev tools: entity inspector, template tester.
+  - SSH toggle (guarded, time-boxed), read-only log console.
+
+- **Security & Privacy**
+  - Password policy, 2FA (TOTP) for admin logins.
+  - Data-collection toggle (opt-in diagnostics), view & purge telemetry.
+  - Session log (who did what, when), configuration change history.
+
+- **Import / Export / Reset**
+  - Export/import **VanCore config bundle** (entities, scenes, automations, router config).
+  - **Re-run Setup Wizard** (non-destructive) for network & remote access.
+  - **Factory Reset** (full wipe with confirmation flow & PIN).
+
+- **Localization & Accessibility**
+  - Language packs download/update.
+  - High-contrast theme, reduced motion, larger touch targets, screen-reader labels.
+
+- **Legal & Compliance**
+  - Licenses (open-source attributions), safety notices (electrical, CCTV/recording laws).
+  - Privacy policy, warranty, support contacts.
+
+- **About & Diagnostics**
+  - **Release manifest**: Hub version, Proxmox/OPNsense/HAOS/Add-on versions, modem firmware, serial.
+  - Hardware info: CPU, RAM, NICs, modem model, antennas connected, SIM details (masked).
+  - One-click **Acceptance Test** (scripted checks: WAN/LTE failover, HA reachable, CCTV record, temps OK) with pass/fail report.
