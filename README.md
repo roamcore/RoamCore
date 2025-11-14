@@ -120,7 +120,6 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 
 ## 🧱 Subsystem Modules
 Each module should be:
-●	Standalone
 
 ●	OTA updateable
 
