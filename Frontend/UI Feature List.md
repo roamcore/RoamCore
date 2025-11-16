@@ -415,6 +415,9 @@ These elements sit at the top or are “global context”.
 *	Import/export automations (backup/restore)
 *	Bulk enable/disable (e.g. “Disable all climate automations”)
 
+Manual automation builder wizard (templates, examples) -> HA integration layer
+AI automation helper -> same HA integration layer (included token limit + bring your own API key option)
+
 ---
 
 ## 11. Security Section – “Security System”
