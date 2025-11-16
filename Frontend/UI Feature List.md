@@ -417,6 +417,8 @@ These elements sit at the top or are “global context”.
 
 Manual automation builder wizard (templates, examples) -> HA integration layer
 AI automation helper -> same HA integration layer (included token limit + bring your own API key option)
+'Test Automation' pop up with option to bypass conditions and deploy button
+List of all automations (active, inactive, edit, test)
 
 ---
 
