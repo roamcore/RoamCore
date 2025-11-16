@@ -458,7 +458,13 @@ List of all automations (active, inactive, edit, test)
 
 ---
 
-## 12. Section → Page Mapping (for Backend Planning)
+## 14. Remote Access Portal
+- How to set up remote portal (ideally they should be able to just open up the app as they usually would in the app, everything handled behind the scenes)
+
+
+---
+
+## 13. Section → Page Mapping (for Backend Planning)
 
 These sections naturally map to pages/modules in the final product:
 *	Global / Shell
@@ -486,7 +492,7 @@ Arming, sensors, cameras, history, notifications.
 
 
 
-## 13. Settings & Admin Pages (VanCore Dashboard — exhaustive feature list to append)
+## 14. Settings & Admin Pages (VanCore Dashboard — exhaustive feature list to append)
 
 Link each page's settings to the respective section in the settings. 
 
