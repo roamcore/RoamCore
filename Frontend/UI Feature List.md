@@ -363,6 +363,7 @@ These elements sit at the top or are “global context”.
 *	Auto-failover toggle (switch to backup when main fails)
 *	Priority rules for sources (e.g. “Use Wi-Fi if available, else LTE”)
 *	Simple firewall profile selector (e.g. Strict / Normal / Open)
+*	Connected locally/remote icon
 
 ---
 
