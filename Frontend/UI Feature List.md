@@ -581,6 +581,7 @@ Link each page's settings to the respective section in the settings.
   - Channels: Stable/Beta (per component: **Hub OS (Proxmox)**, **Router (OPNsense)**, **HAOS**, **Add-ons**, **App-CT**).
   - Changelog preview, pre-update backup snapshot, **Rollback** to previous version.
   - Modem firmware update (guided, with preflight check), add-on pinning.
+  - Colour coded 'update needed' section? Or just update everything at once (maybe add individual service/app status in advacned mode)
 
 - **Advanced Mode (Power Users)**
   - **“I know what I’m doing”** toggle with explainer & audit logging.
