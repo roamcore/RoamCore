@@ -507,6 +507,7 @@ Link each page's settings to the respective section in the settings.
   - Per-user PIN/app login, session timeout, biometric unlock (mobile app).
   - Page-level access control (e.g., CCTV, Electrical Controls, Updates).
   - **Kid-safe mode** toggle: hides advanced/critical actions (factory reset, SSH, firmware).
+  - Add app to home screen (walk through steps to follow on different device/link to share to other device which does it automatically?)
 
 - **Network – Core**
   - **Port roles** (default): Port 1 = WAN (Starlink), Ports 2–4 = LAN (subsystem boxes).
