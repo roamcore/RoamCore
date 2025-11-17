@@ -616,4 +616,5 @@ Link each page's settings to the respective section in the settings.
 - **About & Diagnostics**
   - **Release manifest**: Hub version, Proxmox/OPNsense/HAOS/Add-on versions, modem firmware, serial.
   - Hardware info: CPU, RAM, NICs, modem model, antennas connected, SIM details (masked).
+  - Hardware modules installed list (autodetected: main hub, water box, electrical box, safety box, extra advanced boxes) checked or greyed out (option to rescan if user thinks they are missing a unit)
   - One-click **Acceptance Test** (scripted checks: WAN/LTE failover, HA reachable, CCTV record, temps OK) with pass/fail report.
