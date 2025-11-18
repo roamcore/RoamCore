@@ -262,6 +262,85 @@ Dashboard tracks:
 
 ---
 
+## 10.5 Using Mender.io as an OTA Update Framework (Optional Implementation Path)
+
+While the VanCore Update System is designed to be fully customisable and independent of any third-party OTA mechanisms, it is worth noting that **Mender.io** provides a mature, open-source OTA update framework that can accelerate early development.
+
+Mender consists of two major components:
+
+1. **Mender Client (runs on the Hub)**  
+   - A Linux service installed on each VP2430.  
+   - Handles:
+     - Downloading update artifacts  
+     - Applying updates  
+     - Automatic rollback if new software fails to boot  
+     - Secure communication with the Mender server  
+   - Well-proven in embedded and IoT environments.
+
+2. **Mender Server (self-hosted or SaaS)**  
+   - Provides a web UI to:
+     - View registered devices (each van)  
+     - Define and upload update artifacts  
+     - Create phased deployments to device groups  
+     - Track update progress/failures  
+   - Supports multiple deployment patterns including:
+     - Application-level updates  
+     - Container updates  
+     - Full system image updates  
+
+### Why Mender is useful for VanCore
+
+Mender offers several features that map closely to the VanCore update requirements:
+
+- **➡️ Easy deployment workflow**  
+  Upload an artifact → choose a group → click “Deploy”.
+
+- **➡️ Built-in automatic rollback**  
+  If the update breaks services or fails to start correctly, Mender automatically restores the previous working version.
+
+- **➡️ Fleet management out of the box**  
+  Group vans into:
+  - *internal devices*
+  - *pilot customers*
+  - *general fleet*  
+  And deploy releases progressively.
+
+- **➡️ Self-hosted option**  
+  Fully aligns with VanCore’s requirement to avoid permanent SaaS dependencies or user data leakage.
+
+- **➡️ Integrates cleanly with Docker-based systems**  
+  Container updates can be packaged as Mender “application” artifacts.
+
+### Caveats and limitations
+
+- Mender does **not** know about VanCore-specific constraints such as:
+  - “only update when stationary”
+  - “only update with adequate signal”
+  - “only update above minimum battery”
+  
+  These must be implemented using **client-side scripts** or **Mender state scripts**.
+
+- Mender’s full-image rollback model may be overkill for the VP2430 where **Docker-level updates** are sufficient.
+
+- You still need some glue code to integrate:
+  - VanCore’s versioning logic  
+  - VanCore’s local health checks  
+  - Any VPN migration logic (Tailscale → Headscale)  
+
+### When to consider Mender
+
+- **Phase 1–2 (0 → ~20 vans)**  
+  It can dramatically accelerate the initial OTA capability without building a backend from scratch.
+
+- **Long-term**  
+  You may keep Mender as the underlying OTA layer  
+  **or**  
+  Replace it with a fully custom VanCore OTA service once the product stabilises.
+
+In summary, Mender.io provides a solid “drop-in” OTA engine that can reduce early complexity while still allowing VanCore to evolve toward a custom, domain-specific update system.
+
+---
+
 # 11. Full Flow Diagram
 
 ```mermaid
