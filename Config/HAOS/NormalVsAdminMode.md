@@ -200,6 +200,51 @@ uci commit firewall && /etc/init.d/firewall reload
 
 > Host this static page at `/opt/vancore/admin/index.html` on the Proxy LXC. No credentials stored by you—owners use each backend’s local login (with 2FA).
 
+## Advanced Mode Dashboard Implementation (Heimdall)
+
+For the initial implementation of **Advanced Mode**, VanCore will use a self-hosted application dashboard called **Heimdall** as the primary “launchpad” for advanced tools and services.
+
+### What Heimdall Provides
+
+Heimdall is an open-source, MIT-licensed dashboard designed to present a grid of applications and links. It gives us, out of the box:
+
+- A clean, tile-based UI listing all advanced tools (Home Assistant, Portainer, logs, diagnostics, etc.).
+- Click-through access to each service running on the hub (or reachable remotely).
+- Basic status indicators and descriptions for each tile.
+- Self-hosted operation that fits our offline-first design.
+
+Heimdall will run as a **Docker container on the VP2430** and be reachable both:
+
+- **Locally** when the user is on the VanCore Wi-Fi.
+- **Remotely** via the same cloud proxy/tunnel used for the main VanCore UI.
+
+From the user’s perspective, “Advanced Mode” in the VanCore app will simply open the Heimdall dashboard in a webview or new tab.
+
+### VanCore Customisation & Reskinning
+
+Heimdall will be customised to appear as a native part of the VanCore experience:
+
+- **Branding**
+  - VanCore logo and colour palette applied to the Heimdall theme.
+  - Custom background image consistent with the main VanCore UI.
+- **Preconfigured Tiles**
+  - Home Assistant (advanced config/UI)
+  - Portainer (container management, for internal/support use)
+  - System logs and metrics
+  - Network / tunnel diagnostics
+  - Firmware / update status page
+  - “VanCore Docs”, “Advanced Mode Guide”, and “Support” tiles linking to documentation and tutorials.
+- **Documentation & Help**
+  - Dedicated tiles linking to:
+    - User manual (normal + advanced mode)
+    - Wiring diagrams / hardware docs
+    - Troubleshooting guides
+    - Example automations / recipes
+
+Because Heimdall is open source and uses simple Blade/Laravel templates, we can further reskin or fork it later if needed (e.g. tighter integration with VanCore APIs, custom info panels, or different layout), while keeping the MVP implementation fast and low-risk.
+
+In summary, Heimdall gives us a production-ready advanced dashboard with minimal engineering effort, while still allowing full VanCore branding and deep customisation over time.
+
 ---
 
 ## UX Guarantees (Why Users Cannot “Click Into HA”)
