@@ -1,26 +1,24 @@
-# Documentation policy (VanCore)
+# Documentation policy (customer/production-facing)
 
-## Goal
+## Rule 0: assume this repo will be public
 
-VanCore’s GitHub repository is intended to become **customer-facing**.
+Write everything as if it will be read by customers and attackers.
 
-## Rules
+## Never include
 
-1) **No secrets in GitHub**
-- No tokens, passwords, API keys, credentials, or private keys.
+- Secrets (tokens/passwords/API keys)
+- Private keys
+- Internal IPs/hostnames
+- Detailed network topology of private environments
+- Backup vault paths or snapshot schedules
 
-2) **Customer docs vs internal ops**
-- Customer-facing content should not include internal IPs/hostnames, port maps, backup locations, or any information that increases attack surface.
+## Prefer
 
-3) **Development logs stay local**
-- Clawdbot records day-to-day engineering actions and context in local files on the Clawdbot host:
-  - `memory/YYYY-MM-DD.md`
-  - `MEMORY.md`
+- Conceptual architecture that is environment-agnostic
+- Configuration examples with placeholders
+- Clear upgrade/rollback guidance that doesn’t leak internal layout
 
-4) **Redaction/rewriting is expected**
-- Internal runbooks may exist temporarily, but must be rewritten or migrated before the repo becomes public.
+## Internal documentation
 
-## Definitions
-
-- **Customer-facing docs**: product usage, setup, troubleshooting, concepts, FAQs.
-- **Internal runbooks**: operational procedures, infrastructure diagrams, IPs, backups/snapshots.
+Internal engineering runbooks and day-to-day development logs must live outside this repo.
+Recommended location: private internal repo and/or local agent memory files.

@@ -1,26 +1,22 @@
-# Documentation structure
+# VanCore Documentation
 
-This repository is intended to become **customer-facing**.
+This repository is intended to be **customer/production-facing**.
 
-## Principles
+## What belongs here
 
-- `docs/` should trend toward **user/customer documentation** (setup guides, concepts, troubleshooting).
-- Avoid infrastructure-sensitive detail in customer docs (IPs, internal hostnames, credentials, backup vault specifics).
-- Internal engineering notes and day-to-day development logs live **outside GitHub** in Clawdbot’s local memory.
+- Product documentation (guides, how-tos, reference)
+- Public architecture/concepts that are safe to share
+- No environment-specific infrastructure details
 
-## Where internal notes live
+## What does NOT belong here
 
-Clawdbot maintains private, local memory files on the Clawdbot host:
+- Internal IPs/hostnames
+- Backup locations, storage layouts, snapshot names
+- Operational runbooks for your homelab
+- Credentials/tokens/keys (ever)
 
-- `memory/YYYY-MM-DD.md` — development log (raw)
-- `MEMORY.md` — curated long-term decisions and preferences
+## Start here
 
-These are not committed to GitHub.
-
-## Current state
-
-Some existing documents under:
-- `docs/runbook/`
-- `docs/architecture/`
-
-are **engineering/internal** and will be moved/rewritten into customer-safe docs over time.
+- `docs/guides/getting-started.md`
+- `docs/guides/installation.md`
+- `docs/guides/troubleshooting.md`
