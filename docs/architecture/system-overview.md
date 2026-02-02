@@ -35,7 +35,8 @@ VM inventory (from `qm list`):
 - Role: automation agent + documentation + GitHub integration
 - Chrome (automation browser): `Google Chrome 144.0.7559.109`
 
-> IP address for the Clawdbot host should be recorded here once confirmed.
+- IP: `192.168.1.191`
+
 
 ## Data flows
 
