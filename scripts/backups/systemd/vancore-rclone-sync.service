@@ -1,0 +1,10 @@
+[Unit]
+Description=VanCore: rclone sync Proxmox backups to Google Drive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=SRC_DIR=/var/lib/vz/dump
+Environment=DST=gdrive:VanCore-Backups/proxmox-vzdump
+ExecStart=/usr/local/sbin/vancore-rclone-sync.sh
