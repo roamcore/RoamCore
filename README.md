@@ -6,8 +6,8 @@
 
 This is an open-source, modular hardware and software platform designed to monitor, control, and automate all essential systems in a self-sufficient van conversion or off-grid living space. While the initial focus is campervans, the system is easily adaptable to boats, tiny houses, cabins, trailers, overlanding rigs, expedition vehicles, and mobile workstations or surveillance vehicles.
 
-It uses Home Assistant as the core automation engine and aims to provide both:
-●	A simple, intuitive interface for average users, enabling a "works-out-of-the-box" experience with modular plug-and-play components.
+It uses Home Assistant as the core automation engine and aims to provide both:  
+●	A simple, intuitive interface for average users, enabling a "works-out-of-the-box" experience with modular plug-and-play components.  
 ●	Full flexibility for technical users to customise, extend, and access the full Home Assistant stack underneath.
 The goal is to provide a simple, powerful, and open-source control system for life off-grid.
 
