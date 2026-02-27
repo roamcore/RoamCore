@@ -52,9 +52,9 @@ This is one of the strengths of open source: the community can keep expanding wh
 The initial release focuses on a reliable core experience:
 
 - A novice‑friendly dashboard that feels premium and intuitive
-- Strong networking and remote access
-- Clear power system visibility and control
-- A clean upgrade path for advanced users
+- Strong networking (local-only to begin with, DIY VPN/Nabu Casa supported of course!)
+- Clear power system visibility and control (via Victron)
+- A clean upgrade path for advanced users (through an 'advanced mode')
 
 ## 🔓 Open source and community‑driven
 RoamCore is fully open source. If you care about independence, clarity, and building systems that last, you’re in the right place. Contributors, builders, and curious explorers are all welcome.
