@@ -20,7 +20,7 @@ From one interface, you can:
 
 RoamCore is built to feel calm and dependable for new users while remaining deeply extensible for enthusiasts.
 
-## 🧠 Built on solid foundations
+## 🏛 Built on solid foundations
 RoamCore is designed to be reliable and upgradeable. The stack is built on:
 
 - **Home Assistant** for automation and user experience
