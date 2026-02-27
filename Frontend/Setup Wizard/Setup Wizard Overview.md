@@ -1,4 +1,4 @@
-# VanCore Setup Flow v1
+# RoamCore Setup Flow v1
 *Comprehensive Onboarding & Provisioning Specification*  
 _Last updated: 2025-11-18_
 
@@ -6,7 +6,7 @@ _Last updated: 2025-11-18_
 
 ## Overview
 
-This document defines the complete **first-time setup flow** for a VanCore system, starting from unboxing through to a fully configured, internet-connected, personalised dashboard.
+This document defines the complete **first-time setup flow** for a RoamCore system, starting from unboxing through to a fully configured, internet-connected, personalised dashboard.
 
 Design priorities:
 
@@ -14,7 +14,7 @@ Design priorities:
 - A **single QR code** entry point  
 - Zero reliance on external networking hardware  
 - Seamless **local + remote access using the same app / URL**  
-- Robust identity binding between **user ↔ device (VanCoreID)**  
+- Robust identity binding between **user ↔ device (RoamCoreID)**  
 - Modular configuration (Main Hub, Electrical, Water, Safety)  
 - Future-proofed for additional modules and ecosystem components  
 
@@ -25,22 +25,22 @@ The VP2430 acts as:
 - The **compute unit**  
 - The **local web server**
 
-This enables a self-contained experience that works even **without internet connectivity** when the user is connected to the VanCore Wi-Fi.
+This enables a self-contained experience that works even **without internet connectivity** when the user is connected to the RoamCore Wi-Fi.
 
 ---
 
 # 1. QR Code Entry Point
 
-Each VanCore unit ships with a printed QR code linking to:
+Each RoamCore unit ships with a printed QR code linking to:
 
 ```text
-https://setup.vancore.app/?van_id=<VANCORE_ID>
+https://setup.roamcore.app/?van_id=<VANCORE_ID>
 ```
 
 Example:
 
 ```text
-https://setup.vancore.app/?van_id=VC-UK-00381
+https://setup.roamcore.app/?van_id=VC-UK-00381
 ```
 
 > `VANCORE_ID` is a globally unique identifier for the physical system, also printed on the product label and burned into the hub configuration.
@@ -65,7 +65,7 @@ When the user scans the QR code:
 
 ### Content
 
-- VanCore logo + branding.
+- RoamCore logo + branding.
 - Display of detected `VANCORE_ID` (from the URL).
 - Short description of what the setup will do:
   - Hardware install guidance
@@ -136,12 +136,12 @@ A quick safety checklist:
 
 The wizard then instructs:
 
-> “Now switch on your VanCore system.”
+> “Now switch on your RoamCore system.”
 
 Behind the scenes:
 
 - The VP2430 boots.
-- VanCore core services start.
+- RoamCore core services start.
 - Network services start (Wi‑Fi AP + outbound connectivity).
 
 The Setup Wizard moves to a **“Detecting Hub”** state.
@@ -153,7 +153,7 @@ The Setup Wizard moves to a **“Detecting Hub”** state.
 When the hub boots, it attempts an outbound registration call to:
 
 ```text
-POST https://api.vancore.app/hub/register
+POST https://api.roamcore.app/hub/register
 ```
 
 With payload such as:
@@ -173,13 +173,13 @@ With payload such as:
 The Setup Wizard periodically polls:
 
 ```text
-GET https://api.vancore.app/hub-status?van_id=VC-UK-00381
+GET https://api.roamcore.app/hub-status?van_id=VC-UK-00381
 ```
 
 When the backend reports the hub as online:
 
 - Display:  
-  **“Your VanCore hub is online 🎉”**
+  **“Your RoamCore hub is online 🎉”**
 
 **Crucial:** This status check should be robust to reboots and flaky connections; use idempotent registration and last-seen timestamps in the backend.
 
@@ -202,12 +202,12 @@ The wizard presents options in simple language:
 #### Option A — Ethernet (Recommended)
 
 Text:  
-> “If you have Starlink, a van LTE router, or a campsite router, connect the VanCore ‘Internet’ port to it using the supplied network cable.”
+> “If you have Starlink, a van LTE router, or a campsite router, connect the RoamCore ‘Internet’ port to it using the supplied network cable.”
 
 Behind the scenes:
 
 - WAN interface uses DHCP.
-- Hub tests connectivity to `https://api.vancore.app/ping`.
+- Hub tests connectivity to `https://api.roamcore.app/ping`.
 
 If successful:
 
@@ -231,7 +231,7 @@ If the hardware includes a cellular modem:
 
 User can select:
 
-> “Skip internet setup for now. I only want to use VanCore locally.”
+> “Skip internet setup for now. I only want to use RoamCore locally.”
 
 Show clear warnings:
 
@@ -241,20 +241,20 @@ Show clear warnings:
 
 ---
 
-# 6. VanCore Wi‑Fi Setup (Hub as Access Point)
+# 6. RoamCore Wi‑Fi Setup (Hub as Access Point)
 
 The VP2430 acts as the **primary Wi‑Fi router/AP** for the van.
 
 This Wi‑Fi network is how:
 
 - The user’s phone accesses the dashboard locally (even offline).
-- Local devices (e.g. a tablet or control panel) access VanCore.
+- Local devices (e.g. a tablet or control panel) access RoamCore.
 
 ### 6.1 Configure SSID and Password
 
 Wizard pre-fills:
 
-- SSID: `VanCore-<LAST4_OF_VANCORE_ID>` (e.g. `VanCore-0381`)
+- SSID: `RoamCore-<LAST4_OF_VANCORE_ID>` (e.g. `RoamCore-0381`)
 - Strong random password by default.
 
 User can:
@@ -273,7 +273,7 @@ After saving the settings, the wizard displays:
 
 User instruction:
 
-> “Open your camera and scan this code to join your VanCore Wi‑Fi network.”
+> “Open your camera and scan this code to join your RoamCore Wi‑Fi network.”
 
 ### 6.3 Apply AP Settings
 
@@ -284,27 +284,27 @@ The hub:
 
 The wizard warns:
 
-> “We will briefly restart the VanCore Wi‑Fi. If you are already connected, you may be disconnected for a moment.”
+> “We will briefly restart the RoamCore Wi‑Fi. If you are already connected, you may be disconnected for a moment.”
 
-### 6.4 User Connects to VanCore Wi‑Fi
+### 6.4 User Connects to RoamCore Wi‑Fi
 
 The wizard now shows a screen:
 
-- “Connect to `VanCore-XXXX` Wi‑Fi.”
+- “Connect to `RoamCore-XXXX` Wi‑Fi.”
 - It periodically checks network status and local connectivity.
 
 ---
 
 # 7. Local Connection Check
 
-Once the phone joins the VanCore Wi‑Fi, the Setup Wizard should aim for **local-first connectivity**.
+Once the phone joins the RoamCore Wi‑Fi, the Setup Wizard should aim for **local-first connectivity**.
 
 ### 7.1 Local Health Probe
 
 The PWA attempts to reach local endpoints, e.g.:
 
 ```text
-https://vancore.local/status
+https://roamcore.local/status
 https://192.168.50.2/status
 ```
 
@@ -313,7 +313,7 @@ https://192.168.50.2/status
 If successful:
 
 - Mark connection mode as `local`.
-- Display: **“Connected locally to your VanCore system.”**
+- Display: **“Connected locally to your RoamCore system.”**
 
 If not successful but cloud is available:
 
@@ -328,15 +328,15 @@ If not successful but cloud is available:
 
 # 8. PWA Install (Add to Home Screen)
 
-Goal: make VanCore feel like a native app with a single tap.
+Goal: make RoamCore feel like a native app with a single tap.
 
 ### 8.1 PWA Requirements
 
-The VanCore frontend must:
+The RoamCore frontend must:
 
 - Provide a valid `manifest.json`:
-  - `name`: “VanCore”
-  - `short_name`: “VanCore”
+  - `name`: “RoamCore”
+  - `short_name`: “RoamCore”
   - `start_url`: `/`
   - `display`: `standalone`
   - Icons in required sizes for iOS/Android.
@@ -354,7 +354,7 @@ The Setup Wizard detects the platform:
     - “Scroll down and tap ‘Add to Home Screen’”
 - **Android Chrome / other PWA-friendly browsers**
   - Use the `beforeinstallprompt` event to show:
-    - “Install VanCore” button.
+    - “Install RoamCore” button.
   - Fall back to manual “Add to Home Screen” instructions if necessary.
 
 ### 8.3 After Install
@@ -370,13 +370,13 @@ Once installed:
 
 Display:
 
-> **“VanCore has been added to your Home Screen. From now on, just tap the icon to open your van dashboard.”**
+> **“RoamCore has been added to your Home Screen. From now on, just tap the icon to open your van dashboard.”**
 
 ---
 
 # 9. User Account Creation & Binding
 
-We must attach a **human identity** to the VanCore system for:
+We must attach a **human identity** to the RoamCore system for:
 
 - Ownership records
 - Support
@@ -392,7 +392,7 @@ Steps:
    - Email address
 2. Present terms & privacy agreement.
 3. Use **magic link** authentication:
-   - Send an email with a “Sign in to VanCore” button.
+   - Send an email with a “Sign in to RoamCore” button.
    - When tapped, it opens the PWA and completes the login.
 4. On successful login:
    - Create `user_id`.
@@ -569,9 +569,9 @@ Purpose: allow the user to control their van **from anywhere** using the **same 
 
 ### 12.1 Behaviour Summary
 
-- PWA always talks to `https://my.vancore.app` as its API entry point.
+- PWA always talks to `https://my.roamcore.app` as its API entry point.
 - The backend decides, per request:
-  - If user device is on VanCore Wi‑Fi and local endpoint reachable:
+  - If user device is on RoamCore Wi‑Fi and local endpoint reachable:
     - Use **local mode** (direct call to hub).
   - Otherwise:
     - Use **remote mode** (cloud proxy → hub tunnel).
@@ -581,7 +581,7 @@ Purpose: allow the user to control their van **from anywhere** using the **same 
 The VP2430 maintains a persistent outbound encrypted tunnel to a cloud endpoint, e.g.:
 
 ```text
-wss://cloud-tunnel.vancore.app
+wss://cloud-tunnel.roamcore.app
 ```
 
 The tunnel:
@@ -616,7 +616,7 @@ Remote support is separate from user remote access.
 
 A dedicated screen explains:
 
-- VanCore support may need temporary access to:
+- RoamCore support may need temporary access to:
   - Diagnose issues
   - Apply fixes
   - Help with configuration
@@ -664,7 +664,7 @@ Show the result of the wizard:
 
 Provide buttons:
 
-- **Open my VanCore dashboard**
+- **Open my RoamCore dashboard**
 - **View quick-start guide**
 - **Contact support**
 
@@ -704,15 +704,15 @@ If the hub does not appear as online:
   - Check wiring.
   - Reboot hub.
 - Provide a “Manual local mode”:
-  - If the user is already on VanCore Wi‑Fi, attempt direct local access even if cloud registration isn’t seen yet.
+  - If the user is already on RoamCore Wi‑Fi, attempt direct local access even if cloud registration isn’t seen yet.
 
-### 15.3 User Never Joins VanCore Wi‑Fi
+### 15.3 User Never Joins RoamCore Wi‑Fi
 
 If the user doesn’t join the Wi‑Fi or struggles:
 
 - Keep showing the Wi‑Fi QR code.
 - Provide platform-specific help (“How to join Wi‑Fi on iOS/Android”).
-- Allow them to skip and return later, but clearly state that **local control requires connecting to the VanCore Wi‑Fi**.
+- Allow them to skip and return later, but clearly state that **local control requires connecting to the RoamCore Wi‑Fi**.
 
 ### 15.4 Multiple Devices / Family Members
 
@@ -721,7 +721,7 @@ Same QR code and/or invitation link can be used later:
 - Partner scans QR.
 - Signs in or accepts invite.
 - Gains access to the same `van_id`.
-- Is prompted to add VanCore to their Home Screen as well.
+- Is prompted to add RoamCore to their Home Screen as well.
 
 ---
 
@@ -819,8 +819,8 @@ flowchart TD
     D --> E{Hub Detected via Cloud?}
     E -->|Yes| F[WAN / Internet Setup]
     E -->|No| D
-    F --> G[Configure VanCore Wi‑Fi (AP)]
-    G --> H[User Joins VanCore SSID]
+    F --> G[Configure RoamCore Wi‑Fi (AP)]
+    G --> H[User Joins RoamCore SSID]
     H --> I{Local Endpoint Reachable?}
     I -->|Yes| J[Local Mode Established]
     I -->|No| F
@@ -843,7 +843,7 @@ This setup flow ensures that:
 
 - **Non-technical users** can get from box-opening to a working dashboard with minimal friction.
 - There is a **single QR code** and a **single app icon** that works both **locally and remotely**.
-- The system is usable **offline** when on the VanCore Wi‑Fi.
+- The system is usable **offline** when on the RoamCore Wi‑Fi.
 - Identity and configuration are robustly tied to `van_id` for support and future features.
 - Remote access and remote support are clearly separated, with strong security and user consent.
-- The solution is **appliance-grade**, not a DIY/hobbyist experience, aligning with VanCore’s product and brand goals.
+- The solution is **appliance-grade**, not a DIY/hobbyist experience, aligning with RoamCore’s product and brand goals.

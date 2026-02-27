@@ -1,4 +1,4 @@
-# VanCore Water System — Step-by-Step (All Water Via Fresh Tank)
+# RoamCore Water System — Step-by-Step (All Water Via Fresh Tank)
 
 [SYSTEM DESIGN FIGMA LINK](https://www.figma.com/design/mpZcB5gHA9DwzJfKYSvjSF/Plumbing-System-Design?node-id=0-1&t=gbbskgiSEq6t5rgG-1)
 
@@ -8,7 +8,7 @@
 1. **External Fill Port** → (optional **Pressure Regulator** if using city water) → **Sediment Filter (coarse)** → **Fresh Tank**.
 2. **Fresh Tank Vent/Overflow** → route safely to exterior (free-breathing during fill/use).
 
-## 2) Draw From the Tank (Inside the VanCore Water Hub)
+## 2) Draw From the Tank (Inside the RoamCore Water Hub)
 3. **Tank Outlet** → **Isolation Valve** (service shut-off) → **Strainer** (pre-pump).
 4. **Strainer** → **12 V Diaphragm Pump** (creates system pressure/flow).
 5. **Pump** → **Accumulator** (smooths flow, reduces cycling).

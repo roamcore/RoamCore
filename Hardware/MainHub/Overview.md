@@ -1,14 +1,14 @@
-# VanCore Main Hub — Single-Box Architecture (VP2430)
+# RoamCore Main Hub — Single-Box Architecture (VP2430)
 
 > **Status:** Draft V1 (implementation-ready)  
-> **Owner:** VanCore Hardware  
+> **Owner:** RoamCore Hardware  
 > **Last updated:** 2025-11-13
 
 ---
 
 ## TL;DR
 
-The **VanCore Main Hub** is a single, serviceable enclosure built around the **Protectli VP2430**. It runs:
+The **RoamCore Main Hub** is a single, serviceable enclosure built around the **Protectli VP2430**. It runs:
 
 - A **router VM** (OpenWrt or OPNsense) for WAN/LAN, failover, and VPN.
 - **Home Assistant** for UI, automations, and telemetry.
@@ -136,7 +136,7 @@ Inside VP2430:
 ## 4G → 5G Field Upgrade Procedure (User)
 
 1. Power down the hub.  
-2. Remove LTE M.2; insert **VanCore-approved 5G M.2** module.  
+2. Remove LTE M.2; insert **RoamCore-approved 5G M.2** module.  
 3. Connect **four labeled MHF4 pigtails** (MAIN1/AUX1/MAIN2/AUX2).  
 4. Uncap **CELL 3–4** bulkheads (or attach the extra two leads from a roof puck).  
 5. Power on; router VM auto-selects 5G profile; HA shows 5G metrics.  

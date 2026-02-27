@@ -1,12 +1,12 @@
 # Admin Remote Access
 
-> Design overview for VanCore remote support using Tailscale clients + self-hosted Headscale
+> Design overview for RoamCore remote support using Tailscale clients + self-hosted Headscale
 
 ---
 
 ## 1. Goals
 
-- Enable **secure, reliable remote access** to VanCore hubs (VP2430) and related boxes for:
+- Enable **secure, reliable remote access** to RoamCore hubs (VP2430) and related boxes for:
   - Diagnostics
   - Configuration changes
   - Emergency fixes
@@ -25,7 +25,7 @@
 ### Components
 
 - **Headscale server (self-hosted)**
-  - Runs on a VanCore-managed VPS.
+  - Runs on a RoamCore-managed VPS.
   - Acts as the **control plane** for the mesh network.
   - Stores:
     - Nodes (hubs, support laptops)
@@ -34,9 +34,9 @@
     - Tags / namespaces
 - **Tailscale clients**
   - Installed on:
-    - Every VanCore hub (VP2430 main hub; possibly other boxes later).
-    - VanCore support laptops/desktop machines.
-  - Use `--login-server=https://headscale.vancore.net` to talk to **Headscale**, not Tailscale SaaS.
+    - Every RoamCore hub (VP2430 main hub; possibly other boxes later).
+    - RoamCore support laptops/desktop machines.
+  - Use `--login-server=https://headscale.roamcore.net` to talk to **Headscale**, not Tailscale SaaS.
 
 - **WireGuard**
   - Underlying encryption/transport for point-to-point links.
@@ -52,7 +52,7 @@
   - Is reachable only from support devices, on a restricted set of ports.
 - **No inter-spoke connectivity**:
   - Vans cannot talk to other vans.
-  - Vans cannot talk to VanCore corporate infra directly (only what ACLs explicitly allow).
+  - Vans cannot talk to RoamCore corporate infra directly (only what ACLs explicitly allow).
 
 ---
 
@@ -68,14 +68,14 @@
     - Optional suffixes for subsystem boxes: `-water`, `-electrical`, `-security`.
 
 - **Support Devices**
-  - Laptops/desktops used by VanCore staff.
+  - Laptops/desktops used by RoamCore staff.
   - Logged in as individual identities (no shared user accounts).
   - Tagged as `tag:support`.
 
 ### Users vs Devices
 
 - **Users**:
-  - One user per real human in the support team (e.g. `bernard@vancore`, `alex@vancore`).
+  - One user per real human in the support team (e.g. `bernard@roamcore`, `alex@roamcore`).
   - Used for audit and revocation.
 - **Devices**:
   - Each support machine + each van hub is a device in Headscale.
@@ -98,7 +98,7 @@
 
 - Allow:
   - `tag:support` → `tag:van-hub` on:
-    - TCP 443 (VanCore/HA admin UI)
+    - TCP 443 (RoamCore/HA admin UI)
     - TCP 22 (SSH), only if enabled
     - Optional: an internal admin API port
 - Deny:
@@ -121,11 +121,11 @@
 
 ### Remote Support Toggle
 
-- VanCore UI includes a **“Remote Support”** toggle:
+- RoamCore UI includes a **“Remote Support”** toggle:
   - `Remote support: OFF / ON (temporary)`
 - Behaviour:
   - When **ON**:
-    - Indicates that VanCore support is allowed to connect.
+    - Indicates that RoamCore support is allowed to connect.
     - May enable ACL rules or OS firewall rules that allow support access.
     - Optionally times out after a configurable period (e.g. 24–72 hours).
   - When **OFF**:
@@ -136,7 +136,7 @@
 - Onboarding materials clearly state:
   - Remote access is **opt-in**.
   - It is used only for support/debugging with permission.
-  - VanCore will not access systems without consent, except for any narrowly defined safety-critical exceptions (if you decide to allow that later).
+  - RoamCore will not access systems without consent, except for any narrowly defined safety-critical exceptions (if you decide to allow that later).
 
 ---
 
@@ -151,7 +151,7 @@
 ### What They **Cannot** Do (By Design)
 
 - Modify **Headscale ACLs** or tags.
-- Enable `van-hub` → `van-hub` or `van-hub` → VanCore corporate traffic.
+- Enable `van-hub` → `van-hub` or `van-hub` → RoamCore corporate traffic.
 - Use your tailnet to pivot into other customers’ devices.
 
 ### Kill Switches
@@ -190,7 +190,7 @@
 ### Updates vs Remote Access
 
 - Normal updates:
-  - Outbound HTTPS to VanCore update server.
+  - Outbound HTTPS to RoamCore update server.
 - VPN:
   - For diagnostics and manual fixes.
 

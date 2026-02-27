@@ -1,5 +1,5 @@
 [Unit]
-Description=VanCore: daily rclone sync timer
+Description=RoamCore: daily rclone sync timer
 
 [Timer]
 OnCalendar=*-*-* 02:30:00

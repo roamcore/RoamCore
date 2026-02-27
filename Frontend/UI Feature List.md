@@ -1,5 +1,5 @@
-# VanCore Demo Dashboard – Frontend Functionality Breakdown
-This document lists all UI elements and potential UI elements for the VanCore dashboard/app.
+# RoamCore Demo Dashboard – Frontend Functionality Breakdown
+This document lists all UI elements and potential UI elements for the RoamCore dashboard/app.
 It is designed as an exhaustive checklist – you can remove anything you don’t need, but you shouldn’t need to add new items.
 Sections (matching the current dashboard):
 *	Global (header, time, weather)
@@ -23,7 +23,7 @@ These elements sit at the top or are “global context”.
 *	Notification 'Bell' Icon
 
 **Global / App Shell – possible data points and controls (edit down as needed):**
-*	App logo / VanCore logo
+*	App logo / RoamCore logo
 *	Van name or profile (e.g. "Sprinter 4x4", "Family Van")
 *	User profile / avatar (for multi-user setups)
 *	Quick navigation tabs (e.g. Overview, Power, Climate, Water, Security)
@@ -359,7 +359,7 @@ These elements sit at the top or are “global context”.
 *	SSID name and password editor
 *	Wi-Fi channel and band info
 *	VPN status (connected/disconnected)
-*	Remote access status (VanCore cloud / HA Remote / Nabu Casa)
+*	Remote access status (RoamCore cloud / HA Remote / Nabu Casa)
 *	Auto-failover toggle (switch to backup when main fails)
 *	Priority rules for sources (e.g. “Use Wi-Fi if available, else LTE”)
 *	Simple firewall profile selector (e.g. Strict / Normal / Open)
@@ -493,7 +493,7 @@ Arming, sensors, cameras, history, notifications.
 
 
 
-## 14. Settings & Admin Pages (VanCore Dashboard — exhaustive feature list to append)
+## 14. Settings & Admin Pages (RoamCore Dashboard — exhaustive feature list to append)
 
 Link each page's settings to the respective section in the settings. 
 
@@ -601,7 +601,7 @@ Link each page's settings to the respective section in the settings.
   - Session log (who did what, when), configuration change history.
 
 - **Import / Export / Reset**
-  - Export/import **VanCore config bundle** (entities, scenes, automations, router config).
+  - Export/import **RoamCore config bundle** (entities, scenes, automations, router config).
   - **Re-run Setup Wizard** (non-destructive) for network & remote access.
   - **Factory Reset** (full wipe with confirmation flow & PIN).
 

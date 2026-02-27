@@ -1,4 +1,4 @@
-# VanCore Access Model — Normal vs Advanced Mode (Local-First, HA-Backed)
+# RoamCore Access Model — Normal vs Advanced Mode (Local-First, HA-Backed)
 
 > Purpose: lock down a **clean, app-like UI** for everyday users while preserving **full control** for power users—without cloud logins. This doc defines the architecture, protections, and exact touch points you’ll implement on the VP2430 (Proxmox + OpenWrt + HAOS).
 
@@ -17,7 +17,7 @@
 
 - **Proxmox** (host) with VMs/CTs:  
   - **OpenWrt (VM):** routing, firewall.  
-  - **HAOS (VM):** Home Assistant + **VanCore add-on (Ingress)**.  
+  - **HAOS (VM):** Home Assistant + **RoamCore add-on (Ingress)**.  
   - **Proxy LXC (Nginx/Caddy):** serves two hostnames:
     - `van.local` → **only** the add-on’s Ingress UI (Normal Mode).
     - `admin.van.local` → admin portal page with tiles/links to HA/Proxmox/OpenWrt/Frigate (Advanced Mode).
@@ -32,7 +32,7 @@
 ## Three Layers of Protection (Plain English)
 
 1) **Doorman (Reverse Proxy rules)**  
-   - `van.local` **only** fetches the VanCore add-on’s **Ingress path**.  
+   - `van.local` **only** fetches the RoamCore add-on’s **Ingress path**.  
    - Any request for core HA pages (e.g., `/lovelace`, `/config`, `/api`, `/hassio`) is **denied (403)** on this hostname.  
    - **Outcome:** the browser never receives HA chrome (header/sidebar), so **no HA links exist** to click.
 
@@ -52,7 +52,7 @@
 ## Hostnames & Roles
 
 - **`van.local` (Normal Mode):**  
-  App-like, shows **only** the VanCore UI (your add-on’s Ingress). No links or chrome from HA.
+  App-like, shows **only** the RoamCore UI (your add-on’s Ingress). No links or chrome from HA.
 
 - **`admin.van.local` (Advanced Mode):**  
   A branded landing page with **tiles** to:
@@ -71,9 +71,9 @@
 - `PVE_IP` — IP of Proxmox host (e.g., `192.168.7.2`)  
 - `OPENWRT_IP` — IP of OpenWrt VM (e.g., `192.168.7.1`)  
 - `PROXY_IP` — IP of Proxy LXC (e.g., `192.168.7.20`)  
-- `<ADDON_SLUG>` — Ingress slug of VanCore add-on  
+- `<ADDON_SLUG>` — Ingress slug of RoamCore add-on  
 - `<FRIGATE_INGRESS>` — Ingress slug of Frigate add-on  
-- `<USER_ID_NON_ADMIN>` — HA user_id of non-admin “VanCore User”
+- `<USER_ID_NON_ADMIN>` — HA user_id of non-admin “RoamCore User”
 
 ---
 
@@ -114,7 +114,7 @@ server {
 
   # Static admin portal (tiles page)
   location = / {
-    root /opt/vancore/admin;
+    root /opt/roamcore/admin;
     index index.html;
   }
 
@@ -148,11 +148,11 @@ homeassistant:
         - PROXY_IP    # Only the proxy can auto-login
       allow_bypass_login: true
       trusted_users:
-        PROXY_IP: <USER_ID_NON_ADMIN>   # non-admin "VanCore User"
+        PROXY_IP: <USER_ID_NON_ADMIN>   # non-admin "RoamCore User"
     - type: homeassistant                # Normal username/password elsewhere (admin portal)
 ```
 
-- Create a **non-admin** user (e.g., `VanCore User`) for `van.local`.  
+- Create a **non-admin** user (e.g., `RoamCore User`) for `van.local`.  
 - Keep **admin** user(s) separate; enable **2FA**.
 
 ---
@@ -198,11 +198,11 @@ uci commit firewall && /etc/init.d/firewall reload
 - **Warning modal:** “Advanced area—changes here can break your system.”  
 - **Exit Admin Mode** button → returns to `https://van.local`.
 
-> Host this static page at `/opt/vancore/admin/index.html` on the Proxy LXC. No credentials stored by you—owners use each backend’s local login (with 2FA).
+> Host this static page at `/opt/roamcore/admin/index.html` on the Proxy LXC. No credentials stored by you—owners use each backend’s local login (with 2FA).
 
 ## Advanced Mode Dashboard Implementation (Heimdall)
 
-For the initial implementation of **Advanced Mode**, VanCore will use a self-hosted application dashboard called **Heimdall** as the primary “launchpad” for advanced tools and services.
+For the initial implementation of **Advanced Mode**, RoamCore will use a self-hosted application dashboard called **Heimdall** as the primary “launchpad” for advanced tools and services.
 
 ### What Heimdall Provides
 
@@ -215,25 +215,25 @@ Heimdall is an open-source, MIT-licensed dashboard designed to present a grid of
 
 Heimdall will run as a **Docker container on the VP2430** and be reachable both:
 
-- **Locally** when the user is on the VanCore Wi-Fi.
-- **Remotely** via the same cloud proxy/tunnel used for the main VanCore UI.
+- **Locally** when the user is on the RoamCore Wi-Fi.
+- **Remotely** via the same cloud proxy/tunnel used for the main RoamCore UI.
 
-From the user’s perspective, “Advanced Mode” in the VanCore app will simply open the Heimdall dashboard in a webview or new tab.
+From the user’s perspective, “Advanced Mode” in the RoamCore app will simply open the Heimdall dashboard in a webview or new tab.
 
-### VanCore Customisation & Reskinning
+### RoamCore Customisation & Reskinning
 
-Heimdall will be customised to appear as a native part of the VanCore experience:
+Heimdall will be customised to appear as a native part of the RoamCore experience:
 
 - **Branding**
-  - VanCore logo and colour palette applied to the Heimdall theme.
-  - Custom background image consistent with the main VanCore UI.
+  - RoamCore logo and colour palette applied to the Heimdall theme.
+  - Custom background image consistent with the main RoamCore UI.
 - **Preconfigured Tiles**
   - Home Assistant (advanced config/UI)
   - Portainer (container management, for internal/support use)
   - System logs and metrics
   - Network / tunnel diagnostics
   - Firmware / update status page
-  - “VanCore Docs”, “Advanced Mode Guide”, and “Support” tiles linking to documentation and tutorials.
+  - “RoamCore Docs”, “Advanced Mode Guide”, and “Support” tiles linking to documentation and tutorials.
 - **Documentation & Help**
   - Dedicated tiles linking to:
     - User manual (normal + advanced mode)
@@ -241,9 +241,9 @@ Heimdall will be customised to appear as a native part of the VanCore experience
     - Troubleshooting guides
     - Example automations / recipes
 
-Because Heimdall is open source and uses simple Blade/Laravel templates, we can further reskin or fork it later if needed (e.g. tighter integration with VanCore APIs, custom info panels, or different layout), while keeping the MVP implementation fast and low-risk.
+Because Heimdall is open source and uses simple Blade/Laravel templates, we can further reskin or fork it later if needed (e.g. tighter integration with RoamCore APIs, custom info panels, or different layout), while keeping the MVP implementation fast and low-risk.
 
-In summary, Heimdall gives us a production-ready advanced dashboard with minimal engineering effort, while still allowing full VanCore branding and deep customisation over time.
+In summary, Heimdall gives us a production-ready advanced dashboard with minimal engineering effort, while still allowing full RoamCore branding and deep customisation over time.
 
 ---
 
@@ -275,7 +275,7 @@ In summary, Heimdall gives us a production-ready advanced dashboard with minimal
 - [ ] Create **Proxy LXC** with two vhosts (`van.local`, `admin.van.local`).  
 - [ ] Configure **HA Trusted Networks** for the proxy IP (non-admin user).  
 - [ ] (Optional) Add **OpenWrt firewall** allow/deny rules for HA/Proxmox.  
-- [ ] Package **VanCore UI** as a HA add-on with **Ingress**.  
+- [ ] Package **RoamCore UI** as a HA add-on with **Ingress**.  
 - [ ] Build a **static admin portal** (tiles page) for `admin.van.local`.  
 - [ ] Enable **2FA** for admin accounts (HA, Proxmox).  
 - [ ] Document **owner credentials** and recovery steps (local).

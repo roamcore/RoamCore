@@ -1,8 +1,8 @@
-# VanCore MVP — **UI / UX Design Brief**
+# RoamCore MVP — **UI / UX Design Brief**
 
 ## Project Backstory & Context (For the Designer)
 
-VanCore is a **local‑first control system for van‑life**, designed to replace the fragmented setup most van owners live with today.
+RoamCore is a **local‑first control system for van‑life**, designed to replace the fragmented setup most van owners live with today.
 
 Typical vans rely on multiple disconnected systems:
 
@@ -11,7 +11,7 @@ Typical vans rely on multiple disconnected systems:
 - physical spirit levels and light switches/misc screens
 - separate apps, widgets, and guesswork
 
-VanCore’s goal is to **collapse all of this into a single, calm, trustworthy interface** that works out of the box for non‑technical users, while remaining open and extensible for advanced users.
+RoamCore’s goal is to **collapse all of this into a single, calm, trustworthy interface** that works out of the box for non‑technical users, while remaining open and extensible for advanced users.
 
 This project is **not a smart‑home dashboard**. It is closer to a **vehicle instrument panel** or **marine control unit**:
 

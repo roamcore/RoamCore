@@ -1,11 +1,11 @@
 
-# VanCore CCTV System Setup — Single-Page Spec
+# RoamCore CCTV System Setup — Single-Page Spec
 
 **Status:** Implementation-ready  
-**Owner:** VanCore Hardware/Software  
+**Owner:** RoamCore Hardware/Software  
 **Last updated:** 2025-11-13
 
-This document defines how the VanCore system records and serves CCTV video from **four cameras** with **low CPU load**, **predictable storage**, and **user-configurable retention & quality**. It is designed to be dropped into your GitHub repo as-is.
+This document defines how the RoamCore system records and serves CCTV video from **four cameras** with **low CPU load**, **predictable storage**, and **user-configurable retention & quality**. It is designed to be dropped into your GitHub repo as-is.
 
 ---
 
@@ -177,7 +177,7 @@ chown -R frigate:frigate /mnt/video
 
 ```bash
 # Example nightly job: move files older than 7 days to Backblaze B2
-rclone move /mnt/video b2:vancore-archive   --min-age 7d --transfers 4 --checkers 8   --fast-list --delete-empty-src-dirs --bwlimit 4M
+rclone move /mnt/video b2:roamcore-archive   --min-age 7d --transfers 4 --checkers 8   --fast-list --delete-empty-src-dirs --bwlimit 4M
 ```
 
 - Support B2/S3/Wasabi/Drive; offer **encrypted** remotes via `rclone crypt`.  
@@ -193,7 +193,7 @@ rclone move /mnt/video b2:vancore-archive   --min-age 7d --transfers 4 --checker
 
 ---
 
-## Defaults (VanCore V1)
+## Defaults (RoamCore V1)
 
 - **Streams:** 1080p30 (Main), 720p30 (Sub1), 480p (Sub2), **H.265** preferred.  
 - **Tiering:** 2 days 1080p @ 2.0 Mb/s; 2 days 720p @ 0.9 Mb/s; 3 days 480p @ 0.35–0.4 Mb/s.  

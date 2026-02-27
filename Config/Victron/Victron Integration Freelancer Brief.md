@@ -1,10 +1,10 @@
-# Freelancer Brief: Auto-Discovery Victron GX → VanCore Integration Add-on (Production-Grade)
+# Freelancer Brief: Auto-Discovery Victron GX → RoamCore Integration Add-on (Production-Grade)
 
 ## 1. Project Context
 
-I am building **VanCore**, a modular operating system for vanlife based on **Home Assistant OS**.
+I am building **RoamCore**, a modular operating system for vanlife based on **Home Assistant OS**.
 
-VanCore is pre-installed on dedicated hardware (Raspberry Pi / x86) and aims to provide:
+RoamCore is pre-installed on dedicated hardware (Raspberry Pi / x86) and aims to provide:
 
 - Beautiful dashboards  
 - Whole-van automation (power, water, safety, climate, etc.)  
@@ -22,7 +22,7 @@ This integration must be:
 
 The user should only need to:
 
-> **Plug their Cerbo GX into their router (same LAN as the VanCore Hub).**
+> **Plug their Cerbo GX into their router (same LAN as the RoamCore Hub).**
 
 The system must auto-detect it, configure itself, and expose clean entities into Home Assistant.
 
@@ -54,11 +54,11 @@ Useful for understanding real-world MQTT topic behaviour.
 
 Build a **Home Assistant add-on** (Docker container) that:
 
-1. **Runs automatically** on VanCore  
+1. **Runs automatically** on RoamCore  
 2. **Auto-discovers** Victron GX / Venus OS on the LAN  
 3. **Connects** to its MQTT broker  
 4. **Ingests** required Victron MQTT topics  
-5. **Normalises** data into canonical VanCore entities  
+5. **Normalises** data into canonical RoamCore entities  
 6. **Publishes** them to Home Assistant via MQTT Discovery  
 7. Is **bulletproof reliable**  
 
@@ -113,7 +113,7 @@ Make sure to include the setup step in the user.md deliverable file.
 
 ### 4.4 Data Ingestion & Mapping (Canonised Entity Model)
 
-Subscribe to relevant Victron MQTT topics and map them to clean VanCore entities such as:
+Subscribe to relevant Victron MQTT topics and map them to clean RoamCore entities such as:
 
 ```
 sensor.vt_battery_soc
@@ -143,7 +143,7 @@ Requirements:
 Use **MQTT Discovery** to create entities automatically:
 
 - Stable entity IDs  
-- Grouped under a device named **“VanCore Victron System”**  
+- Grouped under a device named **“RoamCore Victron System”**  
 - Entities persist across disconnects, marked `unavailable`  
 
 Must not require YAML editing or user action.
@@ -220,7 +220,7 @@ The expectation is that you can complete this with mocks and official documentat
 - Survives:  
   - Cerbo reboot  
   - Router reboot  
-  - VanCore reboot  
+  - RoamCore reboot  
 - Proper throttling and debouncing  
 - Clean logs  
 - No duplicate entities  
@@ -241,7 +241,7 @@ The expectation is that you can complete this with mocks and official documentat
 
 ## 10. Summary
 
-You are building the **official Victron → VanCore integration**, which must:
+You are building the **official Victron → RoamCore integration**, which must:
 
 - Discover automatically  
 - Configure itself  

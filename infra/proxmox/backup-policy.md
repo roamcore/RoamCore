@@ -1,4 +1,4 @@
-# Proxmox backup policy (VanCore)
+# Proxmox backup policy (RoamCore)
 
 ## Goal
 
@@ -22,7 +22,7 @@ Recommended baseline:
 - Confirm backups exist locally:
   - `ls -lh /var/lib/vz/dump | tail`
 - Confirm Drive contains the same set:
-  - `rclone lsf gdrive:VanCore-Backups/proxmox-vzdump --max-depth 1 | tail`
+  - `rclone lsf gdrive:RoamCore-Backups/proxmox-vzdump --max-depth 1 | tail`
 
 ## Rollback
 

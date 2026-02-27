@@ -1,6 +1,6 @@
-# VanCore: Product Strategy & Integration Roadmap
+# RoamCore: Product Strategy & Integration Roadmap
 
-VanCore is an open, modular **operating system for vanlife** — a unified software and hardware ecosystem that integrates power, water, safety, networking, climate, sensors, and automations into a single, reliable UI.
+RoamCore is an open, modular **operating system for vanlife** — a unified software and hardware ecosystem that integrates power, water, safety, networking, climate, sensors, and automations into a single, reliable UI.
 
 This document outlines:
 
@@ -14,9 +14,9 @@ This document outlines:
 
 # 1. Vision
 
-### VanCore = The OS of Vanlife
+### RoamCore = The OS of Vanlife
 
-VanCore is designed to:
+RoamCore is designed to:
 
 - Plug into **existing systems** (Victron, routers, ESPHome devices, sensors)  
 - Provide **new hardware modules** that don’t currently exist (e.g., Water Hub)  
@@ -43,12 +43,12 @@ This balances “easy for beginners” with “powerful for experts”.
 
 ## 2.1 Core Deliverables
 
-### A. VanCore Main Hub (VanOS)
+### A. RoamCore Main Hub (VanOS)
 
 A pre-configured Home Assistant OS distribution, enhanced with:
 
-- VanCore onboarding  
-- VanCore dashboards  
+- RoamCore onboarding  
+- RoamCore dashboards  
 - Victron integration pack  
 - Water Hub integration  
 - Automation templates  
@@ -79,7 +79,7 @@ A pre-configured Home Assistant OS distribution, enhanced with:
 
 - Automatic Cerbo GX / Venus OS discovery  
 - Clean MQTT/Modbus ingestion  
-- Normalised “VanCore Power Model”  
+- Normalised “RoamCore Power Model”  
 - Battery/AC/PV dashboard  
 - Automation templates  
   - Battery protect  
@@ -190,8 +190,8 @@ A pre-engineered, plug-and-play plumbing + electronics module:
 
 # 7. Pricing Targets
 
-- **VanCore Hub Lite:** £179–£249  
-- **VanCore Hub Pro:** £349–£499  
+- **RoamCore Hub Lite:** £179–£249  
+- **RoamCore Hub Pro:** £349–£499  
 - **Water Hub v1:** £299–£499  
 - **Add-On Hardware:** 30–40% margin
 
@@ -231,7 +231,7 @@ A pre-engineered, plug-and-play plumbing + electronics module:
 
 # 9. Summary
 
-VanCore is:
+RoamCore is:
 
 - A **brand-agnostic OS** for vanlife  
 - Built on open standards  
@@ -248,4 +248,4 @@ The MVP focuses on:
 - Dashboard builder  
 - Clear integration roadmap
 
-VanCore aims to become the **definitive automation platform for mobile living**.
+RoamCore aims to become the **definitive automation platform for mobile living**.

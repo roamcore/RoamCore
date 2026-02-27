@@ -5,10 +5,10 @@ set -euo pipefail
 SRC_DIR="${SRC_DIR:-/var/lib/vz/dump}"
 
 # Default destination: Google Drive remote + folder
-DST="${DST:-gdrive:VanCore-Backups/proxmox-vzdump}"
+DST="${DST:-gdrive:RoamCore-Backups/proxmox-vzdump}"
 
 LOG_DIR="${LOG_DIR:-/var/log}"
-LOG_FILE="${LOG_FILE:-$LOG_DIR/vancore-rclone-sync.log}"
+LOG_FILE="${LOG_FILE:-$LOG_DIR/roamcore-rclone-sync.log}"
 
 mkdir -p "$LOG_DIR"
 

@@ -1,4 +1,4 @@
-# VanCore Update System v1
+# RoamCore Update System v1
 _Comprehensive Architecture & Technical Specification_  
 _Last updated: 2025‑11‑18_
 
@@ -6,8 +6,8 @@ _Last updated: 2025‑11‑18_
 
 # 1. Overview
 
-This document defines the architecture, components, safety guarantees, and update workflow for the **VanCore Update System**.  
-It describes how software on each VanCore Hub (VP2430) is updated **securely**, **reliably**, and with **near-zero risk** of losing remote control.
+This document defines the architecture, components, safety guarantees, and update workflow for the **RoamCore Update System**.  
+It describes how software on each RoamCore Hub (VP2430) is updated **securely**, **reliably**, and with **near-zero risk** of losing remote control.
 
 ### Core design goals
 - Updates must be **safe**, **rollback-capable**, and **recoverable**.
@@ -55,8 +55,8 @@ A lightweight daemon (Python/Go) running on the VP2430.
 - Report results to cloud.
 
 ### What the Update Agent can update
-- VanCore platform stack (docker compose bundle)
-- VanCore UI/frontend
+- RoamCore platform stack (docker compose bundle)
+- RoamCore UI/frontend
 - Home Assistant add‑ons
 - Local services (e.g., cloud tunnel service)
 - VPN configs (Tailscale → Headscale)
@@ -145,9 +145,9 @@ Cloud returns either:
   "target": { "platform": "0.9.2" },
   "artifacts": [
     {
-      "name": "vancore-platform-0.9.2",
+      "name": "roamcore-platform-0.9.2",
       "type": "docker-bundle",
-      "url": "https://artifacts.vancore.io/platform-0.9.2.tgz",
+      "url": "https://artifacts.roamcore.io/platform-0.9.2.tgz",
       "sha256": "abc123..."
     }
   ],
@@ -264,7 +264,7 @@ Dashboard tracks:
 
 ## 10.5 Using Mender.io as an OTA Update Framework (Optional Implementation Path)
 
-While the VanCore Update System is designed to be fully customisable and independent of any third-party OTA mechanisms, it is worth noting that **Mender.io** provides a mature, open-source OTA update framework that can accelerate early development.
+While the RoamCore Update System is designed to be fully customisable and independent of any third-party OTA mechanisms, it is worth noting that **Mender.io** provides a mature, open-source OTA update framework that can accelerate early development.
 
 Mender consists of two major components:
 
@@ -288,9 +288,9 @@ Mender consists of two major components:
      - Container updates  
      - Full system image updates  
 
-### Why Mender is useful for VanCore
+### Why Mender is useful for RoamCore
 
-Mender offers several features that map closely to the VanCore update requirements:
+Mender offers several features that map closely to the RoamCore update requirements:
 
 - **➡️ Easy deployment workflow**  
   Upload an artifact → choose a group → click “Deploy”.
@@ -306,14 +306,14 @@ Mender offers several features that map closely to the VanCore update requiremen
   And deploy releases progressively.
 
 - **➡️ Self-hosted option**  
-  Fully aligns with VanCore’s requirement to avoid permanent SaaS dependencies or user data leakage.
+  Fully aligns with RoamCore’s requirement to avoid permanent SaaS dependencies or user data leakage.
 
 - **➡️ Integrates cleanly with Docker-based systems**  
   Container updates can be packaged as Mender “application” artifacts.
 
 ### Caveats and limitations
 
-- Mender does **not** know about VanCore-specific constraints such as:
+- Mender does **not** know about RoamCore-specific constraints such as:
   - “only update when stationary”
   - “only update with adequate signal”
   - “only update above minimum battery”
@@ -323,8 +323,8 @@ Mender offers several features that map closely to the VanCore update requiremen
 - Mender’s full-image rollback model may be overkill for the VP2430 where **Docker-level updates** are sufficient.
 
 - You still need some glue code to integrate:
-  - VanCore’s versioning logic  
-  - VanCore’s local health checks  
+  - RoamCore’s versioning logic  
+  - RoamCore’s local health checks  
   - Any VPN migration logic (Tailscale → Headscale)  
 
 ### When to consider Mender
@@ -335,9 +335,9 @@ Mender offers several features that map closely to the VanCore update requiremen
 - **Long-term**  
   You may keep Mender as the underlying OTA layer  
   **or**  
-  Replace it with a fully custom VanCore OTA service once the product stabilises.
+  Replace it with a fully custom RoamCore OTA service once the product stabilises.
 
-In summary, Mender.io provides a solid “drop-in” OTA engine that can reduce early complexity while still allowing VanCore to evolve toward a custom, domain-specific update system.
+In summary, Mender.io provides a solid “drop-in” OTA engine that can reduce early complexity while still allowing RoamCore to evolve toward a custom, domain-specific update system.
 
 ---
 
@@ -366,7 +366,7 @@ flowchart TD
 
 # 12. Summary
 
-The VanCore Update System:
+The RoamCore Update System:
 
 - Uses **HTTPS control plane** as the reliable backbone.
 - Keeps VPN optional, not critical.

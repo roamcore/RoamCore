@@ -1,8 +1,8 @@
 # Getting started
 
-This section will introduce VanCore at a product level:
+This section will introduce RoamCore at a product level:
 
-- What VanCore is
+- What RoamCore is
 - Supported environments
 - High-level architecture (sanitised)
 - First setup checklist

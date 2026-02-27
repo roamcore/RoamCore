@@ -1,6 +1,6 @@
-# VanCore MVP Software Scope & Task Breakdown
+# RoamCore MVP Software Scope & Task Breakdown
 
-This document outlines all software-related components required to deliver the **VanCore MVP**, including backend services, UI, integrations, onboarding, and reliability layers. It is written for internal use and project planning.
+This document outlines all software-related components required to deliver the **RoamCore MVP**, including backend services, UI, integrations, onboarding, and reliability layers. It is written for internal use and project planning.
 
 ---
 
@@ -13,12 +13,12 @@ Create a reproducible image for:
 
 Must include:
 - Home Assistant OS
-- VanCore add-ons (Victron integration, ESPHome, etc.)
+- RoamCore add-ons (Victron integration, ESPHome, etc.)
 - Default HA configuration
 
 ### Tasks
 - [ ] Build ARM and x86 HA OS images
-- [ ] Pre-install custom VanCore repository + add-ons
+- [ ] Pre-install custom RoamCore repository + add-ons
 - [ ] Pre-configure HA basics (timezone, language, admin)
 
 ---
@@ -26,7 +26,7 @@ Must include:
 ## 1.2 Onboarding Flow — P0  
 A simple first-boot wizard:
 - Network confirmation
-- Optional VanCore account creation
+- Optional RoamCore account creation
 - System readiness checks
 
 ### Tasks
@@ -52,9 +52,9 @@ Detects presence of:
 
 ---
 
-# 3. Backend Integration (“VanCore Model”)
+# 3. Backend Integration (“RoamCore Model”)
 
-## 3.1 Unified VanCore Data Model — P0  
+## 3.1 Unified RoamCore Data Model — P0  
 A logical schema on top of HA entities:
 - battery.soc, battery.voltage
 - water.tank_level
@@ -126,11 +126,11 @@ Optional later feature.
 
 # 6. Update System
 
-## 6.1 VanCore Update Mechanism — P0  
+## 6.1 RoamCore Update Mechanism — P0  
 Manage:
 - HA OS updates  
-- VanCore add-on updates  
-- VanCore frontend updates  
+- RoamCore add-on updates  
+- RoamCore frontend updates  
 
 ### Tasks
 - [ ] Build update check system
@@ -225,7 +225,7 @@ Quick-start, installation, and troubleshooting page.
 - [ ] Always-on Victron add-on completed  
 - [ ] Water Hub integration  
 - [ ] Capability detection system  
-- [ ] VanCore backend model  
+- [ ] RoamCore backend model  
 - [ ] Overview + Power + Water dashboards  
 - [ ] Basic tile system  
 - [ ] Core automations  
@@ -247,4 +247,4 @@ Quick-start, installation, and troubleshooting page.
 
 ---
 
-This document represents the **complete software scope for the VanCore MVP**.
+This document represents the **complete software scope for the RoamCore MVP**.
