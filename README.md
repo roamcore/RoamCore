@@ -8,7 +8,9 @@ This is an open-source, modular hardware and software platform designed to monit
 
 It uses Home Assistant as the core automation engine and aims to provide both:  
 ●	A simple, intuitive interface for average users, enabling a "works-out-of-the-box" experience with modular plug-and-play components.  
+
 ●	Full flexibility for technical users to customise, extend, and access the full Home Assistant stack underneath.
+
 The goal is to provide a simple, powerful, and open-source control system for life off-grid.
 
  
@@ -17,32 +19,50 @@ The goal is to provide a simple, powerful, and open-source control system for li
 People who live in vans or other mobile/off-grid environments often piece together partial monitoring solutions or use expensive proprietary systems that are hard to customise. This project aims to replace those with one unified platform that is:
 
 ✅ Modular Monitoring & Control
+
 ●	Every system (water, electrical, security, etc.) is built as a self-contained module.
+
 ●	Modules communicate via Wi-Fi, Zigbee, or serial, using open standards.
+
 ●	Designed to be installed independently, replaced, or upgraded easily.
+
 ●	All-in-one - combines electrical, water, safety, cameras, internet, GPS, and remote access in one system.
+
 ●	Simple for beginners, powerful for pros - Plug-and-play modules, with the full power of Home Assistant under the hood for advanced users.
+
 ✅ Unified Home Assistant Integration
+
 ●	All data and control is centralised in a Home Assistant instance running locally.
+
 ●	The system supports remote control and dashboard access via VPN or Nabu Casa.
+
 ●	OTA firmware updates and config management are supported via Git.
+
 ●	Beautiful, intuitive interface - custom UI layers over Home Assistant, designed for touchscreens and mobile use.
+
 ✅ Designed for Real-World, Off-Grid Use
+
 ●	Works fully offline with no reliance on internet/cloud.
+
 ●	Robust against power loss, mobile connectivity drops, and harsh conditions.
+
 ●	Power-efficient and designed around low-voltage 12V systems.
+
 ●	No dependency on third-party clouds or subscriptions.
 
 
  
 ## 👤 Target Users
 ●	Everyday vanlifers, boaters, and tiny home dwellers
+
 who want reliable, powerful automation without having to learn code or deal with complex interfaces.
 
 ●	Installers and conversion shops
+
 who want a white-label-ready, flexible automation platform to offer clients.
 
 ●	Home Assistant fans
+
 who want a hardware/software system built around the ecosystem they love - but simplified and streamlined.
 
  
@@ -106,15 +126,24 @@ UI	Initial Lovelace dashboard (migratable to custom frontend later)
 
 ## Goals:
 ●	Central brain of the system housing the Home Assistant core.
+
 ●	Reliable wireless + wired communication with modules.
+
 ●	Local automation and dashboard server.
+
 ## Functions:
 ●	Mini PC (e.g., Intel N100/N97, Nucbox G5) running Home Assistant.
+
 ●	Local storage for historical data and logs.
+
 ●	Integrated LTE router for internet access (UMR Ultra)
+
 ●	GPS module for geolocation and heading.
+
 ●	IMU (accelerometer, gyroscope) for detecting movement or tilt (van level).
+
 ●	Other environment sensors (cheap but massive value adds)
+
 ●	Local VPN server (or Nabu Casa) for secure remote access.
 
 
@@ -132,79 +161,122 @@ Each module should be:
 ## 1. 🔋 Electrical Monitoring
 Goals: 
 ●	Monitor all aspects of the van’s 12V DC electrical system.
+
 ●	Enable smart automation and fault alerts.
+
 ●	Support switching loads and tracking system performance over time.
+
 Functions: 
 ●	Battery voltage, current, power, and energy monitoring.
+
 ●	Solar input tracking, inverter status, and charging states.
+
 ●	DC-DC charger status monitoring.
+
 ●	Inverter control (on/off via relay/mosfet).
+
 ●	Current sensing for major circuits (lights, fans, fridge, etc.).
+
 ●	Temperature sensing for batteries or compartments.
+
 ●	Provide alerts for low power or critical issues.
+
 ●	Monitor 230V AC if shore power/inverter is included.
 
 
 ## 2. ⚡ Smart Fuse Box
 Goals: 
 ●	Combine traditional fuse panel with smart relay and monitoring features.
+
 ●	Enable remote on/off control per circuit and current draw monitoring.
+
 Functions: 
 ●	Combined fuse & relay control
+
 ●	Monitor current per circuit (INA219 or similar)
+
 ●	Switch circuits on/off via HA (PWM dimmable)
+
 ESP32 control via ESPHome
 
 
 ## 3. 💧 Water System
 Goals:
 ●	Provide clear tank level information and allow smart pump/heater control, as well as fixture monitoring and control. 
+
 Functions:
 ●	Monitor fresh, grey, and black tank levels (resistive or ultrasonic).
+
 ●	Water pump on/off switching (manual and automated).
+
 ●	Water heater control (tankless or immersion).
+
 ●	Flow rate tracking (via turbine sensor).
+
 ●	Leak alerts or dry-run protection for pump.
+
 ●	Trigger automatic shutoffs or reminders (e.g., low tank).
 
 
 ## 4. 🛡 Security & Safety
 Goals:
 ●	Keep the van and its occupants safe from theft, gas leaks, fire, and intrusion.
+
 Functions:
 ●	Door/window contact sensors (open/closed).
+
 ●	Motion sensors inside van.
+
 ●	Tilt/vibration sensors.
+
 ●	12V siren + strobe.
+
 ●	Central arming/disarming logic.
+
 ●	Gas leak detectors (LPG, CO, CO₂).
+
 ●	Smoke detector integration.
+
 ●	Central locking or deadbolt integration.
 
 
 ## 5. 📷 CCTV / Cameras
 Goals:
 ●	Provide remote and local visual monitoring inside and outside the van.
+
 Functions:
 ●	IP cameras (ONVIF/RTSP) for interior/exterior use.
+
 ●	Night vision support.
+
 ●	Motion-triggered recording.
+
 ●	Viewable via Home Assistant dashboard or app.
+
 ●	Alerts on motion when armed.
+
 ●	Optional: recording to local SSD or NAS.
+
 ●	PIR motion sensors? 
 
 
 ## 6. 🌐 Networking & Remote Access
 Goals:
 ●	Allow full remote access to dashboards, alerts, and camera feeds.
+
 ●	Enable mobile data connectivity in areas without Wi-Fi.
+
 Functions:
 ●	UMR Ultra LTE router (dual SIM, external roof-mounted antenna)
+
 ●	Wi-Fi signal monitoring.
+
 ●	VPN-based remote access (e.g., WireGuard, Tailscale) or Nabu Casa
+
 ●	OTA update system via Git or web panel.
+
 ●	Signal strength diagnostics.
+
 ●	Unifi HACS add on
 
  
@@ -293,9 +365,13 @@ Examples:
 
 Every module should be:
 ●	Standalone and testable
+
 ●	Reproducible and clearly documented
+
 ●	Built from standard, affordable parts
+
 ●	Easy to wire and flash
+
 ●	OTA update-compatible
 
  
@@ -305,6 +381,7 @@ Every module should be:
 ●	GitHub folders will be organized by module or component
 
 ●	Ultimately, most parts of this system will be open-source (except sensitive IP)
+
 ●	I am very open to hear suggestions on how the code and update deployment should be managed. 
 
  
