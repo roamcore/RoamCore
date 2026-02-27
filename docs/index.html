@@ -1,21 +1,243 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="RoamCore — off-grid infrastructure for modern exploration." />
   <title>RoamCore</title>
+
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 48px; background: #0b0f14; color: #e8eef5; }
-    .card { max-width: 720px; margin: 0 auto; padding: 32px; background: #121824; border: 1px solid #1f2a3a; border-radius: 16px; }
-    h1 { margin: 0 0 8px; font-size: 2rem; }
-    p { margin: 0 0 12px; line-height: 1.6; color: #c9d4e2; }
+    :root{
+      --bg0:#030712;      /* near-black */
+      --bg1:#071a3a;      /* navy */
+      --bg2:#0b2a5a;      /* deep blue */
+      --ink:#e6eefc;      /* soft white */
+      --muted:#a8b6d6;    /* muted */
+      --glass:rgba(255,255,255,.06);
+      --stroke:rgba(255,255,255,.10);
+      --shadow: 0 20px 60px rgba(0,0,0,.55);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 700px at 20% 20%, rgba(15, 64, 180, .35), transparent 55%),
+        radial-gradient(900px 600px at 80% 30%, rgba(7, 120, 190, .25), transparent 60%),
+        radial-gradient(900px 700px at 50% 90%, rgba(10, 40, 120, .30), transparent 55%),
+        linear-gradient(160deg, var(--bg0), var(--bg1) 45%, var(--bg2));
+      overflow:hidden;
+    }
+
+    /* subtle animated sheen */
+    .sheen{
+      position: fixed;
+      inset:-40%;
+      background: radial-gradient(circle at 40% 40%, rgba(255,255,255,.10), transparent 45%);
+      filter: blur(40px);
+      animation: float 10s ease-in-out infinite;
+      pointer-events:none;
+      opacity:.55;
+    }
+    @keyframes float{
+      0%,100%{ transform: translate3d(-2%, -2%, 0) rotate(-2deg); }
+      50%{ transform: translate3d(2%, 2%, 0) rotate(2deg); }
+    }
+
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 28px;
+    }
+
+    .card{
+      width:min(880px, 100%);
+      padding: clamp(22px, 4vw, 38px);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.035));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .topline{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .logo{
+      font-weight: 700;
+      letter-spacing: .5px;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.1;
+    }
+
+    .tag{
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: .2px;
+    }
+
+    .pill{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+
+    .center{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 16px;
+      text-align:center;
+      margin: 18px 0 10px;
+    }
+
+    .headline{
+      font-weight: 650;
+      font-size: clamp(18px, 2.4vw, 22px);
+      line-height: 1.35;
+      max-width: 42ch;
+      margin: 0;
+    }
+
+    .sub{
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    .cta{
+      margin-top: 8px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      text-decoration:none;
+      color: var(--ink);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      user-select:none;
+      cursor:pointer;
+      font-weight: 650;
+      letter-spacing: .2px;
+    }
+    .cta:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.28);
+      background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.07));
+    }
+    .cta:active{
+      transform: translateY(0px);
+    }
+
+    .gh{
+      width: 18px;
+      height: 18px;
+      display:inline-block;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      gap: 16px;
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: rgba(230,238,252,.70);
+      font-size: 12px;
+      flex-wrap:wrap;
+    }
+
+    .link{
+      color: rgba(230,238,252,.85);
+      text-decoration:none;
+      border-bottom: 1px solid rgba(230,238,252,.25);
+    }
+    .link:hover{ border-bottom-color: rgba(230,238,252,.55); }
+
+    /* small screens */
+    @media (max-width: 520px){
+      .topline{ flex-direction: column; align-items:flex-start; }
+      .pill{ align-self:flex-start; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>RoamCore</h1>
-    <p>Modular automation platform for off-grid and mobile living spaces.</p>
-    <p>Documentation site coming soon.</p>
-  </div>
+  <div class="sheen"></div>
+
+  <main class="wrap">
+    <section class="card" role="region" aria-label="RoamCore landing">
+      <div class="topline">
+        <div class="brand">
+          <div class="logo">RoamCore</div>
+          <div class="tag">Off-grid infrastructure for modern exploration.</div>
+        </div>
+        <div class="pill">Early build • Open-source first</div>
+      </div>
+
+      <div class="center">
+        <p class="headline">
+          A calm, unified control layer for power, networking, and the living system — built to be reliable for novices, and limitless for builders.
+        </p>
+        <p class="sub">
+          RoamCore is a Home Assistant–based hub designed for people who want freedom without fragility.
+          Start simple. Grow into a full platform.
+        </p>
+
+        <!-- Update href to your org or main repo -->
+        <a class="cta" id="githubCta" href="https://github.com/roamcore" target="_blank" rel="noopener">
+          <svg class="gh" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+          </svg>
+          View the project on GitHub
+        </a>
+      </div>
+
+      <div class="footer">
+        <div>© <span id="year"></span> RoamCore</div>
+        <div>
+          <a class="link" href="https://github.com/roamcore" target="_blank" rel="noopener">github.com/roamcore</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Optional: make the button feel "dynamic" without being gimmicky.
+    // Subtle text swap if user stays on page.
+    setTimeout(() => {
+      const cta = document.getElementById("githubCta");
+      if (cta) cta.lastChild.textContent = " Explore the docs & roadmap";
+    }, 4500);
+  </script>
 </body>
 </html>
