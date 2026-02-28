@@ -1,0 +1,341 @@
+# RoamCore — Van Control Dashboard (Lovelace YAML)
+#
+# Notes:
+# - Uses only built-in Lovelace cards (no HACS/custom cards).
+# - Entity IDs are placeholders; wire them to your actual HA entities.
+# - Recommended: create Helpers (input_boolean/input_number) and Template sensors
+#   to match these names, then swap to real integrations as they come online.
+#
+# How to use:
+# - In Home Assistant: Settings → Dashboards → Add Dashboard → New dashboard
+# - Choose “YAML mode” (or create a dashboard and use the Raw configuration editor)
+# - Paste this file’s contents.
+
+title: Van Control
+background: "center / cover no-repeat fixed url(/local/roamcore/van-bg.jpg)"
+views:
+  - title: Overview
+    path: overview
+    icon: mdi:van-utility
+    badges:
+      - entity: sensor.van_system_status
+      - entity: sensor.van_outside_temperature
+      - entity: sensor.van_inside_temperature
+      - entity: sensor.van_battery_soc
+    cards:
+      - type: markdown
+        content: |
+          # Van Control
+          Quick status + the controls you’ll reach for daily.
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            name: Battery SoC
+            entity: sensor.van_battery_soc
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              red: 15
+              yellow: 35
+              green: 60
+          - type: gauge
+            name: Fresh Water
+            entity: sensor.van_fresh_water_level
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              red: 10
+              yellow: 30
+              green: 60
+
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: button
+            name: Water Pump
+            entity: switch.van_water_pump
+            icon: mdi:water-pump
+            show_state: true
+          - type: button
+            name: Main Lights
+            entity: light.van_main_lights
+            icon: mdi:ceiling-light
+            show_state: true
+          - type: button
+            name: Heater
+            entity: climate.van_heater
+            icon: mdi:radiator
+            show_state: true
+
+      - type: entities
+        title: Key Readouts
+        show_header_toggle: false
+        entities:
+          - entity: sensor.van_solar_power
+            name: Solar (W)
+          - entity: sensor.van_load_power
+            name: Load (W)
+          - entity: sensor.van_shore_power_connected
+            name: Shore Power
+          - entity: sensor.van_water_tank_temperature
+            name: Tank Temp
+          - entity: binary_sensor.van_leak_detected
+            name: Leak Detected
+          - entity: binary_sensor.van_smoke_alarm
+            name: Smoke Alarm
+          - entity: binary_sensor.van_co_alarm
+            name: CO Alarm
+
+  - title: Water
+    path: water
+    icon: mdi:water
+    cards:
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            name: Fresh Tank
+            entity: sensor.van_fresh_water_level
+            unit: "%"
+            min: 0
+            max: 100
+          - type: gauge
+            name: Grey Tank
+            entity: sensor.van_grey_water_level
+            unit: "%"
+            min: 0
+            max: 100
+
+      - type: entities
+        title: Pumps & Valves
+        entities:
+          - entity: switch.van_water_pump
+          - entity: switch.van_hot_water_boiler
+          - entity: switch.van_grey_dump_valve
+          - entity: switch.van_tank_heater
+
+      - type: entities
+        title: Water Safety
+        entities:
+          - entity: binary_sensor.van_leak_detected
+          - entity: sensor.van_water_flow_rate
+            name: Flow Rate
+          - entity: sensor.van_water_pressure
+            name: Pressure
+
+  - title: Power
+    path: power
+    icon: mdi:flash
+    cards:
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            name: Battery SoC
+            entity: sensor.van_battery_soc
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              red: 15
+              yellow: 35
+              green: 60
+          - type: gauge
+            name: Battery Voltage
+            entity: sensor.van_battery_voltage
+            unit: V
+            min: 10
+            max: 15
+
+      - type: entities
+        title: Power Flow
+        entities:
+          - entity: sensor.van_solar_power
+            name: Solar (W)
+          - entity: sensor.van_shore_power_connected
+            name: Shore Power Connected
+          - entity: sensor.van_inverter_status
+            name: Inverter
+          - entity: sensor.van_load_power
+            name: Load (W)
+          - entity: sensor.van_charger_power
+            name: Charger (W)
+
+      - type: entities
+        title: Big Switches
+        entities:
+          - entity: switch.van_inverter
+          - entity: switch.van_dc_master
+          - entity: switch.van_ac_master
+          - entity: switch.van_usb_outlets
+
+  - title: Lights
+    path: lights
+    icon: mdi:lightbulb-group
+    cards:
+      - type: entities
+        title: Scenes (optional)
+        entities:
+          - entity: scene.van_day
+          - entity: scene.van_night
+          - entity: scene.van_camp
+          - entity: scene.van_stealth
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: light
+            entity: light.van_main_lights
+            name: Main
+          - type: light
+            entity: light.van_kitchen_lights
+            name: Kitchen
+          - type: light
+            entity: light.van_bed_lights
+            name: Bed
+          - type: light
+            entity: light.van_exterior_lights
+            name: Exterior
+
+  - title: HVAC
+    path: hvac
+    icon: mdi:thermostat
+    cards:
+      - type: thermostat
+        entity: climate.van_heater
+        name: Heater
+
+      - type: thermostat
+        entity: climate.van_ac
+        name: A/C
+
+      - type: entities
+        title: Air Quality & Fans
+        entities:
+          - entity: sensor.van_inside_temperature
+          - entity: sensor.van_inside_humidity
+          - entity: sensor.van_co2
+          - entity: fan.van_roof_fan
+          - entity: binary_sensor.van_window_open
+            name: Window Open
+
+  - title: Network
+    path: network
+    icon: mdi:router-wireless
+    cards:
+      - type: entities
+        title: WAN / Connectivity
+        entities:
+          - entity: sensor.van_internet_uplink
+            name: Active Uplink
+          - entity: binary_sensor.van_internet_connected
+            name: Internet Connected
+          - entity: sensor.van_wan_ip
+            name: WAN IP
+          - entity: sensor.van_wifi_signal
+            name: Wi‑Fi Signal
+          - entity: sensor.van_cell_signal
+            name: Cellular Signal
+
+      - type: entities
+        title: Router & AP
+        entities:
+          - entity: switch.van_router
+          - entity: switch.van_wifi_ap
+          - entity: switch.van_vpn
+
+      - type: entities
+        title: LAN Devices (examples)
+        entities:
+          - entity: device_tracker.van_tablet
+          - entity: device_tracker.van_camera_nvr
+          - entity: device_tracker.van_ha_host
+
+  - title: Security
+    path: security
+    icon: mdi:cctv
+    cards:
+      - type: alarm-panel
+        entity: alarm_control_panel.van_alarm
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: entity
+            entity: binary_sensor.van_door_open
+            name: Door
+          - type: entity
+            entity: binary_sensor.van_motion
+            name: Motion
+          - type: entity
+            entity: lock.van_door_lock
+            name: Door Lock
+          - type: entity
+            entity: switch.van_siren
+            name: Siren
+
+      # Camera placeholders (requires camera entities)
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: picture-entity
+            entity: camera.van_front
+            name: Front
+            camera_view: live
+          - type: picture-entity
+            entity: camera.van_rear
+            name: Rear
+            camera_view: live
+          - type: picture-entity
+            entity: camera.van_side_left
+            name: Left
+            camera_view: live
+          - type: picture-entity
+            entity: camera.van_side_right
+            name: Right
+            camera_view: live
+
+  - title: System
+    path: system
+    icon: mdi:cog
+    cards:
+      - type: entities
+        title: Home Assistant
+        entities:
+          - entity: sensor.van_ha_uptime
+            name: HA Uptime
+          - entity: binary_sensor.van_ha_healthy
+            name: HA Healthy
+          - entity: sensor.van_last_backup
+            name: Last Backup
+
+      - type: entities
+        title: Maintenance Toggles
+        entities:
+          - entity: input_boolean.van_guest_mode
+            name: Guest Mode
+          - entity: input_boolean.van_stealth_mode
+            name: Stealth Mode
+          - entity: input_boolean.van_maintenance_mode
+            name: Maintenance Mode
+
+      - type: entities
+        title: Debug / Telemetry
+        entities:
+          - entity: sensor.van_gps_speed
+            name: Speed
+          - entity: sensor.van_gps_altitude
+            name: Altitude
+          - entity: sensor.van_gps_coordinates
+            name: Coordinates
