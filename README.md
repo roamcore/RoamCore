@@ -15,7 +15,7 @@ From one interface, you can:
 - **Monitor power** — battery state, charging, solar input, inverter status
 - **Manage connectivity** — LTE/5G, Starlink, Wi‑Fi, VPN access
 - **Control essentials** — lighting, heating, pumps, sensors, safety systems
-- **Automate routines** — simple “modes” and schedules for daily life
+- **Automate routines** — simple “modes” and scheduled tasks for daily life
 - **Stay informed** — clear status at a glance, with room to go deeper
 
 RoamCore is built to feel calm and dependable for new users while remaining deeply extensible for enthusiasts.
@@ -33,10 +33,10 @@ These foundations keep the system transparent, open, and future‑proof.
 Start with the essentials, then grow into a complete control system. Examples of what you can add:
 
 - **Power**: solar, batteries, charging sources, inverters
-- **Water**: tank levels, pumps, leak detection
+- **Water**: tank levels, pumps, leak detection, automatic winterisation
 - **Climate**: heaters, fans, AC, temperature sensors
 - **Safety**: gas, smoke, motion, door sensors
-- **CCTV**: local recording, remote viewing
+- **CCTV**: local recording, remote viewing, object recognition
 - **Navigation & level**: GPS, tilt level, trip insights
 - **Remote access**: secure access from anywhere
 - **Custom dashboards**: tuned to your specific build
@@ -54,7 +54,7 @@ The initial release focuses on a reliable core experience:
 - A novice‑friendly dashboard that feels premium and intuitive
 - Strong networking (local-only to begin with, DIY VPN/Nabu Casa supported of course!)
 - Clear power system visibility and control (via Victron)
-- A clean upgrade path for advanced users (through an 'advanced mode')
+- A clean upgrade path for advanced users (through an 'advanced mode', full access to tech stack)
 
 ## 🔓 Open source and community‑driven
 RoamCore is fully open source. If you care about independence, clarity, and building systems that last, you’re in the right place. Contributors, builders, and curious explorers are all welcome.
