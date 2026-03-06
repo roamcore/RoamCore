@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace.roamcore",
+  "data": {
+    "config": {
+      "title": "RoamCore",
+      "views": [
+        {
+          "title": "Overview",
+          "path": "overview",
+          "icon": "mdi:view-dashboard",
+          "type": "sections",
+          "max_columns": 4,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "custom:roamcore-dashboard-card"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Power",
+          "path": "power",
+          "icon": "mdi:flash",
+          "type": "sections",
+          "max_columns": 3,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "tile",
+                  "entity": "sensor.rc_power_battery_soc",
+                  "name": "Battery",
+                  "icon": "mdi:battery"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.rc_power_solar_power",
+                  "name": "Solar",
+                  "icon": "mdi:solar-power"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.rc_power_load_power",
+                  "name": "Load",
+                  "icon": "mdi:home-lightning-bolt"
+                },
+                {
+                  "type": "tile",
+                  "entity": "binary_sensor.rc_power_shore_connected",
+                  "name": "Shore",
+                  "icon": "mdi:power-plug"
+                },
+                {
+                  "type": "tile",
+                  "entity": "sensor.rc_power_inverter_status",
+                  "name": "Inverter",
+                  "icon": "mdi:power"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
