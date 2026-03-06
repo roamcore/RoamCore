@@ -1,0 +1,17 @@
+# RoamCore contract entities: System level / tilt (MVP)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+
+template:
+  - sensor:
+      - name: "RC System Level Pitch"
+        unique_id: rc_system_level_pitch_deg
+        unit_of_measurement: "°"
+        state: >-
+          {{ states("input_number.rc_mock_system_level_pitch_deg") }}
+
+      - name: "RC System Level Roll"
+        unique_id: rc_system_level_roll_deg
+        unit_of_measurement: "°"
+        state: >-
+          {{ states("input_number.rc_mock_system_level_roll_deg") }}

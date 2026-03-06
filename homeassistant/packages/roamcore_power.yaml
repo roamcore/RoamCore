@@ -1,0 +1,222 @@
+# RoamCore contract entities: Power subsystem
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+#
+# Mapping strategy (MVP):
+# - Prefer vendor-specific entities if present (e.g. Victron)
+# - Otherwise fall back to dev mock helpers (from roamcore_dev_mocks.yaml)
+
+template:
+  - sensor:
+      - name: "RC Power Battery SoC"
+        unique_id: rc_power_battery_soc
+        unit_of_measurement: "%"
+        state: >-
+          {% set v = states("sensor.victron_battery_soc") %}
+          {% if v not in ["unknown","unavailable","none",""] %}
+            {{ v }}
+          {% else %}
+            {{ states("input_number.rc_mock_power_battery_soc") }}
+          {% endif %}
+
+      - name: "RC Power Solar Power"
+        unique_id: rc_power_solar_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set v = states("sensor.victron_pv_power") %}
+          {% if v not in ["unknown","unavailable","none",""] %}
+            {{ v }}
+          {% else %}
+            {{ states("input_number.rc_mock_power_solar_power") }}
+          {% endif %}
+
+      - name: "RC Power Load Power"
+        unique_id: rc_power_load_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set v = states("sensor.victron_load_power") %}
+          {% if v not in ["unknown","unavailable","none",""] %}
+            {{ v }}
+          {% else %}
+            {{ states("input_number.rc_mock_power_load_power") }}
+          {% endif %}
+
+      - name: "RC Power Inverter Status"
+        unique_id: rc_power_inverter_status
+        icon: mdi:power
+        state: >-
+          {% set v = states("sensor.victron_inverter_state") %}
+          {% if v not in ["unknown","unavailable","none",""] %}
+            {{ v }}
+          {% else %}
+            {{ states("input_select.rc_mock_power_inverter_status") }}
+          {% endif %}
+
+      # --- Power detail metrics (mock-first; vendor mapping later) ---
+      - name: "RC Power Battery Voltage"
+        unique_id: rc_power_battery_voltage
+        unit_of_measurement: "V"
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_voltage") }}
+
+      - name: "RC Power Battery Current"
+        unique_id: rc_power_battery_current
+        unit_of_measurement: "A"
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_current") }}
+
+      - name: "RC Power Battery Temperature"
+        unique_id: rc_power_battery_temperature_c
+        unit_of_measurement: "°C"
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_temperature_c") }}
+
+      - name: "RC Power Battery Capacity"
+        unique_id: rc_power_battery_capacity_ah
+        unit_of_measurement: "Ah"
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_capacity_ah") }}
+
+      - name: "RC Power Battery Cycle Count"
+        unique_id: rc_power_battery_cycle_count
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_cycle_count") }}
+
+      - name: "RC Power Battery Health"
+        unique_id: rc_power_battery_health
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_power_battery_health_pct") }}
+
+      - name: "RC Power Solar Energy Today"
+        unique_id: rc_power_solar_energy_today_kwh
+        unit_of_measurement: "kWh"
+        state: >-
+          {{ states("input_number.rc_mock_power_solar_energy_today_kwh") }}
+
+      - name: "RC Power Solar Energy Total"
+        unique_id: rc_power_solar_energy_total_kwh
+        unit_of_measurement: "kWh"
+        state: >-
+          {{ states("input_number.rc_mock_power_solar_energy_total_kwh") }}
+
+      - name: "RC Power Solar Panel Voltage"
+        unique_id: rc_power_solar_panel_voltage
+        unit_of_measurement: "V"
+        state: >-
+          {{ states("input_number.rc_mock_power_solar_panel_voltage") }}
+
+      - name: "RC Power Solar Panel Current"
+        unique_id: rc_power_solar_panel_current
+        unit_of_measurement: "A"
+        state: >-
+          {{ states("input_number.rc_mock_power_solar_panel_current") }}
+
+      - name: "RC Power Solar Efficiency"
+        unique_id: rc_power_solar_efficiency
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_power_solar_efficiency_pct") }}
+
+      - name: "RC Power Load Fridge"
+        unique_id: rc_power_load_fridge_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_load_fridge_w") }}
+
+      - name: "RC Power Load Lights"
+        unique_id: rc_power_load_lights_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_load_lights_w") }}
+
+      - name: "RC Power Load Heater"
+        unique_id: rc_power_load_heater_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_load_heater_w") }}
+
+      - name: "RC Power Load Water Pump"
+        unique_id: rc_power_load_water_pump_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_load_water_pump_w") }}
+
+      - name: "RC Power Load Other"
+        unique_id: rc_power_load_other_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_load_other_w") }}
+
+      - name: "RC Power Inverter Output Power"
+        unique_id: rc_power_inverter_output_power_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_inverter_output_power_w") }}
+
+      - name: "RC Power Inverter Output Voltage"
+        unique_id: rc_power_inverter_output_voltage_v
+        unit_of_measurement: "V"
+        state: >-
+          {{ states("input_number.rc_mock_power_inverter_output_voltage_v") }}
+
+      - name: "RC Power Inverter Frequency"
+        unique_id: rc_power_inverter_frequency_hz
+        unit_of_measurement: "Hz"
+        state: >-
+          {{ states("input_number.rc_mock_power_inverter_frequency_hz") }}
+
+      - name: "RC Power Inverter Temperature"
+        unique_id: rc_power_inverter_temperature_c
+        unit_of_measurement: "°C"
+        state: >-
+          {{ states("input_number.rc_mock_power_inverter_temperature_c") }}
+
+      - name: "RC Power Shore Voltage"
+        unique_id: rc_power_shore_voltage_v
+        unit_of_measurement: "V"
+        state: >-
+          {{ states("input_number.rc_mock_power_shore_voltage_v") }}
+
+      - name: "RC Power Shore Current"
+        unique_id: rc_power_shore_current_a
+        unit_of_measurement: "A"
+        state: >-
+          {{ states("input_number.rc_mock_power_shore_current_a") }}
+
+      - name: "RC Power Shore Power"
+        unique_id: rc_power_shore_power_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_shore_power_w") }}
+
+      - name: "RC Power Alternator Voltage"
+        unique_id: rc_power_alt_voltage_v
+        unit_of_measurement: "V"
+        state: >-
+          {{ states("input_number.rc_mock_power_alt_voltage_v") }}
+
+      - name: "RC Power Alternator Current"
+        unique_id: rc_power_alt_current_a
+        unit_of_measurement: "A"
+        state: >-
+          {{ states("input_number.rc_mock_power_alt_current_a") }}
+
+      - name: "RC Power Alternator Power"
+        unique_id: rc_power_alt_power_w
+        unit_of_measurement: "W"
+        state: >-
+          {{ states("input_number.rc_mock_power_alt_power_w") }}
+
+  - binary_sensor:
+      - name: "RC Power Shore Connected"
+        unique_id: rc_power_shore_connected
+        state: >-
+          {% set src = states("binary_sensor.victron_grid_connected") %}
+          {% if src in ["on","off"] %}
+            {{ true if src == "on" else false }}
+          {% else %}
+            {{ is_state("input_boolean.rc_mock_power_shore_connected", "on") }}
+          {% endif %}

@@ -1,0 +1,1000 @@
+# RoamCore dev mocks (temporary)
+# Provides editable values for the RoamCore dashboard when real data sources are not connected yet.
+#
+# Keep all temporary/mock data isolated in this file so it is easy to remove later.
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+
+input_number:
+  rc_mock_power_battery_soc:
+    name: "RC Mock Power Battery SoC"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: slider
+    initial: 73
+
+  rc_mock_power_solar_power:
+    name: "RC Mock Power Solar Power"
+    min: 0
+    max: 5000
+    step: 10
+    unit_of_measurement: "W"
+    mode: slider
+    initial: 420
+
+  rc_mock_power_load_power:
+    name: "RC Mock Power Load Power"
+    min: 0
+    max: 5000
+    step: 10
+    unit_of_measurement: "W"
+    mode: slider
+    initial: 650
+
+  rc_mock_net_download_mbps:
+    name: "RC Mock Net Download"
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: "Mbps"
+    mode: slider
+    initial: 53
+
+  rc_mock_net_upload_mbps:
+    name: "RC Mock Net Upload"
+    min: 0
+    max: 200
+    step: 1
+    unit_of_measurement: "Mbps"
+    mode: slider
+    initial: 15
+
+  rc_mock_net_ping_ms:
+    name: "RC Mock Net Ping"
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: "ms"
+    mode: slider
+    initial: 53
+
+  rc_mock_system_level_pitch_deg:
+    name: "RC Mock Pitch"
+    min: -15
+    max: 15
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: slider
+    initial: 1.2
+
+  rc_mock_system_level_roll_deg:
+    name: "RC Mock Roll"
+    min: -15
+    max: 15
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: slider
+    initial: 4.3
+
+  rc_mock_power_battery_voltage:
+    name: "RC Mock Power Battery Voltage"
+    min: 0
+    max: 60
+    step: 0.1
+    unit_of_measurement: "V"
+    mode: box
+    initial: 26.4
+
+  rc_mock_power_battery_current:
+    name: "RC Mock Power Battery Current"
+    min: -300
+    max: 300
+    step: 0.1
+    unit_of_measurement: "A"
+    mode: box
+    initial: 12.5
+
+  rc_mock_power_battery_temperature_c:
+    name: "RC Mock Power Battery Temperature"
+    min: -30
+    max: 80
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: box
+    initial: 24
+
+  rc_mock_power_battery_capacity_ah:
+    name: "RC Mock Battery Capacity"
+    min: 0
+    max: 1000
+    step: 1
+    unit_of_measurement: "Ah"
+    mode: box
+    initial: 200
+
+  rc_mock_power_battery_cycle_count:
+    name: "RC Mock Battery Cycle Count"
+    min: 0
+    max: 20000
+    step: 1
+    mode: box
+    initial: 127
+
+  rc_mock_power_battery_health_pct:
+    name: "RC Mock Battery Health"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 98
+
+  rc_mock_power_solar_energy_today_kwh:
+    name: "RC Mock Solar Energy Today"
+    min: 0
+    max: 50
+    step: 0.1
+    unit_of_measurement: "kWh"
+    mode: box
+    initial: 2.4
+
+  rc_mock_power_solar_energy_total_kwh:
+    name: "RC Mock Solar Energy Total"
+    min: 0
+    max: 100000
+    step: 0.1
+    unit_of_measurement: "kWh"
+    mode: box
+    initial: 847
+
+  rc_mock_power_solar_panel_voltage:
+    name: "RC Mock Solar Panel Voltage"
+    min: 0
+    max: 200
+    step: 0.1
+    unit_of_measurement: "V"
+    mode: box
+    initial: 38.2
+
+  rc_mock_power_solar_panel_current:
+    name: "RC Mock Solar Panel Current"
+    min: 0
+    max: 200
+    step: 0.1
+    unit_of_measurement: "A"
+    mode: box
+    initial: 10.1
+
+  rc_mock_power_solar_efficiency_pct:
+    name: "RC Mock Solar Efficiency"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 92
+
+  rc_mock_power_load_fridge_w:
+    name: "RC Mock Load Fridge"
+    min: 0
+    max: 2000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 45
+
+  rc_mock_power_load_lights_w:
+    name: "RC Mock Load Lights"
+    min: 0
+    max: 2000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 12
+
+  rc_mock_power_load_heater_w:
+    name: "RC Mock Load Heater"
+    min: 0
+    max: 4000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 0
+
+  rc_mock_power_load_water_pump_w:
+    name: "RC Mock Load Water Pump"
+    min: 0
+    max: 2000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 8
+
+  rc_mock_power_load_other_w:
+    name: "RC Mock Load Other"
+    min: 0
+    max: 5000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 91
+
+  rc_mock_power_inverter_output_power_w:
+    name: "RC Mock Inverter Output Power"
+    min: 0
+    max: 5000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 156
+
+  rc_mock_power_inverter_output_voltage_v:
+    name: "RC Mock Inverter Output Voltage"
+    min: 0
+    max: 260
+    step: 0.1
+    unit_of_measurement: "V"
+    mode: box
+    initial: 230
+
+  rc_mock_power_inverter_frequency_hz:
+    name: "RC Mock Inverter Frequency"
+    min: 0
+    max: 70
+    step: 0.1
+    unit_of_measurement: "Hz"
+    mode: box
+    initial: 50
+
+  rc_mock_power_inverter_temperature_c:
+    name: "RC Mock Inverter Temperature"
+    min: -30
+    max: 120
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: box
+    initial: 32
+
+  rc_mock_power_shore_voltage_v:
+    name: "RC Mock Shore Voltage"
+    min: 0
+    max: 260
+    step: 0.1
+    unit_of_measurement: "V"
+    mode: box
+    initial: 0
+
+  rc_mock_power_shore_current_a:
+    name: "RC Mock Shore Current"
+    min: 0
+    max: 50
+    step: 0.1
+    unit_of_measurement: "A"
+    mode: box
+    initial: 0
+
+  rc_mock_power_shore_power_w:
+    name: "RC Mock Shore Power"
+    min: 0
+    max: 12000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 0
+
+  rc_mock_power_alt_voltage_v:
+    name: "RC Mock Alternator Voltage"
+    min: 0
+    max: 60
+    step: 0.1
+    unit_of_measurement: "V"
+    mode: box
+    initial: 0
+
+  rc_mock_power_alt_current_a:
+    name: "RC Mock Alternator Current"
+    min: 0
+    max: 200
+    step: 0.1
+    unit_of_measurement: "A"
+    mode: box
+    initial: 0
+
+  rc_mock_power_alt_power_w:
+    name: "RC Mock Alternator Power"
+    min: 0
+    max: 12000
+    step: 1
+    unit_of_measurement: "W"
+    mode: box
+    initial: 0
+
+  rc_mock_net_jitter_ms:
+    name: "RC Mock Net Jitter"
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: "ms"
+    mode: box
+    initial: 8
+
+  rc_mock_net_packet_loss_pct:
+    name: "RC Mock Net Packet Loss"
+    min: 0
+    max: 100
+    step: 0.1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 0.1
+
+  rc_mock_net_data_today_down_gb:
+    name: "RC Mock Data Today Down"
+    min: 0
+    max: 500
+    step: 0.1
+    unit_of_measurement: "GB"
+    mode: box
+    initial: 2.4
+
+  rc_mock_net_data_today_up_gb:
+    name: "RC Mock Data Today Up"
+    min: 0
+    max: 500
+    step: 0.1
+    unit_of_measurement: "GB"
+    mode: box
+    initial: 0.8
+
+  rc_mock_net_data_month_down_gb:
+    name: "RC Mock Data Month Down"
+    min: 0
+    max: 2000
+    step: 0.1
+    unit_of_measurement: "GB"
+    mode: box
+    initial: 84.2
+
+  rc_mock_net_data_month_up_gb:
+    name: "RC Mock Data Month Up"
+    min: 0
+    max: 2000
+    step: 0.1
+    unit_of_measurement: "GB"
+    mode: box
+    initial: 12.6
+
+  rc_mock_net_data_month_limit_gb:
+    name: "RC Mock Data Month Limit"
+    min: 0
+    max: 2000
+    step: 1
+    unit_of_measurement: "GB"
+    mode: box
+    initial: 100
+
+  rc_mock_net_starlink_signal_quality_pct:
+    name: "RC Mock Starlink Signal Quality"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 94
+
+  rc_mock_net_cell_signal_dbm:
+    name: "RC Mock Cellular Signal"
+    min: -140
+    max: -30
+    step: 1
+    unit_of_measurement: "dBm"
+    mode: box
+    initial: -78
+
+  rc_mock_net_cell_bars:
+    name: "RC Mock Cellular Bars"
+    min: 0
+    max: 4
+    step: 1
+    mode: box
+    initial: 3
+
+  rc_mock_net_lan_devices:
+    name: "RC Mock LAN Connected Devices"
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    initial: 8
+
+  rc_mock_net_lan_wifi_clients:
+    name: "RC Mock LAN WiFi Clients"
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    initial: 5
+
+  rc_mock_net_lan_ethernet_clients:
+    name: "RC Mock LAN Ethernet Clients"
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    initial: 3
+
+  rc_mock_router_cpu_pct:
+    name: "RC Mock Router CPU"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 12
+
+  rc_mock_router_memory_pct:
+    name: "RC Mock Router Memory"
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    mode: box
+    initial: 34
+
+  rc_mock_router_temperature_c:
+    name: "RC Mock Router Temperature"
+    min: -30
+    max: 120
+    step: 1
+    unit_of_measurement: "°C"
+    mode: box
+    initial: 42
+
+  rc_mock_trip_segments:
+    name: "RC Mock Trip Segments"
+    min: 0
+    max: 10000
+    step: 1
+    mode: box
+    initial: 12
+
+  rc_mock_trip_stops:
+    name: "RC Mock Trip Stops"
+    min: 0
+    max: 10000
+    step: 1
+    mode: box
+    initial: 4
+
+  rc_mock_trip_distance_today_mi:
+    name: "RC Mock Trip Distance Today"
+    min: 0
+    max: 2000
+    step: 0.1
+    unit_of_measurement: "mi"
+    mode: box
+    initial: 42
+
+  rc_mock_trip_distance_total_mi:
+    name: "RC Mock Trip Distance Total"
+    min: 0
+    max: 500000
+    step: 1
+    unit_of_measurement: "mi"
+    mode: box
+    initial: 1847
+
+  rc_mock_map_elevation_m:
+    name: "RC Mock Map Elevation"
+    min: -200
+    max: 9000
+    step: 1
+    unit_of_measurement: "m"
+    mode: box
+    initial: 412
+
+input_select:
+  rc_mock_net_source:
+    name: "RC Mock Net Source"
+    options:
+      - starlink
+      - 4g
+      - 5g
+      - hybrid
+    initial: starlink
+
+  rc_mock_net_status:
+    name: "RC Mock Net Status"
+    options:
+      - good
+      - ok
+      - bad
+    initial: good
+
+  rc_mock_power_inverter_status:
+    name: "RC Mock Inverter Status"
+    options:
+      - on
+      - off
+      - standby
+      - fault
+    initial: on
+
+input_boolean:
+  rc_mock_power_shore_connected:
+    name: "RC Mock Shore Connected"
+    initial: false
+
+input_text:
+  rc_mock_map_location:
+    name: "RC Mock Map Location"
+    initial: "Lake District, UK"
+
+  rc_mock_trip_time_today:
+    name: "RC Mock Trip Time Today"
+    initial: "1h 12m"
+
+  rc_mock_trip_time_total:
+    name: "RC Mock Trip Time Total"
+    initial: "38h 04m"
+
+  rc_mock_net_uptime:
+    name: "RC Mock Net Uptime"
+    initial: "4d 12h"
+
+  rc_mock_net_last_disconnect:
+    name: "RC Mock Net Last Disconnect"
+    initial: "4 days ago"
+
+  rc_mock_net_cell_provider:
+    name: "RC Mock Cellular Provider"
+    initial: "EE"
+
+  rc_mock_net_cell_technology:
+    name: "RC Mock Cellular Technology"
+    initial: "4G LTE"
+
+  rc_mock_net_ssid:
+    name: "RC Mock WiFi SSID"
+    initial: "RoamCore-Van"
+
+  rc_mock_net_channel:
+    name: "RC Mock WiFi Channel"
+    initial: "36"
+
+  rc_mock_net_frequency:
+    name: "RC Mock WiFi Frequency"
+    initial: "5GHz"
+
+  rc_mock_router_uptime:
+    name: "RC Mock Router Uptime"
+    initial: "4d 12h 34m"
+
+  rc_mock_router_firmware:
+    name: "RC Mock Router Firmware"
+    initial: "2.4.1"
+
+input_datetime:
+  rc_mock_level_last_calibrate:
+    name: "RC Mock Level Last Calibrate"
+    has_date: true
+    has_time: true
+
+script:
+  rc_system_level_calibrate:
+    alias: "RC System Level Calibrate"
+    sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.rc_mock_level_last_calibrate
+        data:
+          datetime: "{{ now().isoformat() }}"
+
+template:
+  - button:
+      - name: "RC System Level Calibrate"
+        unique_id: rc_system_level_calibrate
+        object_id: rc_system_level_calibrate
+        icon: mdi:target
+        press:
+          - service: script.turn_on
+            target:
+              entity_id: script.rc_system_level_calibrate
+
+  - sensor:
+      # POWER (contract layer)
+      - name: "RC Power Battery SoC"
+        unique_id: rc_power_battery_soc
+        object_id: rc_power_battery_soc
+        state: "{{ states('input_number.rc_mock_power_battery_soc') }}"
+        unit_of_measurement: "%"
+        icon: mdi:battery
+      - name: "RC Power Battery Voltage"
+        unique_id: rc_power_battery_voltage
+        object_id: rc_power_battery_voltage
+        state: "{{ states('input_number.rc_mock_power_battery_voltage') }}"
+        unit_of_measurement: "V"
+      - name: "RC Power Battery Current"
+        unique_id: rc_power_battery_current
+        object_id: rc_power_battery_current
+        state: "{{ states('input_number.rc_mock_power_battery_current') }}"
+        unit_of_measurement: "A"
+      - name: "RC Power Battery Temperature C"
+        unique_id: rc_power_battery_temperature_c
+        object_id: rc_power_battery_temperature_c
+        state: "{{ states('input_number.rc_mock_power_battery_temperature_c') }}"
+        unit_of_measurement: "°C"
+
+      - name: "RC Power Battery Capacity"
+        unique_id: rc_power_battery_capacity_ah
+        object_id: rc_power_battery_capacity_ah
+        state: "{{ states('input_number.rc_mock_power_battery_capacity_ah') }}"
+        unit_of_measurement: "Ah"
+
+      - name: "RC Power Battery Cycle Count"
+        unique_id: rc_power_battery_cycle_count
+        object_id: rc_power_battery_cycle_count
+        state: "{{ states('input_number.rc_mock_power_battery_cycle_count') }}"
+
+      - name: "RC Power Battery Health"
+        unique_id: rc_power_battery_health
+        object_id: rc_power_battery_health
+        state: "{{ states('input_number.rc_mock_power_battery_health_pct') }}"
+        unit_of_measurement: "%"
+
+      - name: "RC Power Solar Power"
+        unique_id: rc_power_solar_power
+        object_id: rc_power_solar_power
+        state: "{{ states('input_number.rc_mock_power_solar_power') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Solar Energy Today"
+        unique_id: rc_power_solar_energy_today_kwh
+        object_id: rc_power_solar_energy_today_kwh
+        state: "{{ states('input_number.rc_mock_power_solar_energy_today_kwh') }}"
+        unit_of_measurement: "kWh"
+
+      - name: "RC Power Solar Energy Total"
+        unique_id: rc_power_solar_energy_total_kwh
+        object_id: rc_power_solar_energy_total_kwh
+        state: "{{ states('input_number.rc_mock_power_solar_energy_total_kwh') }}"
+        unit_of_measurement: "kWh"
+
+      - name: "RC Power Solar Panel Voltage"
+        unique_id: rc_power_solar_panel_voltage
+        object_id: rc_power_solar_panel_voltage
+        state: "{{ states('input_number.rc_mock_power_solar_panel_voltage') }}"
+        unit_of_measurement: "V"
+
+      - name: "RC Power Solar Panel Current"
+        unique_id: rc_power_solar_panel_current
+        object_id: rc_power_solar_panel_current
+        state: "{{ states('input_number.rc_mock_power_solar_panel_current') }}"
+        unit_of_measurement: "A"
+
+      - name: "RC Power Solar Efficiency"
+        unique_id: rc_power_solar_efficiency
+        object_id: rc_power_solar_efficiency
+        state: "{{ states('input_number.rc_mock_power_solar_efficiency_pct') }}"
+        unit_of_measurement: "%"
+
+      - name: "RC Power Load Power"
+        unique_id: rc_power_load_power
+        object_id: rc_power_load_power
+        state: "{{ states('input_number.rc_mock_power_load_power') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Load Fridge"
+        unique_id: rc_power_load_fridge_w
+        object_id: rc_power_load_fridge_w
+        state: "{{ states('input_number.rc_mock_power_load_fridge_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Load Lights"
+        unique_id: rc_power_load_lights_w
+        object_id: rc_power_load_lights_w
+        state: "{{ states('input_number.rc_mock_power_load_lights_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Load Heater"
+        unique_id: rc_power_load_heater_w
+        object_id: rc_power_load_heater_w
+        state: "{{ states('input_number.rc_mock_power_load_heater_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Load Water Pump"
+        unique_id: rc_power_load_water_pump_w
+        object_id: rc_power_load_water_pump_w
+        state: "{{ states('input_number.rc_mock_power_load_water_pump_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Load Other"
+        unique_id: rc_power_load_other_w
+        object_id: rc_power_load_other_w
+        state: "{{ states('input_number.rc_mock_power_load_other_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Inverter Status"
+        unique_id: rc_power_inverter_status
+        object_id: rc_power_inverter_status
+        state: "{{ states('input_select.rc_mock_power_inverter_status') }}"
+
+      - name: "RC Power Inverter Output Power"
+        unique_id: rc_power_inverter_output_power_w
+        object_id: rc_power_inverter_output_power_w
+        state: "{{ states('input_number.rc_mock_power_inverter_output_power_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Inverter Output Voltage"
+        unique_id: rc_power_inverter_output_voltage_v
+        object_id: rc_power_inverter_output_voltage_v
+        state: "{{ states('input_number.rc_mock_power_inverter_output_voltage_v') }}"
+        unit_of_measurement: "V"
+
+      - name: "RC Power Inverter Frequency"
+        unique_id: rc_power_inverter_frequency_hz
+        object_id: rc_power_inverter_frequency_hz
+        state: "{{ states('input_number.rc_mock_power_inverter_frequency_hz') }}"
+        unit_of_measurement: "Hz"
+
+      - name: "RC Power Inverter Temperature"
+        unique_id: rc_power_inverter_temperature_c
+        object_id: rc_power_inverter_temperature_c
+        state: "{{ states('input_number.rc_mock_power_inverter_temperature_c') }}"
+        unit_of_measurement: "°C"
+
+      - name: "RC Power Shore Voltage"
+        unique_id: rc_power_shore_voltage_v
+        object_id: rc_power_shore_voltage_v
+        state: "{{ states('input_number.rc_mock_power_shore_voltage_v') }}"
+        unit_of_measurement: "V"
+
+      - name: "RC Power Shore Current"
+        unique_id: rc_power_shore_current_a
+        object_id: rc_power_shore_current_a
+        state: "{{ states('input_number.rc_mock_power_shore_current_a') }}"
+        unit_of_measurement: "A"
+
+      - name: "RC Power Shore Power"
+        unique_id: rc_power_shore_power_w
+        object_id: rc_power_shore_power_w
+        state: "{{ states('input_number.rc_mock_power_shore_power_w') }}"
+        unit_of_measurement: "W"
+
+      - name: "RC Power Alternator Voltage"
+        unique_id: rc_power_alt_voltage_v
+        object_id: rc_power_alt_voltage_v
+        state: "{{ states('input_number.rc_mock_power_alt_voltage_v') }}"
+        unit_of_measurement: "V"
+
+      - name: "RC Power Alternator Current"
+        unique_id: rc_power_alt_current_a
+        object_id: rc_power_alt_current_a
+        state: "{{ states('input_number.rc_mock_power_alt_current_a') }}"
+        unit_of_measurement: "A"
+
+      - name: "RC Power Alternator Power"
+        unique_id: rc_power_alt_power_w
+        object_id: rc_power_alt_power_w
+        state: "{{ states('input_number.rc_mock_power_alt_power_w') }}"
+        unit_of_measurement: "W"
+
+      # NETWORK (contract layer)
+      - name: "RC Net Download"
+        unique_id: rc_net_download
+        object_id: rc_net_download
+        state: "{{ states('input_number.rc_mock_net_download_mbps') }}"
+        unit_of_measurement: "Mbps"
+      - name: "RC Net Upload"
+        unique_id: rc_net_upload
+        object_id: rc_net_upload
+        state: "{{ states('input_number.rc_mock_net_upload_mbps') }}"
+        unit_of_measurement: "Mbps"
+      - name: "RC Net Ping"
+        unique_id: rc_net_ping
+        object_id: rc_net_ping
+        state: "{{ states('input_number.rc_mock_net_ping_ms') }}"
+        unit_of_measurement: "ms"
+
+      - name: "RC Net Jitter"
+        unique_id: rc_net_jitter_ms
+        object_id: rc_net_jitter_ms
+        state: "{{ states('input_number.rc_mock_net_jitter_ms') }}"
+        unit_of_measurement: "ms"
+
+      - name: "RC Net Packet Loss"
+        unique_id: rc_net_packet_loss_pct
+        object_id: rc_net_packet_loss_pct
+        state: "{{ states('input_number.rc_mock_net_packet_loss_pct') }}"
+        unit_of_measurement: "%"
+      - name: "RC Net WAN Status"
+        unique_id: rc_net_wan_status
+        object_id: rc_net_wan_status
+        state: "{{ states('input_select.rc_mock_net_status') }}"
+      - name: "RC Net WAN Source"
+        unique_id: rc_net_wan_source
+        object_id: rc_net_wan_source
+        state: "{{ states('input_select.rc_mock_net_source') }}"
+
+      - name: "RC Net Uptime"
+        unique_id: rc_net_uptime
+        object_id: rc_net_uptime
+        state: "{{ states('input_text.rc_mock_net_uptime') }}"
+
+      - name: "RC Net Last Disconnect"
+        unique_id: rc_net_last_disconnect
+        object_id: rc_net_last_disconnect
+        state: "{{ states('input_text.rc_mock_net_last_disconnect') }}"
+
+      - name: "RC Net Data Today Down"
+        unique_id: rc_net_data_today_down_gb
+        object_id: rc_net_data_today_down_gb
+        state: "{{ states('input_number.rc_mock_net_data_today_down_gb') }}"
+        unit_of_measurement: "GB"
+
+      - name: "RC Net Data Today Up"
+        unique_id: rc_net_data_today_up_gb
+        object_id: rc_net_data_today_up_gb
+        state: "{{ states('input_number.rc_mock_net_data_today_up_gb') }}"
+        unit_of_measurement: "GB"
+
+      - name: "RC Net Data Month Down"
+        unique_id: rc_net_data_month_down_gb
+        object_id: rc_net_data_month_down_gb
+        state: "{{ states('input_number.rc_mock_net_data_month_down_gb') }}"
+        unit_of_measurement: "GB"
+
+      - name: "RC Net Data Month Up"
+        unique_id: rc_net_data_month_up_gb
+        object_id: rc_net_data_month_up_gb
+        state: "{{ states('input_number.rc_mock_net_data_month_up_gb') }}"
+        unit_of_measurement: "GB"
+
+      - name: "RC Net Data Month Limit"
+        unique_id: rc_net_data_month_limit_gb
+        object_id: rc_net_data_month_limit_gb
+        state: "{{ states('input_number.rc_mock_net_data_month_limit_gb') }}"
+        unit_of_measurement: "GB"
+
+      - name: "RC Net Starlink Signal Quality"
+        unique_id: rc_net_starlink_signal_quality_pct
+        object_id: rc_net_starlink_signal_quality_pct
+        state: "{{ states('input_number.rc_mock_net_starlink_signal_quality_pct') }}"
+        unit_of_measurement: "%"
+
+      - name: "RC Net Cellular Signal"
+        unique_id: rc_net_cell_signal_dbm
+        object_id: rc_net_cell_signal_dbm
+        state: "{{ states('input_number.rc_mock_net_cell_signal_dbm') }}"
+        unit_of_measurement: "dBm"
+
+      - name: "RC Net Cellular Bars"
+        unique_id: rc_net_cell_bars
+        object_id: rc_net_cell_bars
+        state: "{{ states('input_number.rc_mock_net_cell_bars') }}"
+
+      - name: "RC Net Cellular Provider"
+        unique_id: rc_net_cell_provider
+        object_id: rc_net_cell_provider
+        state: "{{ states('input_text.rc_mock_net_cell_provider') }}"
+
+      - name: "RC Net Cellular Technology"
+        unique_id: rc_net_cell_technology
+        object_id: rc_net_cell_technology
+        state: "{{ states('input_text.rc_mock_net_cell_technology') }}"
+
+      - name: "RC Net LAN Devices"
+        unique_id: rc_net_lan_devices
+        object_id: rc_net_lan_devices
+        state: "{{ states('input_number.rc_mock_net_lan_devices') }}"
+
+      - name: "RC Net LAN WiFi Clients"
+        unique_id: rc_net_lan_wifi_clients
+        object_id: rc_net_lan_wifi_clients
+        state: "{{ states('input_number.rc_mock_net_lan_wifi_clients') }}"
+
+      - name: "RC Net LAN Ethernet Clients"
+        unique_id: rc_net_lan_ethernet_clients
+        object_id: rc_net_lan_ethernet_clients
+        state: "{{ states('input_number.rc_mock_net_lan_ethernet_clients') }}"
+
+      - name: "RC Net SSID"
+        unique_id: rc_net_ssid
+        object_id: rc_net_ssid
+        state: "{{ states('input_text.rc_mock_net_ssid') }}"
+
+      - name: "RC Net Channel"
+        unique_id: rc_net_channel
+        object_id: rc_net_channel
+        state: "{{ states('input_text.rc_mock_net_channel') }}"
+
+      - name: "RC Net Frequency"
+        unique_id: rc_net_frequency
+        object_id: rc_net_frequency
+        state: "{{ states('input_text.rc_mock_net_frequency') }}"
+
+      - name: "RC Router CPU"
+        unique_id: rc_router_cpu_pct
+        object_id: rc_router_cpu_pct
+        state: "{{ states('input_number.rc_mock_router_cpu_pct') }}"
+        unit_of_measurement: "%"
+
+      - name: "RC Router Memory"
+        unique_id: rc_router_memory_pct
+        object_id: rc_router_memory_pct
+        state: "{{ states('input_number.rc_mock_router_memory_pct') }}"
+        unit_of_measurement: "%"
+
+      - name: "RC Router Temperature"
+        unique_id: rc_router_temperature_c
+        object_id: rc_router_temperature_c
+        state: "{{ states('input_number.rc_mock_router_temperature_c') }}"
+        unit_of_measurement: "°C"
+
+      - name: "RC Router Uptime"
+        unique_id: rc_router_uptime
+        object_id: rc_router_uptime
+        state: "{{ states('input_text.rc_mock_router_uptime') }}"
+
+      - name: "RC Router Firmware"
+        unique_id: rc_router_firmware
+        object_id: rc_router_firmware
+        state: "{{ states('input_text.rc_mock_router_firmware') }}"
+
+      # LEVEL (contract layer)
+      - name: "RC System Level Pitch Deg"
+        unique_id: rc_system_level_pitch_deg
+        object_id: rc_system_level_pitch_deg
+        state: "{{ states('input_number.rc_mock_system_level_pitch_deg') }}"
+        unit_of_measurement: "°"
+      - name: "RC System Level Roll Deg"
+        unique_id: rc_system_level_roll_deg
+        object_id: rc_system_level_roll_deg
+        state: "{{ states('input_number.rc_mock_system_level_roll_deg') }}"
+        unit_of_measurement: "°"
+
+      # MAP / TRIP (contract layer)
+      - name: "RC Map Location"
+        unique_id: rc_map_location
+        object_id: rc_map_location
+        state: "{{ states('input_text.rc_mock_map_location') }}"
+      - name: "RC Map Elevation M"
+        unique_id: rc_map_elevation_m
+        object_id: rc_map_elevation_m
+        state: "{{ states('input_number.rc_mock_map_elevation_m') }}"
+        unit_of_measurement: "m"
+
+      - name: "RC Trip Segments"
+        unique_id: rc_trip_segments
+        object_id: rc_trip_segments
+        state: "{{ states('input_number.rc_mock_trip_segments') }}"
+
+      - name: "RC Trip Stops"
+        unique_id: rc_trip_stops
+        object_id: rc_trip_stops
+        state: "{{ states('input_number.rc_mock_trip_stops') }}"
+      - name: "RC Trip Distance Today Mi"
+        unique_id: rc_trip_distance_today_mi
+        object_id: rc_trip_distance_today_mi
+        state: "{{ states('input_number.rc_mock_trip_distance_today_mi') }}"
+        unit_of_measurement: "mi"
+      - name: "RC Trip Distance Total Mi"
+        unique_id: rc_trip_distance_total_mi
+        object_id: rc_trip_distance_total_mi
+        state: "{{ states('input_number.rc_mock_trip_distance_total_mi') }}"
+        unit_of_measurement: "mi"
+      - name: "RC Trip Time Today"
+        unique_id: rc_trip_time_today
+        object_id: rc_trip_time_today
+        state: "{{ states('input_text.rc_mock_trip_time_today') }}"
+      - name: "RC Trip Time Total"
+        unique_id: rc_trip_time_total
+        object_id: rc_trip_time_total
+        state: "{{ states('input_text.rc_mock_trip_time_total') }}"
+
+  - binary_sensor:
+      - name: "RC Power Shore Connected"
+        unique_id: rc_power_shore_connected
+        object_id: rc_power_shore_connected
+        state: "{{ is_state('input_boolean.rc_mock_power_shore_connected','on') }}"

@@ -1,0 +1,66 @@
+# RoamCore contract entities: Location subsystem (stubs)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+
+template:
+  - sensor:
+      - name: "RC Location Lat"
+        unique_id: rc_location_lat
+        state: "unknown"
+
+      - name: "RC Location Lon"
+        unique_id: rc_location_lon
+        state: "unknown"
+
+      - name: "RC Location Accuracy"
+        unique_id: rc_location_accuracy_m
+        unit_of_measurement: "m"
+        state: "unknown"
+
+      - name: "RC Location Source"
+        unique_id: rc_location_source
+        state: "unknown"
+
+      # Map / trip summary (mock)
+      - name: "RC Map Location"
+        unique_id: rc_map_location
+        state: >-
+          {{ states('input_text.rc_mock_map_location') }}
+
+      - name: "RC Map Elevation"
+        unique_id: rc_map_elevation_m
+        unit_of_measurement: "m"
+        state: >-
+          {{ states('input_number.rc_mock_map_elevation_m') }}
+
+      - name: "RC Trip Distance Today"
+        unique_id: rc_trip_distance_today_mi
+        unit_of_measurement: "mi"
+        state: >-
+          {{ states('input_number.rc_mock_trip_distance_today_mi') }}
+
+      - name: "RC Trip Distance Total"
+        unique_id: rc_trip_distance_total_mi
+        unit_of_measurement: "mi"
+        state: >-
+          {{ states('input_number.rc_mock_trip_distance_total_mi') }}
+
+      - name: "RC Trip Time Today"
+        unique_id: rc_trip_time_today
+        state: >-
+          {{ states('input_text.rc_mock_trip_time_today') }}
+
+      - name: "RC Trip Time Total"
+        unique_id: rc_trip_time_total
+        state: >-
+          {{ states('input_text.rc_mock_trip_time_total') }}
+
+      - name: "RC Trip Segments"
+        unique_id: rc_trip_segments
+        state: >-
+          {{ states('input_number.rc_mock_trip_segments') }}
+
+      - name: "RC Trip Stops"
+        unique_id: rc_trip_stops
+        state: >-
+          {{ states('input_number.rc_mock_trip_stops') }}

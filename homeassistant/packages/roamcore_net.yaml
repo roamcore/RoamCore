@@ -1,0 +1,171 @@
+# RoamCore contract entities: Networking subsystem (MVP)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+
+template:
+  - sensor:
+      - name: "RC Net WAN Status"
+        unique_id: rc_net_wan_status
+        state: >-
+          {{ states("input_select.rc_mock_net_status") }}
+
+      - name: "RC Net WAN Source"
+        unique_id: rc_net_wan_source
+        state: >-
+          {{ states("input_select.rc_mock_net_source") }}
+
+      - name: "RC Net Download"
+        unique_id: rc_net_download_mbps
+        unit_of_measurement: "Mbps"
+        state: >-
+          {{ states("input_number.rc_mock_net_download_mbps") }}
+
+      - name: "RC Net Upload"
+        unique_id: rc_net_upload_mbps
+        unit_of_measurement: "Mbps"
+        state: >-
+          {{ states("input_number.rc_mock_net_upload_mbps") }}
+
+      - name: "RC Net Ping"
+        unique_id: rc_net_ping_ms
+        unit_of_measurement: "ms"
+        state: >-
+          {{ states("input_number.rc_mock_net_ping_ms") }}
+
+      - name: "RC Net Jitter"
+        unique_id: rc_net_jitter_ms
+        unit_of_measurement: "ms"
+        state: >-
+          {{ states("input_number.rc_mock_net_jitter_ms") }}
+
+      - name: "RC Net Packet Loss"
+        unique_id: rc_net_packet_loss_pct
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_net_packet_loss_pct") }}
+
+      - name: "RC Net Uptime"
+        unique_id: rc_net_uptime
+        state: >-
+          {{ states("input_text.rc_mock_net_uptime") }}
+
+      - name: "RC Net Last Disconnect"
+        unique_id: rc_net_last_disconnect
+        state: >-
+          {{ states("input_text.rc_mock_net_last_disconnect") }}
+
+      - name: "RC Net Data Today Down"
+        unique_id: rc_net_data_today_down_gb
+        unit_of_measurement: "GB"
+        state: >-
+          {{ states("input_number.rc_mock_net_data_today_down_gb") }}
+
+      - name: "RC Net Data Today Up"
+        unique_id: rc_net_data_today_up_gb
+        unit_of_measurement: "GB"
+        state: >-
+          {{ states("input_number.rc_mock_net_data_today_up_gb") }}
+
+      - name: "RC Net Data Month Down"
+        unique_id: rc_net_data_month_down_gb
+        unit_of_measurement: "GB"
+        state: >-
+          {{ states("input_number.rc_mock_net_data_month_down_gb") }}
+
+      - name: "RC Net Data Month Up"
+        unique_id: rc_net_data_month_up_gb
+        unit_of_measurement: "GB"
+        state: >-
+          {{ states("input_number.rc_mock_net_data_month_up_gb") }}
+
+      - name: "RC Net Data Month Limit"
+        unique_id: rc_net_data_month_limit_gb
+        unit_of_measurement: "GB"
+        state: >-
+          {{ states("input_number.rc_mock_net_data_month_limit_gb") }}
+
+      - name: "RC Net Starlink Signal Quality"
+        unique_id: rc_net_starlink_signal_quality_pct
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_net_starlink_signal_quality_pct") }}
+
+      - name: "RC Net Cellular Provider"
+        unique_id: rc_net_cell_provider
+        state: >-
+          {{ states("input_text.rc_mock_net_cell_provider") }}
+
+      - name: "RC Net Cellular Technology"
+        unique_id: rc_net_cell_technology
+        state: >-
+          {{ states("input_text.rc_mock_net_cell_technology") }}
+
+      - name: "RC Net Cellular Signal"
+        unique_id: rc_net_cell_signal_dbm
+        unit_of_measurement: "dBm"
+        state: >-
+          {{ states("input_number.rc_mock_net_cell_signal_dbm") }}
+
+      - name: "RC Net LAN Devices"
+        unique_id: rc_net_lan_devices
+        state: >-
+          {{ states("input_number.rc_mock_net_lan_devices") }}
+
+      - name: "RC Net LAN WiFi Clients"
+        unique_id: rc_net_lan_wifi_clients
+        state: >-
+          {{ states("input_number.rc_mock_net_lan_wifi_clients") }}
+
+      - name: "RC Net LAN Ethernet Clients"
+        unique_id: rc_net_lan_ethernet_clients
+        state: >-
+          {{ states("input_number.rc_mock_net_lan_ethernet_clients") }}
+
+      - name: "RC Net SSID"
+        unique_id: rc_net_ssid
+        state: >-
+          {{ states("input_text.rc_mock_net_ssid") }}
+
+      - name: "RC Net Channel"
+        unique_id: rc_net_channel
+        state: >-
+          {{ states("input_text.rc_mock_net_channel") }}
+
+      - name: "RC Net Frequency"
+        unique_id: rc_net_frequency
+        state: >-
+          {{ states("input_text.rc_mock_net_frequency") }}
+
+      - name: "RC Router CPU"
+        unique_id: rc_router_cpu_pct
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_router_cpu_pct") }}
+
+      - name: "RC Router Memory"
+        unique_id: rc_router_memory_pct
+        unit_of_measurement: "%"
+        state: >-
+          {{ states("input_number.rc_mock_router_memory_pct") }}
+
+      - name: "RC Router Temperature"
+        unique_id: rc_router_temperature_c
+        unit_of_measurement: "°C"
+        state: >-
+          {{ states("input_number.rc_mock_router_temperature_c") }}
+
+      - name: "RC Router Uptime"
+        unique_id: rc_router_uptime
+        state: >-
+          {{ states("input_text.rc_mock_router_uptime") }}
+
+      - name: "RC Router Firmware"
+        unique_id: rc_router_firmware
+        state: >-
+          {{ states("input_text.rc_mock_router_firmware") }}
+
+  - binary_sensor:
+      - name: "RC Net Internet Reachable"
+        unique_id: rc_net_internet_reachable
+        state: >-
+          {{ true if states("input_select.rc_mock_net_status") in ["good","ok"] else false }}

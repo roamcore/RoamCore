@@ -1,0 +1,20 @@
+# RoamCore contract entities: Weather + Time (stubs)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+
+template:
+  - sensor:
+      - name: "RC Weather Temperature"
+        unique_id: rc_weather_temp_c
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state: "unknown"
+
+      - name: "RC Weather Condition"
+        unique_id: rc_weather_condition
+        state: "unknown"
+
+      - name: "RC Time Local"
+        unique_id: rc_time_local
+        state: >-
+          {{ now().strftime(%Y-%m-%d %H:%M) }}
