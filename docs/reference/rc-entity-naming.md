@@ -8,7 +8,8 @@ To keep the UI stable and avoid dashboards/automations breaking when the underly
 - The **frontend** (dashboards, cards, automations, scripts) should reference **only** these contract entities.
 - Vendor- or device-specific entities are mapped into the contract layer by translation logic (templates/helpers/custom integrations).
 
-This document defines **how RoamCore names contract entities**. It intentionally does **not** prescribe the full list of entities.
+This document defines **how RoamCore names contract entities**. It intentionally does **not** prescribe the full list of entities.  
+This full list can be found elsewhere in the repo. 
 
 ---
 
