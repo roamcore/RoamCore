@@ -1,0 +1,41 @@
+{
+  "name": "RoamCore Victron Auto (DEV)",
+  "slug": "roamcore_victron_auto_dev",
+  "description": "Auto-discovery Victron GX/Venus MQTT → vt_* entities via MQTT Discovery (DEV)",
+  "version": "0.1.0",
+  "startup": "services",
+  "boot": "auto",
+  "init": false,
+  "arch": ["amd64"],
+  "ingress": false,
+  "host_network": true,
+  "hassio_api": true,
+  "homeassistant_api": false,
+  "map": ["config:rw"],
+  "options": {
+    "scan_interval_sec": 15,
+    "mqtt_connect_timeout_sec": 10,
+    "victron_mqtt_port": 1883,
+    "victron_mqtt_port_tls": 8883,
+    "prefer_mdns": true,
+    "prefer_venus_local": true,
+    "publish_discovery": true,
+    "discovery_prefix": "homeassistant",
+    "device_name": "RoamCore Victron System",
+    "device_id": "roamcore-victron",
+    "log_level": "info"
+  },
+  "schema": {
+    "scan_interval_sec": "int(5,300)",
+    "mqtt_connect_timeout_sec": "int(3,60)",
+    "victron_mqtt_port": "int(1,65535)",
+    "victron_mqtt_port_tls": "int(1,65535)",
+    "prefer_mdns": "bool",
+    "prefer_venus_local": "bool",
+    "publish_discovery": "bool",
+    "discovery_prefix": "str",
+    "device_name": "str",
+    "device_id": "str",
+    "log_level": "list(trace|debug|info|warn|error)"
+  }
+}
