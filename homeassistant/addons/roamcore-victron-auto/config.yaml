@@ -17,14 +17,9 @@ map:
 options:
   scan_interval_sec: 15
   mqtt_connect_timeout_sec: 10
-  victron_host: null
   victron_mqtt_port: 1883
   victron_mqtt_port_tls: 8883
   victron_use_tls: false
-  victron_portal_id: null
-  victron_username: null
-  victron_password: null
-  victron_tls_ca_file: null
   victron_tls_insecure: true
   keepalive_use_echo: true
   full_snapshot_interval_sec: 0
