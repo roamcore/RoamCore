@@ -3,8 +3,8 @@
 #   RoamCore/docs/reference/rc-entity-naming.md
 #
 # Strategy:
-# - Prefer Victron vendor entities (vt_*) when available.
-# - Fall back to existing dev mocks (input_* / template) when vt_* unavailable.
+# - Mirror Victron vendor entities (vt_*) into RoamCore contract entities (rc_*).
+# - Keep this layer thin so we can swap upstream data sources without changing UIs.
 
 template:
   - sensor:
@@ -12,66 +12,50 @@ template:
         unique_id: rc_power_battery_soc
         unit_of_measurement: "%"
         state: >-
-          {% set v = states('sensor.vt_power_battery_soc') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
-          {% else %}
-            {{ states('sensor.rc_power_battery_soc') }}
-          {% endif %}
+          {{ states('sensor.vt_battery_soc_percent') }}
 
       - name: "RC Power Battery Voltage"
         unique_id: rc_power_battery_voltage
         unit_of_measurement: "V"
         state: >-
-          {% set v = states('sensor.vt_power_battery_voltage') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
-          {% else %}
-            {{ states('sensor.rc_power_battery_voltage') }}
-          {% endif %}
+          {{ states('sensor.vt_battery_voltage_v') }}
 
       - name: "RC Power Battery Current"
         unique_id: rc_power_battery_current
         unit_of_measurement: "A"
         state: >-
-          {% set v = states('sensor.vt_power_battery_current') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
-          {% else %}
-            {{ states('sensor.rc_power_battery_current') }}
-          {% endif %}
+          {{ states('sensor.vt_battery_current_a') }}
 
       - name: "RC Power Solar Power"
         unique_id: rc_power_solar_power
         unit_of_measurement: "W"
         device_class: power
         state: >-
-          {% set v = states('sensor.vt_power_solar_power') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
-          {% else %}
-            {{ states('sensor.rc_power_solar_power') }}
-          {% endif %}
+          {{ states('sensor.vt_solar_power_w') }}
 
       - name: "RC Power Load Power"
         unique_id: rc_power_load_power
         unit_of_measurement: "W"
         device_class: power
         state: >-
-          {% set v = states('sensor.vt_power_load_power') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
-          {% else %}
-            {{ states('sensor.rc_power_load_power') }}
-          {% endif %}
+          {{ states('sensor.vt_dc_load_power_w') }}
+
+      - name: "RC Power AC In Power"
+        unique_id: rc_power_ac_in_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {{ states('sensor.vt_ac_in_power_w') }}
+
+      - name: "RC Power AC Out Power"
+        unique_id: rc_power_ac_out_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {{ states('sensor.vt_ac_out_power_w') }}
 
   - binary_sensor:
       - name: "RC Power Shore Connected"
         unique_id: rc_power_shore_connected
         state: >-
-          {% set v = states('binary_sensor.vt_power_shore_connected') %}
-          {% if v in ['on','off'] %}
-            {{ true if v == 'on' else false }}
-          {% else %}
-            {{ is_state('binary_sensor.rc_power_shore_connected', 'on') }}
-          {% endif %}
+          {{ is_state('binary_sensor.vt_shore_connected', 'on') }}
