@@ -273,6 +273,13 @@ class VictronAuto:
         # Connect to HA MQTT broker (Supervisor add-on)
         await self._connect_ha_mqtt()
 
+        # Publish basic discovery immediately so users see entities without waiting
+        # for the periodic discovery tick.
+        if self.publish_discovery and self._ha_client:
+            LOG.info("Publishing initial MQTT discovery configs")
+            self._publish_discovery_skeleton()
+            self._last_discovery_publish = time.time()
+
         while True:
             try:
                 await self._tick()
@@ -929,6 +936,8 @@ class VictronAuto:
     def _publish_discovery_skeleton(self):
         if not self._ha_client:
             return
+
+        LOG.info("Publishing discovery skeleton")
 
         # Minimal placeholder entity to show add-on is alive
         uniq = f"{self.device_id}_status"
