@@ -43,26 +43,46 @@ def main():
     client.connect(host, port, keepalive=30)
     client.loop_start()
 
+    def j(v):
+        # Venus dbus-flashmq notifications are JSON objects (usually {"value": ...}).
+        return json.dumps({"value": v})
+
     # Minimal subset of Venus-style topics used by roamcore-victron-auto mapping.
     # These are *mock* values for dev only.
     topics = {
-        f"N/{portal_id}/system/0/Serial": "MOCKSERIAL",
-        f"N/{portal_id}/system/0/Model": "Cerbo GX (mock)",
-        f"N/{portal_id}/system/0/FirmwareVersion": "v3.40~mock",
-        f"N/{portal_id}/system/0/TimeZone": "UTC",
-        f"N/{portal_id}/system/0/State": "1",
+        # Identity-ish
+        f"N/{portal_id}/system/0/Serial": j("MOCKSERIAL"),
+        f"N/{portal_id}/system/0/Model": j("Cerbo GX (mock)"),
+        f"N/{portal_id}/system/0/FirmwareVersion": j("v3.40~mock"),
+        f"N/{portal_id}/system/0/TimeZone": j("UTC"),
+        f"N/{portal_id}/system/0/State": j(1),
+
+        # system → vt_* direct mapping examples
+        f"N/{portal_id}/system/0/Dc/Battery/Voltage": j(52.3),
+        f"N/{portal_id}/system/0/Dc/Battery/Current": j(-12.4),
+        f"N/{portal_id}/system/0/Dc/Battery/Power": j(-650.0),
+        f"N/{portal_id}/system/0/Soc": j(78.0),
+        f"N/{portal_id}/system/0/Dc/Pv/Power": j(1230.0),
+        f"N/{portal_id}/system/0/Dc/System/Power": j(410.0),
+
+        # Multi-instance aggregates (VE.Bus + solarcharger)
+        f"N/{portal_id}/vebus/0/Ac/ActiveIn/P": j(980.0),
+        f"N/{portal_id}/vebus/0/Ac/Out/P": j(740.0),
+        f"N/{portal_id}/vebus/0/Ac/ActiveIn/Connected": j(1),
+        f"N/{portal_id}/solarcharger/0/Yield/Power": j(1200.0),
+
         # Example device instance discovery signal
-        f"N/{portal_id}/vebus/0/ProductId": "0xA381",
-        f"N/{portal_id}/solarcharger/0/ProductId": "0xA042",
+        f"N/{portal_id}/vebus/0/ProductId": j("0xA381"),
+        f"N/{portal_id}/solarcharger/0/ProductId": j("0xA042"),
     }
 
     while True:
         now = time.time()
         # Add a changing value so it's obvious the mock is alive.
-        topics[f"N/{portal_id}/system/0/Uptime"] = str(int(now))
+        topics[f"N/{portal_id}/system/0/Uptime"] = j(int(now))
 
-        for t, v in topics.items():
-            client.publish(t, payload=str(v), qos=0, retain=retain)
+        for t, payload in topics.items():
+            client.publish(t, payload=payload, qos=0, retain=retain)
         time.sleep(interval)
 
 
