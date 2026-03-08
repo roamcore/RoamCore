@@ -824,9 +824,15 @@ class VictronAuto:
                 ac_in_total = sum(self._vebus_ac_in_w.values()) if self._vebus_ac_in_w else None
                 ac_out_total = sum(self._vebus_ac_out_w.values()) if self._vebus_ac_out_w else None
                 shore_any = any(self._vebus_shore_connected.values()) if self._vebus_shore_connected else None
-                self._publish_aggregate("ac_in_power", ac_in_total)
-                self._publish_aggregate("ac_out_power", ac_out_total)
-                self._publish_aggregate("shore_connected", shore_any)
+
+                # Only publish aggregates once we have a value; avoid publishing empty/false
+                # placeholders during startup ordering differences.
+                if ac_in_total is not None:
+                    self._publish_aggregate("ac_in_power", ac_in_total)
+                if ac_out_total is not None:
+                    self._publish_aggregate("ac_out_power", ac_out_total)
+                if shore_any is not None:
+                    self._publish_aggregate("shore_connected", shore_any)
 
         # Solar chargers: sum Yield/Power
         if service_type == "solarcharger" and dbus_path == "Yield/Power":
