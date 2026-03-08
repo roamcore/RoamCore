@@ -414,11 +414,37 @@ class VictronAuto:
             return False
 
     async def _connect_ha_mqtt(self):
-        # Use Supervisor MQTT service env vars if present (Mosquitto add-on typically exposes these)
-        host = os.environ.get("MQTT_HOST") or os.environ.get("SUPERVISOR_MQTT_HOST") or "core-mosquitto"
-        port = int(os.environ.get("MQTT_PORT") or os.environ.get("SUPERVISOR_MQTT_PORT") or "1883")
-        user = os.environ.get("MQTT_USERNAME") or os.environ.get("SUPERVISOR_MQTT_USERNAME")
-        pw = os.environ.get("MQTT_PASSWORD") or os.environ.get("SUPERVISOR_MQTT_PASSWORD")
+        # Preferred: ask Supervisor for the configured MQTT service (host/port/user/pass).
+        # Endpoint: http://supervisor/services/mqtt (requires SUPERVISOR_TOKEN)
+        host = None
+        port = None
+        user = None
+        pw = None
+        try:
+            sup_token = os.environ.get("SUPERVISOR_TOKEN")
+            if sup_token:
+                import urllib.request
+
+                req = urllib.request.Request(
+                    "http://supervisor/services/mqtt",
+                    headers={"Authorization": f"Bearer {sup_token}"},
+                )
+                raw = urllib.request.urlopen(req, timeout=5).read().decode("utf-8")
+                obj = json.loads(raw)
+                data = obj.get("data") or {}
+                host = data.get("host")
+                port = int(data.get("port")) if data.get("port") else None
+                user = data.get("username")
+                pw = data.get("password")
+                LOG.info("Supervisor MQTT service: host=%s port=%s user=%s", host, port, bool(user))
+        except Exception:
+            LOG.exception("Failed to query Supervisor MQTT service; falling back")
+
+        # Fallbacks (some environments export these)
+        host = host or os.environ.get("MQTT_HOST") or os.environ.get("SUPERVISOR_MQTT_HOST") or "core-mosquitto"
+        port = port or int(os.environ.get("MQTT_PORT") or os.environ.get("SUPERVISOR_MQTT_PORT") or "1883")
+        user = user or os.environ.get("MQTT_USERNAME") or os.environ.get("SUPERVISOR_MQTT_USERNAME")
+        pw = pw or os.environ.get("MQTT_PASSWORD") or os.environ.get("SUPERVISOR_MQTT_PASSWORD")
 
         # paho-mqtt 2.x: pin callback API version to avoid future-breaking defaults.
         client = mqtt.Client(
