@@ -1,0 +1,26 @@
+name: RoamCore Victron Mock (DEV)
+slug: roamcore_victron_mock_dev
+description: "Development-only: publish mock Victron Venus MQTT topics into HA Mosquitto"
+version: 0.1.0
+startup: services
+boot: manual
+init: false
+arch:
+  - amd64
+ingress: false
+host_network: false
+hassio_api: true
+auth_api: true
+homeassistant_api: false
+services:
+  - mqtt:need
+options:
+  portal_id: "mock-portal"
+  publish_interval_sec: 5
+  retain: true
+  log_level: info
+schema:
+  portal_id: str
+  publish_interval_sec: int(1,300)
+  retain: bool
+  log_level: list(trace|debug|info|warn|error)
