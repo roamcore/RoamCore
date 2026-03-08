@@ -11,6 +11,13 @@ COPY requirements.txt ./
 # we can safely install into the system site-packages.
 RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 
-COPY src/ ./src/
+# Force cache bust by echoing BUILD_VERSION (which changes with version bumps)
+ARG BUILD_VERSION=dev
+RUN echo "Building version: ${BUILD_VERSION}"
 
-CMD ["python3", "-m", "src.main"]
+COPY src/ ./src/
+COPY run.sh /
+
+RUN chmod a+x /run.sh
+
+CMD ["/run.sh"]

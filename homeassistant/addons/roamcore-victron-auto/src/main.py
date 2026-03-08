@@ -421,7 +421,11 @@ class VictronAuto:
         user = None
         pw = None
         try:
+            # Debug: list relevant env vars
+            sup_vars = {k: v[:20]+"..." if len(v) > 20 else v for k, v in os.environ.items() if "SUPER" in k.upper() or "HASSIO" in k.upper() or "MQTT" in k.upper()}
+            LOG.info("Supervisor/MQTT env vars: %s", sup_vars)
             sup_token = os.environ.get("SUPERVISOR_TOKEN")
+            LOG.info("SUPERVISOR_TOKEN present: %s", bool(sup_token))
             if sup_token:
                 import urllib.request
 
