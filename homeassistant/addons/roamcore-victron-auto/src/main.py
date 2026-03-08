@@ -742,6 +742,16 @@ class VictronAuto:
 
         self._ha_client.publish(state_topic, payload=payload, retain=True)
 
+        # Dev-friendly: log the first publish per vt_key to confirm mapping is alive.
+        try:
+            if not hasattr(self, "_logged_vt_keys"):
+                self._logged_vt_keys = set()
+            if vt_key not in self._logged_vt_keys:
+                self._logged_vt_keys.add(vt_key)
+                LOG.info("Published %s=%s", vt_key, payload)
+        except Exception:
+            pass
+
     def _ensure_discovery_for_meta(self, meta: dict[str, Any], vt_key: str, device_instance: str) -> None:
         if not self._ha_client:
             return
