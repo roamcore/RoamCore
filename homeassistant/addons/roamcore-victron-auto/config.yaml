@@ -8,7 +8,9 @@ boot: auto
 init: false
 arch:
 - amd64
-ingress: false
+ingress: true
+ingress_port: 8099
+ingress_entry: "/"
 host_network: true
 hassio_api: true
 homeassistant_api: true

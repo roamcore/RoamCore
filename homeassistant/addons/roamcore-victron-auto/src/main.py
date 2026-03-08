@@ -4,9 +4,12 @@ import logging
 import os
 import socket
 import ssl
+import threading
 import time
 from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import paho.mqtt.client as mqtt
 from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
@@ -265,6 +268,13 @@ class VictronAuto:
         self.devices_sensor_max = int(opts.get("devices_sensor_max", 50))
 
     async def run(self):
+        # Start lightweight local HTTP API for the UI "Connect Victron" flow.
+        # Intended to be exposed via add-on ingress.
+        try:
+            self._start_http_api()
+        except Exception:
+            LOG.exception("Failed to start HTTP API")
+
         # Start mDNS browse
         if self.prefer_mdns:
             self._zc = Zeroconf()
@@ -286,6 +296,74 @@ class VictronAuto:
             except Exception:
                 LOG.exception("tick failed")
             await asyncio.sleep(self.scan_interval)
+
+    def _start_http_api(self) -> None:
+        parent = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def _json(self, code: int, obj: dict[str, Any]):
+                raw = json.dumps(obj).encode("utf-8")
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+            def do_GET(self):
+                p = urlparse(self.path)
+                if p.path in ("/health", "/api/v1/health"):
+                    return self._json(200, {"ok": True})
+
+                if p.path in ("/api/v1/victron/discover", "/api/v1/discover"):
+                    # MVP stub: return current best-known candidates from mdns + venus.local probe.
+                    candidates: list[dict[str, Any]] = []
+
+                    try:
+                        for tgt in list(getattr(parent._mdns_listener, "candidates", {}).values()):
+                            candidates.append(
+                                {
+                                    "name": tgt.source,
+                                    "host": tgt.host,
+                                    "port": tgt.port,
+                                    "source": tgt.source,
+                                }
+                            )
+                    except Exception:
+                        pass
+
+                    try:
+                        ip = parent._resolve("venus.local")
+                        if ip:
+                            candidates.append(
+                                {
+                                    "name": "venus.local",
+                                    "host": "venus.local",
+                                    "ip": ip,
+                                    "port": 1883,
+                                    "source": "dns:venus.local",
+                                }
+                            )
+                    except Exception:
+                        pass
+
+                    # De-dupe
+                    uniq: dict[tuple[str, int], dict[str, Any]] = {}
+                    for c in candidates:
+                        host = str(c.get("host") or c.get("ip") or "")
+                        port = int(c.get("port") or 1883)
+                        if host:
+                            uniq[(host, port)] = c
+                    return self._json(200, {"candidates": list(uniq.values())})
+
+                return self._json(404, {"error": "not_found"})
+
+            def log_message(self, fmt: str, *args):
+                return
+
+        server = HTTPServer(("0.0.0.0", 8099), Handler)
+        t = threading.Thread(target=server.serve_forever, name="http-api", daemon=True)
+        t.start()
+        LOG.info("HTTP API listening on :8099")
 
     def _on_mdns(self, zc: Zeroconf, type_: str, name: str, state_change: ServiceStateChange):
         if state_change is ServiceStateChange.Added:
