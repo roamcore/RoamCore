@@ -479,6 +479,11 @@ class VictronAuto:
         # Best-effort wait for connection
         await asyncio.sleep(1)
         self._ha_client = client
+        # Save HA MQTT connection info (useful for dev mocks / fallback auth)
+        self._ha_mqtt_host = host
+        self._ha_mqtt_port = port
+        self._ha_mqtt_user = user
+        self._ha_mqtt_pw = pw
 
         # publish availability online
         self._ha_client.publish(f"roamcore/victron/{self.device_id}/availability", payload="online", retain=True)
@@ -501,6 +506,22 @@ class VictronAuto:
         )
         if self.victron_username:
             client.username_pw_set(str(self.victron_username), str(self.victron_password or ""))
+        else:
+            # Dev-friendly fallback: if the Victron target is the same broker as HA MQTT
+            # (e.g. when using a mock publisher on core-mosquitto), reuse the HA MQTT
+            # service credentials so we can subscribe.
+            try:
+                if (
+                    getattr(self, "_ha_mqtt_host", None)
+                    and getattr(self, "_ha_mqtt_port", None)
+                    and self._victron.host == self._ha_mqtt_host
+                    and self._victron.port == self._ha_mqtt_port
+                    and getattr(self, "_ha_mqtt_user", None)
+                ):
+                    client.username_pw_set(str(self._ha_mqtt_user), str(getattr(self, "_ha_mqtt_pw", "") or ""))
+                    LOG.info("Using HA MQTT service credentials for Victron MQTT connection")
+            except Exception:
+                LOG.exception("Failed to apply HA MQTT credential fallback for Victron MQTT")
 
         if self.victron_use_tls:
             ctx = ssl.create_default_context()
