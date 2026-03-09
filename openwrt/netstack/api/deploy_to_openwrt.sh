@@ -118,8 +118,17 @@ remote "uci -q delete firewall.roamcore_api_allow || true; \
   uci set firewall.roamcore_api_allow.dest_port='${API_PORT}'; \
   uci set firewall.roamcore_api_allow.proto='tcp'; \
   uci set firewall.roamcore_api_allow.target='ACCEPT'; \
-  uci commit firewall; \
-  /etc/init.d/firewall restart"
+  uci commit firewall"
+
+step "Apply firewall rule (restart if possible; fallback to iptables rule)"
+# Some deployments may not have fw4/nftables fully supported; in that case we
+# fall back to a persistent iptables rule in /etc/firewall.user.
+remote "set -e; \
+  /etc/init.d/firewall restart >/dev/null 2>&1 && echo 'firewall:restarted' && exit 0; \
+  echo 'firewall:restart_failed_falling_back_to_iptables'; \
+  RULE=\"iptables -I INPUT -p tcp --dport ${API_PORT} -j ACCEPT\"; \
+  grep -qs \"--dport ${API_PORT}\" /etc/firewall.user 2>/dev/null || echo \"$RULE\" >> /etc/firewall.user; \
+  sh -c \"$RULE\" 2>/dev/null || true"
 
 step "Restart service"
 remote "/etc/init.d/roamcore-api restart || /etc/init.d/roamcore-api start"
