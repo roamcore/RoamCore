@@ -131,6 +131,10 @@ class VictronAuto:
         # These are sent as read requests: R/<portal id>/<suffix>
         self.startup_read_requests: list[str] = list(opts.get("startup_read_requests", []) or [])
 
+        # HA MQTT credentials fallback (when Supervisor MQTT service is not enabled)
+        self.ha_mqtt_username = opts.get("ha_mqtt_username")
+        self.ha_mqtt_password = opts.get("ha_mqtt_password")
+
         self.publish_discovery = bool(opts.get("publish_discovery", True))
         self.publish_devices_sensor = bool(opts.get("publish_devices_sensor", True))
         self.discovery_prefix = str(opts.get("discovery_prefix", "homeassistant"))
@@ -280,7 +284,7 @@ class VictronAuto:
             self._zc = Zeroconf()
             ServiceBrowser(self._zc, "_mqtt._tcp.local.", handlers=[self._on_mdns])
 
-        # Connect to HA MQTT broker (Supervisor add-on)
+        # Connect to HA MQTT broker (typically Mosquitto add-on)
         await self._connect_ha_mqtt()
 
         # Publish basic discovery immediately so users see entities without waiting
@@ -801,6 +805,10 @@ discover();
         port = port or int(os.environ.get("MQTT_PORT") or os.environ.get("SUPERVISOR_MQTT_PORT") or "1883")
         user = user or os.environ.get("MQTT_USERNAME") or os.environ.get("SUPERVISOR_MQTT_USERNAME")
         pw = pw or os.environ.get("MQTT_PASSWORD") or os.environ.get("SUPERVISOR_MQTT_PASSWORD")
+
+        # Explicit add-on option fallback (useful when Supervisor MQTT service is not enabled)
+        user = user or (str(self.ha_mqtt_username) if self.ha_mqtt_username else None)
+        pw = pw or (str(self.ha_mqtt_password) if self.ha_mqtt_password else None)
 
         # paho-mqtt 2.x: pin callback API version to avoid future-breaking defaults.
         client = mqtt.Client(

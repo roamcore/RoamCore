@@ -2,7 +2,7 @@ name: RoamCore Victron Auto (DEV)
 slug: roamcore_victron_auto_dev
 description: "Auto-discovery Victron GX/Venus MQTT \u2192 vt_* entities via MQTT Discovery\
   \ (DEV)"
-version: 0.1.7
+version: 0.1.8
 startup: services
 boot: auto
 init: false
@@ -39,6 +39,9 @@ options:
 schema:
   scan_interval_sec: int(5,300)
   mqtt_connect_timeout_sec: int(3,60)
+  # Optional explicit HA MQTT creds (when Supervisor MQTT service is not enabled)
+  ha_mqtt_username: str?
+  ha_mqtt_password: password?
   victron_host: str?
   victron_mqtt_port: int(1,65535)
   victron_mqtt_port_tls: int(1,65535)
