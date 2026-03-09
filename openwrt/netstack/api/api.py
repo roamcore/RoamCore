@@ -226,6 +226,9 @@ class Handler(BaseHTTPRequestHandler):
             reg = sys.get("registration")
             if reg:
                 out["registration"] = reg
+            tech = sys.get("radio_interface") or sys.get("radio_interfaces")
+            if tech:
+                out["technology"] = tech
         return out
 
     def do_GET(self) -> None:
@@ -252,16 +255,27 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     return ""
 
+            def gateway(x: dict[str, Any]) -> str:
+                try:
+                    for r in x.get("route", []) or []:
+                        if r.get("target") == "0.0.0.0" and r.get("mask") == 0:
+                            return str(r.get("nexthop") or "")
+                except Exception:
+                    pass
+                return ""
+
             obj = {
                 "starlink": {
                     "state": "online" if st.get("up") else "offline",
                     "ipv4": ipv4_addr(st),
+                    "gateway": gateway(st),
                     "rx_bytes": self._sysfs_counter(devs["starlink"], "rx_bytes"),
                     "tx_bytes": self._sysfs_counter(devs["starlink"], "tx_bytes"),
                 },
                 "lte": {
                     "state": "online" if lte.get("up") else "offline",
                     "ipv4": ipv4_addr(lte),
+                    "gateway": gateway(lte),
                     "rx_bytes": self._sysfs_counter(devs["lte"], "rx_bytes"),
                     "tx_bytes": self._sysfs_counter(devs["lte"], "tx_bytes"),
                 },
@@ -283,6 +297,7 @@ class Handler(BaseHTTPRequestHandler):
                     ma = int(line.split()[1])
             used = max(mt - ma, 0)
             obj = {
+                "cpu_percent": round(cpu_percent_sample(), 1),
                 "load_1m": float(load[0]) if load else 0.0,
                 "load_5m": float(load[1]) if len(load) > 1 else 0.0,
                 "load_15m": float(load[2]) if len(load) > 2 else 0.0,
@@ -293,6 +308,13 @@ class Handler(BaseHTTPRequestHandler):
                 "openwrt_version": read_first("/etc/openwrt_version", ""),
                 "temperature_celsius": 0.0,
             }
+
+            # Best-effort thermal.
+            t = read_first("/sys/class/thermal/thermal_zone0/temp", "")
+            try:
+                obj["temperature_celsius"] = float(t) / 1000.0
+            except Exception:
+                pass
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/wifi":
@@ -420,3 +442,21 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+def cpu_percent_sample(sample_s: float = 0.2) -> float:
+    def read_cpu() -> tuple[int, int]:
+        line = read_first("/proc/stat", "").splitlines()[0]
+        parts = line.split()
+        if len(parts) < 5:
+            return (0, 0)
+        nums = [int(x) for x in parts[1:]]
+        idle = nums[3] + (nums[4] if len(nums) > 4 else 0)
+        total = sum(nums)
+        return (idle, total)
+
+    i1, t1 = read_cpu()
+    time.sleep(sample_s)
+    i2, t2 = read_cpu()
+    idle = max(i2 - i1, 0)
+    total = max(t2 - t1, 1)
+    used = max(total - idle, 0)
+    return used / total * 100.0
