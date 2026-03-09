@@ -635,20 +635,9 @@ discover();
             if portal_id:
                 new_opts["victron_portal_id"] = portal_id
 
-            # Get current options first
-            req = urllib.request.Request(
-                "http://supervisor/addons/self/options",
-                headers={"Authorization": f"Bearer {sup_token}"},
-            )
-            raw = urllib.request.urlopen(req, timeout=10).read().decode("utf-8")
-            current = json.loads(raw).get("data", {}).get("options", {})
-            LOG.info("Current add-on options: %s", list(current.keys()))
-
-            # Merge new options
-            merged = {**current, **new_opts}
-
-            # POST updated options
-            patch_body = json.dumps({"options": merged}).encode("utf-8")
+            # Supervisor API: /addons/self/options only allows POST (no GET).
+            # We'll post a minimal patch containing just the fields we want to change.
+            patch_body = json.dumps({"options": new_opts}).encode("utf-8")
             patch_req = urllib.request.Request(
                 "http://supervisor/addons/self/options",
                 data=patch_body,
@@ -659,7 +648,7 @@ discover();
                 method="POST",
             )
             urllib.request.urlopen(patch_req, timeout=10)
-            LOG.info("Updated add-on options: %s", new_opts)
+            LOG.info("Patched add-on options: %s", new_opts)
 
             # Trigger restart (async, non-blocking)
             def restart_addon():
