@@ -635,9 +635,25 @@ discover();
             if portal_id:
                 new_opts["victron_portal_id"] = portal_id
 
-            # Supervisor API: /addons/self/options only allows POST (no GET).
-            # We'll post a minimal patch containing just the fields we want to change.
-            patch_body = json.dumps({"options": new_opts}).encode("utf-8")
+            # Supervisor API notes:
+            # - /addons/self/options is POST-only
+            # - validation requires a full options payload (not just a partial patch)
+            # So: fetch current options from /addons/self/info, merge, then POST full options.
+
+            # Get current options from /info
+            info_req = urllib.request.Request(
+                "http://supervisor/addons/self/info",
+                headers={"Authorization": f"Bearer {sup_token}"},
+            )
+            raw = urllib.request.urlopen(info_req, timeout=10).read().decode("utf-8")
+            info = json.loads(raw) if raw else {}
+            current = ((info.get("data") or {}).get("options") or {})
+            if not isinstance(current, dict):
+                current = {}
+
+            merged = {**current, **new_opts}
+
+            patch_body = json.dumps({"options": merged}).encode("utf-8")
             patch_req = urllib.request.Request(
                 "http://supervisor/addons/self/options",
                 data=patch_body,
@@ -648,7 +664,7 @@ discover();
                 method="POST",
             )
             urllib.request.urlopen(patch_req, timeout=10)
-            LOG.info("Patched add-on options: %s", new_opts)
+            LOG.info("Updated add-on options: %s", new_opts)
 
             # Trigger restart (async, non-blocking)
             def restart_addon():
