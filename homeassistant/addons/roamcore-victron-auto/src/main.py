@@ -309,9 +309,36 @@ class VictronAuto:
                 self.end_headers()
                 self.wfile.write(raw)
 
-            def do_POST(self):
+            def _norm_path(self) -> str:
+                """Normalize ingress-prefixed paths.
+
+                HA ingress may forward requests as:
+                  /api/hassio_ingress/<token>/<path>
+                while the add-on server expects <path>.
+                """
+
                 p = urlparse(self.path)
-                if p.path in ("/api/v1/victron/connect", "/api/v1/connect"):
+                path = p.path or "/"
+
+                # Strip hassio ingress prefix if present.
+                if path.startswith("/api/hassio_ingress/"):
+                    parts = path.split("/")
+                    # ['', 'api', 'hassio_ingress', '<token>', ...rest]
+                    rest = parts[4:]
+                    path = "/" + "/".join(rest) if rest else "/"
+
+                # Some HA versions use /api/ingress/<token>/...
+                if path.startswith("/api/ingress/"):
+                    parts = path.split("/")
+                    # ['', 'api', 'ingress', '<token>', ...rest]
+                    rest = parts[4:]
+                    path = "/" + "/".join(rest) if rest else "/"
+
+                return path
+
+            def do_POST(self):
+                path = self._norm_path()
+                if path in ("/api/v1/victron/connect", "/api/v1/connect"):
                     # Read JSON body
                     try:
                         length = int(self.headers.get("Content-Length", 0))
@@ -345,16 +372,16 @@ class VictronAuto:
                 return self._json(404, {"error": "not_found"})
 
             def do_GET(self):
-                p = urlparse(self.path)
+                path = self._norm_path()
 
                 # Simple built-in UI (best-effort) served via add-on ingress.
                 # This avoids the complexity of custom cards needing an ingress token.
                 #
-                # Note: Home Assistant ingress sometimes forwards a prefixed path to the add-on
-                # (implementation-dependent). So we treat *any* non-API path as the UI root.
+                # If the ingress forwards a prefixed path, _norm_path() strips it.
+                # We then treat *any* non-API path as the UI root.
                 if (
-                    p.path in ("/", "/index.html")
-                    or (not p.path.startswith("/api/") and p.path not in ("/health", "/api/v1/health"))
+                    path in ("/", "/index.html")
+                    or (not path.startswith("/api/") and path not in ("/health", "/api/v1/health"))
                 ): 
                     html = """<!doctype html>
 <html lang=\"en\">
@@ -463,10 +490,10 @@ discover();
                     self.wfile.write(raw)
                     return
 
-                if p.path in ("/health", "/api/v1/health"):
+                if path in ("/health", "/api/v1/health"):
                     return self._json(200, {"ok": True})
 
-                if p.path in ("/api/v1/victron/discover", "/api/v1/discover"):
+                if path in ("/api/v1/victron/discover", "/api/v1/discover"):
                     # MVP stub: return current best-known candidates from mdns + venus.local probe.
                     candidates: list[dict[str, Any]] = []
 
