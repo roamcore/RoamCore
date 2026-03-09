@@ -338,6 +338,11 @@ class VictronAuto:
 
             def do_POST(self):
                 path = self._norm_path()
+                try:
+                    LOG.info("HTTP POST %s (norm=%s)", self.path, path)
+                except Exception:
+                    pass
+
                 if path in ("/api/v1/victron/connect", "/api/v1/connect"):
                     # Read JSON body
                     try:
@@ -373,6 +378,10 @@ class VictronAuto:
 
             def do_GET(self):
                 path = self._norm_path()
+                try:
+                    LOG.info("HTTP GET %s (norm=%s)", self.path, path)
+                except Exception:
+                    pass
 
                 # Simple built-in UI (best-effort) served via add-on ingress.
                 # This avoids the complexity of custom cards needing an ingress token.
