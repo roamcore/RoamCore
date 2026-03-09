@@ -432,6 +432,14 @@ class VictronAuto:
       <div class=\"muted\">This page is served by the add-on (Ingress). It can configure the Victron target and restart the add-on.</div>
 
       <div id=\"msg\"></div>
+
+      <div style=\"margin-top: 14px;\" class=\"row\">
+        <input id=\"manualHost\" placeholder=\"Victron host (IP or hostname)\" style=\"flex:1; padding:10px 12px; border-radius:10px; border:1px solid #243044; background:#0b1220; color:#e6edf3;\" />
+        <input id=\"manualPort\" placeholder=\"1883\" value=\"1883\" style=\"width:90px; padding:10px 12px; border-radius:10px; border:1px solid #243044; background:#0b1220; color:#e6edf3;\" />
+        <button id=\"manualConnect\">Connect</button>
+      </div>
+      <div class=\"muted\" style=\"margin-top:6px;\">Tip: If discovery finds nothing, enter your GX IP here (eg. <code>192.168.1.123</code>) and click Connect.</div>
+
       <ul id=\"list\"></ul>
     </div>
   </div>
@@ -442,6 +450,17 @@ const msg = (kind, text) => {
   el.innerHTML = text ? `<div class=\"${kind}\">${text}</div>` : '';
 };
 
+async function connectHost(host, port) {
+  const resp = await fetch('api/v1/victron/connect', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({host, port}),
+  });
+  const out = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(out.error || resp.statusText);
+  msg('ok', out.message || 'Configured. Restarting add-on...');
+}
+
 async function discover() {
   msg('', '');
   const list = document.getElementById('list');
@@ -451,7 +470,7 @@ async function discover() {
   const j = await r.json();
   const c = (j.candidates || []);
   if (!c.length) {
-    list.innerHTML = '<li class="muted">No candidates found. Ensure your GX is on the LAN.</li>';
+    list.innerHTML = '<li class="muted">No candidates found. Use manual connect above or ensure your GX advertises MQTT on the LAN.</li>';
     return;
   }
   list.innerHTML = '';
@@ -472,14 +491,7 @@ async function discover() {
       msg('', '');
       li.querySelector('button').disabled = true;
       try {
-        const resp = await fetch('api/v1/victron/connect', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({host, port}),
-        });
-        const out = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(out.error || resp.statusText);
-        msg('ok', out.message || 'Configured. Restarting add-on...');
+        await connectHost(host, port);
       } catch (e) {
         msg('err', `Connect failed: ${e.message}`);
       } finally {
@@ -491,6 +503,21 @@ async function discover() {
 }
 
 document.getElementById('refresh').onclick = discover;
+document.getElementById('manualConnect').onclick = async () => {
+  msg('', '');
+  const host = (document.getElementById('manualHost').value || '').trim();
+  const port = parseInt(document.getElementById('manualPort').value || '1883', 10) || 1883;
+  if (!host) { msg('err', 'Please enter a host (IP or hostname).'); return; }
+  const btn = document.getElementById('manualConnect');
+  btn.disabled = true;
+  try {
+    await connectHost(host, port);
+  } catch (e) {
+    msg('err', `Connect failed: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 discover();
 </script>
