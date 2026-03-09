@@ -72,6 +72,42 @@ def active_wan_device() -> str:
     return (out or "").strip() or "unknown"
 
 
+# CPU percent without sleeping: compute delta since last call.
+# This avoids blocking Home Assistant REST polls.
+_CPU_LAST: tuple[int, int] | None = None
+
+
+def cpu_percent_nonblocking() -> float:
+    global _CPU_LAST
+
+    line = read_first("/proc/stat", "").splitlines()[0:1]
+    if not line:
+        return 0.0
+    parts = line[0].split()
+    if len(parts) < 5 or parts[0] != "cpu":
+        return 0.0
+
+    try:
+        nums = [int(x) for x in parts[1:]]
+    except Exception:
+        return 0.0
+
+    idle = nums[3] + (nums[4] if len(nums) > 4 else 0)
+    total = sum(nums)
+
+    if _CPU_LAST is None:
+        _CPU_LAST = (idle, total)
+        return 0.0
+
+    i1, t1 = _CPU_LAST
+    _CPU_LAST = (idle, total)
+
+    idle_d = max(idle - i1, 0)
+    total_d = max(total - t1, 1)
+    used_d = max(total_d - idle_d, 0)
+    return used_d / total_d * 100.0
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "RoamCoreNetAPI/0.1"
 
@@ -291,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
                 rc, out, _ = sh(
                     [
                         "sh",
-                        "-lc",
+                        "-c",
                         "uci -q get mwan3.starlink_primary.metric; uci -q get mwan3.lte_backup.metric",
                     ],
                     timeout=2,
@@ -317,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
                     ma = int(line.split()[1])
             used = max(mt - ma, 0)
             obj = {
-                "cpu_percent": round(cpu_percent_sample(), 1),
+                "cpu_percent": round(cpu_percent_nonblocking(), 1),
                 "load_1m": float(load[0]) if load else 0.0,
                 "load_5m": float(load[1]) if len(load) > 1 else 0.0,
                 "load_15m": float(load[2]) if len(load) > 2 else 0.0,
@@ -339,7 +375,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if self.path == "/api/v1/wifi":
             # Report SSID + clients (best-effort).
-            rc, ssid, _ = sh(["sh", "-lc", "uci -q get wireless.default_radio0.ssid"], timeout=2)
+            rc, ssid, _ = sh(["sh", "-c", "uci -q get wireless.default_radio0.ssid"], timeout=2)
 
             leases = self._dhcp_leases()
             # Try common interface names.
@@ -439,7 +475,7 @@ class Handler(BaseHTTPRequestHandler):
                 script = "uci set mwan3.lte_backup.metric='1'; uci set mwan3.starlink_primary.metric='2'"
             else:
                 script = "uci set mwan3.lte_backup.metric='2'; uci set mwan3.starlink_primary.metric='1'"
-            rc, _, err = sh(["sh", "-lc", script + "; uci commit mwan3; /etc/init.d/mwan3 restart"], timeout=10)
+            rc, _, err = sh(["sh", "-c", script + "; uci commit mwan3; /etc/init.d/mwan3 restart"], timeout=10)
             if rc != 0:
                 return json_response(self, 500, {"success": False, "error": "apply_failed", "detail": err[-200:]})
             return json_response(self, 200, {"success": True, "preferred": pref})
@@ -447,7 +483,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/v1/restart":
             # Return response first then restart in background.
             json_response(self, 200, {"success": True, "message": "Network restart initiated"})
-            sh(["sh", "-lc", "(sleep 1; /etc/init.d/network restart; /etc/init.d/mwan3 restart) >/dev/null 2>&1 &"], timeout=2)
+            sh(["sh", "-c", "(sleep 1; /etc/init.d/network restart; /etc/init.d/mwan3 restart) >/dev/null 2>&1 &"], timeout=2)
             return
 
         return json_response(self, 404, {"success": False, "error": "not_found"})
