@@ -7,12 +7,23 @@ template:
       - name: "RC Net WAN Status"
         unique_id: rc_net_wan_status
         state: >-
-          {{ states("input_select.rc_mock_net_status") }}
+          {# Prefer real OpenWrt API if present, else fall back to mocks #}
+          {% set s = states('sensor.rc_openwrt_internet') %}
+          {% if s in ['online','offline'] %}
+            {{ 'good' if s == 'online' else 'bad' }}
+          {% else %}
+            {{ states("input_select.rc_mock_net_status") }}
+          {% endif %}
 
       - name: "RC Net WAN Source"
         unique_id: rc_net_wan_source
         state: >-
-          {{ states("input_select.rc_mock_net_source") }}
+          {% set s = states('sensor.rc_openwrt_active_wan') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_select.rc_mock_net_source") }}
+          {% endif %}
 
       - name: "RC Net Download"
         unique_id: rc_net_download_mbps
@@ -58,7 +69,12 @@ template:
         unique_id: rc_net_data_today_down_gb
         unit_of_measurement: "GB"
         state: >-
-          {{ states("input_number.rc_mock_net_data_today_down_gb") }}
+          {% set mb = states('sensor.rc_starlink_today_download') | float(0) %}
+          {% if mb > 0 %}
+            {{ (mb / 1024) | round(2) }}
+          {% else %}
+            {{ states("input_number.rc_mock_net_data_today_down_gb") }}
+          {% endif %}
 
       - name: "RC Net Data Today Up"
         unique_id: rc_net_data_today_up_gb
@@ -93,7 +109,12 @@ template:
       - name: "RC Net Cellular Provider"
         unique_id: rc_net_cell_provider
         state: >-
-          {{ states("input_text.rc_mock_net_cell_provider") }}
+          {% set s = states('sensor.rc_lte_carrier') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_text.rc_mock_net_cell_provider") }}
+          {% endif %}
 
       - name: "RC Net Cellular Technology"
         unique_id: rc_net_cell_technology
@@ -114,7 +135,12 @@ template:
       - name: "RC Net LAN WiFi Clients"
         unique_id: rc_net_lan_wifi_clients
         state: >-
-          {{ states("input_number.rc_mock_net_lan_wifi_clients") }}
+          {% set n = states('sensor.rc_wifi_clients') | int(-1) %}
+          {% if n >= 0 %}
+            {{ n }}
+          {% else %}
+            {{ states("input_number.rc_mock_net_lan_wifi_clients") }}
+          {% endif %}
 
       - name: "RC Net LAN Ethernet Clients"
         unique_id: rc_net_lan_ethernet_clients
@@ -124,7 +150,12 @@ template:
       - name: "RC Net SSID"
         unique_id: rc_net_ssid
         state: >-
-          {{ states("input_text.rc_mock_net_ssid") }}
+          {% set s = states('sensor.rc_wifi_ssid') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_text.rc_mock_net_ssid") }}
+          {% endif %}
 
       - name: "RC Net Channel"
         unique_id: rc_net_channel
@@ -140,13 +171,23 @@ template:
         unique_id: rc_router_cpu_pct
         unit_of_measurement: "%"
         state: >-
-          {{ states("input_number.rc_mock_router_cpu_pct") }}
+          {% set s = states('sensor.rc_router_load_1m') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ (states('sensor.rc_router_load_1m') | float(0) * 10) | round(1) }}
+          {% else %}
+            {{ states("input_number.rc_mock_router_cpu_pct") }}
+          {% endif %}
 
       - name: "RC Router Memory"
         unique_id: rc_router_memory_pct
         unit_of_measurement: "%"
         state: >-
-          {{ states("input_number.rc_mock_router_memory_pct") }}
+          {% set s = states('sensor.rc_router_memory') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_number.rc_mock_router_memory_pct") }}
+          {% endif %}
 
       - name: "RC Router Temperature"
         unique_id: rc_router_temperature_c
@@ -162,7 +203,12 @@ template:
       - name: "RC Router Firmware"
         unique_id: rc_router_firmware
         state: >-
-          {{ states("input_text.rc_mock_router_firmware") }}
+          {% set s = states('sensor.rc_router_firmware') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_text.rc_mock_router_firmware") }}
+          {% endif %}
 
   - binary_sensor:
       - name: "RC Net Internet Reachable"
