@@ -34,6 +34,11 @@ rest:
   - resource: "http://10.0.0.1:8080/api/v1/wan"
     scan_interval: 15
     sensor:
+      - name: "RC Preferred WAN"
+        unique_id: rc_openwrt_preferred_wan
+        value_template: "{{ value_json.preferred | default('') }}"
+        icon: mdi:swap-horizontal
+
       - name: "RC Starlink State"
         unique_id: rc_openwrt_starlink_state
         value_template: "{{ value_json.starlink.state }}"
@@ -117,9 +122,21 @@ rest:
         unit_of_measurement: "MB"
         icon: mdi:download
 
+      - name: "RC Starlink Month Download"
+        unique_id: rc_openwrt_starlink_month_rx_mb
+        value_template: "{{ value_json.starlink.month_rx_mb | int(0) }}"
+        unit_of_measurement: "MB"
+        icon: mdi:download
+
       - name: "RC LTE Today Download"
         unique_id: rc_openwrt_lte_today_rx_mb
         value_template: "{{ value_json.lte.today_rx_mb | int(0) }}"
+        unit_of_measurement: "MB"
+        icon: mdi:download
+
+      - name: "RC LTE Month Download"
+        unique_id: rc_openwrt_lte_month_rx_mb
+        value_template: "{{ value_json.lte.month_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 

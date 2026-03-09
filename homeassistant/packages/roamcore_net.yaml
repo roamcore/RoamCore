@@ -86,7 +86,12 @@ template:
         unique_id: rc_net_data_month_down_gb
         unit_of_measurement: "GB"
         state: >-
-          {{ states("input_number.rc_mock_net_data_month_down_gb") }}
+          {% set mb = states('sensor.rc_starlink_month_download') | float(0) %}
+          {% if mb > 0 %}
+            {{ (mb / 1024) | round(2) }}
+          {% else %}
+            {{ states("input_number.rc_mock_net_data_month_down_gb") }}
+          {% endif %}
 
       - name: "RC Net Data Month Up"
         unique_id: rc_net_data_month_up_gb
