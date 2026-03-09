@@ -446,7 +446,8 @@ async function discover() {
   msg('', '');
   const list = document.getElementById('list');
   list.innerHTML = '<li class="muted">Discovering...</li>';
-  const r = await fetch('/api/v1/victron/discover');
+  // Use relative URLs so this works under HA ingress (which prefixes the path)
+  const r = await fetch('api/v1/victron/discover');
   const j = await r.json();
   const c = (j.candidates || []);
   if (!c.length) {
@@ -471,7 +472,7 @@ async function discover() {
       msg('', '');
       li.querySelector('button').disabled = true;
       try {
-        const resp = await fetch('/api/v1/victron/connect', {
+        const resp = await fetch('api/v1/victron/connect', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({host, port}),
