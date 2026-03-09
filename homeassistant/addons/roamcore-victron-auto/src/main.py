@@ -179,6 +179,12 @@ class VictronAuto:
         self._last_topics_snapshot_publish = 0.0
         self.topics_sensor_max = int(opts.get("topics_sensor_max", 200))
 
+        # Optional: publish a Home Assistant MQTT Discovery entity per observed Victron topic.
+        # This can create hundreds/thousands of entities, so it is guarded by an option + cap.
+        self.publish_raw_topics = bool(opts.get("publish_raw_topics", False))
+        self.raw_topics_max = int(opts.get("raw_topics_max", 500))
+        self._published_raw_topics: set[str] = set()
+
         # Track which HA MQTT Discovery entities we've already published.
         self._published_discovery_entities: set[str] = set()
 
@@ -1092,6 +1098,10 @@ discover();
             # Periodically publish the snapshot sensor
             if self._ha_client:
                 self._publish_topics_snapshot()
+
+                # Optionally publish per-topic discovery entities (raw mirroring)
+                if self.publish_raw_topics:
+                    self._ensure_raw_topic_entity(service_type, device_instance, dbus_path)
         except Exception:
             pass
 
@@ -1557,6 +1567,69 @@ discover();
             },
         }
         self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
+
+    def _slugify(self, s: str) -> str:
+        out = []
+        for ch in (s or ""):
+            if ch.isalnum():
+                out.append(ch.lower())
+            else:
+                out.append("_")
+        x = "".join(out)
+        while "__" in x:
+            x = x.replace("__", "_")
+        return x.strip("_")
+
+    def _ensure_raw_topic_entity(self, service_type: str, device_instance: str, dbus_path: str) -> None:
+        """Publish a raw per-topic entity via HA MQTT Discovery (guarded by caps)."""
+
+        if not self._ha_client:
+            return
+        if not self.publish_raw_topics:
+            return
+
+        key = f"{service_type}/{device_instance}/{dbus_path}".strip("/")
+
+        # Cap entity creation to avoid blowing up HA.
+        if len(self._published_raw_topics) >= self.raw_topics_max and key not in self._published_raw_topics:
+            return
+
+        # object_id must be stable-ish and valid. We'll build one under vt_raw_.
+        obj = self._slugify(f"vt_raw_{service_type}_{device_instance}_{dbus_path}")
+        uniq = f"{self.device_id}_{obj}"
+
+        if uniq in self._published_discovery_entities:
+            return
+
+        domain = "sensor"
+        cfg_topic = f"{self.discovery_prefix}/{domain}/{self.device_id}/{uniq}/config"
+        state_topic = f"roamcore/victron/{self.device_id}/raw/{obj}/state"
+
+        cfg: dict[str, Any] = {
+            "name": f"Victron Raw {service_type}/{device_instance}/{dbus_path}",
+            "unique_id": uniq,
+            "object_id": obj,
+            "state_topic": state_topic,
+            "availability_topic": f"roamcore/victron/{self.device_id}/availability",
+            "icon": "mdi:code-tags",
+            "device": {
+                "identifiers": [self.device_id],
+                "name": self.device_name,
+                "model": "Victron GX (dbus-flashmq)",
+                "manufacturer": "Victron Energy",
+            },
+        }
+
+        self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
+        self._published_discovery_entities.add(uniq)
+        self._published_raw_topics.add(key)
+
+        # Publish current state (best-effort) from our topic cache.
+        rec = self._topics.get((service_type, device_instance, dbus_path))
+        if rec is not None:
+            sample = rec.get("sample")
+            payload = "" if sample is None else str(sample)
+            self._ha_client.publish(state_topic, payload=payload, retain=True)
 
     def _publish_topics_snapshot(self) -> None:
         if not self._ha_client:
