@@ -62,11 +62,23 @@ rest:
   - resource: "http://10.0.0.1:8080/api/v1/system"
     scan_interval: 30
     sensor:
+      - name: "RC Router CPU"
+        unique_id: rc_openwrt_router_cpu_pct
+        value_template: "{{ value_json.cpu_percent | float(0) }}"
+        unit_of_measurement: "%"
+        icon: mdi:cpu-64-bit
+
       - name: "RC Router Memory"
         unique_id: rc_openwrt_router_memory_pct
         value_template: "{{ value_json.memory_percent | float(0) }}"
         unit_of_measurement: "%"
         icon: mdi:memory
+
+      - name: "RC Router Temperature"
+        unique_id: rc_openwrt_router_temp_c
+        value_template: "{{ value_json.temperature_celsius | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
 
       - name: "RC Router Load (1m)"
         unique_id: rc_openwrt_router_load_1m

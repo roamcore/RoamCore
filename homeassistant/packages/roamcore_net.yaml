@@ -171,9 +171,9 @@ template:
         unique_id: rc_router_cpu_pct
         unit_of_measurement: "%"
         state: >-
-          {% set s = states('sensor.rc_router_load_1m') %}
+          {% set s = states('sensor.rc_router_cpu') %}
           {% if s not in ['unknown','unavailable','none',''] %}
-            {{ (states('sensor.rc_router_load_1m') | float(0) * 10) | round(1) }}
+            {{ s }}
           {% else %}
             {{ states("input_number.rc_mock_router_cpu_pct") }}
           {% endif %}
@@ -193,7 +193,12 @@ template:
         unique_id: rc_router_temperature_c
         unit_of_measurement: "°C"
         state: >-
-          {{ states("input_number.rc_mock_router_temperature_c") }}
+          {% set s = states('sensor.rc_router_temperature') %}
+          {% if s not in ['unknown','unavailable','none',''] %}
+            {{ s }}
+          {% else %}
+            {{ states("input_number.rc_mock_router_temperature_c") }}
+          {% endif %}
 
       - name: "RC Router Uptime"
         unique_id: rc_router_uptime
