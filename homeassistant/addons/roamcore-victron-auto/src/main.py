@@ -346,6 +346,117 @@ class VictronAuto:
 
             def do_GET(self):
                 p = urlparse(self.path)
+
+                # Simple built-in UI (best-effort) served via add-on ingress.
+                # This avoids the complexity of custom cards needing an ingress token.
+                if p.path in ("/", "/index.html"):
+                    html = """<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>RoamCore — Connect Victron</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #0b0f14; color: #e6edf3; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 20px; }
+    .card { background: #111826; border: 1px solid #243044; border-radius: 12px; padding: 16px; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    button { background: #238636; border: none; color: white; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+    button.secondary { background: #334155; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .muted { color: #9fb0c2; font-size: 13px; }
+    .err { background: #7f1d1d; padding: 10px 12px; border-radius: 10px; margin-top: 12px; }
+    .ok { background: #064e3b; padding: 10px 12px; border-radius: 10px; margin-top: 12px; }
+    ul { list-style: none; padding: 0; margin: 12px 0 0; }
+    li { border: 1px solid #243044; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .name { font-weight: 600; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #d1e7ff; }
+  </style>
+</head>
+<body>
+  <div class=\"wrap\">
+    <div class=\"card\">
+      <div class=\"row\" style=\"justify-content: space-between;\">
+        <h1>Connect Victron</h1>
+        <div class=\"row\">
+          <button id=\"refresh\" class=\"secondary\">Refresh</button>
+        </div>
+      </div>
+      <div class=\"muted\">This page is served by the add-on (Ingress). It can configure the Victron target and restart the add-on.</div>
+
+      <div id=\"msg\"></div>
+      <ul id=\"list\"></ul>
+    </div>
+  </div>
+
+<script>
+const msg = (kind, text) => {
+  const el = document.getElementById('msg');
+  el.innerHTML = text ? `<div class=\"${kind}\">${text}</div>` : '';
+};
+
+async function discover() {
+  msg('', '');
+  const list = document.getElementById('list');
+  list.innerHTML = '<li class="muted">Discovering...</li>';
+  const r = await fetch('/api/v1/victron/discover');
+  const j = await r.json();
+  const c = (j.candidates || []);
+  if (!c.length) {
+    list.innerHTML = '<li class="muted">No candidates found. Ensure your GX is on the LAN.</li>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const cand of c) {
+    const host = cand.host || cand.ip;
+    const port = cand.port || 1883;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div class="name">${(cand.name || 'Victron candidate')}</div>
+          <div class="muted"><code>${host}:${port}</code> · ${cand.source || 'unknown'}</div>
+        </div>
+        <button>Connect</button>
+      </div>
+    `;
+    li.querySelector('button').onclick = async () => {
+      msg('', '');
+      li.querySelector('button').disabled = true;
+      try {
+        const resp = await fetch('/api/v1/victron/connect', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({host, port}),
+        });
+        const out = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(out.error || resp.statusText);
+        msg('ok', out.message || 'Configured. Restarting add-on...');
+      } catch (e) {
+        msg('err', `Connect failed: ${e.message}`);
+      } finally {
+        li.querySelector('button').disabled = false;
+      }
+    };
+    list.appendChild(li);
+  }
+}
+
+document.getElementById('refresh').onclick = discover;
+
+discover();
+</script>
+</body>
+</html>"""
+                    raw = html.encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                    return
+
                 if p.path in ("/health", "/api/v1/health"):
                     return self._json(200, {"ok": True})
 
