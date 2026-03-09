@@ -524,21 +524,29 @@ discover();
                     except Exception:
                         pass
 
-                    try:
-                        # Avoid awaiting async helpers inside this sync HTTP handler.
-                        ip = socket.gethostbyname("venus.local")
-                        if ip:
-                            candidates.append(
-                                {
-                                    "name": "venus.local",
-                                    "host": "venus.local",
-                                    "ip": ip,
-                                    "port": 1883,
-                                    "source": "dns:venus.local",
-                                }
-                            )
-                    except Exception:
-                        pass
+                    if getattr(parent, "prefer_venus_local", False):
+                        try:
+                            # Avoid awaiting async helpers inside this sync HTTP handler.
+                            # Also guard against long mDNS/DNS timeouts by using a short default timeout.
+                            old_timeout = socket.getdefaulttimeout()
+                            socket.setdefaulttimeout(0.3)
+                            try:
+                                ip = socket.gethostbyname("venus.local")
+                            finally:
+                                socket.setdefaulttimeout(old_timeout)
+
+                            if ip:
+                                candidates.append(
+                                    {
+                                        "name": "venus.local",
+                                        "host": "venus.local",
+                                        "ip": ip,
+                                        "port": 1883,
+                                        "source": "dns:venus.local",
+                                    }
+                                )
+                        except Exception:
+                            pass
 
                     # De-dupe
                     uniq: dict[tuple[str, int], dict[str, Any]] = {}
