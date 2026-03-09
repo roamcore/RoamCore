@@ -349,7 +349,13 @@ class VictronAuto:
 
                 # Simple built-in UI (best-effort) served via add-on ingress.
                 # This avoids the complexity of custom cards needing an ingress token.
-                if p.path in ("/", "/index.html"):
+                #
+                # Note: Home Assistant ingress sometimes forwards a prefixed path to the add-on
+                # (implementation-dependent). So we treat *any* non-API path as the UI root.
+                if (
+                    p.path in ("/", "/index.html")
+                    or (not p.path.startswith("/api/") and p.path not in ("/health", "/api/v1/health"))
+                ): 
                     html = """<!doctype html>
 <html lang=\"en\">
 <head>
