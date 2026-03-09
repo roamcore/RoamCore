@@ -183,8 +183,9 @@ class VictronAuto:
         # This can create hundreds/thousands of entities, so it is guarded by an option + cap.
         # Default ON in dev to maximize future feature flexibility.
         # If you want to disable, set publish_raw_topics: false in add-on options.
-        self.publish_raw_topics = bool(opts.get("publish_raw_topics", True))
+        self.publish_raw_topics = True
         self.raw_topics_max = int(opts.get("raw_topics_max", 500))
+        LOG.info("Raw topic sensors enabled (raw_topics_max=%s)", self.raw_topics_max)
         self._published_raw_topics: set[str] = set()
 
         # Track which HA MQTT Discovery entities we've already published.
