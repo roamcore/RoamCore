@@ -2,7 +2,7 @@ name: RoamCore Victron Auto (DEV)
 slug: roamcore_victron_auto_dev
 description: "Auto-discovery Victron GX/Venus MQTT \u2192 vt_* entities via MQTT Discovery\
   \ (DEV)"
-version: 0.1.9
+version: 0.2.0
 startup: services
 boot: auto
 init: false

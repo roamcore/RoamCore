@@ -525,7 +525,8 @@ discover();
                         pass
 
                     try:
-                        ip = parent._resolve("venus.local")
+                        # Avoid awaiting async helpers inside this sync HTTP handler.
+                        ip = socket.gethostbyname("venus.local")
                         if ip:
                             candidates.append(
                                 {
