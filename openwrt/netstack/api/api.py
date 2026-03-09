@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -115,6 +116,118 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return 0
 
+    def _env(self, key: str, default: str) -> str:
+        v = os.environ.get(key)
+        return v if v else default
+
+    def _want_devnames(self) -> dict[str, str]:
+        # Allow overriding device names for dev/test environments.
+        return {
+            "starlink": self._env("RC_DEV_WAN_STARLINK", "eth1"),
+            "lte": self._env("RC_DEV_WAN_LTE_WWAN", "wwan0"),
+            "qmi": self._env("RC_DEV_LTE_QMI", "/dev/cdc-wdm0"),
+            "lan": self._env("RC_DEV_LAN", "eth0"),
+        }
+
+    def _parse_iwinfo_assoclist(self, dev: str) -> list[dict[str, Any]]:
+        # Parses `iwinfo <dev> assoclist` output (best-effort).
+        rc, out, _ = sh(["sh", "-lc", f"iwinfo {dev} assoclist 2>/dev/null || true"], timeout=3)
+        if rc != 0 or not out.strip():
+            return []
+        clients: list[dict[str, Any]] = []
+        cur: dict[str, Any] | None = None
+        for line in out.splitlines():
+            if re.match(r"^[0-9A-Fa-f:]{17}\s", line):
+                if cur:
+                    clients.append(cur)
+                mac = line.strip().split()[0]
+                cur = {"mac": mac, "signal_dbm": None, "rx_rate_mbps": None, "tx_rate_mbps": None}
+                continue
+            if not cur:
+                continue
+            m = re.search(r"Signal:\s*(-?\d+)\s*dBm", line)
+            if m:
+                cur["signal_dbm"] = int(m.group(1))
+            m = re.search(r"RX:\s*([0-9.]+)\s*MBit/s", line)
+            if m:
+                cur["rx_rate_mbps"] = float(m.group(1))
+            m = re.search(r"TX:\s*([0-9.]+)\s*MBit/s", line)
+            if m:
+                cur["tx_rate_mbps"] = float(m.group(1))
+        if cur:
+            clients.append(cur)
+        return clients
+
+    def _dhcp_leases(self) -> dict[str, dict[str, str]]:
+        # Map MAC-> {ip, hostname}
+        out = read_first("/tmp/dhcp.leases", "")
+        m: dict[str, dict[str, str]] = {}
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            _ts, mac, ip, host = parts[:4]
+            m[mac.lower()] = {"ip": ip, "hostname": host}
+        return m
+
+    def _vnstat_json(self, dev: str, period: str) -> Any:
+        # period: d|m
+        return sh_json(["vnstat", "-i", dev, "--json", period], timeout=6)
+
+    def _vnstat_pick_mb(self, obj: Any, kind: str) -> int:
+        # kind: today_rx_mb, today_tx_mb, month_rx_mb, month_tx_mb
+        # Best-effort for vnstat2 JSON structure.
+        try:
+            iface = obj["interfaces"][0]
+        except Exception:
+            return 0
+
+        def to_mb(v: Any) -> int:
+            try:
+                # vnstat reports in KiB.
+                return int(round(float(v) / 1024.0))
+            except Exception:
+                return 0
+
+        if kind.startswith("today_"):
+            try:
+                day = iface["traffic"]["day"][-1]
+                return to_mb(day["rx"] if kind.endswith("rx_mb") else day["tx"])
+            except Exception:
+                return 0
+
+        if kind.startswith("month_"):
+            try:
+                month = iface["traffic"]["month"][-1]
+                return to_mb(month["rx"] if kind.endswith("rx_mb") else month["tx"])
+            except Exception:
+                return 0
+
+        return 0
+
+    def _uqmi_signal(self, qmi_dev: str) -> dict[str, Any]:
+        # uqmi returns JSON.
+        try:
+            sig = sh_json(["uqmi", "-d", qmi_dev, "--get-signal-info"], timeout=5)
+            sys = sh_json(["uqmi", "-d", qmi_dev, "--get-serving-system"], timeout=5)
+        except Exception:
+            return {}
+
+        out: dict[str, Any] = {}
+        # Common fields: rssi, rsrp, rsrq, snr
+        for k in ("rssi", "rsrp", "rsrq", "snr"):
+            if k in sig:
+                out[f"signal_{k}"] = sig.get(k)
+        # Operator
+        if isinstance(sys, dict):
+            op = sys.get("plmn_description") or sys.get("plmn") or ""
+            if op:
+                out["carrier"] = op
+            reg = sys.get("registration")
+            if reg:
+                out["registration"] = reg
+        return out
+
     def do_GET(self) -> None:
         if not self._require_auth():
             return json_response(self, 401, {"success": False, "error": "unauthorized"})
@@ -129,6 +242,7 @@ class Handler(BaseHTTPRequestHandler):
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/wan":
+            devs = self._want_devnames()
             st = self._ubus_status("wan_starlink")
             lte = self._ubus_status("wan_lte")
 
@@ -142,17 +256,20 @@ class Handler(BaseHTTPRequestHandler):
                 "starlink": {
                     "state": "online" if st.get("up") else "offline",
                     "ipv4": ipv4_addr(st),
-                    "rx_bytes": self._sysfs_counter("eth1", "rx_bytes"),
-                    "tx_bytes": self._sysfs_counter("eth1", "tx_bytes"),
+                    "rx_bytes": self._sysfs_counter(devs["starlink"], "rx_bytes"),
+                    "tx_bytes": self._sysfs_counter(devs["starlink"], "tx_bytes"),
                 },
                 "lte": {
                     "state": "online" if lte.get("up") else "offline",
                     "ipv4": ipv4_addr(lte),
-                    "rx_bytes": self._sysfs_counter("wwan0", "rx_bytes"),
-                    "tx_bytes": self._sysfs_counter("wwan0", "tx_bytes"),
+                    "rx_bytes": self._sysfs_counter(devs["lte"], "rx_bytes"),
+                    "tx_bytes": self._sysfs_counter(devs["lte"], "tx_bytes"),
                 },
                 "preferred": "starlink",
             }
+
+            # LTE signal (best-effort)
+            obj["lte"].update(self._uqmi_signal(devs["qmi"]))
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/system":
@@ -179,19 +296,65 @@ class Handler(BaseHTTPRequestHandler):
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/wifi":
-            # Minimal: report SSID + enabled. Client listing can be added later.
+            # Report SSID + clients (best-effort).
             rc, ssid, _ = sh(["sh", "-lc", "uci -q get wireless.default_radio0.ssid"], timeout=2)
+
+            leases = self._dhcp_leases()
+            # Try common interface names.
+            clients = []
+            for dev in ("wlan0", "wlan1"):
+                for c in self._parse_iwinfo_assoclist(dev):
+                    mac = str(c.get("mac") or "").lower()
+                    if mac in leases:
+                        c.update(leases[mac])
+                    clients.append(c)
             obj = {
                 "enabled": True,
                 "ssid": (ssid or "").strip() if rc == 0 else "",
-                "client_count": 0,
-                "clients": [],
+                "client_count": len(clients),
+                "clients": clients,
             }
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/data_usage":
-            # Minimal placeholder; vnstat parsing can be added once vnstat is installed.
-            obj = {"starlink": {}, "lte": {}}
+            devs = self._want_devnames()
+
+            out: dict[str, Any] = {
+                "starlink": {
+                    "today_rx_mb": 0,
+                    "today_tx_mb": 0,
+                    "month_rx_mb": 0,
+                    "month_tx_mb": 0,
+                },
+                "lte": {
+                    "today_rx_mb": 0,
+                    "today_tx_mb": 0,
+                    "month_rx_mb": 0,
+                    "month_tx_mb": 0,
+                },
+            }
+
+            try:
+                d = self._vnstat_json(devs["starlink"], "d")
+                m = self._vnstat_json(devs["starlink"], "m")
+                out["starlink"]["today_rx_mb"] = self._vnstat_pick_mb(d, "today_rx_mb")
+                out["starlink"]["today_tx_mb"] = self._vnstat_pick_mb(d, "today_tx_mb")
+                out["starlink"]["month_rx_mb"] = self._vnstat_pick_mb(m, "month_rx_mb")
+                out["starlink"]["month_tx_mb"] = self._vnstat_pick_mb(m, "month_tx_mb")
+            except Exception:
+                pass
+
+            try:
+                d = self._vnstat_json(devs["lte"], "d")
+                m = self._vnstat_json(devs["lte"], "m")
+                out["lte"]["today_rx_mb"] = self._vnstat_pick_mb(d, "today_rx_mb")
+                out["lte"]["today_tx_mb"] = self._vnstat_pick_mb(d, "today_tx_mb")
+                out["lte"]["month_rx_mb"] = self._vnstat_pick_mb(m, "month_rx_mb")
+                out["lte"]["month_tx_mb"] = self._vnstat_pick_mb(m, "month_tx_mb")
+            except Exception:
+                pass
+
+            obj = out
             return json_response(self, 200, obj)
 
         return json_response(self, 404, {"success": False, "error": "not_found"})
