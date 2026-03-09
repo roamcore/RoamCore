@@ -66,7 +66,7 @@ def ping_ok() -> bool:
 
 
 def active_wan_device() -> str:
-    rc, out, _ = sh(["sh", "-lc", "ip route show default | awk '{print $5}' | head -1"], timeout=3)
+    rc, out, _ = sh(["sh", "-c", "ip route show default | awk '{print $5}' | head -1"], timeout=3)
     if rc != 0:
         return "unknown"
     return (out or "").strip() or "unknown"
