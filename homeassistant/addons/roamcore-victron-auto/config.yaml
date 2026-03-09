@@ -2,7 +2,7 @@ name: RoamCore Victron Auto (DEV)
 slug: roamcore_victron_auto_dev
 description: "Auto-discovery Victron GX/Venus MQTT \u2192 vt_* entities via MQTT Discovery\
   \ (DEV)"
-version: 0.2.5
+version: 0.2.6
 startup: services
 boot: auto
 init: false
@@ -32,6 +32,7 @@ options:
   publish_discovery: true
   publish_devices_sensor: true
   devices_sensor_max: 50
+  topics_sensor_max: 200
   discovery_prefix: homeassistant
   device_name: RoamCore Victron System
   device_id: roamcore-victron
@@ -60,6 +61,7 @@ schema:
   publish_discovery: bool
   publish_devices_sensor: bool
   devices_sensor_max: int(0,500)
+  topics_sensor_max: int(0,2000)
   discovery_prefix: str
   device_name: str
   device_id: str

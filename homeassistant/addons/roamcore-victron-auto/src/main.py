@@ -173,6 +173,12 @@ class VictronAuto:
         # Keyed by (service_type, device_instance)
         self._devices: dict[tuple[str, str], dict[str, Any]] = {}
 
+        # Topic inventory (audit mode): track which Victron topics we've observed.
+        # Keyed by (service_type, device_instance, dbus_path)
+        self._topics: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self._last_topics_snapshot_publish = 0.0
+        self.topics_sensor_max = int(opts.get("topics_sensor_max", 200))
+
         # Track which HA MQTT Discovery entities we've already published.
         self._published_discovery_entities: set[str] = set()
 
@@ -1064,6 +1070,31 @@ discover();
         device_instance = parts[3]
         dbus_path = "/".join(parts[4:])
 
+        # Audit/inventory: record all observed topics (best-effort, bounded).
+        try:
+            key = (service_type, device_instance, dbus_path)
+            rec = self._topics.get(key) or {
+                "service_type": service_type,
+                "device_instance": device_instance,
+                "dbus_path": dbus_path,
+                "first_seen": int(time.time()),
+            }
+            rec["last_seen"] = int(time.time())
+            # Store a small sample of value for debugging (stringified, size-bounded)
+            v_sample = self._extract_value(msg.payload)
+            if v_sample is None:
+                rec["sample"] = None
+            else:
+                s = str(v_sample)
+                rec["sample"] = s[:120]
+            self._topics[key] = rec
+
+            # Periodically publish the snapshot sensor
+            if self._ha_client:
+                self._publish_topics_snapshot()
+        except Exception:
+            pass
+
         # Lightweight device discovery: capture ProductId topics for an instance map.
         # Official docs recommend: mosquitto_sub -t 'N/<portal ID>/+/+/ProductId'
         if dbus_path == "ProductId":
@@ -1443,6 +1474,10 @@ discover();
             self._publish_devices_discovery()
             self._publish_devices_snapshot()
 
+        # Diagnostic topic inventory sensor (count + topic list in attributes).
+        self._publish_topics_discovery()
+        self._publish_topics_snapshot()
+
     def _publish_devices_discovery(self):
         if not self._ha_client:
             return
@@ -1494,6 +1529,65 @@ discover();
         )
         self._ha_client.publish(
             f"roamcore/victron/{self.device_id}/devices/attrs",
+            payload=json.dumps(attrs),
+            retain=True,
+        )
+
+    def _publish_topics_discovery(self) -> None:
+        if not self._ha_client:
+            return
+
+        uniq = f"{self.device_id}_topics"
+        cfg_topic = f"{self.discovery_prefix}/sensor/{self.device_id}/{uniq}/config"
+        state_topic = f"roamcore/victron/{self.device_id}/topics/count"
+        attrs_topic = f"roamcore/victron/{self.device_id}/topics/attrs"
+
+        cfg = {
+            "name": "Victron Topics (seen)",
+            "unique_id": uniq,
+            "state_topic": state_topic,
+            "json_attributes_topic": attrs_topic,
+            "icon": "mdi:format-list-bulleted",
+            "availability_topic": f"roamcore/victron/{self.device_id}/availability",
+            "device": {
+                "identifiers": [self.device_id],
+                "name": self.device_name,
+                "model": "Victron GX (dbus-flashmq)",
+                "manufacturer": "Victron Energy",
+            },
+        }
+        self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
+
+    def _publish_topics_snapshot(self) -> None:
+        if not self._ha_client:
+            return
+
+        now = time.time()
+        if now - self._last_topics_snapshot_publish < 5:
+            return
+        self._last_topics_snapshot_publish = now
+
+        topics = list(self._topics.values())
+        topics.sort(key=lambda d: (str(d.get("service_type")), str(d.get("device_instance")), str(d.get("dbus_path"))))
+
+        truncated = False
+        if self.topics_sensor_max > 0 and len(topics) > self.topics_sensor_max:
+            topics = topics[: self.topics_sensor_max]
+            truncated = True
+
+        attrs = {
+            "portal_id": self._portal_id,
+            "topics": topics,
+            "truncated": truncated,
+        }
+
+        self._ha_client.publish(
+            f"roamcore/victron/{self.device_id}/topics/count",
+            payload=str(len(self._topics)),
+            retain=True,
+        )
+        self._ha_client.publish(
+            f"roamcore/victron/{self.device_id}/topics/attrs",
             payload=json.dumps(attrs),
             retain=True,
         )
