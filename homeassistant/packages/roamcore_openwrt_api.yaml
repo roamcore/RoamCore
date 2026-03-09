@@ -2,8 +2,10 @@
 #
 # This package pulls networking state from the OpenWrt RoamCore API.
 #
-# Product default (final): OpenWrt router is at http://10.0.0.1:8080
-# If you are running in a dev network, update RC_OPENWRT_API_BASE below.
+# Product default (final): OpenWrt router is at http://192.168.1.250:8080
+# Dev network (current): OpenWrt VM is at http://192.168.1.250:8080
+#
+# If you are running in a different network, update all resource URLs below.
 
 # IMPORTANT:
 # - The OpenWrt API is LAN-only for MVP.
@@ -11,8 +13,8 @@
 
 rest:
   # NOTE: Home Assistant REST resources are not template-able.
-  # If running in a dev network, change the base URL in all resources below.
-  - resource: "http://10.0.0.1:8080/api/v1/status"
+  # DEV: Using 192.168.1.250 (OpenWrt VM on VP2430)
+  - resource: "http://192.168.1.250:8080/api/v1/status"
     scan_interval: 15
     sensor:
       - name: "RC OpenWrt Internet"
@@ -31,7 +33,7 @@ rest:
         unit_of_measurement: "s"
         device_class: duration
 
-  - resource: "http://10.0.0.1:8080/api/v1/wan"
+  - resource: "http://192.168.1.250:8080/api/v1/wan"
     scan_interval: 15
     sensor:
       - name: "RC Preferred WAN"
@@ -64,7 +66,7 @@ rest:
         value_template: "{{ value_json.lte.signal_snr | default('') }}"
         unit_of_measurement: "dB"
 
-  - resource: "http://10.0.0.1:8080/api/v1/system"
+  - resource: "http://192.168.1.250:8080/api/v1/system"
     scan_interval: 30
     sensor:
       - name: "RC Router CPU"
@@ -100,7 +102,7 @@ rest:
         unique_id: rc_openwrt_router_firmware
         value_template: "{{ value_json.openwrt_version | default('') }}"
 
-  - resource: "http://10.0.0.1:8080/api/v1/wifi"
+  - resource: "http://192.168.1.250:8080/api/v1/wifi"
     scan_interval: 30
     sensor:
       - name: "RC WiFi SSID"
@@ -113,7 +115,7 @@ rest:
         value_template: "{{ value_json.client_count | int(0) }}"
         icon: mdi:devices
 
-  - resource: "http://10.0.0.1:8080/api/v1/data_usage"
+  - resource: "http://192.168.1.250:8080/api/v1/data_usage"
     scan_interval: 300
     sensor:
       - name: "RC Starlink Today Download"
@@ -143,19 +145,19 @@ rest:
 
 rest_command:
   rc_openwrt_set_wifi:
-    url: "http://10.0.0.1:8080/api/v1/wifi"
+    url: "http://192.168.1.250:8080/api/v1/wifi"
     method: POST
     headers:
       Content-Type: application/json
     payload: '{"ssid":"{{ ssid }}","key":"{{ key }}"}'
 
   rc_openwrt_set_wan_preference:
-    url: "http://10.0.0.1:8080/api/v1/wan/preference"
+    url: "http://192.168.1.250:8080/api/v1/wan/preference"
     method: POST
     headers:
       Content-Type: application/json
     payload: '{"preferred":"{{ preferred }}"}'
 
   rc_openwrt_restart_network:
-    url: "http://10.0.0.1:8080/api/v1/restart"
+    url: "http://192.168.1.250:8080/api/v1/restart"
     method: POST
