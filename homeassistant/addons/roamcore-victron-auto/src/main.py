@@ -538,6 +538,24 @@ discover();
                     # MVP stub: return current best-known candidates from mdns + venus.local probe.
                     candidates: list[dict[str, Any]] = []
 
+                    # 0) If a victron_host override is set (common for mock/dev), always show it as a candidate.
+                    try:
+                        if getattr(parent, "victron_host", None):
+                            host = str(getattr(parent, "victron_host"))
+                            use_tls = bool(getattr(parent, "victron_use_tls", False))
+                            port = int(getattr(parent, "victron_port_tls", 8883) if use_tls else getattr(parent, "victron_port", 1883))
+                            candidates.append(
+                                {
+                                    "name": "Configured host",
+                                    "host": host,
+                                    "port": port,
+                                    "source": "config:victron_host",
+                                }
+                            )
+                    except Exception:
+                        pass
+
+                    # 1) mDNS _mqtt candidates
                     try:
                         for tgt in list(getattr(parent._mdns_listener, "candidates", {}).values()):
                             candidates.append(
