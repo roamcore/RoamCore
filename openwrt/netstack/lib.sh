@@ -36,10 +36,15 @@ rc_load_vars() {
   : "${RC_DEV_WAN_LTE_WWAN:=wwan0}"
   : "${RC_DEV_LTE_QMI:=/dev/cdc-wdm0}"
 
+  # LTE modem protocol:
+  # - mbim (common for EM12-G): proto=mbim, device=/dev/cdc-wdm0
+  # - qmi: proto=qmi, device=/dev/cdc-wdm0
+  : "${RC_LTE_PROTO:=mbim}"
+  : "${RC_DEV_LTE_MBIM:=/dev/cdc-wdm0}"
+
   : "${RC_WAN_PREFERRED:=starlink}"
 }
 
 rc_log() {
   echo "[roamcore-netstack] $*" >&2
 }
-

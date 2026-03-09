@@ -17,6 +17,14 @@ fi
 
 rc_log "LAN: ${RC_LAN_IP}/${RC_LAN_NETMASK} dev=${RC_DEV_LAN}"
 
+# LTE protocol (mbim vs qmi)
+LTE_PROTO="${RC_LTE_PROTO:-mbim}"
+LTE_APN="${RC_LTE_APN:-auto}"
+LTE_AUTH="${RC_LTE_AUTH:-none}"
+LTE_PDPTYPE="${RC_LTE_PDPTYPE:-ipv4v6}"
+LTE_DEVICE_QMI="${RC_DEV_LTE_QMI}"
+LTE_DEVICE_MBIM="${RC_DEV_LTE_MBIM:-/dev/cdc-wdm0}"
+
 # --- network ---
 uci -q batch <<EOF
 set network.lan=interface
@@ -34,11 +42,11 @@ add_list network.wan_starlink.dns='1.1.1.1'
 add_list network.wan_starlink.dns='8.8.8.8'
 
 set network.wan_lte=interface
-set network.wan_lte.proto='qmi'
-set network.wan_lte.device='${RC_DEV_LTE_QMI}'
-set network.wan_lte.apn='auto'
-set network.wan_lte.auth='none'
-set network.wan_lte.pdptype='ipv4v6'
+set network.wan_lte.proto='${LTE_PROTO}'
+set network.wan_lte.device='${LTE_DEVICE_QMI}'
+set network.wan_lte.apn='${LTE_APN}'
+set network.wan_lte.auth='${LTE_AUTH}'
+set network.wan_lte.pdptype='${LTE_PDPTYPE}'
 set network.wan_lte.metric='20'
 set network.wan_lte.peerdns='0'
 add_list network.wan_lte.dns='1.1.1.1'
@@ -46,6 +54,12 @@ add_list network.wan_lte.dns='8.8.8.8'
 
 commit network
 EOF
+
+# If using MBIM, ensure device path is /dev/cdc-wdm* (not wwan0)
+if [ "$LTE_PROTO" = "mbim" ]; then
+  uci set network.wan_lte.device="$LTE_DEVICE_MBIM"
+  uci commit network
+fi
 
 # --- dhcp/dns ---
 uci -q batch <<EOF
