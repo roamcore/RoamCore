@@ -284,6 +284,26 @@ class Handler(BaseHTTPRequestHandler):
 
             # LTE signal (best-effort)
             obj["lte"].update(self._uqmi_signal(devs["qmi"]))
+
+            # Preferred WAN (best-effort via mwan3 metrics)
+            try:
+                # Lower metric is preferred.
+                rc, out, _ = sh(
+                    [
+                        "sh",
+                        "-lc",
+                        "uci -q get mwan3.starlink_primary.metric; uci -q get mwan3.lte_backup.metric",
+                    ],
+                    timeout=2,
+                )
+                if rc == 0:
+                    lines = [x.strip() for x in out.splitlines() if x.strip()]
+                    if len(lines) >= 2:
+                        sm = int(lines[0])
+                        lm = int(lines[1])
+                        obj["preferred"] = "starlink" if sm <= lm else "lte"
+            except Exception:
+                pass
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/system":
