@@ -69,11 +69,14 @@ template:
         unique_id: rc_net_data_today_down_gb
         unit_of_measurement: "GB"
         state: >-
-          {% set mb = states('sensor.rc_starlink_today_download') | float(0) %}
-          {% if mb > 0 %}
-            {{ (mb / 1024) | round(2) }}
+          {# Prefer data usage from the currently-active WAN (best-effort) #}
+          {% set wan = states('sensor.rc_openwrt_active_wan') %}
+          {% if wan == 'lte' %}
+            {% set mb = states('sensor.rc_lte_today_download') | float(0) %}
+            {% if mb > 0 %}{{ (mb / 1024) | round(2) }}{% else %}{{ states("input_number.rc_mock_net_data_today_down_gb") }}{% endif %}
           {% else %}
-            {{ states("input_number.rc_mock_net_data_today_down_gb") }}
+            {% set mb = states('sensor.rc_starlink_today_download') | float(0) %}
+            {% if mb > 0 %}{{ (mb / 1024) | round(2) }}{% else %}{{ states("input_number.rc_mock_net_data_today_down_gb") }}{% endif %}
           {% endif %}
 
       - name: "RC Net Data Today Up"
@@ -86,11 +89,13 @@ template:
         unique_id: rc_net_data_month_down_gb
         unit_of_measurement: "GB"
         state: >-
-          {% set mb = states('sensor.rc_starlink_month_download') | float(0) %}
-          {% if mb > 0 %}
-            {{ (mb / 1024) | round(2) }}
+          {% set wan = states('sensor.rc_openwrt_active_wan') %}
+          {% if wan == 'lte' %}
+            {% set mb = states('sensor.rc_lte_month_download') | float(0) %}
+            {% if mb > 0 %}{{ (mb / 1024) | round(2) }}{% else %}{{ states("input_number.rc_mock_net_data_month_down_gb") }}{% endif %}
           {% else %}
-            {{ states("input_number.rc_mock_net_data_month_down_gb") }}
+            {% set mb = states('sensor.rc_starlink_month_download') | float(0) %}
+            {% if mb > 0 %}{{ (mb / 1024) | round(2) }}{% else %}{{ states("input_number.rc_mock_net_data_month_down_gb") }}{% endif %}
           {% endif %}
 
       - name: "RC Net Data Month Up"
