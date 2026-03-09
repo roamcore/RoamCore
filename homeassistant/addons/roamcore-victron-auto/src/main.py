@@ -1594,8 +1594,11 @@ discover();
         if len(self._published_raw_topics) >= self.raw_topics_max and key not in self._published_raw_topics:
             return
 
-        # object_id must be stable-ish and valid. We'll build one under vt_raw_.
-        obj = self._slugify(f"vt_raw_{service_type}_{device_instance}_{dbus_path}")
+        # object_id must be short and stable. Use a hash of the full key to avoid huge entity_ids.
+        import hashlib
+
+        h = hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+        obj = f"vt_raw_{h}"
         uniq = f"{self.device_id}_{obj}"
 
         if uniq in self._published_discovery_entities:
@@ -1604,11 +1607,13 @@ discover();
         domain = "sensor"
         cfg_topic = f"{self.discovery_prefix}/{domain}/{self.device_id}/{uniq}/config"
         state_topic = f"roamcore/victron/{self.device_id}/raw/{obj}/state"
+        attrs_topic = f"roamcore/victron/{self.device_id}/raw/{obj}/attrs"
 
         cfg: dict[str, Any] = {
             "name": f"Victron Raw {service_type}/{device_instance}/{dbus_path}",
             "unique_id": uniq,
             "object_id": obj,
+            "json_attributes_topic": attrs_topic,
             "state_topic": state_topic,
             "availability_topic": f"roamcore/victron/{self.device_id}/availability",
             "icon": "mdi:code-tags",
@@ -1623,6 +1628,15 @@ discover();
         self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
         self._published_discovery_entities.add(uniq)
         self._published_raw_topics.add(key)
+
+        # Publish metadata attributes (so we can reverse-map hash -> original topic).
+        meta = {
+            "service_type": service_type,
+            "device_instance": device_instance,
+            "dbus_path": dbus_path,
+            "topic_key": key,
+        }
+        self._ha_client.publish(attrs_topic, payload=json.dumps(meta), retain=True)
 
         # Publish current state (best-effort) from our topic cache.
         rec = self._topics.get((service_type, device_instance, dbus_path))
