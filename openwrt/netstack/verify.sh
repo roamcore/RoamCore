@@ -22,7 +22,12 @@ rc_log "API status endpoint (if running):"
 if command -v wget >/dev/null 2>&1; then
   wget -qO- "http://${RC_LAN_IP}:8080/api/v1/status" || true
   echo
+  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/wan" || true
+  echo
+  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/system" || true
+  echo
+  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/wifi" || true
+  echo
 fi
 
 rc_log "Done"
-

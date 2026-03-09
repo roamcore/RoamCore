@@ -6,6 +6,15 @@ rc_load_vars
 
 rc_log "Applying UCI config (parameterised)"
 
+# If DRY_RUN=1, print what would be executed and exit.
+DRY_RUN="${DRY_RUN:-0}"
+if [ "$DRY_RUN" = "1" ]; then
+  rc_log "DRY_RUN=1: will not apply any changes"
+  rc_log "Loaded variables:"
+  env | grep '^RC_' | sort || true
+  exit 0
+fi
+
 rc_log "LAN: ${RC_LAN_IP}/${RC_LAN_NETMASK} dev=${RC_DEV_LAN}"
 
 # --- network ---
@@ -254,4 +263,3 @@ rc_log "Restarting services"
 wifi reload || true
 
 rc_log "Done"
-
