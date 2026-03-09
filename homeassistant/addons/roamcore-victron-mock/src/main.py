@@ -76,6 +76,43 @@ def main():
         f"N/{portal_id}/solarcharger/0/ProductId": j("0xA042"),
     }
 
+    # Subscribe to keepalive requests and respond with full_publish_completed
+    # (mimics real Venus dbus-flashmq behavior)
+    def on_message(c, userdata, msg):
+        topic = msg.topic or ""
+        if topic == f"R/{portal_id}/keepalive":
+            print(f"[mock] Received keepalive request, publishing full_publish_completed")
+            # Parse keepalive-options if present
+            try:
+                payload = json.loads(msg.payload.decode("utf-8")) if msg.payload else {}
+                opts_list = payload.get("keepalive-options", [])
+                echo = None
+                for opt in opts_list:
+                    if isinstance(opt, dict) and "full-publish-completed-echo" in opt:
+                        echo = opt["full-publish-completed-echo"]
+                        break
+                # Publish full_publish_completed
+                resp = {"full-publish-completed-echo": echo} if echo else {}
+                client.publish(
+                    f"N/{portal_id}/full_publish_completed",
+                    payload=json.dumps(resp),
+                    qos=0,
+                    retain=False,
+                )
+            except Exception as e:
+                print(f"[mock] Error handling keepalive: {e}")
+                # Still publish completion even on parse error
+                client.publish(
+                    f"N/{portal_id}/full_publish_completed",
+                    payload="{}",
+                    qos=0,
+                    retain=False,
+                )
+
+    client.on_message = on_message
+    client.subscribe(f"R/{portal_id}/keepalive")
+    print(f"[mock] Subscribed to R/{portal_id}/keepalive")
+
     while True:
         now = time.time()
         # Add a changing value so it's obvious the mock is alive.

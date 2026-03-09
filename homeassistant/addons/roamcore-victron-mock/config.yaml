@@ -1,7 +1,7 @@
 name: RoamCore Victron Mock (DEV)
 slug: roamcore_victron_mock_dev
 description: "Development-only: publish mock Victron Venus MQTT topics into HA Mosquitto"
-version: 0.1.0
+version: 0.1.1
 startup: services
 boot: manual
 init: false
