@@ -12,11 +12,17 @@ template:
         unique_id: rc_power_battery_soc
         unit_of_measurement: "%"
         state: >-
-          {% set v = states("sensor.victron_battery_soc") %}
-          {% if v not in ["unknown","unavailable","none",""] %}
+          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
+          {% set v = states('sensor.vt_battery_soc_percent') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states("input_number.rc_mock_power_battery_soc") }}
+            {% set v2 = states('sensor.victron_battery_soc') %}
+            {% if v2 not in ['unknown','unavailable','none',''] %}
+              {{ v2 }}
+            {% else %}
+              {{ states('input_number.rc_mock_power_battery_soc') }}
+            {% endif %}
           {% endif %}
 
       - name: "RC Power Solar Power"
@@ -24,11 +30,16 @@ template:
         unit_of_measurement: "W"
         device_class: power
         state: >-
-          {% set v = states("sensor.victron_pv_power") %}
-          {% if v not in ["unknown","unavailable","none",""] %}
+          {% set v = states('sensor.vt_solar_power_w') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states("input_number.rc_mock_power_solar_power") }}
+            {% set v2 = states('sensor.victron_pv_power') %}
+            {% if v2 not in ['unknown','unavailable','none',''] %}
+              {{ v2 }}
+            {% else %}
+              {{ states('input_number.rc_mock_power_solar_power') }}
+            {% endif %}
           {% endif %}
 
       - name: "RC Power Load Power"
@@ -36,36 +47,51 @@ template:
         unit_of_measurement: "W"
         device_class: power
         state: >-
-          {% set v = states("sensor.victron_load_power") %}
-          {% if v not in ["unknown","unavailable","none",""] %}
+          {% set v = states('sensor.vt_dc_load_power_w') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states("input_number.rc_mock_power_load_power") }}
+            {% set v2 = states('sensor.victron_load_power') %}
+            {% if v2 not in ['unknown','unavailable','none',''] %}
+              {{ v2 }}
+            {% else %}
+              {{ states('input_number.rc_mock_power_load_power') }}
+            {% endif %}
           {% endif %}
 
       - name: "RC Power Inverter Status"
         unique_id: rc_power_inverter_status
         icon: mdi:power
         state: >-
-          {% set v = states("sensor.victron_inverter_state") %}
-          {% if v not in ["unknown","unavailable","none",""] %}
+          {% set v = states('sensor.victron_inverter_state') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states("input_select.rc_mock_power_inverter_status") }}
+            {{ states('input_select.rc_mock_power_inverter_status') }}
           {% endif %}
 
-      # --- Power detail metrics (mock-first; vendor mapping later) ---
+      # --- Power detail metrics ---
       - name: "RC Power Battery Voltage"
         unique_id: rc_power_battery_voltage
         unit_of_measurement: "V"
         state: >-
-          {{ states("input_number.rc_mock_power_battery_voltage") }}
+          {% set v = states('sensor.vt_battery_voltage_v') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {{ states('input_number.rc_mock_power_battery_voltage') }}
+          {% endif %}
 
       - name: "RC Power Battery Current"
         unique_id: rc_power_battery_current
         unit_of_measurement: "A"
         state: >-
-          {{ states("input_number.rc_mock_power_battery_current") }}
+          {% set v = states('sensor.vt_battery_current_a') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {{ states('input_number.rc_mock_power_battery_current') }}
+          {% endif %}
 
       - name: "RC Power Battery Temperature"
         unique_id: rc_power_battery_temperature_c
