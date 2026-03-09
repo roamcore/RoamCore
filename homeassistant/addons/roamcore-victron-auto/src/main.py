@@ -309,6 +309,41 @@ class VictronAuto:
                 self.end_headers()
                 self.wfile.write(raw)
 
+            def do_POST(self):
+                p = urlparse(self.path)
+                if p.path in ("/api/v1/victron/connect", "/api/v1/connect"):
+                    # Read JSON body
+                    try:
+                        length = int(self.headers.get("Content-Length", 0))
+                        body = self.rfile.read(length).decode("utf-8") if length else "{}"
+                        data = json.loads(body) if body else {}
+                    except Exception as e:
+                        return self._json(400, {"error": "invalid_json", "detail": str(e)})
+
+                    host = data.get("host")
+                    port = int(data.get("port", 1883))
+                    use_tls = bool(data.get("use_tls", False))
+                    portal_id = data.get("portal_id")
+
+                    if not host:
+                        return self._json(400, {"error": "missing_host"})
+
+                    # Persist selection via Supervisor API (PATCH add-on options)
+                    result = parent._persist_victron_selection(host, port, use_tls, portal_id)
+                    if result.get("error"):
+                        return self._json(500, result)
+
+                    return self._json(200, {
+                        "ok": True,
+                        "message": "Victron device configured. Add-on will restart to apply.",
+                        "host": host,
+                        "port": port,
+                        "use_tls": use_tls,
+                        "portal_id": portal_id,
+                    })
+
+                return self._json(404, {"error": "not_found"})
+
             def do_GET(self):
                 p = urlparse(self.path)
                 if p.path in ("/health", "/api/v1/health"):
@@ -364,6 +399,85 @@ class VictronAuto:
         t = threading.Thread(target=server.serve_forever, name="http-api", daemon=True)
         t.start()
         LOG.info("HTTP API listening on :8099")
+
+    def _persist_victron_selection(
+        self, host: str, port: int, use_tls: bool, portal_id: Optional[str]
+    ) -> dict[str, Any]:
+        """Persist Victron selection via Supervisor add-on options API.
+
+        Updates the add-on options and triggers a restart to apply.
+        """
+        sup_token = os.environ.get("SUPERVISOR_TOKEN")
+        if not sup_token:
+            return {"error": "no_supervisor_token", "detail": "Not running as HA add-on"}
+
+        try:
+            import urllib.request
+
+            # Build the options patch
+            new_opts: dict[str, Any] = {
+                "victron_host": host,
+                "victron_mqtt_port": port,
+                "victron_use_tls": use_tls,
+            }
+            if portal_id:
+                new_opts["victron_portal_id"] = portal_id
+
+            # Get current options first
+            req = urllib.request.Request(
+                "http://supervisor/addons/self/options",
+                headers={"Authorization": f"Bearer {sup_token}"},
+            )
+            raw = urllib.request.urlopen(req, timeout=10).read().decode("utf-8")
+            current = json.loads(raw).get("data", {}).get("options", {})
+            LOG.info("Current add-on options: %s", list(current.keys()))
+
+            # Merge new options
+            merged = {**current, **new_opts}
+
+            # POST updated options
+            patch_body = json.dumps({"options": merged}).encode("utf-8")
+            patch_req = urllib.request.Request(
+                "http://supervisor/addons/self/options",
+                data=patch_body,
+                headers={
+                    "Authorization": f"Bearer {sup_token}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            urllib.request.urlopen(patch_req, timeout=10)
+            LOG.info("Updated add-on options: %s", new_opts)
+
+            # Trigger restart (async, non-blocking)
+            def restart_addon():
+                try:
+                    import time as t_mod
+                    t_mod.sleep(1)  # Brief delay to let the HTTP response complete
+                    restart_req = urllib.request.Request(
+                        "http://supervisor/addons/self/restart",
+                        headers={"Authorization": f"Bearer {sup_token}"},
+                        method="POST",
+                    )
+                    urllib.request.urlopen(restart_req, timeout=30)
+                except Exception:
+                    LOG.exception("Add-on restart failed")
+
+            import threading
+            threading.Thread(target=restart_addon, daemon=True).start()
+
+            return {"ok": True}
+
+        except Exception as e:
+            LOG.exception("Failed to persist Victron selection")
+            return {"error": "persist_failed", "detail": str(e)}
+
+    def _resolve(self, name: str) -> Optional[str]:
+        """Synchronous DNS resolution helper for HTTP handler."""
+        try:
+            return socket.gethostbyname(name)
+        except Exception:
+            return None
 
     def _on_mdns(self, zc: Zeroconf, type_: str, name: str, state_change: ServiceStateChange):
         if state_change is ServiceStateChange.Added:
