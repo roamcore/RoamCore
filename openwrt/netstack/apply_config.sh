@@ -17,6 +17,16 @@ fi
 
 rc_log "LAN: ${RC_LAN_IP}/${RC_LAN_NETMASK} dev=${RC_DEV_LAN}"
 
+# Optional: if the dedicated WAN bridge is not wired yet, allow using a static
+# mgmt uplink (e.g. Proxmox vmbr0) as the OpenWrt 'wan' interface.
+WAN_MGMT_ENABLE="${RC_WAN_MGMT_ENABLE:-0}"
+WAN_MGMT_DEV="${RC_DEV_WAN_MGMT:-eth3}"
+WAN_MGMT_IP="${RC_WAN_MGMT_IP:-}"
+WAN_MGMT_NETMASK="${RC_WAN_MGMT_NETMASK:-255.255.255.0}"
+WAN_MGMT_GATEWAY="${RC_WAN_MGMT_GATEWAY:-}"
+WAN_MGMT_DNS1="${RC_WAN_MGMT_DNS1:-1.1.1.1}"
+WAN_MGMT_DNS2="${RC_WAN_MGMT_DNS2:-8.8.8.8}"
+
 # LTE protocol (mbim vs qmi)
 LTE_PROTO="${RC_LTE_PROTO:-mbim}"
 LTE_APN="${RC_LTE_APN:-auto}"
@@ -54,6 +64,35 @@ add_list network.wan_lte.dns='8.8.8.8'
 
 commit network
 EOF
+
+# If WAN_MGMT_ENABLE=1, overwrite the canonical OpenWrt 'wan' interface to be a
+# static uplink on the mgmt NIC. This aligns mwan3 + tooling that expects 'wan'.
+if [ "$WAN_MGMT_ENABLE" = "1" ]; then
+  if [ -z "$WAN_MGMT_IP" ] || [ -z "$WAN_MGMT_GATEWAY" ]; then
+    rc_log "ERROR: RC_WAN_MGMT_ENABLE=1 requires RC_WAN_MGMT_IP and RC_WAN_MGMT_GATEWAY"
+    exit 2
+  fi
+  rc_log "WAN_MGMT_ENABLE=1: configuring network.wan on ${WAN_MGMT_DEV} (static ${WAN_MGMT_IP})"
+  uci -q batch <<EOF
+set network.wan=interface
+set network.wan.proto='static'
+set network.wan.device='${WAN_MGMT_DEV}'
+set network.wan.ipaddr='${WAN_MGMT_IP}'
+set network.wan.netmask='${WAN_MGMT_NETMASK}'
+set network.wan.gateway='${WAN_MGMT_GATEWAY}'
+set network.wan.peerdns='0'
+del_list network.wan.dns=''
+add_list network.wan.dns='${WAN_MGMT_DNS1}'
+add_list network.wan.dns='${WAN_MGMT_DNS2}'
+
+# Disable wan6 in this mode (optional)
+set network.wan6=interface
+set network.wan6.proto='none'
+set network.wan6.device='${WAN_MGMT_DEV}'
+
+commit network
+EOF
+fi
 
 # If using MBIM, ensure device path is /dev/cdc-wdm* (not wwan0)
 if [ "$LTE_PROTO" = "mbim" ]; then
