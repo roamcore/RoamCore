@@ -51,20 +51,29 @@ rest:
         value_template: "{{ value_json.lte.state }}"
         icon: mdi:signal-4g
 
-      - name: "RC LTE Carrier"
-        unique_id: rc_openwrt_lte_carrier
-        value_template: "{{ value_json.lte.carrier | default('') }}"
+  # LTE/SIM diagnostics (MBIM) are separated so /wan stays fast for HA polling.
+  - resource: "http://192.168.1.250:8080/api/v1/lte"
+    scan_interval: 30
+    sensor:
+      - name: "RC LTE SIM State"
+        unique_id: rc_openwrt_lte_sim_ready_state
+        value_template: "{{ value_json.sim_ready_state | default('') }}"
+        icon: mdi:sim
+
+      - name: "RC LTE Registration"
+        unique_id: rc_openwrt_lte_registration_state
+        value_template: "{{ value_json.registration_state | default('') }}"
         icon: mdi:cellphone-wireless
 
-      - name: "RC LTE RSRP"
-        unique_id: rc_openwrt_lte_rsrp
-        value_template: "{{ value_json.lte.signal_rsrp | default(value_json.lte.signal_rsrp_dbm, true) | default('') }}"
-        unit_of_measurement: "dBm"
+      - name: "RC LTE Provider"
+        unique_id: rc_openwrt_lte_provider_name
+        value_template: "{{ value_json.provider_name | default('') }}"
+        icon: mdi:cellphone-wireless
 
-      - name: "RC LTE SNR"
-        unique_id: rc_openwrt_lte_snr
-        value_template: "{{ value_json.lte.signal_snr | default('') }}"
-        unit_of_measurement: "dB"
+      - name: "RC LTE RSSI"
+        unique_id: rc_openwrt_lte_signal_rssi
+        value_template: "{{ value_json.signal_rssi | default('') }}"
+        icon: mdi:signal
 
   - resource: "http://192.168.1.250:8080/api/v1/system"
     scan_interval: 30
