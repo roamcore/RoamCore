@@ -93,6 +93,16 @@ step "Copy API payload"
 "${SCP[@]}" "$API_PY_SRC" "${OPENWRT_USER}@${OPENWRT_HOST}:/opt/roamcore/api.py"
 "${SCP[@]}" "$INIT_SRC" "${OPENWRT_USER}@${OPENWRT_HOST}:/etc/init.d/roamcore-api"
 
+# Optional: install RoamCore firewall workaround service (iptables MVP).
+FW_MVP_SRC="$SCRIPT_DIR/../firewall/iptables_mvp.sh"
+FW_INIT_SRC="$SCRIPT_DIR/../firewall/roamcore-fw.init"
+if [[ -f "$FW_MVP_SRC" && -f "$FW_INIT_SRC" ]]; then
+  step "Copy firewall workaround (iptables MVP)"
+  "${SCP[@]}" "$FW_MVP_SRC" "${OPENWRT_USER}@${OPENWRT_HOST}:/opt/roamcore/iptables_mvp.sh"
+  "${SCP[@]}" "$FW_INIT_SRC" "${OPENWRT_USER}@${OPENWRT_HOST}:/etc/init.d/roamcore-fw"
+  remote 'chmod +x /opt/roamcore/iptables_mvp.sh /etc/init.d/roamcore-fw; /etc/init.d/roamcore-fw enable; /etc/init.d/roamcore-fw restart || true'
+fi
+
 step "Write env file (if missing)"
 remote 'test -f /etc/roamcore-api.env || cat > /etc/roamcore-api.env <<"EOF"
 # Optional environment overrides for the RoamCore OpenWrt API.
