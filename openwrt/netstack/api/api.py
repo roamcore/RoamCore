@@ -24,8 +24,11 @@ from typing import Any
 
 
 def sh(cmd: list[str], timeout: int = 5) -> tuple[int, str, str]:
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    return p.returncode, p.stdout, p.stderr
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout, p.stderr
+    except subprocess.TimeoutExpired:
+        return 124, "", "timeout"
 
 
 def sh_json(cmd: list[str], timeout: int = 5) -> Any:
@@ -287,9 +290,10 @@ class Handler(BaseHTTPRequestHandler):
         if not mbim_ctl or not os.path.exists(mbim_ctl):
             return {}
 
-        sub = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-subscriber-ready-status"], timeout=5)
-        reg = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-registration-state"], timeout=5)
-        sig = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-signal-state"], timeout=5)
+        # IMPORTANT: mbimcli can hang if the modem is in a bad state. Keep timeouts tight.
+        sub = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-subscriber-ready-status"], timeout=2)
+        reg = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-registration-state"], timeout=2)
+        sig = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-signal-state"], timeout=2)
 
         def pick(label: str, text: str) -> str:
             for line in (text or "").splitlines():
@@ -298,6 +302,9 @@ class Handler(BaseHTTPRequestHandler):
             return ""
 
         out: dict[str, Any] = {}
+        if not sub and not reg and not sig:
+            return {"mbim": "timeout"}
+
         ready = pick("Ready state", sub)
         if ready:
             out["sim_ready_state"] = ready
