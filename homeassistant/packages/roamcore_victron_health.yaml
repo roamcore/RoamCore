@@ -1,0 +1,94 @@
+# RoamCore Victron add-on health sensors
+#
+# Purpose:
+# - Expose a small set of contract-level (rc_*) health entities so the dashboard
+#   can show whether the power backend is alive / ingesting data.
+# - Keep vendor naming out of rc_* IDs (see docs/reference/rc-entity-naming.md).
+#
+# Assumptions (MVP):
+# - roamcore-victron-auto add-on uses default device_id = "roamcore-victron".
+#   If you change the add-on option "device_id", update the base topic below.
+
+# --------
+# Vendor layer (vt_*)
+# --------
+mqtt:
+  binary_sensor:
+    - name: "VT Victron Availability"
+      unique_id: vt_victron_availability
+      object_id: vt_victron_availability
+      state_topic: "roamcore/victron/roamcore-victron/availability"
+      payload_on: "online"
+      payload_off: "offline"
+      icon: "mdi:lan-connect"
+
+  sensor:
+    - name: "VT Victron Backend Status"
+      unique_id: vt_victron_backend_status
+      object_id: vt_victron_backend_status
+      state_topic: "roamcore/victron/roamcore-victron/status"
+      icon: "mdi:heart-pulse"
+
+    - name: "VT Victron Snapshot State"
+      unique_id: vt_victron_snapshot_state
+      object_id: vt_victron_snapshot_state
+      state_topic: "roamcore/victron/roamcore-victron/snapshot_state"
+      icon: "mdi:database-check"
+
+    - name: "VT Victron Devices Count"
+      unique_id: vt_victron_devices_count
+      object_id: vt_victron_devices_count
+      state_topic: "roamcore/victron/roamcore-victron/devices/count"
+      icon: "mdi:devices"
+
+    - name: "VT Victron Topics Count"
+      unique_id: vt_victron_topics_count
+      object_id: vt_victron_topics_count
+      state_topic: "roamcore/victron/roamcore-victron/topics/count"
+      icon: "mdi:format-list-bulleted"
+
+# --------
+# Contract layer (rc_*)
+# --------
+template:
+  - binary_sensor:
+      - name: "RC System Power Backend Connected"
+        unique_id: rc_system_power_backend_connected
+        icon: "mdi:power-plug"
+        state: >-
+          {{ is_state('binary_sensor.vt_victron_availability', 'on') }}
+        availability: >-
+          {{ states('binary_sensor.vt_victron_availability') not in ['unknown', 'unavailable'] }}
+
+  - sensor:
+      - name: "RC System Power Backend Status"
+        unique_id: rc_system_power_backend_status
+        icon: "mdi:heart-pulse"
+        state: >-
+          {{ states('sensor.vt_victron_backend_status') }}
+        availability: >-
+          {{ states('sensor.vt_victron_backend_status') not in ['unknown', 'unavailable'] }}
+
+      - name: "RC System Power Backend Snapshot State"
+        unique_id: rc_system_power_backend_snapshot_state
+        icon: "mdi:database-check"
+        state: >-
+          {{ states('sensor.vt_victron_snapshot_state') }}
+        availability: >-
+          {{ states('sensor.vt_victron_snapshot_state') not in ['unknown', 'unavailable'] }}
+
+      - name: "RC System Power Backend Devices"
+        unique_id: rc_system_power_backend_devices
+        icon: "mdi:devices"
+        state: >-
+          {{ states('sensor.vt_victron_devices_count') | int(0) }}
+        availability: >-
+          {{ states('sensor.vt_victron_devices_count') not in ['unknown', 'unavailable'] }}
+
+      - name: "RC System Power Backend Topics"
+        unique_id: rc_system_power_backend_topics
+        icon: "mdi:format-list-bulleted"
+        state: >-
+          {{ states('sensor.vt_victron_topics_count') | int(0) }}
+        availability: >-
+          {{ states('sensor.vt_victron_topics_count') not in ['unknown', 'unavailable'] }}
