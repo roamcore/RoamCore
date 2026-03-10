@@ -124,11 +124,13 @@ rest:
     sensor:
       - name: "RC WiFi SSID"
         unique_id: rc_openwrt_wifi_ssid
+        object_id: rc_wifi_ssid
         value_template: "{{ value_json.ssid }}"
         icon: mdi:wifi
 
       - name: "RC WiFi Clients"
         unique_id: rc_openwrt_wifi_clients
+        object_id: rc_wifi_clients
         value_template: "{{ value_json.client_count | int(0) }}"
         icon: mdi:devices
 
