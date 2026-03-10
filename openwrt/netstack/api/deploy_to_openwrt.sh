@@ -137,8 +137,8 @@ remote "set -e; \
   /etc/init.d/firewall restart >/dev/null 2>&1 && echo 'firewall:restarted' && exit 0; \
   echo 'firewall:restart_failed_falling_back_to_iptables'; \
   RULE=\"iptables -I INPUT -p tcp --dport ${API_PORT} -j ACCEPT\"; \
-  grep -qs \"--dport ${API_PORT}\" /etc/firewall.user 2>/dev/null || echo \"$RULE\" >> /etc/firewall.user; \
-  sh -c \"$RULE\" 2>/dev/null || true"
+  grep -qs \"--dport ${API_PORT}\" /etc/firewall.user 2>/dev/null || echo \"\$RULE\" >> /etc/firewall.user; \
+  sh -c \"\$RULE\" 2>/dev/null || true"
 
 step "Restart service"
 remote "/etc/init.d/roamcore-api restart || /etc/init.d/roamcore-api start"
