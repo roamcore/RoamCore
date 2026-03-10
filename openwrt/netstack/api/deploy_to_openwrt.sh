@@ -81,7 +81,7 @@ remote 'opkg update'
 remote 'opkg install \
   python3-light python3-codecs python3-email python3-urllib python3-logging \
   curl wget-ssl ca-bundle \
-  vnstat2 mwan3 iwinfo uqmi \
+  vnstat2 mwan3 iwinfo \
   || true'
 
 if [[ "$STOP_MWAN3_DURING_OPKG" == "1" ]]; then
@@ -112,7 +112,7 @@ remote 'test -f /etc/roamcore-api.env || cat > /etc/roamcore-api.env <<"EOF"
 # RC_API_PORT=8080
 # RC_DEV_WAN_STARLINK=eth1
 # RC_DEV_WAN_LTE_WWAN=wwan0
-# RC_DEV_LTE_QMI=/dev/cdc-wdm0
+# RC_DEV_LTE_MBIM=/dev/cdc-wdm0
 # RC_DEV_LAN=eth0
 EOF'
 
