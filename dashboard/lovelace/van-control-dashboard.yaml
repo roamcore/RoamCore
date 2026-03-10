@@ -92,6 +92,30 @@ views:
           - entity: binary_sensor.van_co_alarm
             name: CO Alarm
 
+  - title: System
+    path: system
+    icon: mdi:server
+    cards:
+      - type: markdown
+        content: |
+          # System
+          Health / ingest status for RoamCore backends.
+
+      - type: entities
+        title: Power backend (contract)
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.rc_system_power_backend_connected
+            name: Power backend connected
+          - entity: sensor.rc_system_power_backend_status
+            name: Power backend status
+          - entity: sensor.rc_system_power_backend_snapshot_state
+            name: Snapshot state
+          - entity: sensor.rc_system_power_backend_devices
+            name: Devices discovered
+          - entity: sensor.rc_system_power_backend_topics
+            name: Topics seen
+
   - title: Water
     path: water
     icon: mdi:water
