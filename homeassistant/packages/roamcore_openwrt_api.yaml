@@ -40,16 +40,19 @@ rest:
     sensor:
       - name: "RC Preferred WAN"
         unique_id: rc_openwrt_preferred_wan
+        object_id: rc_openwrt_preferred_wan
         value_template: "{{ value_json.preferred | default('') }}"
         icon: mdi:swap-horizontal
 
       - name: "RC Starlink State"
         unique_id: rc_openwrt_starlink_state
+        object_id: rc_openwrt_starlink_state
         value_template: "{{ value_json.starlink.state }}"
         icon: mdi:satellite-variant
 
       - name: "RC LTE State"
         unique_id: rc_openwrt_lte_state
+        object_id: rc_openwrt_lte_state
         value_template: "{{ value_json.lte.state }}"
         icon: mdi:signal-4g
 

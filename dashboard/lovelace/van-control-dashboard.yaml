@@ -124,6 +124,18 @@ views:
             name: WAN status
           - entity: sensor.rc_net_wan_source
             name: Active WAN
+          - entity: sensor.rc_openwrt_preferred_wan
+            name: Preferred WAN (raw)
+          - entity: sensor.rc_openwrt_starlink_state
+            name: Starlink (raw)
+          - entity: sensor.rc_openwrt_lte_state
+            name: LTE (raw)
+          - entity: sensor.rc_lte_sim_state
+            name: LTE SIM state
+          - entity: sensor.rc_lte_registration
+            name: LTE registration
+          - entity: sensor.rc_lte_rssi
+            name: LTE RSSI
           - entity: sensor.rc_net_data_today_down_gb
             name: Data today (down)
           - entity: sensor.rc_net_data_month_down_gb
