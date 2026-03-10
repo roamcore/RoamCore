@@ -35,6 +35,16 @@ def sh_json(cmd: list[str], timeout: int = 5) -> Any:
     return json.loads(out)
 
 
+def sh_best_effort(cmd: list[str], timeout: int = 5) -> str:
+    """Run a command and return stdout on success, else empty string."""
+
+    try:
+        rc, out, _ = sh(cmd, timeout=timeout)
+        return out if rc == 0 else ""
+    except Exception:
+        return ""
+
+
 def read_first(path: str, default: str = "") -> str:
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -162,6 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             "starlink": self._env("RC_DEV_WAN_STARLINK", "eth1"),
             "lte": self._env("RC_DEV_WAN_LTE_WWAN", "wwan0"),
             "qmi": self._env("RC_DEV_LTE_QMI", "/dev/cdc-wdm0"),
+            "mbim": self._env("RC_DEV_LTE_MBIM", "/dev/cdc-wdm0"),
             "lan": self._env("RC_DEV_LAN", "eth0"),
         }
 
@@ -267,6 +278,56 @@ class Handler(BaseHTTPRequestHandler):
                 out["technology"] = tech
         return out
 
+    def _mbim_status(self, mbim_ctl: str) -> dict[str, Any]:
+        """Best-effort LTE modem status via mbimcli.
+
+        Useful for carrier-agnostic diagnostics (SIM missing vs deregistered vs low signal).
+        """
+
+        if not mbim_ctl or not os.path.exists(mbim_ctl):
+            return {}
+
+        sub = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-subscriber-ready-status"], timeout=5)
+        reg = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-registration-state"], timeout=5)
+        sig = sh_best_effort(["mbimcli", "-d", mbim_ctl, "--query-signal-state"], timeout=5)
+
+        def pick(label: str, text: str) -> str:
+            for line in (text or "").splitlines():
+                if label in line:
+                    return line.split(":", 1)[-1].strip().strip("'")
+            return ""
+
+        out: dict[str, Any] = {}
+        ready = pick("Ready state", sub)
+        if ready:
+            out["sim_ready_state"] = ready
+        iccid = pick("SIM ICCID", sub)
+        if iccid and iccid != "unknown":
+            out["sim_iccid"] = iccid
+
+        reg_state = pick("Register state", reg)
+        if reg_state:
+            out["registration_state"] = reg_state
+        provider = pick("Provider name", reg)
+        if provider and provider != "unknown":
+            out["provider_name"] = provider
+
+        # Signal state (when available)
+        rssi = pick("RSSI", sig)
+        if rssi:
+            out["signal_rssi"] = rssi
+        rsrp = pick("RSRP", sig)
+        if rsrp:
+            out["signal_rsrp"] = rsrp
+        rsrq = pick("RSRQ", sig)
+        if rsrq:
+            out["signal_rsrq"] = rsrq
+        sinr = pick("SNR", sig) or pick("SINR", sig)
+        if sinr:
+            out["signal_sinr"] = sinr
+
+        return out
+
     def do_GET(self) -> None:
         if not self._require_auth():
             return json_response(self, 401, {"success": False, "error": "unauthorized"})
@@ -319,6 +380,9 @@ class Handler(BaseHTTPRequestHandler):
             }
 
             # LTE signal (best-effort)
+            # Prefer mbimcli diagnostics (works for MBIM devices and provides SIM-present status).
+            obj["lte"].update(self._mbim_status(devs.get("mbim", "")))
+            # QMI signal path (best-effort) if available.
             obj["lte"].update(self._uqmi_signal(devs["qmi"]))
 
             # Preferred WAN (best-effort via mwan3 metrics)
