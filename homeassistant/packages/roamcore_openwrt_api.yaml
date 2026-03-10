@@ -137,24 +137,28 @@ rest:
     sensor:
       - name: "RC Starlink Today Download"
         unique_id: rc_openwrt_starlink_today_rx_mb
+        object_id: rc_starlink_today_download
         value_template: "{{ value_json.starlink.today_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC Starlink Month Download"
         unique_id: rc_openwrt_starlink_month_rx_mb
+        object_id: rc_starlink_month_download
         value_template: "{{ value_json.starlink.month_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC LTE Today Download"
         unique_id: rc_openwrt_lte_today_rx_mb
+        object_id: rc_lte_today_download
         value_template: "{{ value_json.lte.today_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC LTE Month Download"
         unique_id: rc_openwrt_lte_month_rx_mb
+        object_id: rc_lte_month_download
         value_template: "{{ value_json.lte.month_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
