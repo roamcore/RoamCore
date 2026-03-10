@@ -19,11 +19,13 @@ rest:
     sensor:
       - name: "RC OpenWrt Internet"
         unique_id: rc_openwrt_internet
+        object_id: rc_openwrt_internet
         value_template: "{{ value_json.internet }}"
         icon: mdi:web
 
       - name: "RC OpenWrt Active WAN"
         unique_id: rc_openwrt_active_wan
+        object_id: rc_openwrt_active_wan
         value_template: "{{ value_json.active_wan }}"
         icon: mdi:swap-horizontal
 
