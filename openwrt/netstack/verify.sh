@@ -6,6 +6,11 @@ rc_load_vars
 
 rc_log "Verifying OpenWrt netstack"
 
+# API host: prefer explicit RC_API_HOST (or RC_OPENWRT_HOST) when verifying from
+# a non-LAN context (e.g. temporary mgmt/WAN mode on vmbr0).
+API_HOST="${RC_API_HOST:-${RC_OPENWRT_HOST:-${RC_LAN_IP}}}"
+API_PORT="${RC_API_PORT:-8080}"
+
 rc_log "Interfaces (ubus):"
 ubus call network.interface.lan status | head -c 400 || true
 echo
@@ -20,13 +25,15 @@ fi
 
 rc_log "API status endpoint (if running):"
 if command -v wget >/dev/null 2>&1; then
-  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/status" || true
+  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/status" || true
   echo
-  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/wan" || true
+  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/wan" || true
   echo
-  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/system" || true
+  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/system" || true
   echo
-  wget -qO- "http://${RC_LAN_IP}:8080/api/v1/wifi" || true
+  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/wifi" || true
+  echo
+  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/lte" || true
   echo
 fi
 
