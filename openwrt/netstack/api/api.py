@@ -379,9 +379,8 @@ class Handler(BaseHTTPRequestHandler):
                 "preferred": "starlink",
             }
 
-            # LTE signal: keep /wan fast and robust for HA polling.
-            # Detailed LTE/SIM diagnostics are available under /api/v1/lte.
-            obj["lte"].update(self._uqmi_signal(devs["qmi"]))
+            # Keep /wan fast and robust for HA polling.
+            # LTE/SIM diagnostics are available under /api/v1/lte.
 
             # Preferred WAN (best-effort via mwan3 metrics)
             try:
@@ -408,8 +407,6 @@ class Handler(BaseHTTPRequestHandler):
             devs = self._want_devnames()
             obj = {"success": True}
             obj.update(self._mbim_status(devs.get("mbim", "")))
-            # Add QMI fields too if available.
-            obj.update(self._uqmi_signal(devs["qmi"]))
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/system":
