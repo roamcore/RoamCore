@@ -379,10 +379,8 @@ class Handler(BaseHTTPRequestHandler):
                 "preferred": "starlink",
             }
 
-            # LTE signal (best-effort)
-            # Prefer mbimcli diagnostics (works for MBIM devices and provides SIM-present status).
-            obj["lte"].update(self._mbim_status(devs.get("mbim", "")))
-            # QMI signal path (best-effort) if available.
+            # LTE signal: keep /wan fast and robust for HA polling.
+            # Detailed LTE/SIM diagnostics are available under /api/v1/lte.
             obj["lte"].update(self._uqmi_signal(devs["qmi"]))
 
             # Preferred WAN (best-effort via mwan3 metrics)
@@ -404,6 +402,14 @@ class Handler(BaseHTTPRequestHandler):
                         obj["preferred"] = "starlink" if sm <= lm else "lte"
             except Exception:
                 pass
+            return json_response(self, 200, obj)
+
+        if self.path == "/api/v1/lte":
+            devs = self._want_devnames()
+            obj = {"success": True}
+            obj.update(self._mbim_status(devs.get("mbim", "")))
+            # Add QMI fields too if available.
+            obj.update(self._uqmi_signal(devs["qmi"]))
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/system":
