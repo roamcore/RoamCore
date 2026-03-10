@@ -80,18 +80,21 @@ rest:
     sensor:
       - name: "RC Router CPU"
         unique_id: rc_openwrt_router_cpu_pct
+        object_id: rc_router_cpu
         value_template: "{{ value_json.cpu_percent | float(0) }}"
         unit_of_measurement: "%"
         icon: mdi:cpu-64-bit
 
       - name: "RC Router Memory"
         unique_id: rc_openwrt_router_memory_pct
+        object_id: rc_router_memory
         value_template: "{{ value_json.memory_percent | float(0) }}"
         unit_of_measurement: "%"
         icon: mdi:memory
 
       - name: "RC Router Temperature"
         unique_id: rc_openwrt_router_temp_c
+        object_id: rc_router_temperature
         value_template: "{{ value_json.temperature_celsius | float(0) }}"
         unit_of_measurement: "°C"
         device_class: temperature
@@ -109,6 +112,7 @@ rest:
 
       - name: "RC Router Firmware"
         unique_id: rc_openwrt_router_firmware
+        object_id: rc_router_firmware
         value_template: "{{ value_json.openwrt_version | default('') }}"
 
   - resource: "http://192.168.1.250:8080/api/v1/wifi"
