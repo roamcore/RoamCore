@@ -119,7 +119,7 @@ template:
       - name: "RC Net Cellular Provider"
         unique_id: rc_net_cell_provider
         state: >-
-          {% set s = states('sensor.rc_lte_carrier') %}
+          {% set s = states('sensor.rc_lte_provider') %}
           {% if s not in ['unknown','unavailable','none',''] %}
             {{ s }}
           {% else %}
