@@ -116,6 +116,25 @@ views:
           - entity: sensor.rc_system_power_backend_topics
             name: Topics seen
 
+      - type: entities
+        title: Networking (contract)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.rc_net_wan_status
+            name: WAN status
+          - entity: sensor.rc_net_wan_source
+            name: Active WAN
+          - entity: sensor.rc_net_data_today_down_gb
+            name: Data today (down)
+          - entity: sensor.rc_net_data_month_down_gb
+            name: Data month (down)
+          - entity: sensor.rc_net_cell_provider
+            name: Cellular provider
+          - entity: sensor.rc_router_cpu
+            name: Router CPU (%)
+          - entity: sensor.rc_router_memory
+            name: Router memory (%)
+
   - title: Water
     path: water
     icon: mdi:water
