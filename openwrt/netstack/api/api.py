@@ -85,6 +85,39 @@ def active_wan_device() -> str:
     return (out or "").strip() or "unknown"
 
 
+def fw4_check() -> dict[str, Any]:
+    """Best-effort firewall4 (fw4) health.
+
+    On some OpenWrt x86 VM images we've observed fw4 failing with:
+    `Chain of type "filter" is not supported`.
+
+    We expose this so HA/RoamCore can display the real state without SSH.
+    """
+
+    obj: dict[str, Any] = {
+        "firewall_backend": "unknown",
+        "fw4_ok": None,
+        "fw4_error": "",
+        "iptables_mvp_detected": False,
+    }
+
+    # Detect whether firewall4 is present.
+    rc, _, _ = sh(["sh", "-lc", "command -v fw4 >/dev/null 2>&1"], timeout=2)
+    if rc == 0:
+        obj["firewall_backend"] = "fw4"
+        rc2, _out2, err2 = sh(["fw4", "check"], timeout=4)
+        obj["fw4_ok"] = rc2 == 0
+        obj["fw4_error"] = (err2 or "").strip()
+
+    # Detect our MVP iptables workaround by looking for a MASQUERADE rule.
+    # This is intentionally fuzzy; we just want a signal for dashboards.
+    rc3, out3, _err3 = sh(["sh", "-lc", "iptables -t nat -S 2>/dev/null || true"], timeout=3)
+    if rc3 == 0 and "MASQUERADE" in (out3 or ""):
+        obj["iptables_mvp_detected"] = True
+
+    return obj
+
+
 # CPU percent without sleeping: compute delta since last call.
 # This avoids blocking Home Assistant REST polls.
 _CPU_LAST: tuple[int, int] | None = None
@@ -445,6 +478,11 @@ class Handler(BaseHTTPRequestHandler):
                 obj["temperature_celsius"] = float(t) / 1000.0
             except Exception:
                 pass
+            return json_response(self, 200, obj)
+
+        if self.path == "/api/v1/firewall":
+            obj = {"success": True}
+            obj.update(fw4_check())
             return json_response(self, 200, obj)
 
         if self.path == "/api/v1/wifi":
