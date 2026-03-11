@@ -53,6 +53,8 @@ delete_all "" FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,
 if [ -n "${API_PORT}" ]; then
   delete_all "" INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT
   delete_all "" INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
+  # Also remove any older generic allow rules without interface match.
+  delete_all "" INPUT -p tcp --dport "$API_PORT" -j ACCEPT
 fi
 
 # NAT (idempotent)
