@@ -199,6 +199,9 @@ views:
     path: power
     icon: mdi:flash
     cards:
+      - type: custom:roamcore-victron-connect
+        title: Connect Victron
+
       - type: grid
         columns: 2
         square: false
