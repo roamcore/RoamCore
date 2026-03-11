@@ -55,6 +55,7 @@ if [ -n "${API_PORT}" ]; then
   delete_all "" INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
   # Also remove any older generic allow rules without interface match.
   delete_all "" INPUT -p tcp --dport "$API_PORT" -j ACCEPT
+  delete_all "" INPUT -p tcp -m tcp --dport "$API_PORT" -j ACCEPT
 fi
 
 # NAT (idempotent)
@@ -73,9 +74,9 @@ iptables -C FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ES
 
 # Optional allow rules
 if [ -n "${API_PORT}" ]; then
-  iptables -C INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
+  iptables -C INPUT -i "$LAN_IF" -p tcp -m tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
     iptables -A INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT
-  iptables -C INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
+  iptables -C INPUT -i "$USER_IF" -p tcp -m tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
     iptables -A INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
 fi
 
