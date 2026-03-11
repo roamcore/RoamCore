@@ -229,4 +229,10 @@ template:
       - name: "RC Net Internet Reachable"
         unique_id: rc_net_internet_reachable
         state: >-
-          {{ true if states("input_select.rc_mock_net_status") in ["good","ok"] else false }}
+          {# Prefer real OpenWrt API if present, else fall back to mocks #}
+          {% set s = states('sensor.rc_openwrt_internet') %}
+          {% if s in ['online','offline'] %}
+            {{ true if s == 'online' else false }}
+          {% else %}
+            {{ true if states("input_select.rc_mock_net_status") in ["good","ok"] else false }}
+          {% endif %}
