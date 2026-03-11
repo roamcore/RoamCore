@@ -117,6 +117,9 @@ remote 'test -f /etc/roamcore-api.env || cat > /etc/roamcore-api.env <<"EOF"
 # RC_DEV_LAN=eth0
 EOF'
 
+# Ensure firewall workaround knows the API port (so it can allow INPUT when fw4 is broken).
+remote "grep -qs '^RC_API_PORT=' /etc/roamcore-api.env || echo 'RC_API_PORT=${API_PORT}' >> /etc/roamcore-api.env"
+
 step "Permissions + enable service"
 remote 'chmod +x /opt/roamcore/api.py /etc/init.d/roamcore-api; /etc/init.d/roamcore-api enable'
 
