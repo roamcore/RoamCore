@@ -111,8 +111,11 @@ def fw4_check() -> dict[str, Any]:
 
     # Detect our MVP iptables workaround by looking for a MASQUERADE rule.
     # This is intentionally fuzzy; we just want a signal for dashboards.
+    # Note: OpenWrt may be configured for legacy iptables; check both.
     rc3, out3, _err3 = sh(["sh", "-lc", "iptables -t nat -S 2>/dev/null || true"], timeout=3)
-    if rc3 == 0 and "MASQUERADE" in (out3 or ""):
+    rc4, out4, _err4 = sh(["sh", "-lc", "iptables-legacy -t nat -S 2>/dev/null || true"], timeout=3)
+    rules = (out3 or "") + "\n" + (out4 or "")
+    if (rc3 == 0 or rc4 == 0) and "MASQUERADE" in rules:
         obj["iptables_mvp_detected"] = True
 
     return obj
