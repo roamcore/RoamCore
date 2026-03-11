@@ -8,12 +8,14 @@ USE_PROCD=1
 start_service() {
   procd_open_instance
   # Source env file if present so iptables_mvp.sh can read RC_API_PORT, RC_WAN_IF, etc.
-  procd_set_param command /bin/sh -c ". /etc/roamcore-api.env 2>/dev/null || true; /opt/roamcore/iptables_mvp.sh"
+  procd_set_param command /bin/sh -c "set -a; . /etc/roamcore-api.env 2>/dev/null || true; set +a; /opt/roamcore/iptables_mvp.sh"
   procd_set_param respawn 0 0 0
   procd_close_instance
 }
 
 reload_service() {
+  set -a
   . /etc/roamcore-api.env 2>/dev/null || true
+  set +a
   /opt/roamcore/iptables_mvp.sh || true
 }
