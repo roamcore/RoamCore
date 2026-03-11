@@ -37,9 +37,10 @@ class RoamCoreVictronConnectCard extends HTMLElement {
 
   _getApiBase() {
     // Add-on ingress URL pattern: /api/hassio_ingress/<ingress_token>/
-    // For now, assume the add-on is accessible via its ingress path.
-    // In production, this would be derived from the add-on's ingress_url.
-    // Fallback: try localhost for development.
+    // NOTE: the ingress token is not stable across installs. For MVP we allow
+    // the dashboard YAML to pass `api_base` explicitly.
+    //
+    // Default: keep current DEV slug for our dev environments.
     return this._config.api_base || '/api/hassio_ingress/roamcore_victron_auto_dev';
   }
 

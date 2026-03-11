@@ -201,6 +201,7 @@ views:
     cards:
       - type: custom:roamcore-victron-connect
         title: Connect Victron
+        api_base: /api/hassio_ingress/roamcore_victron_auto_dev
 
       - type: grid
         columns: 2
