@@ -29,31 +29,52 @@ USER_IF="${RC_USER_IF:-eth2}"
 API_PORT="${RC_API_PORT:-}"
 
 # Best-effort cleanup (ignore failures)
-iptables -t nat -D POSTROUTING -o "$WAN_IF" -j MASQUERADE 2>/dev/null || true
-iptables -D FORWARD -i "$LAN_IF" -o "$WAN_IF" -j ACCEPT 2>/dev/null || true
-iptables -D FORWARD -i "$USER_IF" -o "$WAN_IF" -j ACCEPT 2>/dev/null || true
-iptables -D FORWARD -i "$WAN_IF" -o "$LAN_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
-iptables -D FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
+
+delete_all() {
+  # Delete a rule repeatedly until it no longer exists.
+  # Usage: delete_all <table_or_empty> <rule...>
+  tbl="$1"; shift
+  while true; do
+    if [ -n "$tbl" ]; then
+      iptables -t "$tbl" -D "$@" 2>/dev/null || break
+    else
+      iptables -D "$@" 2>/dev/null || break
+    fi
+  done
+}
+
+delete_all nat POSTROUTING -o "$WAN_IF" -j MASQUERADE
+delete_all "" FORWARD -i "$LAN_IF" -o "$WAN_IF" -j ACCEPT
+delete_all "" FORWARD -i "$USER_IF" -o "$WAN_IF" -j ACCEPT
+delete_all "" FORWARD -i "$WAN_IF" -o "$LAN_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+delete_all "" FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
 # Optional allow rules cleanup
 if [ -n "${API_PORT}" ]; then
-  iptables -D INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || true
-  iptables -D INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || true
+  delete_all "" INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT
+  delete_all "" INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
 fi
 
-# NAT
-iptables -t nat -A POSTROUTING -o "$WAN_IF" -j MASQUERADE
+# NAT (idempotent)
+iptables -t nat -C POSTROUTING -o "$WAN_IF" -j MASQUERADE 2>/dev/null || \
+  iptables -t nat -A POSTROUTING -o "$WAN_IF" -j MASQUERADE
 
-# Forwarding
-iptables -A FORWARD -i "$LAN_IF" -o "$WAN_IF" -j ACCEPT
-iptables -A FORWARD -i "$USER_IF" -o "$WAN_IF" -j ACCEPT
-iptables -A FORWARD -i "$WAN_IF" -o "$LAN_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+# Forwarding (idempotent)
+iptables -C FORWARD -i "$LAN_IF" -o "$WAN_IF" -j ACCEPT 2>/dev/null || \
+  iptables -A FORWARD -i "$LAN_IF" -o "$WAN_IF" -j ACCEPT
+iptables -C FORWARD -i "$USER_IF" -o "$WAN_IF" -j ACCEPT 2>/dev/null || \
+  iptables -A FORWARD -i "$USER_IF" -o "$WAN_IF" -j ACCEPT
+iptables -C FORWARD -i "$WAN_IF" -o "$LAN_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+  iptables -A FORWARD -i "$WAN_IF" -o "$LAN_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -C FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+  iptables -A FORWARD -i "$WAN_IF" -o "$USER_IF" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
 # Optional allow rules
 if [ -n "${API_PORT}" ]; then
-  iptables -A INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT
-  iptables -A INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
+  iptables -C INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
+    iptables -A INPUT -i "$LAN_IF" -p tcp --dport "$API_PORT" -j ACCEPT
+  iptables -C INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT 2>/dev/null || \
+    iptables -A INPUT -i "$USER_IF" -p tcp --dport "$API_PORT" -j ACCEPT
 fi
 
 echo "[roamcore-fw] applied iptables MVP NAT+forwarding: $LAN_IF,$USER_IF -> $WAN_IF"
