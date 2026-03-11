@@ -124,6 +124,40 @@ rest:
         object_id: rc_router_firmware
         value_template: "{{ value_json.openwrt_version | default('') }}"
 
+  # Firewall diagnostics (fw4 broken on current x86 VM; iptables MVP should be detectable)
+  - resource: "http://192.168.1.250:8080/api/v1/firewall"
+    scan_interval: 60
+    sensor:
+      - name: "RC OpenWrt Firewall Backend"
+        unique_id: rc_openwrt_firewall_backend
+        object_id: rc_openwrt_firewall_backend
+        value_template: "{{ value_json.firewall_backend | default('unknown') }}"
+        icon: mdi:shield
+
+      - name: "RC OpenWrt fw4 OK"
+        unique_id: rc_openwrt_fw4_ok
+        object_id: rc_openwrt_fw4_ok
+        value_template: "{{ value_json.fw4_ok | default(false) }}"
+        icon: mdi:shield-alert
+
+      - name: "RC OpenWrt iptables MVP detected"
+        unique_id: rc_openwrt_iptables_mvp_detected
+        object_id: rc_openwrt_iptables_mvp_detected
+        value_template: "{{ value_json.iptables_mvp_detected | default(false) }}"
+        icon: mdi:check-network-outline
+
+      - name: "RC OpenWrt iptables NAT table OK"
+        unique_id: rc_openwrt_iptables_nat_table_ok
+        object_id: rc_openwrt_iptables_nat_table_ok
+        value_template: "{{ value_json.iptables_nat_table_ok | default(false) }}"
+        icon: mdi:check-network-outline
+
+      - name: "RC OpenWrt RoamCore FW service running"
+        unique_id: rc_openwrt_roamcore_fw_running
+        object_id: rc_openwrt_roamcore_fw_running
+        value_template: "{{ value_json.roamcore_fw_running | default(false) }}"
+        icon: mdi:shield-check
+
   - resource: "http://192.168.1.250:8080/api/v1/wifi"
     scan_interval: 30
     sensor:
