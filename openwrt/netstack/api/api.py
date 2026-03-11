@@ -99,6 +99,8 @@ def fw4_check() -> dict[str, Any]:
         "fw4_ok": None,
         "fw4_error": "",
         "iptables_mvp_detected": False,
+        "roamcore_fw_running": None,
+        "iptables_nat_table_ok": None,
     }
 
     # Detect whether firewall4 is present.
@@ -112,11 +114,25 @@ def fw4_check() -> dict[str, Any]:
     # Detect our MVP iptables workaround by looking for a MASQUERADE rule.
     # This is intentionally fuzzy; we just want a signal for dashboards.
     # Note: OpenWrt may be configured for legacy iptables; check both.
-    rc3, out3, _err3 = sh(["sh", "-lc", "iptables -t nat -S 2>/dev/null || true"], timeout=3)
-    rc4, out4, _err4 = sh(["sh", "-lc", "iptables-legacy -t nat -S 2>/dev/null || true"], timeout=3)
+    rc3, out3, err3 = sh(["sh", "-lc", "iptables -t nat -S"], timeout=3)
+    # iptables may be configured for legacy; keep this best-effort.
+    rc4, out4, err4 = sh(["sh", "-lc", "iptables-legacy -t nat -S"], timeout=3)
+
+    nat_ok = (rc3 == 0) or (rc4 == 0)
+    obj["iptables_nat_table_ok"] = nat_ok
+
     rules = (out3 or "") + "\n" + (out4 or "")
-    if (rc3 == 0 or rc4 == 0) and "MASQUERADE" in rules:
+    errs = (err3 or "") + "\n" + (err4 or "")
+    if "Table does not exist" in errs:
+        # Helpful hint in dashboards.
+        obj["iptables_nat_table_ok"] = False
+    if nat_ok and "MASQUERADE" in rules:
         obj["iptables_mvp_detected"] = True
+
+    # Is our RoamCore firewall workaround service running?
+    rc5, out5, _err5 = sh(["sh", "-lc", "/etc/init.d/roamcore-fw status 2>/dev/null || true"], timeout=2)
+    if rc5 == 0:
+        obj["roamcore_fw_running"] = "running" in (out5 or "")
 
     return obj
 

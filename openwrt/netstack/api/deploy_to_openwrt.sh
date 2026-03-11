@@ -82,6 +82,7 @@ remote 'opkg install \
   python3-light python3-codecs python3-email python3-urllib python3-logging \
   curl wget-ssl ca-bundle \
   vnstat2 mwan3 iwinfo \
+  kmod-ipt-nat iptables-mod-nat-extra \
   || true'
 
 if [[ "$STOP_MWAN3_DURING_OPKG" == "1" ]]; then
