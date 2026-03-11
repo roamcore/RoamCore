@@ -9,6 +9,11 @@
 # - roamcore-victron-auto add-on uses default device_id = "roamcore-victron".
 #   If you change the add-on option "device_id", update the base topic below.
 
+# MVP note:
+# Home Assistant MQTT sensors cannot template `state_topic`, so we intentionally
+# hardcode the base topic. Keep add-on `device_id` at the default unless you
+# also update this package.
+
 # --------
 # Vendor layer (vt_*)
 # --------
