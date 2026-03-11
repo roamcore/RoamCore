@@ -146,6 +146,16 @@ views:
             name: Router CPU (%)
           - entity: sensor.rc_router_memory
             name: Router memory (%)
+          - entity: sensor.rc_openwrt_firewall_backend
+            name: Firewall backend
+          - entity: sensor.rc_openwrt_fw4_ok
+            name: fw4 OK
+          - entity: sensor.rc_openwrt_iptables_mvp_detected
+            name: iptables MVP detected
+          - entity: sensor.rc_openwrt_iptables_nat_table_ok
+            name: iptables NAT table OK
+          - entity: sensor.rc_openwrt_roamcore_fw_running
+            name: RoamCore FW service running
 
   - title: Water
     path: water
