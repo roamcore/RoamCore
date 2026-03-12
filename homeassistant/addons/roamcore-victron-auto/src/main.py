@@ -400,6 +400,12 @@ class VictronAuto:
                         "portal_id": portal_id,
                     })
 
+                if path in ("/api/v1/victron/clear", "/api/v1/clear"):
+                    result = parent._persist_victron_clear()
+                    if result.get("error"):
+                        return self._json(500, result)
+                    return self._json(200, {"ok": True, "message": "Cleared Victron config. Add-on will restart."})
+
                 return self._json(404, {"error": "not_found"})
 
             def do_GET(self):
@@ -715,6 +721,71 @@ discover();
 
         except Exception as e:
             LOG.exception("Failed to persist Victron selection")
+            return {"error": "persist_failed", "detail": str(e)}
+
+    def _persist_victron_clear(self) -> dict[str, Any]:
+        """Clear Victron selection via Supervisor add-on options API.
+
+        Removes victron_host and victron_portal_id from add-on options and triggers a restart.
+        """
+
+        sup_token = os.environ.get("SUPERVISOR_TOKEN")
+        if not sup_token:
+            return {"error": "no_supervisor_token", "detail": "Not running as HA add-on"}
+
+        try:
+            import urllib.request
+
+            info_req = urllib.request.Request(
+                "http://supervisor/addons/self/info",
+                headers={"Authorization": f"Bearer {sup_token}"},
+            )
+            raw = urllib.request.urlopen(info_req, timeout=10).read().decode("utf-8")
+            info = json.loads(raw) if raw else {}
+            current = ((info.get("data") or {}).get("options") or {})
+            if not isinstance(current, dict):
+                current = {}
+
+            merged = dict(current)
+            # Remove selection keys; leave other configuration intact.
+            for k in ("victron_host", "victron_portal_id"):
+                if k in merged:
+                    merged.pop(k, None)
+
+            patch_body = json.dumps({"options": merged}).encode("utf-8")
+            patch_req = urllib.request.Request(
+                "http://supervisor/addons/self/options",
+                data=patch_body,
+                headers={
+                    "Authorization": f"Bearer {sup_token}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            urllib.request.urlopen(patch_req, timeout=10)
+            LOG.info("Cleared Victron selection (victron_host, victron_portal_id)")
+
+            def restart_addon():
+                try:
+                    import time as t_mod
+
+                    t_mod.sleep(1)
+                    restart_req = urllib.request.Request(
+                        "http://supervisor/addons/self/restart",
+                        headers={"Authorization": f"Bearer {sup_token}"},
+                        method="POST",
+                    )
+                    urllib.request.urlopen(restart_req, timeout=30)
+                except Exception:
+                    LOG.exception("Add-on restart failed")
+
+            import threading
+
+            threading.Thread(target=restart_addon, daemon=True).start()
+
+            return {"ok": True}
+        except Exception as e:
+            LOG.exception("Failed to clear Victron selection")
             return {"error": "persist_failed", "detail": str(e)}
 
     def _resolve(self, name: str) -> Optional[str]:
