@@ -38,6 +38,7 @@ options:
   discovery_prefix: homeassistant
   device_name: RoamCore Victron System
   device_id: roamcore-victron
+  summary_log_interval_sec: 60
   log_level: info
 schema:
   scan_interval_sec: int(5,300)
@@ -69,6 +70,7 @@ schema:
   discovery_prefix: str
   device_name: str
   device_id: str
+  summary_log_interval_sec: int(0,3600)
   log_level: list(trace|debug|info|warn|error)
 services:
 - mqtt:need
