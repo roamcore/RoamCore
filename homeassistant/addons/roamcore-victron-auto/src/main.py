@@ -455,6 +455,7 @@ class VictronAuto:
         <h1>Connect Victron</h1>
         <div class=\"row\">
           <button id=\"refresh\" class=\"secondary\">Refresh</button>
+          <button id=\"clear\" class=\"secondary\">Clear</button>
         </div>
       </div>
       <div class=\"muted\">This page is served by the add-on (Ingress). It can configure the Victron target and restart the add-on.</div>
@@ -530,7 +531,28 @@ async function discover() {
   }
 }
 
+async function clearConfig() {
+  msg('', '');
+  const ok = confirm('Clear the saved Victron host/portal_id and restart the add-on?');
+  if (!ok) return;
+  const resp = await fetch('api/v1/victron/clear', { method: 'POST' });
+  const out = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(out.error || resp.statusText);
+  msg('ok', out.message || 'Cleared. Restarting add-on...');
+}
+
 document.getElementById('refresh').onclick = discover;
+document.getElementById('clear').onclick = async () => {
+  const btn = document.getElementById('clear');
+  btn.disabled = true;
+  try {
+    await clearConfig();
+  } catch (e) {
+    msg('err', `Clear failed: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+};
 document.getElementById('manualConnect').onclick = async () => {
   msg('', '');
   const host = (document.getElementById('manualHost').value || '').trim();
