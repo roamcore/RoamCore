@@ -556,6 +556,12 @@ discover();
                 if path in ("/health", "/api/v1/health"):
                     return self._json(200, {"ok": True})
 
+                if path in ("/api/v1/victron/status", "/api/v1/status"):
+                    try:
+                        return self._json(200, {"ok": True, "status": parent.status_dict()})
+                    except Exception as e:
+                        return self._json(500, {"ok": False, "error": "status_failed", "detail": str(e)})
+
                 if path in ("/api/v1/victron/discover", "/api/v1/discover"):
                     # MVP stub: return current best-known candidates from mdns + venus.local probe.
                     candidates: list[dict[str, Any]] = []
@@ -777,6 +783,48 @@ discover();
         self._last_tick_duration_ms = (time.time() - t0) * 1000.0
         self._log_summary_if_due()
 
+    def status_dict(self) -> dict[str, Any]:
+        """Current runtime status snapshot (safe to call from sync HTTP handler)."""
+
+        now = time.time()
+        tgt = None
+        if self._victron:
+            tgt = {
+                "host": self._victron.host,
+                "port": self._victron.port,
+                "source": self._victron.source,
+            }
+        return {
+            "uptime_sec": int(now - (self._started_at or now)),
+            "scan_interval_sec": self.scan_interval,
+            "tick_count": self._tick_count,
+            "last_tick_ms": round(self._last_tick_duration_ms or 0.0, 1),
+            "ha_mqtt": {
+                "connected": bool(self._ha_client),
+                "host": getattr(self, "_ha_mqtt_host", None),
+                "port": getattr(self, "_ha_mqtt_port", None),
+                "has_user": bool(getattr(self, "_ha_mqtt_user", None)),
+            },
+            "victron": {
+                "target": tgt,
+                "connected": bool(self._victron_client),
+                "portal_id": self._portal_id,
+                "did_full_publish": bool(self._did_full_publish),
+                "last_seen_msg_age_sec": int(now - self._last_seen_victron_msg)
+                if self._last_seen_victron_msg
+                else None,
+                "keepalive_age_sec": int(now - self._last_keepalive_sent)
+                if self._last_keepalive_sent
+                else None,
+            },
+            "inventory": {
+                "devices_count": len(self._devices),
+                "topics_count": len(self._topics),
+                "raw_topics_published": len(self._published_raw_topics),
+                "raw_topics_max": int(self.raw_topics_max),
+            },
+        }
+
     def _log_summary_if_due(self) -> None:
         """Emit a structured, grep-friendly status summary line periodically."""
 
@@ -788,45 +836,7 @@ discover();
                 return
             self._last_summary_log = now
 
-            tgt = None
-            if self._victron:
-                tgt = {
-                    "host": self._victron.host,
-                    "port": self._victron.port,
-                    "source": self._victron.source,
-                }
-
-            summary = {
-                "event": "status_summary",
-                "uptime_sec": int(now - (self._started_at or now)),
-                "scan_interval_sec": self.scan_interval,
-                "tick_count": self._tick_count,
-                "last_tick_ms": round(self._last_tick_duration_ms or 0.0, 1),
-                "ha_mqtt": {
-                    "connected": bool(self._ha_client),
-                    "host": getattr(self, "_ha_mqtt_host", None),
-                    "port": getattr(self, "_ha_mqtt_port", None),
-                    "has_user": bool(getattr(self, "_ha_mqtt_user", None)),
-                },
-                "victron": {
-                    "target": tgt,
-                    "connected": bool(self._victron_client),
-                    "portal_id": self._portal_id,
-                    "did_full_publish": bool(self._did_full_publish),
-                    "last_seen_msg_age_sec": int(now - self._last_seen_victron_msg)
-                    if self._last_seen_victron_msg
-                    else None,
-                    "keepalive_age_sec": int(now - self._last_keepalive_sent)
-                    if self._last_keepalive_sent
-                    else None,
-                },
-                "inventory": {
-                    "devices_count": len(self._devices),
-                    "topics_count": len(self._topics),
-                    "raw_topics_published": len(self._published_raw_topics),
-                    "raw_topics_max": int(self.raw_topics_max),
-                },
-            }
+            summary = {"event": "status_summary", **self.status_dict()}
             LOG.info("STATUS %s", json.dumps(summary, sort_keys=True))
         except Exception:
             # Never let summary logging break the main loop.
