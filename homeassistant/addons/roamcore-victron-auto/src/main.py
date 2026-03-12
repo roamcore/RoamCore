@@ -286,6 +286,13 @@ class VictronAuto:
         # Devices sensor sizing guardrail (MQTT payload limits vary by broker/client).
         self.devices_sensor_max = int(opts.get("devices_sensor_max", 50))
 
+        # Periodic one-line status summary for boring debugging.
+        self._started_at = time.time()
+        self._tick_count = 0
+        self._last_tick_duration_ms: Optional[float] = None
+        self._last_summary_log = 0.0
+        self._summary_log_interval_sec = int(opts.get("summary_log_interval_sec", 60))
+
     async def run(self):
         # Start lightweight local HTTP API for the UI "Connect Victron" flow.
         # Intended to be exposed via add-on ingress.
@@ -716,6 +723,8 @@ discover();
             self._mdns_listener.add_service(zc, type_, name)
 
     async def _tick(self):
+        t0 = time.time()
+        self._tick_count += 1
         # Choose Victron target
         target = await self._discover_target()
         if target and (
@@ -764,6 +773,64 @@ discover();
             if now - self._last_keepalive_sent > cadence:
                 self._send_keepalive(suppress_republish=self._did_full_publish)
                 self._last_keepalive_sent = now
+
+        self._last_tick_duration_ms = (time.time() - t0) * 1000.0
+        self._log_summary_if_due()
+
+    def _log_summary_if_due(self) -> None:
+        """Emit a structured, grep-friendly status summary line periodically."""
+
+        try:
+            now = time.time()
+            if self._summary_log_interval_sec <= 0:
+                return
+            if now - self._last_summary_log < self._summary_log_interval_sec:
+                return
+            self._last_summary_log = now
+
+            tgt = None
+            if self._victron:
+                tgt = {
+                    "host": self._victron.host,
+                    "port": self._victron.port,
+                    "source": self._victron.source,
+                }
+
+            summary = {
+                "event": "status_summary",
+                "uptime_sec": int(now - (self._started_at or now)),
+                "scan_interval_sec": self.scan_interval,
+                "tick_count": self._tick_count,
+                "last_tick_ms": round(self._last_tick_duration_ms or 0.0, 1),
+                "ha_mqtt": {
+                    "connected": bool(self._ha_client),
+                    "host": getattr(self, "_ha_mqtt_host", None),
+                    "port": getattr(self, "_ha_mqtt_port", None),
+                    "has_user": bool(getattr(self, "_ha_mqtt_user", None)),
+                },
+                "victron": {
+                    "target": tgt,
+                    "connected": bool(self._victron_client),
+                    "portal_id": self._portal_id,
+                    "did_full_publish": bool(self._did_full_publish),
+                    "last_seen_msg_age_sec": int(now - self._last_seen_victron_msg)
+                    if self._last_seen_victron_msg
+                    else None,
+                    "keepalive_age_sec": int(now - self._last_keepalive_sent)
+                    if self._last_keepalive_sent
+                    else None,
+                },
+                "inventory": {
+                    "devices_count": len(self._devices),
+                    "topics_count": len(self._topics),
+                    "raw_topics_published": len(self._published_raw_topics),
+                    "raw_topics_max": int(self.raw_topics_max),
+                },
+            }
+            LOG.info("STATUS %s", json.dumps(summary, sort_keys=True))
+        except Exception:
+            # Never let summary logging break the main loop.
+            return
 
     async def _discover_target(self) -> Optional[VictronTarget]:
         # 0) Manual override
