@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  homeassistant:
+    container_name: roamcore_homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      # Mount the RoamCore homeassistant directory to the container's config directory
+      - ./homeassistant:/config
+      # Sync time with the host machine
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=UTC # Update this to your local timezone if needed (e.g., Europe/London)
+    restart: unless-stopped
+    ports:
+      - "8123:8123"

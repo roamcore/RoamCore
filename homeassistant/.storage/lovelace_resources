@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace_resources",
+  "data": {
+    "items": [
+      {
+        "id": "e1c68ae96ea74222ab24f44e60eac768",
+        "url": "/local/roamcore/roamcore-dashboard.js",
+        "type": "module"
+      }
+    ]
+  }
+}

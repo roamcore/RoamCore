@@ -58,11 +58,12 @@ class MdnsMqttListener:
             # Tie-breaker: most recently seen (we store it in source timestamp suffix)
             # If parsing fails, treat as old.
             ts = 0.0
-            try:
-                if "@" in t.source:
+            if t.source and "@" in t.source:
+                try: 
                     ts = float(t.source.split("@")[-1])
-            except Exception:
-                ts = 0.0
+                except Exception:
+                    pass
+
             return (s, ts)
 
         # max by score then timestamp
@@ -90,6 +91,7 @@ class MdnsMqttListener:
 
 class VictronAuto:
     def __init__(self, opts: dict[str, Any]):
+        self.grace = 12
         self.opts = opts
         self.scan_interval = int(opts.get("scan_interval_sec", 15))
         self.timeout = int(opts.get("mqtt_connect_timeout_sec", 10))
@@ -108,7 +110,7 @@ class VictronAuto:
         # So: allow a user-supplied portal id to trigger keepalive immediately.
         self.victron_portal_id = opts.get("victron_portal_id")
         self.victron_username = opts.get("victron_username")
-        self.victron_password = opts.get("victron_password")
+        self.victron_password = opts.get("victron_password") or ""
         self.victron_tls_ca_file = opts.get("victron_tls_ca_file")
         self.victron_tls_insecure = bool(opts.get("victron_tls_insecure", True))
 
@@ -394,15 +396,19 @@ class VictronAuto:
                         return self._json(400, {"error": "invalid_json", "detail": str(e)})
 
                     host = data.get("host")
+
+                    if not host:
+                        return self._json(400, {"error": "missing_host"})
+                    
                     port = int(data.get("port", 1883))
                     use_tls = bool(data.get("use_tls", False))
                     portal_id = data.get("portal_id")
 
-                    if not host:
-                        return self._json(400, {"error": "missing_host"})
+                    
 
                     # Persist selection via Supervisor API (PATCH add-on options)
                     result = parent._persist_victron_selection(host, port, use_tls, portal_id)
+
                     if result.get("error"):
                         return self._json(500, result)
 
@@ -968,32 +974,27 @@ discover();
 
         errs: list[str] = []
         warns: list[str] = []
-        try:
-            if int(self.scan_interval) <= 0:
-                errs.append("scan_interval_sec must be > 0")
-        except Exception:
-            errs.append("scan_interval_sec must be an integer")
 
-        try:
-            if int(self.timeout) <= 0:
-                errs.append("mqtt_connect_timeout_sec must be > 0")
-        except Exception:
-            errs.append("mqtt_connect_timeout_sec must be an integer")
+        if int(self.scan_interval) <= 0:
+            errs.append("scan_interval_sec must be > 0")
+
+        if int(self.timeout) <= 0:
+            errs.append("mqtt_connect_timeout_sec must be > 0")
+     
 
         # Raw topic publishing can explode entity count; keep guardrails.
-        try:
-            if bool(self.publish_raw_topics) and int(self.raw_topics_max) <= 0:
-                errs.append("raw_topics_max must be > 0 when publish_raw_topics is enabled")
-            if bool(self.publish_raw_topics) and int(self.raw_topics_max) > 5000:
-                warns.append("raw_topics_max is very high (>5000); Home Assistant may slow down")
-        except Exception:
-            errs.append("raw_topics_max must be an integer")
+
+        if bool(self.publish_raw_topics) and int(self.raw_topics_max) <= 0:
+            errs.append("raw_topics_max must be > 0 when publish_raw_topics is enabled")
+
+        if bool(self.publish_raw_topics) and int(self.raw_topics_max) > 5000:
+            warns.append("raw_topics_max is very high (>5000); Home Assistant may slow down")
+
 
         # TLS configuration sanity.
         try:
-            if bool(self.victron_use_tls):
-                if not self.victron_tls_insecure and not self.victron_tls_ca_file:
-                    warns.append("victron_use_tls is on but no CA file is set (and insecure=false); TLS may fail")
+            if self.victron_use_tls and not self.victron_tls_insecure and not self.victron_tls_ca_file:
+                warns.append("victron_use_tls is on but no CA file is set (and insecure=false); TLS may fail")
         except Exception:
             pass
 
@@ -1075,8 +1076,7 @@ discover();
 
         # If portal id is explicitly configured, we expect full_publish_completed
         # relatively quickly after the first keepalive.
-        grace = 12
-        if time.time() - self._victron_connected_at < grace:
+        if time.time() - self._victron_connected_at < self.grace:
             return
 
         # No messages at all -> likely wrong broker.
@@ -1197,7 +1197,7 @@ discover();
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         )
         if self.victron_username:
-            client.username_pw_set(str(self.victron_username), str(self.victron_password or ""))
+            client.username_pw_set(str(self.victron_username), str(self.victron_password))
         else:
             # Dev-friendly fallback: if the Victron target is the same broker as HA MQTT
             # (e.g. when using a mock publisher on core-mosquitto), reuse the HA MQTT
@@ -1355,11 +1355,13 @@ discover();
             rec["last_seen"] = int(time.time())
             # Store a small sample of value for debugging (stringified, size-bounded)
             v_sample = self._extract_value(msg.payload)
-            if v_sample is None:
-                rec["sample"] = None
-            else:
+
+            rec["sample"] = None
+
+            if v_sample is not None:
                 s = str(v_sample)
                 rec["sample"] = s[:120]
+
             self._topics[key] = rec
 
             # Periodically publish the snapshot sensor
@@ -1426,7 +1428,7 @@ discover();
             return None
 
         s = (txt or "").strip()
-        if not s or s == "null":
+        if not s or s.lower() == "null":
             return None
 
         try:
@@ -1442,10 +1444,10 @@ discover();
     def _coerce_bool(self, v: Any) -> bool:
         if v is None:
             return False
-        if isinstance(v, bool):
-            return v
-        if isinstance(v, (int, float)):
+
+        if isinstance(v, (int, float, bool)):
             return bool(v)
+        
         s = str(v).strip().lower()
         return s in ("1", "true", "on", "yes", "y", "connected")
 
@@ -1629,9 +1631,7 @@ discover();
             LOG.exception("Failed to publish keepalive")
 
     def _maybe_request_periodic_full_snapshot(self) -> None:
-        if not self._victron_client or not self._portal_id:
-            return
-        if self.full_snapshot_interval_sec <= 0:
+        if not self._victron_client or not self._portal_id or self.full_snapshot_interval_sec <= 0:
             return
 
         now = time.time()
@@ -1661,9 +1661,7 @@ discover();
         reads via `R/<portal id>/<service>/<instance>/<path>`.
         """
 
-        if not self._victron_client or not self._portal_id:
-            return
-        if not self.startup_read_requests:
+        if not self._victron_client or not self._portal_id or not self.startup_read_requests:
             return
 
         for suffix in self.startup_read_requests:
@@ -1854,12 +1852,16 @@ discover();
         self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
 
     def _slugify(self, s: str) -> str:
+        if not s:
+            return ""
+        
         out = []
-        for ch in (s or ""):
+        for ch in s:
             if ch.isalnum():
                 out.append(ch.lower())
             else:
                 out.append("_")
+
         x = "".join(out)
         while "__" in x:
             x = x.replace("__", "_")
@@ -1868,9 +1870,7 @@ discover();
     def _ensure_raw_topic_entity(self, service_type: str, device_instance: str, dbus_path: str) -> None:
         """Publish a raw per-topic entity via HA MQTT Discovery (guarded by caps)."""
 
-        if not self._ha_client:
-            return
-        if not self.publish_raw_topics:
+        if not self._ha_client or not self.publish_raw_topics:
             return
 
         key = f"{service_type}/{device_instance}/{dbus_path}".strip("/")

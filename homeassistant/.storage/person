@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "minor_version": 1,
+  "key": "person",
+  "data": {
+    "items": [
+      {
+        "id": "henry_burbridge",
+        "name": "Henry Burbridge",
+        "user_id": "613016b3d0694cfa91e69879958b6ac1",
+        "device_trackers": []
+      }
+    ]
+  }
+}

@@ -16,7 +16,7 @@ def supervisor_mqtt_service():
     )
     raw = urllib.request.urlopen(req, timeout=10).read().decode("utf-8")
     obj = json.loads(raw)
-    return obj.get("data") or {}
+    return obj.get("data") or ""
 
 
 def main():
@@ -29,16 +29,18 @@ def main():
     svc = supervisor_mqtt_service()
     host = svc.get("host") or "core-mosquitto"
     port = int(svc.get("port") or 1883)
-    username = svc.get("username") or ""
-    password = svc.get("password") or ""
+    
 
     client = mqtt.Client(
         client_id=f"roamcore-victron-mock-{portal_id}",
         protocol=mqtt.MQTTv311,
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
     )
+
+    username = svc.get("username")
+
     if username:
-        client.username_pw_set(username, password)
+        client.username_pw_set(username, svc.get("password"))
 
     client.connect(host, port, keepalive=30)
     client.loop_start()
@@ -87,10 +89,16 @@ def main():
                 payload = json.loads(msg.payload.decode("utf-8")) if msg.payload else {}
                 opts_list = payload.get("keepalive-options", [])
                 echo = None
+                
                 for opt in opts_list:
-                    if isinstance(opt, dict) and "full-publish-completed-echo" in opt:
+
+                    if not isinstance(opt, dict):
+                        continue
+
+                    if "full-publish-completed-echo" in opt:
                         echo = opt["full-publish-completed-echo"]
                         break
+
                 # Publish full_publish_completed
                 resp = {"full-publish-completed-echo": echo} if echo else {}
                 client.publish(

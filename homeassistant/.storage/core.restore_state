@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "core.restore_state",
+  "data": [
+    {
+      "state": {"entity_id":"conversation.home_assistant","state":"unknown","attributes":{"friendly_name":"Home Assistant","supported_features":1},"last_changed":"2026-03-13T15:04:21.082414+00:00","last_reported":"2026-03-13T15:04:21.082414+00:00","last_updated":"2026-03-13T15:04:21.082414+00:00","context":{"id":"01KKKVM8AT9RRER85TSMQ487DB","parent_id":null,"user_id":null}},
+      "extra_data": null,
+      "last_seen": "2026-03-13T16:19:23.018962+00:00"
+    },
+    {
+      "state": {"entity_id":"event.backup_automatic_backup","state":"unknown","attributes":{"event_types":["completed","failed","in_progress"],"event_type":null,"friendly_name":"Backup Automatic backup"},"last_changed":"2026-03-13T15:04:23.165404+00:00","last_reported":"2026-03-13T15:04:23.165773+00:00","last_updated":"2026-03-13T15:04:23.165404+00:00","context":{"id":"01KKKVMABX21QWGNT39RY38FEX","parent_id":null,"user_id":null}},
+      "extra_data": {
+        "last_event_type": null,
+        "last_event_attributes": null
+      },
+      "last_seen": "2026-03-13T16:19:23.018962+00:00"
+    },
+    {
+      "state": {"entity_id":"person.henry_burbridge","state":"unknown","attributes":{"editable":true,"id":"henry_burbridge","device_trackers":[],"user_id":"613016b3d0694cfa91e69879958b6ac1","friendly_name":"Henry Burbridge"},"last_changed":"2026-03-13T15:06:58.511599+00:00","last_reported":"2026-03-13T15:06:58.513310+00:00","last_updated":"2026-03-13T15:06:58.511599+00:00","context":{"id":"01KKKVS22FNKNKJQJ5K6E90GG8","parent_id":null,"user_id":null}},
+      "extra_data": null,
+      "last_seen": "2026-03-13T16:19:23.018962+00:00"
+    },
+    {
+      "state": {"entity_id":"tts.google_translate_en_com","state":"unknown","attributes":{"friendly_name":"Google Translate en com"},"last_changed":"2026-03-13T15:07:05.762915+00:00","last_reported":"2026-03-13T15:07:05.763020+00:00","last_updated":"2026-03-13T15:07:05.762915+00:00","context":{"id":"01KKKVS9526ACH6PJ5BVC4FKHK","parent_id":null,"user_id":null}},
+      "extra_data": null,
+      "last_seen": "2026-03-13T16:19:23.018962+00:00"
+    }
+  ]
+}
