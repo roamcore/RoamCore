@@ -152,7 +152,7 @@ class RoamcoreBasePage extends HTMLElement {
   _header(title) {
     return `
       <div class="rc-subheader">
-        <button class="rc-back" data-nav="/lovelace/roamcore/overview">←</button>
+        <button class="rc-back" data-nav="/roamcore/overview">←</button>
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
       </div>

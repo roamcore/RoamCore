@@ -140,7 +140,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     const timeRemaining = '—';
 
     return `
-      <div class="rc-tile rc-click" data-nav="/lovelace/roamcore/power">
+      <div class="rc-tile rc-click" data-nav="/roamcore/power">
         <div class="rc-tile-head">
           <div class="rc-tile-title">Power</div>
           <div class="rc-tile-sub">${chargingSource ? `☼ ${chargingSource}` : ''}</div>
@@ -168,7 +168,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     const src = (netSource && netSource !== 'unknown' && netSource !== 'unavailable') ? netSource : '—';
 
     return `
-      <div class="rc-tile rc-click" data-nav="/lovelace/roamcore/network">
+      <div class="rc-tile rc-click" data-nav="/roamcore/network">
         <div class="rc-tile-head"><div class="rc-tile-title">Network</div><div class="rc-tile-sub">⌁</div></div>
 
         <div class="rc-net-main">
@@ -188,7 +188,7 @@ class RoamcoreDashboardCard extends HTMLElement {
 
   _tileLevel({ pitchAbs, rollAbs, status }) {
     return `
-      <div class="rc-tile rc-click" data-nav="/lovelace/roamcore/level">
+      <div class="rc-tile rc-click" data-nav="/roamcore/level">
         <div class="rc-tile-head"><div class="rc-tile-title">Level</div><div class="rc-tile-sub" style="color:${status.color}">${status.label}</div></div>
 
         <div class="rc-level-main">
@@ -218,7 +218,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     const total = totalN == null ? '—' : `${Math.round(totalN)}`;
 
     return `
-      <div class="rc-tile rc-click" data-nav="/lovelace/roamcore/map">
+      <div class="rc-tile rc-click" data-nav="/roamcore/map">
         <div class="rc-tile-head"><div class="rc-tile-title">Map</div><div class="rc-tile-sub">↗</div></div>
 
         <div class="rc-map-main">

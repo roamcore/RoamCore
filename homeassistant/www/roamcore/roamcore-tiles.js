@@ -252,7 +252,7 @@ class RoamcorePowerTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/lovelace/roamcore/power');
+    this._root.innerHTML = this._tileWrap(inner, '/roamcore/power');
   }
 }
 
@@ -283,7 +283,7 @@ class RoamcoreNetworkTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/lovelace/roamcore/network');
+    this._root.innerHTML = this._tileWrap(inner, '/roamcore/network');
   }
 }
 
@@ -321,7 +321,7 @@ class RoamcoreLevelTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/lovelace/roamcore/level');
+    this._root.innerHTML = this._tileWrap(inner, '/roamcore/level');
   }
 }
 
@@ -344,7 +344,7 @@ class RoamcoreMapTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/lovelace/roamcore/map');
+    this._root.innerHTML = this._tileWrap(inner, '/roamcore/map');
   }
 }
 
