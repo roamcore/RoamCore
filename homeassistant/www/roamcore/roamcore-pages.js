@@ -653,6 +653,11 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     if (!this._root || !this._hass) return;
 
     const loc = this._getState('sensor.rc_map_location');
+    const lat = this._num('sensor.rc_location_lat', null);
+    const lon = this._num('sensor.rc_location_lon', null);
+    const acc = this._num('sensor.rc_location_accuracy_m', null);
+    const spd = this._num('sensor.rc_location_speed', null);
+    const head = this._num('sensor.rc_location_heading_deg', null);
     const elev = this._num('sensor.rc_map_elevation_m', null) ?? this._num('sensor.rc_map_elevation', null);
     const distToday = this._num('sensor.rc_trip_distance_today_mi', null) ?? this._num('sensor.rc_trip_distance_today', null);
     const distTotal = this._num('sensor.rc_trip_distance_total_mi', null) ?? this._num('sensor.rc_trip_distance_total', null);
@@ -667,10 +672,16 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">Trip history line + real embedded map next (once we pick map provider).</div>
+      <div class="rc-label" style="margin-top: 6px;">Live coords from rc_location_* (Traccar-friendly).</div>
     `;
 
     const stats = `
+      ${this._row('Latitude', lat == null ? '—' : lat.toFixed(5))}
+      ${this._row('Longitude', lon == null ? '—' : lon.toFixed(5))}
+      ${this._row('Accuracy', acc == null ? '—' : Math.round(acc), 'm')}
+      ${this._row('Speed', spd == null ? '—' : round1(spd))}
+      ${this._row('Heading', head == null ? '—' : Math.round(head), '°')}
+      <div style="height: 10px"></div>
       ${this._row('Elevation', elev == null ? '—' : round1(elev), 'm')}
       ${this._row('Distance (Today)', distToday == null ? '—' : round1(distToday), 'mi')}
       ${this._row('Distance (Total)', distTotal == null ? '—' : round1(distTotal), 'mi')}
@@ -686,6 +697,13 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       <div style="height: 8px"></div>
       ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
       ${this._row('Stops', stops == null ? '—' : Math.round(stops))}
+      <div style="height: 12px"></div>
+      <div class="rc-label" style="margin-bottom:8px;">Trip Wrapped (MVP)</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
+        <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
+      </div>
+      <div class="rc-label" style="margin-top:10px;">Configure Traccar creds + device id in HA helpers, then tap Generate.</div>
     `;
 
     this._root.innerHTML = `
@@ -698,6 +716,20 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
+
+    const genBtn = this._root.querySelector('#rc-tripwrapped-generate');
+    if (genBtn) {
+      genBtn.addEventListener('click', async () => {
+        try {
+          genBtn.disabled = true;
+          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
+        } catch (e) {
+          console.warn('trip wrapped generate failed', e);
+        } finally {
+          genBtn.disabled = false;
+        }
+      });
+    }
   }
 }
 
