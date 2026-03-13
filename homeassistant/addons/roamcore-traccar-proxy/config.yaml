@@ -12,10 +12,6 @@ panel_icon: mdi:map
 host_network: true
 arch:
   - amd64
-  - aarch64
-  - armv7
-  - armhf
-  - i386
 map:
   - config:rw
 options:
