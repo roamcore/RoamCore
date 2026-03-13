@@ -31,6 +31,18 @@ input_text:
     name: "RC Trip Wrapped To (ISO8601)"
     initial: "2026-03-08T00:00:00Z"
 
+# Simple health check for the Traccar UI.
+# This avoids adding more template sensors (packages don't merge template lists well).
+binary_sensor:
+  - platform: command_line
+    name: "RC Traccar UI Reachable"
+    unique_id: rc_traccar_ui_reachable
+    command: >-
+      sh -lc 'curl -fsS --max-time 5 "{{ states(''input_text.rc_traccar_ui_url'') }}" >/dev/null && echo ON || echo OFF'
+    scan_interval: 30
+    payload_on: "ON"
+    payload_off: "OFF"
+
 input_number:
   rc_traccar_device_id:
     name: "RC Traccar Device ID"
