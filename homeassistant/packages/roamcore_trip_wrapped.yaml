@@ -16,7 +16,8 @@ input_text:
   rc_traccar_ingress_path:
     name: "RC Traccar Ingress Path"
     # Example add-on ingress path: /hassio/ingress/a0d7b954_traccar/
-    initial: "/hassio/ingress/a0d7b954_traccar/"
+    # NOTE: do NOT include a trailing slash; HA hassio handler can mis-parse it.
+    initial: "/hassio/ingress/a0d7b954_traccar"
 
   rc_trip_wrapped_from:
     name: "RC Trip Wrapped From (ISO8601)"

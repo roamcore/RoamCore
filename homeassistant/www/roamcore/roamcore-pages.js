@@ -688,7 +688,8 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
-    const ingress = this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar/';
+    const ingressRaw = this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar';
+    const ingress = String(ingressRaw).replace(/\/+$/, '');
     const mapTile = `
       <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
         <iframe
