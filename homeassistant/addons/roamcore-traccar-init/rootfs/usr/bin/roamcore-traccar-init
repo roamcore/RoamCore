@@ -7,22 +7,13 @@ SECRETS="/config/secrets.yaml"
 log() { echo "[roamcore-traccar-init] $*"; }
 
 get_json() {
+  # jq supports nested keys via dot notation.
   local key="$1"
-  python3 - <<PY 2>/dev/null || true
-import json
-cfg=json.load(open("${CONFIG_PATH}"))
-# nested keys with dots
-k="${key}".split('.')
-v=cfg
-for p in k:
-    v=v[p]
-print(v)
-PY
+  jq -r ".${key}" "$CONFIG_PATH" 2>/dev/null
 }
 
-# HA base images often include python3; but to be safe, fallback to grep.
-if ! command -v python3 >/dev/null 2>&1; then
-  log "ERROR: python3 not found in base image; cannot parse options.json"
+if ! command -v jq >/dev/null 2>&1; then
+  log "ERROR: jq not found; cannot parse options.json"
   exit 1
 fi
 
