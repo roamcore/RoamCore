@@ -160,6 +160,13 @@ class VictronAuto:
         self._last_discovery_publish = 0.0
         self._last_seen_victron_msg = 0.0
 
+        # Static config validation summary (surfaced via status endpoint + summary logs).
+        # We keep this intentionally simple and non-fatal: most misconfigurations should
+        # result in a clear status surface, not a crash-loop.
+        self._config_errors: list[str] = []
+        self._config_warnings: list[str] = []
+        self._validate_config()
+
         self._victron_connected_at: Optional[float] = None
         # Cache bad targets to avoid sticky failure when multiple MQTT brokers are
         # present on the LAN.
@@ -890,6 +897,17 @@ discover();
                 "source": self._victron.source,
             }
         return {
+            "config": {
+                "valid": len(self._config_errors) == 0,
+                "errors": list(self._config_errors),
+                "warnings": list(self._config_warnings),
+                "prefer_mdns": bool(self.prefer_mdns),
+                "prefer_venus_local": bool(self.prefer_venus_local),
+                "victron_use_tls": bool(self.victron_use_tls),
+                "victron_host_configured": bool(self.victron_host),
+                "victron_portal_id_configured": bool(self.victron_portal_id),
+                "publish_raw_topics": bool(self.publish_raw_topics),
+            },
             "uptime_sec": int(now - (self._started_at or now)),
             "scan_interval_sec": self.scan_interval,
             "tick_count": self._tick_count,
@@ -919,6 +937,59 @@ discover();
                 "raw_topics_max": int(self.raw_topics_max),
             },
         }
+
+    def _validate_config(self) -> None:
+        """Best-effort options validation.
+
+        This should never throw. It is used to surface configuration problems
+        via /api/v1/victron/status and periodic STATUS logs.
+        """
+
+        errs: list[str] = []
+        warns: list[str] = []
+        try:
+            if int(self.scan_interval) <= 0:
+                errs.append("scan_interval_sec must be > 0")
+        except Exception:
+            errs.append("scan_interval_sec must be an integer")
+
+        try:
+            if int(self.timeout) <= 0:
+                errs.append("mqtt_connect_timeout_sec must be > 0")
+        except Exception:
+            errs.append("mqtt_connect_timeout_sec must be an integer")
+
+        # Raw topic publishing can explode entity count; keep guardrails.
+        try:
+            if bool(self.publish_raw_topics) and int(self.raw_topics_max) <= 0:
+                errs.append("raw_topics_max must be > 0 when publish_raw_topics is enabled")
+            if bool(self.publish_raw_topics) and int(self.raw_topics_max) > 5000:
+                warns.append("raw_topics_max is very high (>5000); Home Assistant may slow down")
+        except Exception:
+            errs.append("raw_topics_max must be an integer")
+
+        # TLS configuration sanity.
+        try:
+            if bool(self.victron_use_tls):
+                if not self.victron_tls_insecure and not self.victron_tls_ca_file:
+                    warns.append("victron_use_tls is on but no CA file is set (and insecure=false); TLS may fail")
+        except Exception:
+            pass
+
+        # Credentials are commonly needed; warn if missing.
+        if not (self.victron_username and self.victron_password):
+            warns.append("victron_username/victron_password not set; connection may fail if GX requires auth")
+
+        # Host override sanity.
+        if self.victron_host is not None:
+            try:
+                if not str(self.victron_host).strip():
+                    errs.append("victron_host is set but empty")
+            except Exception:
+                errs.append("victron_host must be a string")
+
+        self._config_errors = errs
+        self._config_warnings = warns
 
     def _log_summary_if_due(self) -> None:
         """Emit a structured, grep-friendly status summary line periodically."""
