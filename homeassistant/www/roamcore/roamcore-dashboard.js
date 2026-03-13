@@ -92,8 +92,8 @@ class RoamcoreDashboardCard extends HTMLElement {
     const up = this._num('sensor.rc_net_upload', null);
     const ping = this._num('sensor.rc_net_ping', null);
 
-    const pitch = this._num('sensor.rc_system_level_pitch_deg', null);
-    const roll = this._num('sensor.rc_system_level_roll_deg', null);
+    const pitch = this._num('sensor.rc_system_level_pitch_deg', null) ?? this._num('sensor.rc_system_level_pitch', null);
+    const roll = this._num('sensor.rc_system_level_roll_deg', null) ?? this._num('sensor.rc_system_level_roll', null);
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -101,6 +101,14 @@ class RoamcoreDashboardCard extends HTMLElement {
 
     const pStatus = this._powerStatusFromSoc(soc);
     const pColor = this._statusToColor(pStatus);
+
+    // Network label + color
+    const netRaw = (netStatus && netStatus !== 'unknown' && netStatus !== 'unavailable') ? String(netStatus) : '';
+    const netLabel = netRaw ? this._cap(netRaw) : '—';
+    let netColor = 'var(--rc-muted)';
+    if (netRaw === 'good') netColor = 'var(--rc-good)';
+    else if (netRaw === 'ok') netColor = 'var(--rc-ok)';
+    else if (netRaw === 'bad') netColor = 'var(--rc-bad)';
 
     const shoreTxt = shore === 'on' ? 'Connected' : (shore === 'off' ? 'Off' : '—');
     const invTxtRaw = (invStatus && invStatus !== "unknown" && invStatus !== "unavailable") ? String(invStatus) : "—";
@@ -233,7 +241,9 @@ class RoamcoreDashboardCard extends HTMLElement {
         <div class="rc-tile-head"><div class="rc-tile-title">Map</div><div class="rc-tile-sub">↗</div></div>
 
         <div class="rc-map-main">
-          <div class="rc-map-box">${this._mapSvg()}</div>
+          <div class="rc-map-box">
+            <iframe class="rc-map-iframe" src="http://192.168.1.67:8082" title="Traccar" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          </div>
           <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
         </div>
 
@@ -394,6 +404,7 @@ class RoamcoreDashboardCard extends HTMLElement {
 
       .rc-map-main { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; height: 120px; }
       .rc-map-box { width: 140px; height: 86px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+      .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
       .rc-map-svg { width:100%; height:100%; }
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:180px; }
       .rc-trunc { max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
