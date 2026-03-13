@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 from typing import Final
 
-from aiohttp import ClientError, ClientSession, web
+from aiohttp import ClientError, web
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -22,6 +22,29 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
+
+
+def _rewrite_text_payload(payload: bytes) -> bytes:
+    """Rewrite absolute-root asset paths to stay inside the proxy prefix.
+
+    Traccar serves many assets with absolute paths like `/modern/app.js`.
+    When embedded via an HA route prefix, the browser would request
+    `https://ha/modern/app.js` (wrong) instead of
+    `https://ha/api/roamcore/traccar/modern/app.js` (correct).
+
+    This is a best-effort string rewrite for HTML/CSS/JS responses.
+    """
+
+    try:
+        s = payload.decode("utf-8", errors="ignore")
+        # Common HTML attrs
+        s = s.replace('="/', f'="{PROXY_PREFIX}/')
+        s = s.replace("='/", f"='{PROXY_PREFIX}/")
+        # CSS url(/...)
+        s = s.replace("url(/", f"url({PROXY_PREFIX}/")
+        return s.encode("utf-8")
+    except Exception:
+        return payload
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -67,6 +90,16 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 }}
 
                 body = await resp.read()
+
+                # Rewrite redirect locations back into the proxy prefix
+                loc = resp.headers.get("Location")
+                if loc and loc.startswith("/"):
+                    out_headers["Location"] = f"{PROXY_PREFIX}{loc}"
+
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+                if any(t in ctype for t in ("text/html", "text/css", "javascript")):
+                    body = _rewrite_text_payload(body)
+
                 return web.Response(status=resp.status, headers=out_headers, body=body)
         except (ClientError, asyncio.TimeoutError) as err:
             return web.Response(status=502, text=f"Traccar proxy error: {err}")
@@ -75,4 +108,3 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.app.router.add_route("*", PROXY_PREFIX + "/{path:.*}", handle)
     hass.http.app.router.add_route("*", PROXY_PREFIX, handle)
     return True
-
