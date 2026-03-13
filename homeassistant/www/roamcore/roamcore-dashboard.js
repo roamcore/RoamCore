@@ -58,6 +58,22 @@ class RoamcoreDashboardCard extends HTMLElement {
     return this._hass?.states?.[entityId]?.state;
   }
 
+  _traccarEmbedUrl() {
+    // Prefer Supervisor ingress panel so it works on mobile/remote.
+    try {
+      const panels = this._hass?.panels || {};
+      for (const key of Object.keys(panels)) {
+        const p = panels[key];
+        const title = String(p?.title || p?.config?.title || '').toLowerCase();
+        const urlPath = p?.url_path || '';
+        if (title.includes('traccar') || urlPath.includes('traccar')) {
+          return `/${urlPath}`;
+        }
+      }
+    } catch (e) {}
+    return 'http://192.168.1.67:8082';
+  }
+
   _num(entityId, fallback = null) {
     const s = this._getState(entityId);
     const n = Number(s);
@@ -255,7 +271,7 @@ class RoamcoreDashboardCard extends HTMLElement {
 
         <div class="rc-map-main">
           <div class="rc-map-box">
-            <iframe class="rc-map-iframe" src="http://192.168.1.67:8082" title="Traccar" loading="lazy" referrerpolicy="no-referrer"></iframe>
+            <iframe class="rc-map-iframe" src="${this._traccarEmbedUrl()}" title="Traccar" loading="lazy" referrerpolicy="no-referrer"></iframe>
           </div>
           <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
         </div>

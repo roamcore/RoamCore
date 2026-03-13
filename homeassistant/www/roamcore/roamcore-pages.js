@@ -164,6 +164,27 @@ class RoamcoreBasePage extends HTMLElement {
     `;
   }
 
+  _traccarEmbedUrl() {
+    // Prefer HA Supervisor ingress panel so it works from mobile app / remote access.
+    // Direct LAN URLs (e.g. :8082) can be blocked as "public page -> local network".
+    try {
+      const panels = this._hass?.panels || {};
+      for (const key of Object.keys(panels)) {
+        const p = panels[key];
+        const title = String(p?.title || p?.config?.title || '').toLowerCase();
+        const urlPath = p?.url_path || '';
+        if (title.includes('traccar') || urlPath.includes('traccar')) {
+          // url_path is already a frontend route.
+          return `/${urlPath}`;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    // Fallback: LAN URL
+    return 'http://192.168.1.67:8082';
+  }
+
   _tile({ title, icon, content, className = '' }) {
     return `
       <div class="rc-dtile ${className}">
@@ -673,8 +694,10 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
-    const traccarUrlRaw = this._getState('input_text.rc_traccar_ui_url') || 'http://192.168.1.67:8082';
-    const traccarUrl = String(traccarUrlRaw).replace(/\/+$/, '');
+    const traccarUrlRaw = this._getState('input_text.rc_traccar_ui_url');
+    const traccarUrl = (traccarUrlRaw && traccarUrlRaw !== 'unknown' && traccarUrlRaw !== 'unavailable' && String(traccarUrlRaw).trim())
+      ? String(traccarUrlRaw).replace(/\/+$/, '')
+      : this._traccarEmbedUrl();
     const mapTile = `
       <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
         <iframe
