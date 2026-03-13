@@ -23,6 +23,10 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
 
+_cached_session_cookie: str | None = None
+_cached_admin_email: str | None = None
+_cached_admin_password: str | None = None
+
 
 def _rewrite_text_payload(payload: bytes) -> bytes:
     """Rewrite absolute-root asset paths to stay inside the proxy prefix.
@@ -52,6 +56,60 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     session = async_get_clientsession(hass)
 
+    def _load_traccar_admin_secrets() -> None:
+        """Load Traccar admin credentials from /config/secrets.yaml (best-effort)."""
+
+        nonlocal hass
+        global _cached_admin_email, _cached_admin_password
+        if _cached_admin_email and _cached_admin_password:
+            return
+        try:
+            secrets_path = hass.config.path("secrets.yaml")
+            text = ""
+            with open(secrets_path, "r", encoding="utf-8") as f:
+                text = f.read()
+            import re
+
+            m1 = re.search(r"^roamcore_traccar_admin_email:\s*\"?([^\"\n]+)\"?$", text, re.M)
+            m2 = re.search(r"^roamcore_traccar_admin_password:\s*\"?([^\"\n]+)\"?$", text, re.M)
+            if m1 and m2:
+                _cached_admin_email = m1.group(1).strip()
+                _cached_admin_password = m2.group(1).strip()
+        except Exception:
+            return
+
+    async def _ensure_logged_in() -> str | None:
+        """Ensure we have a Traccar JSESSIONID cookie.
+
+        This makes the embedded UI effectively "auto-login" for HA users.
+        """
+
+        global _cached_session_cookie
+        if _cached_session_cookie:
+            return _cached_session_cookie
+
+        _load_traccar_admin_secrets()
+        if not (_cached_admin_email and _cached_admin_password):
+            return None
+
+        try:
+            async with session.post(
+                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session",
+                data={"email": _cached_admin_email, "password": _cached_admin_password},
+                allow_redirects=False,
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                sc = resp.headers.getall("Set-Cookie", [])
+                # Find JSESSIONID
+                for v in sc:
+                    if v.startswith("JSESSIONID="):
+                        _cached_session_cookie = v
+                        return _cached_session_cookie
+        except Exception:
+            return None
+        return None
+
     async def handle(request: web.Request) -> web.StreamResponse:
         path = request.match_info.get("path", "")
         # Preserve trailing slash behavior
@@ -72,6 +130,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             "upgrade",
         }}
 
+        # Best-effort auto-login: if the browser doesn't have a session yet,
+        # establish one using stored admin creds and pass it through.
+        cookie = request.headers.get("Cookie", "")
+        if "JSESSIONID=" not in cookie:
+            js = await _ensure_logged_in()
+            if js:
+                # Upstream expects Cookie: JSESSIONID=...
+                headers["Cookie"] = js.split(";", 1)[0]
+
         data = await request.read() if request.can_read_body else None
 
         try:
@@ -88,6 +155,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     "transfer-encoding",
                     "connection",
                 }}
+
+                # If we established a session cookie, set it for the browser too
+                if "JSESSIONID=" not in (request.headers.get("Cookie") or ""):
+                    if _cached_session_cookie and "Set-Cookie" not in out_headers:
+                        out_headers["Set-Cookie"] = _cached_session_cookie
 
                 body = await resp.read()
 
