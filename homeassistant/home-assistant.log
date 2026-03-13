@@ -1,0 +1,11 @@
+2026-03-13 15:06:59.620 WARNING (SyncWorker_10) [py.warnings] /usr/local/lib/python3.14/site-packages/rich/segment.py:547: SyntaxWarning: 'return' in a 'finally' block
+  return
+
+2026-03-13 15:07:05.493 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain mobile_app.notify
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain backup.sensor
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain backup.event
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain cloud.tts
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain energy.sensor
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain homeassistant.scene
+2026-03-13 15:07:05.503 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain sun.sensor
+2026-03-13 15:07:05.504 WARNING (MainThread) [homeassistant.helpers.translation] Failed to load integration for translation: Invalid domain sun.binary_sensor
