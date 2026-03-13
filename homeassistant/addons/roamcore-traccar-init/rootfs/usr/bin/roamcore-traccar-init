@@ -83,10 +83,11 @@ sup_start_traccar() {
   sup_post "/addons/${TRACCAR_ADDON_SLUG}/start" || return 1
 }
 
-# Wait for Traccar health
+# Wait for Traccar web UI to respond
 start=$(date +%s)
 while true; do
-  if curl -fsS "${TRACCAR_BASE_URL%/}/api/health" >/dev/null 2>&1; then
+  # /api/health is not present in all Traccar builds; '/' should return 200 when NGINX is up.
+  if curl -fsS "${TRACCAR_BASE_URL%/}/" >/dev/null 2>&1; then
     break
   fi
   now=$(date +%s)
