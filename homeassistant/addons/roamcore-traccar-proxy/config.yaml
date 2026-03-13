@@ -1,20 +1,19 @@
-name: "RoamCore Traccar Proxy"
-slug: roamcore-traccar-proxy
-description: "Ingress-enabled reverse proxy to Traccar for RoamCore iframe embedding (avoids mobile local-network iframe blocking)."
-version: "0.1.0"
+name: RoamCore Traccar Proxy
+slug: roamcore_traccar_proxy
+description: Ingress-enabled reverse proxy to Traccar for RoamCore iframe embedding (avoids mobile local-network iframe blocking).
+version: 0.1.0
 startup: services
 boot: auto
 init: false
+arch:
+- amd64
 ingress: true
 ingress_port: 8099
 ingress_entry: "/"
-panel_icon: mdi:map
 host_network: true
-arch:
-  - amd64
 map:
-  - config:rw
+- config:rw
 options:
-  traccar_base_url: "http://homeassistant.local:8082"
+  traccar_base_url: http://homeassistant.local:8082
 schema:
   traccar_base_url: str
