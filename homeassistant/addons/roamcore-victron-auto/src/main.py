@@ -953,6 +953,10 @@ discover();
                 "raw_topics_published": len(self._published_raw_topics),
                 "raw_topics_max": int(self.raw_topics_max),
             },
+            "discovery": {
+                "mdns_candidates": len(getattr(self._mdns_listener, "candidates", {}) or {}),
+                "bad_targets": len(self._bad_targets),
+            },
         }
 
     def _validate_config(self) -> None:
