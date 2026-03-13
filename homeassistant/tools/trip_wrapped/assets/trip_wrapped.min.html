@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Trip Wrapped</title>
+  <style>
+    body{font-family:system-ui;margin:16px;max-width:900px}
+    .kpi{display:flex;gap:16px;flex-wrap:wrap}
+    .card{border:1px solid #ddd;border-radius:10px;padding:12px;min-width:220px}
+    code{background:#f6f6f6;padding:2px 6px;border-radius:6px}
+    pre{white-space:pre-wrap;word-break:break-word}
+  </style>
+</head>
+<body>
+  <h1 id="title">Trip Wrapped</h1>
+  <div class="kpi">
+    <div class="card"><div>Trips</div><div id="tripCount"></div></div>
+    <div class="card"><div>Total distance</div><div id="distance"></div></div>
+    <div class="card"><div>Total duration</div><div id="duration"></div></div>
+  </div>
+
+  <h2>Top trip</h2>
+  <pre id="topTrip"></pre>
+
+  <h2>Trips (raw)</h2>
+  <pre id="trips"></pre>
+
+  <script>
+    /*__TRIP_WRAPPED_DATA__*/
+    const d = window.TRIP_WRAPPED_DATA;
+    document.getElementById("title").textContent = d?.meta?.title || 'Trip Wrapped';
+    document.getElementById("tripCount").textContent = d?.meta?.tripCount ?? 0;
+    document.getElementById("distance").textContent = Math.round((d?.stats?.totalDistanceM || 0)/1000) + " km";
+    document.getElementById("duration").textContent = Math.round((d?.stats?.totalDurationS || 0)/3600) + " h";
+    document.getElementById("topTrip").textContent = JSON.stringify(d?.stats?.topTrip, null, 2);
+    document.getElementById("trips").textContent = JSON.stringify(d?.trips || [], null, 2);
+  </script>
+</body>
+</html>
+

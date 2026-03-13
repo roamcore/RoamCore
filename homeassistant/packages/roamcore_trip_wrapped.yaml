@@ -1,0 +1,55 @@
+# RoamCore MVP: Trip Wrapped export wiring
+#
+# This package wires a dashboard button -> script -> shell_command that
+# generates `/config/www/roamcore/trip_wrapped/latest.html`.
+
+input_text:
+  rc_traccar_base_url:
+    name: "RC Traccar Base URL"
+    initial: "http://localhost:8082"  # adjust for your Traccar add-on/external URL
+  rc_traccar_username:
+    name: "RC Traccar Username"
+  rc_traccar_password:
+    name: "RC Traccar Password"
+    mode: password
+
+  rc_trip_wrapped_from:
+    name: "RC Trip Wrapped From (ISO8601)"
+    initial: "2026-03-01T00:00:00Z"
+  rc_trip_wrapped_to:
+    name: "RC Trip Wrapped To (ISO8601)"
+    initial: "2026-03-08T00:00:00Z"
+
+input_number:
+  rc_traccar_device_id:
+    name: "RC Traccar Device ID"
+    min: 1
+    max: 999999
+    step: 1
+    mode: box
+    initial: 1
+
+shell_command:
+  rc_trip_wrapped_export: >-
+    python3 /config/tools/trip_wrapped/export.py
+    --base-url {{ states('input_text.rc_traccar_base_url') }}
+    --username {{ states('input_text.rc_traccar_username') }}
+    --password {{ states('input_text.rc_traccar_password') }}
+    --device-id {{ states('input_number.rc_traccar_device_id') | int }}
+    --from {{ states('input_text.rc_trip_wrapped_from') }}
+    --to {{ states('input_text.rc_trip_wrapped_to') }}
+    --title "RoamCore Trip Wrapped"
+    --out-json /config/www/roamcore/trip_wrapped/latest.json
+    --out-html /config/www/roamcore/trip_wrapped/latest.html
+
+script:
+  rc_trip_wrapped_run:
+    alias: "RC: Generate Trip Wrapped"
+    mode: single
+    sequence:
+      - service: shell_command.rc_trip_wrapped_export
+      - service: persistent_notification.create
+        data:
+          title: "Trip Wrapped ready"
+          message: "Open: /local/roamcore/trip_wrapped/latest.html"
+
