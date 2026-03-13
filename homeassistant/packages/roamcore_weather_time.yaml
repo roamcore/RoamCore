@@ -31,7 +31,7 @@ template:
           {{ (t | float) if t is not none else 'unknown' }}
         availability: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid is string and wid|length > 0 and states(wid) not in ['unknown','unavailable'] and (state_attr(wid,'temperature') is not none) }}
+          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] and (state_attr(wid,'temperature') is not none) }}
 
       - name: "RC Weather Condition"
         unique_id: rc_weather_condition
@@ -42,7 +42,7 @@ template:
           {{ states(wid) }}
         availability: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid is string and wid|length > 0 and states(wid) not in ['unknown','unavailable'] }}
+          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] }}
 
       - name: "RC Time Local"
         unique_id: rc_time_local
