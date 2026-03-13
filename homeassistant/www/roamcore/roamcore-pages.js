@@ -275,6 +275,14 @@ class RoamcorePowerPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
+    // Weather/time (use the configured weather entity if present)
+    const wid = this._getState('input_text.rc_weather_entity_id') || 'weather.home';
+    const wState = this._getState(wid);
+    const wTemp = this._hass?.states?.[wid]?.attributes?.temperature;
+    const tzOverride = this._getState('input_text.rc_time_zone_override');
+    const tz = (tzOverride && tzOverride !== 'unknown' && tzOverride !== 'unavailable') ? tzOverride : (this._hass?.config?.time_zone || 'UTC');
+    const nowStr = new Date().toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' });
+
     // Contract entities currently available (MVP)
     const soc = this._num('sensor.rc_power_battery_soc', null);
     const battV = this._num('sensor.rc_power_battery_voltage', null);
@@ -410,11 +418,25 @@ class RoamcorePowerPage extends RoamcoreBasePage {
       </div>
     `;
 
+    const weatherTile = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+        ${this._badge((wState && wState !== 'unknown' && wState !== 'unavailable') ? rcCap(wState) : '—', (wState && wState !== 'unknown' && wState !== 'unavailable') ? 'good' : 'inactive')}
+        <div class="rc-label" style="text-transform:uppercase; font-weight:700;">${tz}</div>
+      </div>
+      <div class="rc-value" style="margin-bottom:10px;">
+        <div class="rc-value-num rc-value-lg">${(wTemp==null || wTemp!==wTemp) ? '—' : Math.round(Number(wTemp))}</div>
+        <div class="rc-value-unit">°</div>
+      </div>
+      ${this._row('Local time', nowStr)}
+      ${this._row('Weather entity', wid)}
+    `;
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Power')}
         <div class="rc-grid">
           ${this._tile({title:'Battery', icon:'', content: batteryTop + batteryRows, className:'span-2'})}
+          ${this._tile({title:'Weather', icon:'☁', content: weatherTile})}
           ${this._tile({title:'Solar', icon:'☼', content: solar})}
           ${this._tile({title:'Loads', icon:'⚡', content: loads})}
           ${this._tile({title:'Inverter', icon:'⎓', content: inverter})}
