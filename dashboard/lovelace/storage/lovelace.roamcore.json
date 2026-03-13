@@ -17,7 +17,21 @@
               "type": "grid",
               "cards": [
                 {
-                  "type": "custom:roamcore-dashboard-card"
+                  "type": "custom:roamcore-power-tile"
+                },
+                {
+                  "type": "custom:roamcore-network-tile"
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "custom:roamcore-level-tile"
+                },
+                {
+                  "type": "custom:roamcore-map-tile"
                 }
               ]
             }
@@ -34,58 +48,99 @@
               "type": "grid",
               "cards": [
                 {
-                  "type": "tile",
-                  "entity": "sensor.rc_power_battery_soc",
-                  "name": "Battery",
-                  "icon": "mdi:battery"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.rc_power_solar_power",
-                  "name": "Solar",
-                  "icon": "mdi:solar-power"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.rc_power_load_power",
-                  "name": "Load",
-                  "icon": "mdi:home-lightning-bolt"
-                },
-                {
-                  "type": "tile",
-                  "entity": "binary_sensor.rc_power_shore_connected",
-                  "name": "Shore",
-                  "icon": "mdi:power-plug"
-                },
-                {
-                  "type": "tile",
-                  "entity": "sensor.rc_power_inverter_status",
-                  "name": "Inverter",
-                  "icon": "mdi:power"
+                  "type": "custom:roamcore-power-page"
                 }
               ]
             }
           ]
         },
         {
-          "title": "Map",
-          "path": "map",
-          "icon": "mdi:map",
+          "title": "Network",
+          "path": "network",
+          "icon": "mdi:wifi",
           "type": "sections",
-          "max_columns": 2,
+          "max_columns": 3,
           "sections": [
             {
               "type": "grid",
               "cards": [
                 {
-                  "type": "map",
-                  "hours_to_show": 12,
-                  "dark_mode": true,
+                  "type": "custom:roamcore-network-page"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Level",
+          "path": "level",
+          "icon": "mdi:slope-downhill",
+          "type": "sections",
+          "max_columns": 3,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "custom:roamcore-level-page"
+                }
+              ]
+            }
+          ],
+          "cards": []
+        },
+        {
+          "title": "Map",
+          "path": "map",
+          "icon": "mdi:map",
+          "type": "sections",
+          "max_columns": 3,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "custom:roamcore-map-page"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "MVP",
+          "path": "mvp",
+          "icon": "mdi:rocket",
+          "type": "sections",
+          "max_columns": 3,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "title": "Weather / Time (rc_*)",
+                  "show_header_toggle": false,
                   "entities": [
-                    {
-                      "entity": "device_tracker.traccar_van",
-                      "name": "Vehicle"
-                    }
+                    "sensor.rc_time_local",
+                    "sensor.rc_time_zone",
+                    "input_text.rc_time_zone_override",
+                    "input_text.rc_weather_entity_id",
+                    "sensor.rc_weather_temp_c",
+                    "sensor.rc_weather_condition"
+                  ]
+                },
+                {
+                  "type": "entities",
+                  "title": "Location (rc_*)",
+                  "show_header_toggle": false,
+                  "entities": [
+                    "input_text.rc_location_tracker_entity",
+                    "sensor.rc_location_source",
+                    "sensor.rc_location_lat",
+                    "sensor.rc_location_lon",
+                    "sensor.rc_location_accuracy_m",
+                    "sensor.rc_location_speed",
+                    "sensor.rc_location_heading_deg"
                   ]
                 }
               ]
@@ -95,28 +150,41 @@
               "cards": [
                 {
                   "type": "entities",
-                  "title": "Location (contract)",
+                  "title": "Trip Wrapped (MVP)",
                   "show_header_toggle": false,
                   "entities": [
-                    "sensor.rc_location_source",
-                    "sensor.rc_location_lat",
-                    "sensor.rc_location_lon",
-                    "sensor.rc_location_accuracy_m",
-                    "sensor.rc_location_speed",
-                    "sensor.rc_location_heading_deg"
+                    "input_text.rc_traccar_base_url",
+                    "input_number.rc_traccar_device_id",
+                    "input_text.rc_trip_wrapped_from",
+                    "input_text.rc_trip_wrapped_to",
+                    "script.rc_trip_wrapped_run"
                   ]
                 },
                 {
+                  "type": "markdown",
+                  "content": "## Trip Wrapped output\nOpen: `/local/roamcore/trip_wrapped/latest.html`\n\nIf the page is blank, set Traccar creds + device id above and tap **Generate**."
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
                   "type": "entities",
-                  "title": "Trip (contract)",
+                  "title": "Setup Wizard (scaffold)",
                   "show_header_toggle": false,
                   "entities": [
-                    "sensor.rc_trip_distance_today_mi",
-                    "sensor.rc_trip_distance_total_mi",
-                    "sensor.rc_trip_time_today",
-                    "sensor.rc_trip_time_total",
-                    "sensor.rc_trip_segments",
-                    "sensor.rc_trip_stops"
+                    "input_boolean.roamcore_setup_complete",
+                    "input_boolean.roamcore_wifi_enable",
+                    "input_text.roamcore_wifi_ssid",
+                    "input_select.roamcore_wan_mode",
+                    "input_boolean.roamcore_victron_enable",
+                    "input_select.roamcore_victron_method",
+                    "input_text.roamcore_victron_host",
+                    "input_number.roamcore_victron_port",
+                    "input_select.roamcore_timezone",
+                    "script.roamcore_setup_apply_timezone",
+                    "script.roamcore_setup_complete"
                   ]
                 }
               ]
