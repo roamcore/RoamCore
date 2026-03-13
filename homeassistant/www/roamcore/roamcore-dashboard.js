@@ -31,15 +31,15 @@ class RoamcoreDashboardCard extends HTMLElement {
     try {
       if (!path) return;
       // Preferred: use Home Assistant navigation helper when available
-      if (this._hass && typeof this._hass.navigate === function) {
+      if (this._hass && typeof this._hass.navigate === 'function') {
         this._hass.navigate(path);
         return;
       }
       // Fallback: pushState + HA router event
-      history.pushState(null, , path);
-      window.dispatchEvent(new Event(location-changed));
+      history.pushState(null, '', path);
+      window.dispatchEvent(new Event('location-changed'));
     } catch (e) {
-      console.warn(roamcore navigate failed, e);
+      console.warn('roamcore navigate failed', e);
     }
   }
 
@@ -209,9 +209,13 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _tileMap() {
-    const loc = 'Lake District, UK';
-    const today = '42';
-    const total = '1847';
+    const locRaw = this._getState('sensor.rc_map_location');
+    const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
+
+    const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
+    const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
+    const today = todayN == null ? '—' : `${Math.round(todayN)}`;
+    const total = totalN == null ? '—' : `${Math.round(totalN)}`;
 
     return `
       <div class="rc-tile rc-click" data-nav="/lovelace/roamcore/map">
