@@ -1,0 +1,31 @@
+name: "RoamCore Traccar Init"
+slug: roamcore-traccar-init
+description: "One-shot first-boot provisioning for Traccar admin credentials (writes to /config/secrets.yaml)"
+version: "0.1.0"
+startup: services
+boot: auto
+init: false
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  - armhf
+  - i386
+map:
+  - config:rw
+options:
+  traccar_base_url: "http://homeassistant.local:8082"
+  admin_email: "admin@roamcore.local"
+  secrets_keys:
+    email: "roamcore_traccar_admin_email"
+    password: "roamcore_traccar_admin_password"
+  password_length: 24
+  wait_timeout_seconds: 180
+schema:
+  traccar_base_url: str
+  admin_email: str
+  secrets_keys:
+    email: str
+    password: str
+  password_length: int
+  wait_timeout_seconds: int

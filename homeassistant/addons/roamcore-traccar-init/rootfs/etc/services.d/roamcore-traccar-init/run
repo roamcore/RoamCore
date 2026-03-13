@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+set -e
+/usr/bin/roamcore-traccar-init
+# one-shot: stop the service container after init
+s6-svscanctl -t /var/run/s6/services

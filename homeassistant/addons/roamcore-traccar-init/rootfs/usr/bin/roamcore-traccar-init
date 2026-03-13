@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG_PATH="/data/options.json"
+SECRETS="/config/secrets.yaml"
+
+log() { echo "[roamcore-traccar-init] $*"; }
+
+get_json() {
+  local key="$1"
+  python3 - <<PY 2>/dev/null || true
+import json
+cfg=json.load(open("${CONFIG_PATH}"))
+# nested keys with dots
+k="${key}".split('.')
+v=cfg
+for p in k:
+    v=v[p]
+print(v)
+PY
+}
+
+# HA base images often include python3; but to be safe, fallback to grep.
+if ! command -v python3 >/dev/null 2>&1; then
+  log "ERROR: python3 not found in base image; cannot parse options.json"
+  exit 1
+fi
+
+TRACCAR_BASE_URL=$(get_json traccar_base_url)
+ADMIN_EMAIL=$(get_json admin_email)
+KEY_EMAIL=$(get_json secrets_keys.email)
+KEY_PASS=$(get_json secrets_keys.password)
+PASS_LEN=$(get_json password_length)
+WAIT_TIMEOUT=$(get_json wait_timeout_seconds)
+
+if [ -z "${TRACCAR_BASE_URL}" ]; then
+  log "ERROR: traccar_base_url empty"
+  exit 1
+fi
+
+mkdir -p "$(dirname "$SECRETS")"
+touch "$SECRETS"
+chmod 600 "$SECRETS" || true
+
+has_key() {
+  local k="$1"
+  grep -Eqs "^${k}:" "$SECRETS"
+}
+
+# If already provisioned, exit cleanly.
+if has_key "$KEY_EMAIL" && has_key "$KEY_PASS"; then
+  log "Secrets already present in secrets.yaml (${KEY_EMAIL}, ${KEY_PASS}); nothing to do."
+  exit 0
+fi
+
+# Generate password + persist first (so we never lose it even if Traccar create fails)
+PASS=$(openssl rand -base64 64 | tr -d '\n' | tr -dc 'A-Za-z0-9' | head -c "${PASS_LEN}")
+
+# Append secrets if missing
+if ! has_key "$KEY_EMAIL"; then
+  echo "${KEY_EMAIL}: \"${ADMIN_EMAIL}\"" >> "$SECRETS"
+fi
+if ! has_key "$KEY_PASS"; then
+  echo "${KEY_PASS}: \"${PASS}\"" >> "$SECRETS"
+fi
+
+log "Wrote Traccar admin secrets to /config/secrets.yaml (keys: ${KEY_EMAIL}, ${KEY_PASS})."
+
+# Wait for Traccar health
+start=$(date +%s)
+while true; do
+  if curl -fsS "${TRACCAR_BASE_URL%/}/api/health" >/dev/null 2>&1; then
+    break
+  fi
+  now=$(date +%s)
+  if [ $((now-start)) -ge "$WAIT_TIMEOUT" ]; then
+    log "WARN: Timed out waiting for Traccar at ${TRACCAR_BASE_URL}. Secrets written; user creation not attempted."
+    exit 0
+  fi
+  sleep 2
+done
+
+# Attempt to create first admin user. On a fresh DB, first created/registered user becomes admin.
+# NOTE: Traccar's OpenAPI models /api/users as authenticated; however, fresh instances allow registration.
+# We try best-effort; if it fails, user can complete signup using the saved credentials.
+json=$(cat <<EOF
+{"name":"RoamCore Admin","email":"${ADMIN_EMAIL}","password":"${PASS}","administrator":true}
+EOF
+)
+
+code=$(curl -sS -o /tmp/traccar_init_resp.json -w "%{http_code}" \
+  -H 'Content-Type: application/json' \
+  -X POST "${TRACCAR_BASE_URL%/}/api/users" \
+  --data "$json" || true)
+
+if [ "$code" = "200" ] || [ "$code" = "201" ]; then
+  log "Traccar admin user created successfully."
+  exit 0
+fi
+
+log "WARN: Traccar user create returned HTTP $code."
+log "You can manually sign up in the Traccar UI using email '${ADMIN_EMAIL}' and the password saved in secrets.yaml."
+exit 0
