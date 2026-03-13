@@ -252,7 +252,7 @@ class RoamcorePowerTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/roamcore/power');
+    this._root.innerHTML = this._tileWrap(inner, `${rcBasePath()}/power`);
   }
 }
 
@@ -283,7 +283,7 @@ class RoamcoreNetworkTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/roamcore/network');
+    this._root.innerHTML = this._tileWrap(inner, `${rcBasePath()}/network`);
   }
 }
 
@@ -321,7 +321,7 @@ class RoamcoreLevelTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/roamcore/level');
+    this._root.innerHTML = this._tileWrap(inner, `${rcBasePath()}/level`);
   }
 }
 
@@ -344,7 +344,7 @@ class RoamcoreMapTile extends RoamcoreBaseTile {
       </div>
     `;
 
-    this._root.innerHTML = this._tileWrap(inner, '/roamcore/map');
+    this._root.innerHTML = this._tileWrap(inner, `${rcBasePath()}/map`);
   }
 }
 
@@ -352,3 +352,15 @@ customElements.define('roamcore-power-tile', RoamcorePowerTile);
 customElements.define('roamcore-network-tile', RoamcoreNetworkTile);
 customElements.define('roamcore-level-tile', RoamcoreLevelTile);
 customElements.define('roamcore-map-tile', RoamcoreMapTile);
+// Resolve the base path for the RoamCore Lovelace dashboard.
+// Supports both:
+// - Storage dashboard: /lovelace/roamcore/<view>
+// - YAML dashboard (legacy experiment): /roam-core/<view>
+function rcBasePath() {
+  try {
+    const p = window.location?.pathname || '';
+    if (p.startsWith('/roam-core')) return '/roam-core';
+    if (p.startsWith('/lovelace/roamcore')) return '/lovelace/roamcore';
+  } catch (e) {}
+  return '/lovelace/roamcore';
+}

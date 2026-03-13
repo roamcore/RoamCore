@@ -149,10 +149,19 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  _basePath() {
+    try {
+      const p = window.location?.pathname || '';
+      if (p.startsWith('/roam-core')) return '/roam-core';
+      if (p.startsWith('/lovelace/roamcore')) return '/lovelace/roamcore';
+    } catch (e) {}
+    return '/lovelace/roamcore';
+  }
+
   _header(title) {
     return `
       <div class="rc-subheader">
-        <button class="rc-back" data-nav="/roamcore/overview">←</button>
+        <button class="rc-back" data-nav="${this._basePath()}/overview">←</button>
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
       </div>
@@ -274,14 +283,6 @@ class RoamcoreBasePage extends HTMLElement {
 class RoamcorePowerPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
-
-    // Weather/time (use the configured weather entity if present)
-    const wid = this._getState('input_text.rc_weather_entity_id') || 'weather.home';
-    const wState = this._getState(wid);
-    const wTemp = this._hass?.states?.[wid]?.attributes?.temperature;
-    const tzOverride = this._getState('input_text.rc_time_zone_override');
-    const tz = (tzOverride && tzOverride !== 'unknown' && tzOverride !== 'unavailable') ? tzOverride : (this._hass?.config?.time_zone || 'UTC');
-    const nowStr = new Date().toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' });
 
     // Contract entities currently available (MVP)
     const soc = this._num('sensor.rc_power_battery_soc', null);
@@ -418,25 +419,11 @@ class RoamcorePowerPage extends RoamcoreBasePage {
       </div>
     `;
 
-    const weatherTile = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-        ${this._badge((wState && wState !== 'unknown' && wState !== 'unavailable') ? rcCap(wState) : '—', (wState && wState !== 'unknown' && wState !== 'unavailable') ? 'good' : 'inactive')}
-        <div class="rc-label" style="text-transform:uppercase; font-weight:700;">${tz}</div>
-      </div>
-      <div class="rc-value" style="margin-bottom:10px;">
-        <div class="rc-value-num rc-value-lg">${(wTemp==null || wTemp!==wTemp) ? '—' : Math.round(Number(wTemp))}</div>
-        <div class="rc-value-unit">°</div>
-      </div>
-      ${this._row('Local time', nowStr)}
-      ${this._row('Weather entity', wid)}
-    `;
-
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Power')}
         <div class="rc-grid">
           ${this._tile({title:'Battery', icon:'', content: batteryTop + batteryRows, className:'span-2'})}
-          ${this._tile({title:'Weather', icon:'☁', content: weatherTile})}
           ${this._tile({title:'Solar', icon:'☼', content: solar})}
           ${this._tile({title:'Loads', icon:'⚡', content: loads})}
           ${this._tile({title:'Inverter', icon:'⎓', content: inverter})}
@@ -763,9 +750,79 @@ class RoamcoreMapPage extends RoamcoreBasePage {
   }
 }
 
+class RoamcoreLocationPage extends RoamcoreBasePage {
+  _render() {
+    if (!this._root || !this._hass) return;
+
+    const lat = this._num('sensor.rc_location_lat', null);
+    const lon = this._num('sensor.rc_location_lon', null);
+    const acc = this._num('sensor.rc_location_accuracy_m', null) ?? this._num('sensor.rc_location_accuracy', null);
+    const src = this._getState('sensor.rc_location_source');
+
+    this._root.innerHTML = `
+      <div class="rc-page">
+        ${this._header('Location')}
+        <div class="rc-grid" style="grid-template-columns: 1fr;">
+          ${this._tile({
+            title: 'Current Fix',
+            icon: '📍',
+            content: `
+              ${this._row('Latitude', lat == null ? '—' : lat)}
+              ${this._row('Longitude', lon == null ? '—' : lon)}
+              ${this._row('Accuracy', acc == null ? '—' : Math.round(acc), acc == null ? '' : 'm')}
+              ${this._row('Source', (src && src !== 'unknown' && src !== 'unavailable') ? src : '—')}
+              <button class="rc-btn" data-nav="${this._basePath()}/map" style="margin-top:10px;">Open Map</button>
+            `
+          })}
+        </div>
+      </div>
+    `;
+    this._wireNav();
+  }
+}
+
+class RoamcoreSettingsPage extends RoamcoreBasePage {
+  _render() {
+    if (!this._root || !this._hass) return;
+
+    const tracker = this._getState('input_text.rc_location_tracker_entity');
+    const weather = this._getState('input_text.rc_weather_entity_id');
+    const tz = this._getState('input_text.rc_time_zone_override');
+
+    this._root.innerHTML = `
+      <div class="rc-page">
+        ${this._header('Settings')}
+        <div class="rc-grid" style="grid-template-columns: 1fr;">
+          ${this._tile({
+            title: 'RoamCore Helpers',
+            icon: '⚙',
+            content: `
+              <div class="rc-label" style="margin-bottom:8px;">Edit these in HA → Settings → Devices & services → Helpers.</div>
+              ${this._row('Location tracker entity', (tracker && tracker !== 'unknown' && tracker !== 'unavailable') ? tracker : '—')}
+              ${this._row('Weather entity', (weather && weather !== 'unknown' && weather !== 'unavailable') ? weather : '—')}
+              ${this._row('Time zone override', (tz && tz.trim()) ? tz : '—')}
+            `
+          })}
+          ${this._tile({
+            title: 'Advanced',
+            icon: '🧰',
+            content: `
+              <div class="rc-label">Open HA configuration for deeper setup.</div>
+              <button class="rc-btn" data-nav="/config" style="margin-top:10px;">Open HA Settings</button>
+            `
+          })}
+        </div>
+      </div>
+    `;
+    this._wireNav();
+  }
+}
+
 function round1(n){
   try{ return (Math.round(Number(n)*10)/10).toFixed(1).replace(/\.0$/,''); }catch(e){return n}
 }
 customElements.define('roamcore-network-page', RoamcoreNetworkPage);
 customElements.define('roamcore-level-page', RoamcoreLevelPage);
 customElements.define('roamcore-map-page', RoamcoreMapPage);
+customElements.define('roamcore-location-page', RoamcoreLocationPage);
+customElements.define('roamcore-settings-page', RoamcoreSettingsPage);
