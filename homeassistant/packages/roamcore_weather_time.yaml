@@ -18,43 +18,6 @@ input_text:
     max: 64
     initial: ""
 
-template:
-  - sensor:
-      - name: "RC Weather Temperature"
-        unique_id: rc_weather_temp_c
-        object_id: rc_weather_temp_c
-        unit_of_measurement: "°C"
-        device_class: temperature
-        state: >-
-          {% set wid = states('input_text.rc_weather_entity_id') %}
-          {% set t = state_attr(wid, 'temperature') %}
-          {{ (t | float) if t is not none else 'unknown' }}
-        availability: >-
-          {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] and (state_attr(wid,'temperature') is not none) }}
-
-      - name: "RC Weather Condition"
-        unique_id: rc_weather_condition
-        object_id: rc_weather_condition
-        icon: "mdi:weather-partly-cloudy"
-        state: >-
-          {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ states(wid) }}
-        availability: >-
-          {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] }}
-
-      - name: "RC Time Local"
-        unique_id: rc_time_local
-        object_id: rc_time_local
-        icon: "mdi:clock"
-        state: >-
-          {{ now().strftime('%Y-%m-%d %H:%M') }}
-
-      - name: "RC Time Zone"
-        unique_id: rc_time_zone
-        object_id: rc_time_zone
-        icon: "mdi:map-clock"
-        state: >-
-          {% set o = states('input_text.rc_time_zone_override') | trim %}
-          {{ o if o else 'UTC' }}
+## NOTE:
+# Template entities are defined in `roamcore_templates.yaml` to avoid Home Assistant
+# packages list-override behavior.
