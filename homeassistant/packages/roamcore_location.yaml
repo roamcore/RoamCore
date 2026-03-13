@@ -1,25 +1,75 @@
-# RoamCore contract entities: Location subsystem (stubs)
+# RoamCore contract entities: Location subsystem (MVP)
 # Naming convention reference:
 #   RoamCore/docs/reference/rc-entity-naming.md
+
+# MVP notes:
+# - Primary source for live coordinates is typically Traccar via HA's Traccar integration.
+# - The built-in Lovelace map card requires a `device_tracker` entity, but the RoamCore
+#   contract prefers `rc_*` sensors. We bridge by mapping tracker attributes -> rc_*.
+# - Configure your upstream tracker entity_id once via `input_text.rc_location_tracker_entity`.
+
+input_text:
+  rc_location_tracker_entity:
+    name: "RC Location Tracker Entity"
+    # Example: device_tracker.traccar_van
+    initial: "device_tracker.traccar_van"
 
 template:
   - sensor:
       - name: "RC Location Lat"
         unique_id: rc_location_lat
-        state: "unknown"
+        icon: mdi:latitude
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ state_attr(e, 'latitude') | float(default=none) }}
+        availability: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ e not in ['unknown','unavailable',''] and state_attr(e,'latitude') is not none }}
 
       - name: "RC Location Lon"
         unique_id: rc_location_lon
-        state: "unknown"
+        icon: mdi:longitude
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ state_attr(e, 'longitude') | float(default=none) }}
+        availability: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ e not in ['unknown','unavailable',''] and state_attr(e,'longitude') is not none }}
 
       - name: "RC Location Accuracy"
         unique_id: rc_location_accuracy_m
         unit_of_measurement: "m"
-        state: "unknown"
+        icon: mdi:target
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ state_attr(e, 'gps_accuracy')
+              | default(state_attr(e, 'accuracy'), true)
+              | float(default=none) }}
+        availability: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ e not in ['unknown','unavailable',''] and (state_attr(e,'gps_accuracy') is not none or state_attr(e,'accuracy') is not none) }}
 
       - name: "RC Location Source"
         unique_id: rc_location_source
-        state: "unknown"
+        icon: mdi:radar
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ 'traccar' if e and e != '' else 'unknown' }}
+
+      - name: "RC Location Speed"
+        unique_id: rc_location_speed
+        icon: mdi:speedometer
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ state_attr(e, 'speed') | float(default=none) }}
+
+      - name: "RC Location Heading"
+        unique_id: rc_location_heading_deg
+        unit_of_measurement: "°"
+        icon: mdi:compass
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {{ state_attr(e, 'course') | default(state_attr(e, 'heading'), true) | float(default=none) }}
 
       # Map / trip summary (mock)
       - name: "RC Map Location"

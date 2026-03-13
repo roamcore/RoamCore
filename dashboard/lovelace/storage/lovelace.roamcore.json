@@ -66,6 +66,62 @@
               ]
             }
           ]
+        },
+        {
+          "title": "Map",
+          "path": "map",
+          "icon": "mdi:map",
+          "type": "sections",
+          "max_columns": 2,
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "map",
+                  "hours_to_show": 12,
+                  "dark_mode": true,
+                  "entities": [
+                    {
+                      "entity": "device_tracker.traccar_van",
+                      "name": "Vehicle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "entities",
+                  "title": "Location (contract)",
+                  "show_header_toggle": false,
+                  "entities": [
+                    "sensor.rc_location_source",
+                    "sensor.rc_location_lat",
+                    "sensor.rc_location_lon",
+                    "sensor.rc_location_accuracy_m",
+                    "sensor.rc_location_speed",
+                    "sensor.rc_location_heading_deg"
+                  ]
+                },
+                {
+                  "type": "entities",
+                  "title": "Trip (contract)",
+                  "show_header_toggle": false,
+                  "entities": [
+                    "sensor.rc_trip_distance_today_mi",
+                    "sensor.rc_trip_distance_total_mi",
+                    "sensor.rc_trip_time_today",
+                    "sensor.rc_trip_time_total",
+                    "sensor.rc_trip_segments",
+                    "sensor.rc_trip_stops"
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
