@@ -586,340 +586,280 @@ template:
       # POWER (contract layer)
       - name: "RC Power Battery SoC"
         unique_id: rc_power_battery_soc
-        object_id: rc_power_battery_soc
         state: "{{ states('input_number.rc_mock_power_battery_soc') }}"
         unit_of_measurement: "%"
         icon: mdi:battery
       - name: "RC Power Battery Voltage"
         unique_id: rc_power_battery_voltage
-        object_id: rc_power_battery_voltage
         state: "{{ states('input_number.rc_mock_power_battery_voltage') }}"
         unit_of_measurement: "V"
       - name: "RC Power Battery Current"
         unique_id: rc_power_battery_current
-        object_id: rc_power_battery_current
         state: "{{ states('input_number.rc_mock_power_battery_current') }}"
         unit_of_measurement: "A"
       - name: "RC Power Battery Temperature C"
         unique_id: rc_power_battery_temperature_c
-        object_id: rc_power_battery_temperature_c
         state: "{{ states('input_number.rc_mock_power_battery_temperature_c') }}"
         unit_of_measurement: "°C"
 
       - name: "RC Power Battery Capacity"
         unique_id: rc_power_battery_capacity_ah
-        object_id: rc_power_battery_capacity_ah
         state: "{{ states('input_number.rc_mock_power_battery_capacity_ah') }}"
         unit_of_measurement: "Ah"
 
       - name: "RC Power Battery Cycle Count"
         unique_id: rc_power_battery_cycle_count
-        object_id: rc_power_battery_cycle_count
         state: "{{ states('input_number.rc_mock_power_battery_cycle_count') }}"
 
       - name: "RC Power Battery Health"
         unique_id: rc_power_battery_health
-        object_id: rc_power_battery_health
         state: "{{ states('input_number.rc_mock_power_battery_health_pct') }}"
         unit_of_measurement: "%"
 
       - name: "RC Power Solar Power"
         unique_id: rc_power_solar_power
-        object_id: rc_power_solar_power
         state: "{{ states('input_number.rc_mock_power_solar_power') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Solar Energy Today"
         unique_id: rc_power_solar_energy_today_kwh
-        object_id: rc_power_solar_energy_today_kwh
         state: "{{ states('input_number.rc_mock_power_solar_energy_today_kwh') }}"
         unit_of_measurement: "kWh"
 
       - name: "RC Power Solar Energy Total"
         unique_id: rc_power_solar_energy_total_kwh
-        object_id: rc_power_solar_energy_total_kwh
         state: "{{ states('input_number.rc_mock_power_solar_energy_total_kwh') }}"
         unit_of_measurement: "kWh"
 
       - name: "RC Power Solar Panel Voltage"
         unique_id: rc_power_solar_panel_voltage
-        object_id: rc_power_solar_panel_voltage
         state: "{{ states('input_number.rc_mock_power_solar_panel_voltage') }}"
         unit_of_measurement: "V"
 
       - name: "RC Power Solar Panel Current"
         unique_id: rc_power_solar_panel_current
-        object_id: rc_power_solar_panel_current
         state: "{{ states('input_number.rc_mock_power_solar_panel_current') }}"
         unit_of_measurement: "A"
 
       - name: "RC Power Solar Efficiency"
         unique_id: rc_power_solar_efficiency
-        object_id: rc_power_solar_efficiency
         state: "{{ states('input_number.rc_mock_power_solar_efficiency_pct') }}"
         unit_of_measurement: "%"
 
       - name: "RC Power Load Power"
         unique_id: rc_power_load_power
-        object_id: rc_power_load_power
         state: "{{ states('input_number.rc_mock_power_load_power') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Load Fridge"
         unique_id: rc_power_load_fridge_w
-        object_id: rc_power_load_fridge_w
         state: "{{ states('input_number.rc_mock_power_load_fridge_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Load Lights"
         unique_id: rc_power_load_lights_w
-        object_id: rc_power_load_lights_w
         state: "{{ states('input_number.rc_mock_power_load_lights_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Load Heater"
         unique_id: rc_power_load_heater_w
-        object_id: rc_power_load_heater_w
         state: "{{ states('input_number.rc_mock_power_load_heater_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Load Water Pump"
         unique_id: rc_power_load_water_pump_w
-        object_id: rc_power_load_water_pump_w
         state: "{{ states('input_number.rc_mock_power_load_water_pump_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Load Other"
         unique_id: rc_power_load_other_w
-        object_id: rc_power_load_other_w
         state: "{{ states('input_number.rc_mock_power_load_other_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Inverter Status"
         unique_id: rc_power_inverter_status
-        object_id: rc_power_inverter_status
         state: "{{ states('input_select.rc_mock_power_inverter_status') }}"
 
       - name: "RC Power Inverter Output Power"
         unique_id: rc_power_inverter_output_power_w
-        object_id: rc_power_inverter_output_power_w
         state: "{{ states('input_number.rc_mock_power_inverter_output_power_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Inverter Output Voltage"
         unique_id: rc_power_inverter_output_voltage_v
-        object_id: rc_power_inverter_output_voltage_v
         state: "{{ states('input_number.rc_mock_power_inverter_output_voltage_v') }}"
         unit_of_measurement: "V"
 
       - name: "RC Power Inverter Frequency"
         unique_id: rc_power_inverter_frequency_hz
-        object_id: rc_power_inverter_frequency_hz
         state: "{{ states('input_number.rc_mock_power_inverter_frequency_hz') }}"
         unit_of_measurement: "Hz"
 
       - name: "RC Power Inverter Temperature"
         unique_id: rc_power_inverter_temperature_c
-        object_id: rc_power_inverter_temperature_c
         state: "{{ states('input_number.rc_mock_power_inverter_temperature_c') }}"
         unit_of_measurement: "°C"
 
       - name: "RC Power Shore Voltage"
         unique_id: rc_power_shore_voltage_v
-        object_id: rc_power_shore_voltage_v
         state: "{{ states('input_number.rc_mock_power_shore_voltage_v') }}"
         unit_of_measurement: "V"
 
       - name: "RC Power Shore Current"
         unique_id: rc_power_shore_current_a
-        object_id: rc_power_shore_current_a
         state: "{{ states('input_number.rc_mock_power_shore_current_a') }}"
         unit_of_measurement: "A"
 
       - name: "RC Power Shore Power"
         unique_id: rc_power_shore_power_w
-        object_id: rc_power_shore_power_w
         state: "{{ states('input_number.rc_mock_power_shore_power_w') }}"
         unit_of_measurement: "W"
 
       - name: "RC Power Alternator Voltage"
         unique_id: rc_power_alt_voltage_v
-        object_id: rc_power_alt_voltage_v
         state: "{{ states('input_number.rc_mock_power_alt_voltage_v') }}"
         unit_of_measurement: "V"
 
       - name: "RC Power Alternator Current"
         unique_id: rc_power_alt_current_a
-        object_id: rc_power_alt_current_a
         state: "{{ states('input_number.rc_mock_power_alt_current_a') }}"
         unit_of_measurement: "A"
 
       - name: "RC Power Alternator Power"
         unique_id: rc_power_alt_power_w
-        object_id: rc_power_alt_power_w
         state: "{{ states('input_number.rc_mock_power_alt_power_w') }}"
         unit_of_measurement: "W"
 
       # NETWORK (contract layer)
       - name: "RC Net Download"
         unique_id: rc_net_download
-        object_id: rc_net_download
         state: "{{ states('input_number.rc_mock_net_download_mbps') }}"
         unit_of_measurement: "Mbps"
       - name: "RC Net Upload"
         unique_id: rc_net_upload
-        object_id: rc_net_upload
         state: "{{ states('input_number.rc_mock_net_upload_mbps') }}"
         unit_of_measurement: "Mbps"
       - name: "RC Net Ping"
         unique_id: rc_net_ping
-        object_id: rc_net_ping
         state: "{{ states('input_number.rc_mock_net_ping_ms') }}"
         unit_of_measurement: "ms"
 
       - name: "RC Net Jitter"
         unique_id: rc_net_jitter_ms
-        object_id: rc_net_jitter_ms
         state: "{{ states('input_number.rc_mock_net_jitter_ms') }}"
         unit_of_measurement: "ms"
 
       - name: "RC Net Packet Loss"
         unique_id: rc_net_packet_loss_pct
-        object_id: rc_net_packet_loss_pct
         state: "{{ states('input_number.rc_mock_net_packet_loss_pct') }}"
         unit_of_measurement: "%"
       - name: "RC Net WAN Status"
         unique_id: rc_net_wan_status
-        object_id: rc_net_wan_status
         state: "{{ states('input_select.rc_mock_net_status') }}"
       - name: "RC Net WAN Source"
         unique_id: rc_net_wan_source
-        object_id: rc_net_wan_source
         state: "{{ states('input_select.rc_mock_net_source') }}"
 
       - name: "RC Net Uptime"
         unique_id: rc_net_uptime
-        object_id: rc_net_uptime
         state: "{{ states('input_text.rc_mock_net_uptime') }}"
 
       - name: "RC Net Last Disconnect"
         unique_id: rc_net_last_disconnect
-        object_id: rc_net_last_disconnect
         state: "{{ states('input_text.rc_mock_net_last_disconnect') }}"
 
       - name: "RC Net Data Today Down"
         unique_id: rc_net_data_today_down_gb
-        object_id: rc_net_data_today_down_gb
         state: "{{ states('input_number.rc_mock_net_data_today_down_gb') }}"
         unit_of_measurement: "GB"
 
       - name: "RC Net Data Today Up"
         unique_id: rc_net_data_today_up_gb
-        object_id: rc_net_data_today_up_gb
         state: "{{ states('input_number.rc_mock_net_data_today_up_gb') }}"
         unit_of_measurement: "GB"
 
       - name: "RC Net Data Month Down"
         unique_id: rc_net_data_month_down_gb
-        object_id: rc_net_data_month_down_gb
         state: "{{ states('input_number.rc_mock_net_data_month_down_gb') }}"
         unit_of_measurement: "GB"
 
       - name: "RC Net Data Month Up"
         unique_id: rc_net_data_month_up_gb
-        object_id: rc_net_data_month_up_gb
         state: "{{ states('input_number.rc_mock_net_data_month_up_gb') }}"
         unit_of_measurement: "GB"
 
       - name: "RC Net Data Month Limit"
         unique_id: rc_net_data_month_limit_gb
-        object_id: rc_net_data_month_limit_gb
         state: "{{ states('input_number.rc_mock_net_data_month_limit_gb') }}"
         unit_of_measurement: "GB"
 
       - name: "RC Net Starlink Signal Quality"
         unique_id: rc_net_starlink_signal_quality_pct
-        object_id: rc_net_starlink_signal_quality_pct
         state: "{{ states('input_number.rc_mock_net_starlink_signal_quality_pct') }}"
         unit_of_measurement: "%"
 
       - name: "RC Net Cellular Signal"
         unique_id: rc_net_cell_signal_dbm
-        object_id: rc_net_cell_signal_dbm
         state: "{{ states('input_number.rc_mock_net_cell_signal_dbm') }}"
         unit_of_measurement: "dBm"
 
       - name: "RC Net Cellular Bars"
         unique_id: rc_net_cell_bars
-        object_id: rc_net_cell_bars
         state: "{{ states('input_number.rc_mock_net_cell_bars') }}"
 
       - name: "RC Net Cellular Provider"
         unique_id: rc_net_cell_provider
-        object_id: rc_net_cell_provider
         state: "{{ states('input_text.rc_mock_net_cell_provider') }}"
 
       - name: "RC Net Cellular Technology"
         unique_id: rc_net_cell_technology
-        object_id: rc_net_cell_technology
         state: "{{ states('input_text.rc_mock_net_cell_technology') }}"
 
       - name: "RC Net LAN Devices"
         unique_id: rc_net_lan_devices
-        object_id: rc_net_lan_devices
         state: "{{ states('input_number.rc_mock_net_lan_devices') }}"
 
       - name: "RC Net LAN WiFi Clients"
         unique_id: rc_net_lan_wifi_clients
-        object_id: rc_net_lan_wifi_clients
         state: "{{ states('input_number.rc_mock_net_lan_wifi_clients') }}"
 
       - name: "RC Net LAN Ethernet Clients"
         unique_id: rc_net_lan_ethernet_clients
-        object_id: rc_net_lan_ethernet_clients
         state: "{{ states('input_number.rc_mock_net_lan_ethernet_clients') }}"
 
       - name: "RC Net SSID"
         unique_id: rc_net_ssid
-        object_id: rc_net_ssid
         state: "{{ states('input_text.rc_mock_net_ssid') }}"
 
       - name: "RC Net Channel"
         unique_id: rc_net_channel
-        object_id: rc_net_channel
         state: "{{ states('input_text.rc_mock_net_channel') }}"
 
       - name: "RC Net Frequency"
         unique_id: rc_net_frequency
-        object_id: rc_net_frequency
         state: "{{ states('input_text.rc_mock_net_frequency') }}"
 
       - name: "RC Router CPU"
         unique_id: rc_router_cpu_pct
-        object_id: rc_router_cpu_pct
         state: "{{ states('input_number.rc_mock_router_cpu_pct') }}"
         unit_of_measurement: "%"
 
       - name: "RC Router Memory"
         unique_id: rc_router_memory_pct
-        object_id: rc_router_memory_pct
         state: "{{ states('input_number.rc_mock_router_memory_pct') }}"
         unit_of_measurement: "%"
 
       - name: "RC Router Temperature"
         unique_id: rc_router_temperature_c
-        object_id: rc_router_temperature_c
         state: "{{ states('input_number.rc_mock_router_temperature_c') }}"
         unit_of_measurement: "°C"
 
       - name: "RC Router Uptime"
         unique_id: rc_router_uptime
-        object_id: rc_router_uptime
         state: "{{ states('input_text.rc_mock_router_uptime') }}"
 
       - name: "RC Router Firmware"
         unique_id: rc_router_firmware
-        object_id: rc_router_firmware
         state: "{{ states('input_text.rc_mock_router_firmware') }}"
 
   # --------
@@ -930,7 +870,6 @@ template:
       # Weather/time contract
       - name: "RC Weather Temperature"
         unique_id: rc_weather_temp_c
-        object_id: rc_weather_temp_c
         unit_of_measurement: "°C"
         device_class: temperature
         state: >-
@@ -943,7 +882,6 @@ template:
 
       - name: "RC Weather Condition"
         unique_id: rc_weather_condition
-        object_id: rc_weather_condition
         icon: mdi:weather-partly-cloudy
         state: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
@@ -954,13 +892,11 @@ template:
 
       - name: "RC Time Local"
         unique_id: rc_time_local
-        object_id: rc_time_local
         icon: mdi:clock
         state: "{{ now().strftime('%Y-%m-%d %H:%M') }}"
 
       - name: "RC Time Zone"
         unique_id: rc_time_zone
-        object_id: rc_time_zone
         icon: mdi:map-clock
         state: >-
           {% set o = states('input_text.rc_time_zone_override') | trim %}
@@ -1106,7 +1042,6 @@ template:
   - button:
       - name: "RC System Level Calibrate"
         unique_id: rc_system_level_calibrate
-        object_id: rc_system_level_calibrate
         icon: mdi:target
         press:
           - service: input_number.set_value
@@ -1123,44 +1058,35 @@ template:
       # MAP / TRIP (contract layer)
       - name: "RC Map Location"
         unique_id: rc_map_location
-        object_id: rc_map_location
         state: "{{ states('input_text.rc_mock_map_location') }}"
       - name: "RC Map Elevation M"
         unique_id: rc_map_elevation_m
-        object_id: rc_map_elevation_m
         state: "{{ states('input_number.rc_mock_map_elevation_m') }}"
         unit_of_measurement: "m"
 
       - name: "RC Trip Segments"
         unique_id: rc_trip_segments
-        object_id: rc_trip_segments
         state: "{{ states('input_number.rc_mock_trip_segments') }}"
 
       - name: "RC Trip Stops"
         unique_id: rc_trip_stops
-        object_id: rc_trip_stops
         state: "{{ states('input_number.rc_mock_trip_stops') }}"
       - name: "RC Trip Distance Today Mi"
         unique_id: rc_trip_distance_today_mi
-        object_id: rc_trip_distance_today_mi
         state: "{{ states('input_number.rc_mock_trip_distance_today_mi') }}"
         unit_of_measurement: "mi"
       - name: "RC Trip Distance Total Mi"
         unique_id: rc_trip_distance_total_mi
-        object_id: rc_trip_distance_total_mi
         state: "{{ states('input_number.rc_mock_trip_distance_total_mi') }}"
         unit_of_measurement: "mi"
       - name: "RC Trip Time Today"
         unique_id: rc_trip_time_today
-        object_id: rc_trip_time_today
         state: "{{ states('input_text.rc_mock_trip_time_today') }}"
       - name: "RC Trip Time Total"
         unique_id: rc_trip_time_total
-        object_id: rc_trip_time_total
         state: "{{ states('input_text.rc_mock_trip_time_total') }}"
 
   - binary_sensor:
       - name: "RC Power Shore Connected"
         unique_id: rc_power_shore_connected
-        object_id: rc_power_shore_connected
         state: "{{ is_state('input_boolean.rc_mock_power_shore_connected','on') }}"
