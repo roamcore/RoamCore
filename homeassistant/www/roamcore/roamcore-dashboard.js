@@ -43,6 +43,10 @@ class RoamcoreDashboardCard extends HTMLElement {
     }
   }
 
+  _goSettings() {
+    this._navigate(`${this._basePath()}/settings`);
+  }
+
   _basePath() {
     // Force canonical RoamCore dashboard path.
     // HA storage dashboards are typically accessible at /<url_path>/...
@@ -76,6 +80,9 @@ class RoamcoreDashboardCard extends HTMLElement {
 
   _render() {
     if (!this._root || !this._hass) return;
+
+    // Avoid iframe flashing: do a full DOM build only once, then update text/values.
+    const alreadyBuilt = !!this._root.querySelector('.rc-wrap');
 
     const soc = this._num('sensor.rc_power_battery_soc', null);
     const solarW = this._num('sensor.rc_power_solar_power', null);
@@ -113,32 +120,42 @@ class RoamcoreDashboardCard extends HTMLElement {
     const pitchAbs = pitch == null ? '—' : Math.abs(pitch).toFixed(1);
     const rollAbs = roll == null ? '—' : Math.abs(roll).toFixed(1);
 
-    this._root.innerHTML = `
-      <div class="rc-wrap">
-        <div class="rc-header">
-          <div class="rc-header-left">
-            <div class="rc-time">${timeStr}</div>
-            <div class="rc-date">${dateStr}</div>
+    if (!alreadyBuilt) {
+      this._root.innerHTML = `
+        <div class="rc-wrap">
+          <div class="rc-header">
+            <div class="rc-header-left">
+              <div class="rc-time" data-bind="time"></div>
+              <div class="rc-date" data-bind="date"></div>
+            </div>
+            <div class="rc-header-right">
+              <button class="rc-gear" title="Settings">⚙</button>
+            </div>
           </div>
-          <div class="rc-header-right">
-            <div class="rc-chip"><span class="rc-chip-icon">☁︎</span><span class="rc-chip-text">—</span></div>
-            <div class="rc-gear">⚙︎</div>
+
+          <div class="rc-grid">
+            ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
+            ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
+            ${this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) })}
+            ${this._tileMap()}
           </div>
         </div>
+      `;
 
-        <div class="rc-grid">
-          ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
-          ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
-          ${this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) })}
-          ${this._tileMap()}
-        </div>
-      </div>
-    `;
+      // bind navigation clicks (once)
+      this._root.querySelectorAll('.rc-click').forEach((el) => {
+        el.addEventListener('click', () => this._navigate(el.getAttribute('data-nav')));
+      });
 
-    // bind navigation clicks
-    this._root.querySelectorAll('.rc-click').forEach((el) => {
-      el.addEventListener('click', () => this._navigate(el.getAttribute('data-nav')));
-    });
+      const gear = this._root.querySelector('.rc-gear');
+      if (gear) gear.addEventListener('click', (e) => { e.stopPropagation(); this._goSettings(); });
+    }
+
+    // Update header time/date every render.
+    const t = this._root.querySelector('[data-bind="time"]');
+    if (t) t.textContent = timeStr;
+    const d = this._root.querySelector('[data-bind="date"]');
+    if (d) d.textContent = dateStr;
   }
 
   _levelStatus(pitch, roll) {
@@ -350,8 +367,8 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-time { font-size:28px; font-weight:800; letter-spacing:0.5px; }
       .rc-date { font-size:13px; color:var(--rc-muted); font-weight:600; }
       .rc-header-right { display:flex; gap:10px; align-items:center; }
-      .rc-chip { display:flex; gap:6px; align-items:center; color:var(--rc-muted); font-weight:600; font-size:13px; }
-      .rc-gear { color:var(--rc-muted); font-size:16px; }
+      .rc-gear { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-muted); font-size: 16px; cursor:pointer; }
+      .rc-gear:hover { filter: brightness(1.08); }
 
       .rc-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 

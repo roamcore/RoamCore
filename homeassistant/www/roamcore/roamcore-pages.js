@@ -159,6 +159,7 @@ class RoamcoreBasePage extends HTMLElement {
         <button class="rc-back" data-nav="${this._basePath()}/overview">←</button>
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
+        <button class="rc-gear" title="Settings" data-nav="${this._basePath()}/settings">⚙</button>
       </div>
     `;
   }
@@ -226,6 +227,8 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-page { padding: 10px 12px 14px; color: var(--rc-text); }
       .rc-subheader { display:flex; align-items:center; gap: 10px; margin: 6px 0 12px; }
       .rc-back { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-text); font-size: 16px; cursor:pointer; }
+      .rc-gear { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-muted); font-size: 16px; cursor:pointer; }
+      .rc-gear:hover { filter: brightness(1.08); }
       .rc-subtitle { font-size: 18px; font-weight: 800; letter-spacing: 0.2px; }
       .rc-subspacer { flex:1; }
 
