@@ -973,6 +973,10 @@ discover();
                 "keepalive_age_sec": int(now - self._last_keepalive_sent)
                 if self._last_keepalive_sent
                 else None,
+                "keepalive_pending_age_sec": int(now - self._keepalive_pending_since)
+                if self._keepalive_pending_since
+                else None,
+                "keepalive_attempts": int(self._keepalive_attempts),
             },
             "inventory": {
                 "devices_count": len(self._devices),
