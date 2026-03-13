@@ -25,6 +25,10 @@ This is an internal status page for the remaining MVP feature build-out.
   - HA wiring: `homeassistant/packages/roamcore_trip_wrapped.yaml`
   - output: `/local/roamcore/trip_wrapped/latest.html`
 
+- Traccar live map (embedded)
+  - RoamCore Map page embeds Traccar add-on ingress via iframe (configurable).
+  - Helper: `input_text.rc_traccar_ingress_path`
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
@@ -39,4 +43,3 @@ This is an internal status page for the remaining MVP feature build-out.
 3) **Trip stats (rc_trip_*) from real Traccar data**
    - MVP still uses mocks for distance/time/stops.
    - Implement: odometer-based + utility_meter or periodic report pulls.
-
