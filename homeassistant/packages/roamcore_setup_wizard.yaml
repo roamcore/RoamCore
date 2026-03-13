@@ -1,0 +1,149 @@
+# RoamCore Setup Wizard (MVP scaffolding)
+#
+# Provides a small set of helpers + scripts used by a Lovelace-based setup flow.
+# Dashboard wiring can be added separately; this package is safe to load anytime.
+
+input_boolean:
+  roamcore_setup_complete:
+    name: "RoamCore Setup Complete"
+    icon: mdi:check-decagram
+
+  roamcore_wifi_enable:
+    name: "RoamCore Wi-Fi Enable"
+    icon: mdi:wifi
+
+  roamcore_victron_enable:
+    name: "RoamCore Victron Enable"
+    icon: mdi:solar-power
+
+input_text:
+  roamcore_wifi_ssid:
+    name: "RoamCore Wi-Fi SSID"
+    max: 64
+
+  roamcore_wifi_password:
+    name: "RoamCore Wi-Fi Password"
+    max: 128
+    mode: password
+
+  roamcore_wan_notes:
+    name: "RoamCore WAN Notes"
+    max: 255
+
+  roamcore_victron_host:
+    name: "RoamCore Victron Host"
+    max: 255
+
+input_number:
+  roamcore_victron_port:
+    name: "RoamCore Victron Port"
+    min: 1
+    max: 65535
+    step: 1
+    mode: box
+    initial: 1883
+
+input_select:
+  roamcore_wan_mode:
+    name: "RoamCore WAN Mode"
+    options:
+      - offline
+      - dhcp
+      - starlink
+      - cellular
+      - both
+    icon: mdi:wan
+
+  roamcore_victron_method:
+    name: "RoamCore Victron Method"
+    options:
+      - disabled
+      - mqtt
+      - modbus_tcp
+    icon: mdi:connection
+
+  roamcore_timezone:
+    name: "RoamCore Timezone"
+    # Keep short for MVP; can be expanded later.
+    options:
+      - UTC
+      - America/Los_Angeles
+      - America/Denver
+      - America/Chicago
+      - America/New_York
+      - Europe/London
+      - Europe/Paris
+    icon: mdi:map-clock
+
+script:
+  roamcore_setup_save_wifi:
+    alias: "RoamCore Setup: Save Wi-Fi"
+    mode: single
+    sequence:
+      - service: logbook.log
+        data:
+          name: "RoamCore Setup"
+          message: "Wi‑Fi settings stored (SSID + enable)."
+
+  roamcore_setup_save_wan:
+    alias: "RoamCore Setup: Save WAN"
+    mode: single
+    sequence:
+      - service: logbook.log
+        data:
+          name: "RoamCore Setup"
+          message: "WAN mode stored: {{ states('input_select.roamcore_wan_mode') }}"
+
+  roamcore_setup_test_internet:
+    alias: "RoamCore Setup: Test Internet"
+    mode: single
+    sequence:
+      - service: persistent_notification.create
+        data:
+          title: "RoamCore WAN Test"
+          message: "MVP stub: implement connectivity test (ping/DNS/HTTP)."
+
+  roamcore_setup_save_victron:
+    alias: "RoamCore Setup: Save Victron"
+    mode: single
+    sequence:
+      - service: logbook.log
+        data:
+          name: "RoamCore Setup"
+          message: "Victron settings stored (method/host/port)."
+
+  roamcore_setup_check_victron:
+    alias: "RoamCore Setup: Check Victron"
+    mode: single
+    sequence:
+      - service: persistent_notification.create
+        data:
+          title: "RoamCore Victron Check"
+          message: "MVP stub: wire to roamcore-victron-auto status endpoint."
+
+  roamcore_setup_apply_timezone:
+    alias: "RoamCore Setup: Apply Timezone"
+    mode: single
+    sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_time_zone_override
+        data:
+          value: "{{ states('input_select.roamcore_timezone') }}"
+      - service: persistent_notification.create
+        data:
+          title: "RoamCore Timezone"
+          message: "RoamCore timezone override set to: {{ states('input_select.roamcore_timezone') }}"
+
+  roamcore_setup_complete:
+    alias: "RoamCore Setup: Complete"
+    mode: single
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.roamcore_setup_complete
+      - service: persistent_notification.create
+        data:
+          title: "RoamCore Setup"
+          message: "Setup marked complete. Switch to the main RoamCore dashboard."
+
