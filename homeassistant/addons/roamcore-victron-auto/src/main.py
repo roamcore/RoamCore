@@ -926,6 +926,7 @@ discover();
                 "last_publish_age_sec": int(now - self._last_ha_publish_at)
                 if self._last_ha_publish_at
                 else None,
+                "last_publish_at": int(self._last_ha_publish_at) if self._last_ha_publish_at else None,
                 "publish_rate_per_min": round(
                     (self._ha_publish_count_window / max(1.0, now - self._ha_publish_window_started_at)) * 60.0,
                     2,
@@ -935,11 +936,13 @@ discover();
             "victron": {
                 "target": tgt,
                 "connected": bool(self._victron_client),
+                "connected_at": int(self._victron_connected_at) if self._victron_connected_at else None,
                 "portal_id": self._portal_id,
                 "did_full_publish": bool(self._did_full_publish),
                 "last_seen_msg_age_sec": int(now - self._last_seen_victron_msg)
                 if self._last_seen_victron_msg
                 else None,
+                "last_seen_msg_at": int(self._last_seen_victron_msg) if self._last_seen_victron_msg else None,
                 "keepalive_age_sec": int(now - self._last_keepalive_sent)
                 if self._last_keepalive_sent
                 else None,
