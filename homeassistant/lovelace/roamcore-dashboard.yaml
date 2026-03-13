@@ -51,3 +51,26 @@ views:
     panel: true
     cards:
       - type: custom:roamcore-settings-page
+
+  # Debug / health view (MVP observability)
+  - path: status
+    title: Status
+    icon: mdi:heart-pulse
+    panel: false
+    cards:
+      - type: entities
+        title: Power backend (Victron)
+        entities:
+          - entity: binary_sensor.rc_system_power_backend_connected
+          - entity: sensor.rc_system_power_backend_status
+          - entity: sensor.rc_system_power_backend_snapshot_state
+          - entity: sensor.rc_system_power_backend_devices
+          - entity: sensor.rc_system_power_backend_topics
+      - type: entities
+        title: Vendor layer (vt_*)
+        entities:
+          - entity: binary_sensor.vt_victron_availability
+          - entity: sensor.vt_victron_backend_status
+          - entity: sensor.vt_victron_snapshot_state
+          - entity: sensor.vt_victron_devices_count
+          - entity: sensor.vt_victron_topics_count
