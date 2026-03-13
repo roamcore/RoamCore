@@ -688,12 +688,12 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
-    const ingressRaw = this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar';
-    const ingress = String(ingressRaw).replace(/\/+$/, '');
+    const traccarUrlRaw = this._getState('input_text.rc_traccar_ui_url') || 'http://192.168.1.67:8082';
+    const traccarUrl = String(traccarUrlRaw).replace(/\/+$/, '');
     const mapTile = `
       <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
         <iframe
-          src="${ingress}"
+          src="${traccarUrl}"
           style="width:100%; height:100%; border:0;"
           referrerpolicy="no-referrer"
           loading="lazy"
@@ -703,7 +703,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">Embedded Traccar add-on map (ingress).</div>
+      <div class="rc-label" style="margin-top: 6px;">Embedded Traccar add-on map.</div>
     `;
 
     const stats = `

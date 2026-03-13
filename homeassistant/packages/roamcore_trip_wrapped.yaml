@@ -19,6 +19,11 @@ input_text:
     # NOTE: do NOT include a trailing slash; HA hassio handler can mis-parse it.
     initial: "/hassio/ingress/a0d7b954_traccar"
 
+  rc_traccar_ui_url:
+    name: "RC Traccar UI URL"
+    # Traccar add-on exposes web UI on host port 8082 by default.
+    initial: "http://192.168.1.67:8082"
+
   rc_trip_wrapped_from:
     name: "RC Trip Wrapped From (ISO8601)"
     initial: "2026-03-01T00:00:00Z"
