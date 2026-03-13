@@ -363,7 +363,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         border: 1px solid var(--rc-border);
         border-radius: 14px;
         padding: 14px;
-        min-height: 170px;
+        /* Slightly taller overall so the overview doesn't feel squashed */
+        min-height: 190px;
         box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       }
 
@@ -399,8 +400,8 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-deg { font-size:20px; font-weight:900; }
 
       /* Make the map preview dominate the tile (~70-80% of tile body). */
-      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 128px; }
-      .rc-map-box { width: 100%; height: 110px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
+      .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
       .rc-map-svg { width:100%; height:100%; }
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
@@ -409,7 +410,17 @@ class RoamcoreDashboardCard extends HTMLElement {
 
       @media (min-width: 1280px) {
         .rc-grid { grid-template-columns: repeat(4, 1fr); }
-        .rc-tile { min-height: 190px; }
+        .rc-tile { min-height: 210px; }
+      }
+
+      /* Mobile portrait: stack tiles and give them breathing room */
+      @media (max-width: 700px) {
+        .rc-wrap { padding: 8px; }
+        .rc-grid { grid-template-columns: 1fr; }
+        .rc-tile { min-height: 220px; }
+        .rc-level-main { height: 140px; }
+        .rc-map-main { height: 190px; }
+        .rc-map-box { height: 160px; }
       }
     `;
   }
