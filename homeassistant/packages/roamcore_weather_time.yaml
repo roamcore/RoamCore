@@ -1,6 +1,15 @@
-# RoamCore contract entities: Weather + Time (stubs)
+# RoamCore contract entities: Weather + Time (MVP)
 # Naming convention reference:
 #   RoamCore/docs/reference/rc-entity-naming.md
+
+# NOTE (MVP): We assume the built-in Open-Meteo integration provides a
+# weather entity (commonly `weather.home`). If your HA instance uses a different
+# entity id, set `input_text.rc_weather_entity_id`.
+
+input_text:
+  rc_weather_entity_id:
+    name: "RC Weather Entity ID"
+    initial: "weather.home"
 
 template:
   - sensor:
@@ -8,13 +17,26 @@ template:
         unique_id: rc_weather_temp_c
         unit_of_measurement: "°C"
         device_class: temperature
-        state: "unknown"
+        state: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% set t = state_attr(wid, 'temperature') %}
+          {{ (t | float) if t is not none else 'unknown' }}
+        availability: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {{ wid is string and wid|length > 0 and states(wid) not in ['unknown','unavailable'] and (state_attr(wid,'temperature') is not none) }}
 
       - name: "RC Weather Condition"
         unique_id: rc_weather_condition
-        state: "unknown"
+        icon: "mdi:weather-partly-cloudy"
+        state: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {{ states(wid) }}
+        availability: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {{ wid is string and wid|length > 0 and states(wid) not in ['unknown','unavailable'] }}
 
       - name: "RC Time Local"
         unique_id: rc_time_local
+        icon: "mdi:clock"
         state: >-
-          {{ now().strftime(%Y-%m-%d %H:%M) }}
+          {{ now().strftime('%Y-%m-%d %H:%M') }}
