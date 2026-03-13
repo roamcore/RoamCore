@@ -13,6 +13,11 @@ input_text:
     name: "RC Traccar Password"
     mode: password
 
+  rc_traccar_ingress_path:
+    name: "RC Traccar Ingress Path"
+    # Example add-on ingress path: /hassio/ingress/a0d7b954_traccar/
+    initial: "/hassio/ingress/a0d7b954_traccar/"
+
   rc_trip_wrapped_from:
     name: "RC Trip Wrapped From (ISO8601)"
     initial: "2026-03-01T00:00:00Z"
@@ -52,4 +57,3 @@ script:
         data:
           title: "Trip Wrapped ready"
           message: "Open: /local/roamcore/trip_wrapped/latest.html"
-

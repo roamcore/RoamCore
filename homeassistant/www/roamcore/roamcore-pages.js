@@ -713,8 +713,14 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const history = `
       <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
-      <div style="height: 110px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); display:flex; align-items:center; justify-content:center;">
-        <div class="rc-label">(placeholder) Will render polyline path + segments</div>
+      <div class="rc-label" style="margin-bottom:8px;">Live map (Traccar)</div>
+      <div style="height: 320px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
+        <iframe
+          src="${this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar/'}"
+          style="width:100%; height:100%; border:0;"
+          referrerpolicy="no-referrer"
+          loading="lazy"
+        ></iframe>
       </div>
       <div style="height: 8px"></div>
       ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
