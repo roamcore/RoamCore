@@ -629,12 +629,18 @@ discover();
                     # 1) mDNS _mqtt candidates
                     try:
                         for tgt in list(getattr(parent._mdns_listener, "candidates", {}).values()):
+                            bad = False
+                            try:
+                                bad = bool(parent._is_bad_target(tgt))
+                            except Exception:
+                                bad = False
                             candidates.append(
                                 {
                                     "name": tgt.source,
                                     "host": tgt.host,
                                     "port": tgt.port,
                                     "source": tgt.source,
+                                    "bad": bad,
                                 }
                             )
                     except Exception:
@@ -671,7 +677,25 @@ discover();
                         port = int(c.get("port") or 1883)
                         if host:
                             uniq[(host, port)] = c
-                    return self._json(200, {"candidates": list(uniq.values())})
+
+                    out = list(uniq.values())
+                    # Prefer returning good candidates first.
+                    try:
+                        out = sorted(out, key=lambda c: bool(c.get("bad")))
+                    except Exception:
+                        pass
+
+                    return self._json(
+                        200,
+                        {
+                            "ok": True,
+                            "candidates": out,
+                            "counts": {
+                                "total": len(out),
+                                "bad": len([c for c in out if c.get("bad")]),
+                            },
+                        },
+                    )
 
                 return self._json(404, {"error": "not_found"})
 
