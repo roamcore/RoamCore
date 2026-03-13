@@ -160,6 +160,12 @@ class VictronAuto:
         self._last_discovery_publish = 0.0
         self._last_seen_victron_msg = 0.0
 
+        # Publish observability
+        self._last_ha_publish_at: float = 0.0
+        self._ha_publish_count_total: int = 0
+        self._ha_publish_window_started_at: float = time.time()
+        self._ha_publish_count_window: int = 0
+
         # Static config validation summary (surfaced via status endpoint + summary logs).
         # We keep this intentionally simple and non-fatal: most misconfigurations should
         # result in a clear status surface, not a crash-loop.
@@ -917,6 +923,14 @@ discover();
                 "host": getattr(self, "_ha_mqtt_host", None),
                 "port": getattr(self, "_ha_mqtt_port", None),
                 "has_user": bool(getattr(self, "_ha_mqtt_user", None)),
+                "last_publish_age_sec": int(now - self._last_ha_publish_at)
+                if self._last_ha_publish_at
+                else None,
+                "publish_rate_per_min": round(
+                    (self._ha_publish_count_window / max(1.0, now - self._ha_publish_window_started_at)) * 60.0,
+                    2,
+                ),
+                "publish_count_total": int(self._ha_publish_count_total),
             },
             "victron": {
                 "target": tgt,
@@ -1441,6 +1455,7 @@ discover();
             payload = "" if v is None else str(v)
 
         self._ha_client.publish(state_topic, payload=payload, retain=True)
+        self._note_ha_publish()
 
         # Dev-friendly: log the first publish per vt_key to confirm mapping is alive.
         try:
@@ -1494,7 +1509,23 @@ discover();
             cfg["payload_off"] = "OFF"
 
         self._ha_client.publish(cfg_topic, payload=json.dumps(cfg), retain=True)
+        self._note_ha_publish()
         self._published_discovery_entities.add(uniq)
+
+    def _note_ha_publish(self) -> None:
+        """Track outgoing publishes for status/observability."""
+
+        try:
+            now = time.time()
+            self._last_ha_publish_at = now
+            self._ha_publish_count_total += 1
+            # reset 60s window
+            if now - self._ha_publish_window_started_at > 60:
+                self._ha_publish_window_started_at = now
+                self._ha_publish_count_window = 0
+            self._ha_publish_count_window += 1
+        except Exception:
+            return
 
     def _update_aggregates_from_instance(
         self,
