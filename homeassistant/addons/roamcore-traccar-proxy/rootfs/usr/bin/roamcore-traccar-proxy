@@ -1,0 +1,40 @@
+#!/usr/bin/with-contenv bash
+set -euo pipefail
+
+CONFIG_PATH=/data/options.json
+
+get_json() {
+  jq -r ".$1 // empty" "$CONFIG_PATH"
+}
+
+TRACCAR_BASE_URL=$(get_json traccar_base_url)
+if [ -z "$TRACCAR_BASE_URL" ]; then
+  TRACCAR_BASE_URL="http://homeassistant.local:8082"
+fi
+
+# Write nginx config with upstream to Traccar
+cat > /etc/nginx/http.d/default.conf <<EOF
+server {
+  listen 8099;
+  server_name _;
+
+  # Ingress sits behind Supervisor proxy; keep paths intact.
+  location / {
+    proxy_pass ${TRACCAR_BASE_URL%/};
+    proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+
+    # Traccar uses long polling / SSE in some cases; these help.
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+  }
+}
+EOF
+
+nginx -t
+exec nginx -g 'daemon off;'
+
