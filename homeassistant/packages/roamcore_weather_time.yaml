@@ -11,6 +11,13 @@ input_text:
     name: "RC Weather Entity ID"
     initial: "weather.home"
 
+  # Manual timezone override for RoamCore contract entities.
+  # Leave blank to use HA's configured timezone (config.time_zone).
+  rc_time_zone_override:
+    name: "RC Time Zone Override"
+    max: 64
+    initial: ""
+
 template:
   - sensor:
       - name: "RC Weather Temperature"
@@ -40,3 +47,10 @@ template:
         icon: "mdi:clock"
         state: >-
           {{ now().strftime('%Y-%m-%d %H:%M') }}
+
+      - name: "RC Time Zone"
+        unique_id: rc_time_zone
+        icon: "mdi:map-clock"
+        state: >-
+          {% set o = states('input_text.rc_time_zone_override') | trim %}
+          {{ o if o else config.time_zone }}
