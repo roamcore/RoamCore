@@ -18,6 +18,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 TRACCAR_BASE_URL=$(get_json traccar_base_url)
+TRACCAR_ADDON_SLUG=$(get_json traccar_addon_slug)
 ADMIN_EMAIL=$(get_json admin_email)
 KEY_EMAIL=$(get_json secrets_keys.email)
 KEY_PASS=$(get_json secrets_keys.password)
@@ -57,6 +58,31 @@ fi
 
 log "Wrote Traccar admin secrets to /config/secrets.yaml (keys: ${KEY_EMAIL}, ${KEY_PASS})."
 
+SUP_TOKEN=""
+if [ -f /run/supervisor_token ]; then
+  SUP_TOKEN=$(cat /run/supervisor_token 2>/dev/null || true)
+fi
+
+sup_post() {
+  # Best-effort Supervisor API helper
+  local path="$1"
+  if [ -z "$SUP_TOKEN" ]; then
+    return 1
+  fi
+  curl -fsS -H "Authorization: Bearer ${SUP_TOKEN}" -H 'Content-Type: application/json' \
+    -X POST "http://supervisor${path}" -d '{}' >/dev/null
+}
+
+sup_stop_traccar() {
+  [ -n "${TRACCAR_ADDON_SLUG}" ] || return 1
+  sup_post "/addons/${TRACCAR_ADDON_SLUG}/stop" || return 1
+}
+
+sup_start_traccar() {
+  [ -n "${TRACCAR_ADDON_SLUG}" ] || return 1
+  sup_post "/addons/${TRACCAR_ADDON_SLUG}/start" || return 1
+}
+
 # Wait for Traccar health
 start=$(date +%s)
 while true; do
@@ -71,24 +97,59 @@ while true; do
   sleep 2
 done
 
-# Attempt to create first admin user. On a fresh DB, first created/registered user becomes admin.
-# NOTE: Traccar's OpenAPI models /api/users as authenticated; however, fresh instances allow registration.
-# We try best-effort; if it fails, user can complete signup using the saved credentials.
-json=$(cat <<EOF
-{"name":"RoamCore Admin","email":"${ADMIN_EMAIL}","password":"${PASS}","administrator":true}
-EOF
-)
+log "Attempting zero-manual provisioning (stop Traccar, seed DB, restart)"
 
-code=$(curl -sS -o /tmp/traccar_init_resp.json -w "%{http_code}" \
-  -H 'Content-Type: application/json' \
-  -X POST "${TRACCAR_BASE_URL%/}/api/users" \
-  --data "$json" || true)
-
-if [ "$code" = "200" ] || [ "$code" = "201" ]; then
-  log "Traccar admin user created successfully."
+# Stop Traccar to unlock H2 database
+if ! sup_stop_traccar; then
+  log "WARN: Could not stop Traccar via Supervisor API. Falling back to manual signup."
   exit 0
 fi
 
-log "WARN: Traccar user create returned HTTP $code."
-log "You can manually sign up in the Traccar UI using email '${ADMIN_EMAIL}' and the password saved in secrets.yaml."
+# Give it a moment to stop
+sleep 3
+
+# Seed H2 database with an admin user (idempotent: no-op if user exists)
+# Traccar uses PBKDF2WithHmacSHA1 (iter=1000), 24-byte salt and 24-byte hash.
+HASH_SALT=$(python3 - <<PY
+import os, binascii, hashlib
+password='${PASS}'.encode('utf-8')
+salt=os.urandom(24)
+h=hashlib.pbkdf2_hmac('sha1', password, salt, 1000, dklen=24)
+print(binascii.hexlify(h).decode())
+print(binascii.hexlify(salt).decode())
+PY
+)
+HASH=$(echo "$HASH_SALT" | head -n1)
+SALT=$(echo "$HASH_SALT" | tail -n1)
+
+SQL=$(cat <<EOF
+-- Create RoamCore admin user if missing
+-- NOTE: This expects Traccar default H2 schema (USERS table with password/salt hex).
+MERGE INTO users (id, name, email, password, salt, administrator, readonly, deviceReadonly, limitCommands, disabled)
+KEY(email)
+VALUES (
+  COALESCE((SELECT MAX(id) + 1 FROM users), 1),
+  'RoamCore Admin',
+  '${ADMIN_EMAIL}',
+  '${HASH}',
+  '${SALT}',
+  TRUE,
+  FALSE,
+  FALSE,
+  FALSE,
+  FALSE
+);
+EOF
+)
+
+if ! java -cp /opt/traccar/lib/h2-2.2.224.jar org.h2.tools.RunScript -url jdbc:h2:/data/traccar -user sa -password "" -script /dev/stdin <<EOS
+$SQL
+EOS
+then
+  log "WARN: DB seed failed. Traccar will require manual signup, but secrets remain stored."
+fi
+
+# Restart Traccar
+sup_start_traccar || true
+log "Provisioning complete (best-effort)."
 exit 0

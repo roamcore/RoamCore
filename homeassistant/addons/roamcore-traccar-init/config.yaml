@@ -5,6 +5,8 @@ version: "0.1.0"
 startup: services
 boot: auto
 init: false
+hassio_api: true
+hassio_role: manager
 arch:
   - amd64
   - aarch64
@@ -15,6 +17,7 @@ map:
   - config:rw
 options:
   traccar_base_url: "http://homeassistant.local:8082"
+  traccar_addon_slug: "a0d7b954_traccar"
   admin_email: "admin@roamcore.local"
   secrets_keys:
     email: "roamcore_traccar_admin_email"
@@ -23,6 +26,7 @@ options:
   wait_timeout_seconds: 180
 schema:
   traccar_base_url: str
+  traccar_addon_slug: str
   admin_email: str
   secrets_keys:
     email: str
