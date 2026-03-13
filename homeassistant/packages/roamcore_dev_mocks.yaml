@@ -581,27 +581,7 @@ input_datetime:
     has_date: true
     has_time: true
 
-script:
-  rc_system_level_calibrate:
-    alias: "RC System Level Calibrate"
-    sequence:
-      - service: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.rc_mock_level_last_calibrate
-        data:
-          datetime: "{{ now().isoformat() }}"
-
 template:
-  - button:
-      - name: "RC System Level Calibrate"
-        unique_id: rc_system_level_calibrate
-        object_id: rc_system_level_calibrate
-        icon: mdi:target
-        press:
-          - service: script.turn_on
-            target:
-              entity_id: script.rc_system_level_calibrate
-
   - sensor:
       # POWER (contract layer)
       - name: "RC Power Battery SoC"
@@ -941,18 +921,6 @@ template:
         unique_id: rc_router_firmware
         object_id: rc_router_firmware
         state: "{{ states('input_text.rc_mock_router_firmware') }}"
-
-      # LEVEL (contract layer)
-      - name: "RC System Level Pitch Deg"
-        unique_id: rc_system_level_pitch_deg
-        object_id: rc_system_level_pitch_deg
-        state: "{{ states('input_number.rc_mock_system_level_pitch_deg') }}"
-        unit_of_measurement: "°"
-      - name: "RC System Level Roll Deg"
-        unique_id: rc_system_level_roll_deg
-        object_id: rc_system_level_roll_deg
-        state: "{{ states('input_number.rc_mock_system_level_roll_deg') }}"
-        unit_of_measurement: "°"
 
       # MAP / TRIP (contract layer)
       - name: "RC Map Location"

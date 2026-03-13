@@ -1,17 +1,140 @@
 # RoamCore contract entities: System level / tilt (MVP)
+#
+# MVP design:
+# - Raw pitch/roll can come from the real IMU integration later.
+# - HA stores calibration offsets in input_number.
+# - Contract layer exposes "levelled" pitch/roll (raw - offset).
+# - Also exposes a simple status and a human hint for how to adjust.
+#
 # Naming convention reference:
 #   RoamCore/docs/reference/rc-entity-naming.md
 
-template:
-  - sensor:
-      - name: "RC System Level Pitch"
-        unique_id: rc_system_level_pitch_deg
-        unit_of_measurement: "°"
-        state: >-
-          {{ states("input_number.rc_mock_system_level_pitch_deg") }}
+input_number:
+  rc_system_level_pitch_offset_deg:
+    name: "RC System Level Pitch Offset"
+    min: -45
+    max: 45
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: box
+    initial: 0
 
-      - name: "RC System Level Roll"
-        unique_id: rc_system_level_roll_deg
+  rc_system_level_roll_offset_deg:
+    name: "RC System Level Roll Offset"
+    min: -45
+    max: 45
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: box
+    initial: 0
+
+template:
+  - button:
+      - name: "RC System Level Calibrate"
+        unique_id: rc_system_level_calibrate
+        object_id: rc_system_level_calibrate
+        icon: mdi:target
+        press:
+          # Set offsets to current raw readings so the derived values go to ~0°.
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.rc_system_level_pitch_offset_deg
+            data:
+              value: "{{ states('sensor.rc_system_level_pitch_raw_deg') | float(0) }}"
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.rc_system_level_roll_offset_deg
+            data:
+              value: "{{ states('sensor.rc_system_level_roll_raw_deg') | float(0) }}"
+
+  - sensor:
+      # Raw readings (temporary source: dev mocks). Swap these states() to your real IMU entities later.
+      - name: "RC System Level Pitch Raw"
+        unique_id: rc_system_level_pitch_raw_deg
+        object_id: rc_system_level_pitch_raw_deg
+        unit_of_measurement: "°"
+        state: "{{ states('input_number.rc_mock_system_level_pitch_deg') }}"
+
+      - name: "RC System Level Roll Raw"
+        unique_id: rc_system_level_roll_raw_deg
+        object_id: rc_system_level_roll_raw_deg
+        unit_of_measurement: "°"
+        state: "{{ states('input_number.rc_mock_system_level_roll_deg') }}"
+
+      # Contract layer: calibrated (levelled) values.
+      - name: "RC System Level Pitch Deg"
+        unique_id: rc_system_level_pitch_deg
+        object_id: rc_system_level_pitch_deg
         unit_of_measurement: "°"
         state: >-
-          {{ states("input_number.rc_mock_system_level_roll_deg") }}
+          {{ (states('sensor.rc_system_level_pitch_raw_deg')|float(0)
+              - states('input_number.rc_system_level_pitch_offset_deg')|float(0))
+              | round(2) }}
+
+      - name: "RC System Level Roll Deg"
+        unique_id: rc_system_level_roll_deg
+        object_id: rc_system_level_roll_deg
+        unit_of_measurement: "°"
+        state: >-
+          {{ (states('sensor.rc_system_level_roll_raw_deg')|float(0)
+              - states('input_number.rc_system_level_roll_offset_deg')|float(0))
+              | round(2) }}
+
+      # Status + hint (MVP): tolerance hardcoded.
+      - name: "RC System Level Status"
+        unique_id: rc_system_level_status
+        object_id: rc_system_level_status
+        icon: mdi:spirit-level
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_system_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_system_level_roll_deg')|float(0) %}
+          {% set max_abs = [p|abs, r|abs] | max %}
+          {% if max_abs <= tol %}
+            level
+          {% elif max_abs <= 3.0 %}
+            close
+          {% else %}
+            adjust
+          {% endif %}
+
+      - name: "RC System Level Adjustment Hint"
+        unique_id: rc_system_level_adjustment_hint
+        object_id: rc_system_level_adjustment_hint
+        icon: mdi:arrow-expand-all
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_system_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_system_level_roll_deg')|float(0) %}
+          {% if (p|abs <= tol) and (r|abs <= tol) %}
+            No adjustment needed
+          {% else %}
+            {# NOTE: Directionality depends on IMU axis convention; adjust text if needed. #}
+            {% set parts = [] %}
+            {% if p|abs > tol %}
+              {% if p > 0 %}
+                {% set _ = parts.append('Pitch +: lower front or raise rear') %}
+              {% else %}
+                {% set _ = parts.append('Pitch -: raise front or lower rear') %}
+              {% endif %}
+            {% endif %}
+            {% if r|abs > tol %}
+              {% if r > 0 %}
+                {% set _ = parts.append('Roll +: lower left or raise right') %}
+              {% else %}
+                {% set _ = parts.append('Roll -: raise left or lower right') %}
+              {% endif %}
+            {% endif %}
+            {{ parts | join('; ') }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: "RC System Level"
+        unique_id: rc_system_level
+        object_id: rc_system_level
+        icon: mdi:spirit-level
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_system_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_system_level_roll_deg')|float(0) %}
+          {{ (p|abs <= tol) and (r|abs <= tol) }}
