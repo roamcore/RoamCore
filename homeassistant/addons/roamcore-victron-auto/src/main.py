@@ -1469,9 +1469,10 @@ discover();
         cfg: dict[str, Any] = {
             "name": name,
             "unique_id": uniq,
-            # Force entity_id style to match requested vt namespace.
-            # Home Assistant will create e.g. sensor.vt_battery_voltage_v
-            "object_id": vt_key,
+            # Set a stable default entity id.
+            # NOTE: Home Assistant deprecated `object_id` for MQTT discovery (Core 2026.4).
+            # Use `default_entity_id` instead.
+            "default_entity_id": f"{domain}.{vt_key}",
             "state_topic": state,
             "availability_topic": f"roamcore/victron/{self.device_id}/availability",
             "device": {
@@ -1858,7 +1859,9 @@ discover();
         cfg: dict[str, Any] = {
             "name": f"Victron Raw {service_type}/{device_instance}/{dbus_path}",
             "unique_id": uniq,
-            "object_id": obj,
+            # NOTE: Home Assistant deprecated `object_id` for MQTT discovery (Core 2026.4).
+            # Use `default_entity_id` instead.
+            "default_entity_id": f"sensor.{obj}",
             "json_attributes_topic": attrs_topic,
             "state_topic": state_topic,
             "availability_topic": f"roamcore/victron/{self.device_id}/availability",
