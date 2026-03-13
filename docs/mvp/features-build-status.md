@@ -26,8 +26,8 @@ This is an internal status page for the remaining MVP feature build-out.
   - output: `/local/roamcore/trip_wrapped/latest.html`
 
 - Traccar live map (embedded)
-  - RoamCore Map page embeds Traccar add-on ingress via iframe (configurable).
-  - Helper: `input_text.rc_traccar_ingress_path`
+  - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
+  - Helper: `input_text.rc_traccar_ui_url`
 
 ## Next steps (needs HAOS setup / UI wiring)
 
