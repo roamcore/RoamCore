@@ -1,0 +1,20 @@
+# RoamCore additions to configuration.yaml
+# Add these to your existing configuration.yaml
+
+# Lovelace dashboard mode (YAML) and resources
+lovelace:
+  mode: storage
+  resources:
+    - url: /local/roamcore/roamcore-dashboard.js
+      type: module
+    - url: /local/roamcore/roamcore-tiles.js
+      type: module
+    - url: /local/roamcore/roamcore-pages.js
+      type: module
+  dashboards:
+    roamcore:
+      mode: yaml
+      title: RoamCore
+      icon: mdi:van-utility
+      show_in_sidebar: true
+      filename: lovelace/roamcore-dashboard.yaml

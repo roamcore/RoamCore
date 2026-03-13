@@ -1,0 +1,53 @@
+# RoamCore Dashboard - Lovelace configuration
+# This is a custom dashboard using the RoamCore custom cards.
+# Reference: homeassistant/www/roamcore/*.js
+
+title: RoamCore
+views:
+  # Main dashboard (home)
+  - path: home
+    title: Dashboard
+    icon: mdi:home
+    panel: true
+    cards:
+      - type: custom:roamcore-dashboard-card
+
+  # Power detail page
+  - path: power
+    title: Power
+    icon: mdi:lightning-bolt
+    panel: true
+    cards:
+      - type: custom:roamcore-power-page
+
+  # Network detail page
+  - path: network
+    title: Network
+    icon: mdi:wifi
+    panel: true
+    cards:
+      - type: custom:roamcore-network-page
+
+  # Location/Map page
+  - path: location
+    title: Location
+    icon: mdi:map-marker
+    panel: true
+    cards:
+      - type: custom:roamcore-location-page
+
+  # Level page
+  - path: level
+    title: Level
+    icon: mdi:spirit-level
+    panel: true
+    cards:
+      - type: custom:roamcore-level-page
+
+  # Settings page
+  - path: settings
+    title: Settings
+    icon: mdi:cog
+    panel: true
+    cards:
+      - type: custom:roamcore-settings-page
