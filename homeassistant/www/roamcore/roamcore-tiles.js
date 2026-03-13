@@ -34,12 +34,12 @@ class RoamcoreBaseTile extends HTMLElement {
 
       // delegated click handler (bind once)
       this._rcClickBound = true;
-      this._root.addEventListener(click, (ev) => {
+      this._root.addEventListener('click', (ev) => {
         const path = ev.composedPath ? ev.composedPath() : [];
         const candidates = path.length ? path : [ev.target];
         for (const node of candidates) {
           if (node && node.getAttribute) {
-            const nav = node.getAttribute(data-nav);
+            const nav = node.getAttribute('data-nav');
             if (nav) {
               this._navigate(nav);
               return;
