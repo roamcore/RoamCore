@@ -688,13 +688,21 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
+    const ingress = this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar/';
     const mapTile = `
-      <div class="rc-mapbox">${rcMiniMapSvg()}</div>
+      <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
+        <iframe
+          src="${ingress}"
+          style="width:100%; height:100%; border:0;"
+          referrerpolicy="no-referrer"
+          loading="lazy"
+        ></iframe>
+      </div>
       <div style="display:flex; gap:8px; align-items:center; margin-top: 10px;">
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">Live coords from rc_location_* (Traccar-friendly).</div>
+      <div class="rc-label" style="margin-top: 6px;">Embedded Traccar add-on map (ingress).</div>
     `;
 
     const stats = `
@@ -713,15 +721,8 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const history = `
       <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
-      <div class="rc-label" style="margin-bottom:8px;">Live map (Traccar)</div>
-      <div style="height: 320px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
-        <iframe
-          src="${this._getState('input_text.rc_traccar_ingress_path') || '/hassio/ingress/a0d7b954_traccar/'}"
-          style="width:100%; height:100%; border:0;"
-          referrerpolicy="no-referrer"
-          loading="lazy"
-        ></iframe>
-      </div>
+      <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
+      <div class="rc-label" style="margin-top:4px;">Use Traccar UI above for route replay/history (MVP).</div>
       <div style="height: 8px"></div>
       ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
       ${this._row('Stops', stops == null ? '—' : Math.round(stops))}
