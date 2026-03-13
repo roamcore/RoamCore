@@ -150,12 +150,7 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _basePath() {
-    try {
-      const p = window.location?.pathname || '';
-      if (p.startsWith('/roam-core')) return '/roam-core';
-      if (p.startsWith('/lovelace/roamcore')) return '/lovelace/roamcore';
-    } catch (e) {}
-    return '/lovelace/roamcore';
+    return '/roamcore';
   }
 
   _header(title) {

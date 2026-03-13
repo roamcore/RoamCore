@@ -44,14 +44,10 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _basePath() {
-    try {
-      const p = window.location?.pathname || '';
-      if (p.startsWith('/roam-core')) return '/roam-core';
-      if (p.startsWith('/lovelace/roamcore')) return '/lovelace/roamcore';
-    } catch (e) {
-      // ignore
-    }
-    return '/lovelace/roamcore';
+    // Force canonical RoamCore dashboard path.
+    // HA storage dashboards are typically accessible at /<url_path>/...
+    // We standardize on /roamcore to avoid drift across devices.
+    return '/roamcore';
   }
 
   _getState(entityId) {
@@ -402,12 +398,13 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-van-svg { width:110px; height:52px; }
       .rc-deg { font-size:20px; font-weight:900; }
 
-      .rc-map-main { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; height: 120px; }
-      .rc-map-box { width: 140px; height: 86px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+      /* Make the map preview dominate the tile (~70-80% of tile body). */
+      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 128px; }
+      .rc-map-box { width: 100%; height: 110px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
       .rc-map-svg { width:100%; height:100%; }
-      .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:180px; }
-      .rc-trunc { max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
+      .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .rc-map-stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 
       @media (min-width: 1280px) {

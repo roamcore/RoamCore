@@ -357,10 +357,5 @@ customElements.define('roamcore-map-tile', RoamcoreMapTile);
 // - Storage dashboard: /lovelace/roamcore/<view>
 // - YAML dashboard (legacy experiment): /roam-core/<view>
 function rcBasePath() {
-  try {
-    const p = window.location?.pathname || '';
-    if (p.startsWith('/roam-core')) return '/roam-core';
-    if (p.startsWith('/lovelace/roamcore')) return '/lovelace/roamcore';
-  } catch (e) {}
-  return '/lovelace/roamcore';
+  return '/roamcore';
 }
