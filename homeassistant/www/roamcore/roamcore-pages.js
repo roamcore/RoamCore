@@ -809,7 +809,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
-    this._wireNav();
   }
 }
 
