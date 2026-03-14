@@ -39,9 +39,31 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     // Add-on ingress URL pattern: /api/hassio_ingress/<ingress_token>/
     // NOTE: the ingress token is not stable across installs. For MVP we allow
     // the dashboard YAML to pass `api_base` explicitly.
-    //
-    // Default: keep current DEV slug for our dev environments.
-    return this._config.api_base || '/api/hassio_ingress/roamcore_victron_auto_dev';
+
+    // 1) Explicit override
+    if (this._config.api_base) return this._config.api_base;
+
+    // 2) Best-effort auto-detect from HA panels (Supervisor ingress).
+    // Panels often include a per-install ingress token at `config.ingress`.
+    // We scan for something Victron-ish and map it to the API ingress path.
+    try {
+      const panels = this._hass?.panels || {};
+      for (const key of Object.keys(panels)) {
+        const p = panels[key];
+        const title = String(p?.title || p?.config?.title || '').toLowerCase();
+        const urlPath = String(p?.url_path || '').toLowerCase();
+        const ingress = p?.config?.ingress;
+        const isVictron = title.includes('victron') || title.includes('venus') || urlPath.includes('victron');
+        if (isVictron && ingress) {
+          return `/api/hassio_ingress/${ingress}`;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // 3) Fallback: dev slug (legacy)
+    return '/api/hassio_ingress/roamcore_victron_auto_dev';
   }
 
   async _discover() {

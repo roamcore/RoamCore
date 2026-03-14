@@ -16,9 +16,13 @@ views:
   - path: power
     title: Power
     icon: mdi:lightning-bolt
-    panel: true
+    panel: false
     cards:
-      - type: custom:roamcore-power-page
+      - type: vertical-stack
+        cards:
+          - type: custom:roamcore-victron-connect
+            title: Victron (Connect)
+          - type: custom:roamcore-power-page
 
   # Network detail page
   - path: network
