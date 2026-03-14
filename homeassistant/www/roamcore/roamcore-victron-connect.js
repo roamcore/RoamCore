@@ -270,9 +270,17 @@ class RoamCoreVictronConnectCard extends HTMLElement {
           cursor: pointer;
           transition: background 0.2s;
         }
+        .candidate.bad {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
         .candidate:hover {
           background: var(--primary-color);
           color: var(--text-primary-color, white);
+        }
+        .candidate.bad:hover {
+          background: var(--secondary-background-color);
+          color: inherit;
         }
         .candidate:hover .candidate-source {
           color: inherit;
@@ -337,11 +345,11 @@ class RoamCoreVictronConnectCard extends HTMLElement {
         ` : this._candidates.length > 0 ? `
           <div class="candidates">
             ${this._candidates.map((c, i) => `
-              <div class="candidate" data-index="${i}">
+              <div class="candidate ${c.bad ? 'bad' : ''}" data-index="${i}">
                 <div class="candidate-info">
                   <div class="candidate-name">${this._escapeHtml(c.name || 'Victron Device')}</div>
                   <div class="candidate-host">${this._escapeHtml(c.host || c.ip)}:${c.port || 1883}</div>
-                  <div class="candidate-source">${this._escapeHtml(c.source || 'unknown')}</div>
+                  <div class="candidate-source">${this._escapeHtml(c.source || 'unknown')}${c.bad ? ' (bad)' : ''}</div>
                 </div>
                 <div class="candidate-action">
                   <ha-icon icon="mdi:chevron-right"></ha-icon>
@@ -377,8 +385,9 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     candidateEls.forEach(el => {
       el.addEventListener('click', () => {
         const idx = parseInt(el.dataset.index, 10);
-        if (this._candidates[idx]) {
-          this._connect(this._candidates[idx]);
+        const c = this._candidates[idx];
+        if (c && !c.bad) {
+          this._connect(c);
         }
       });
     });
