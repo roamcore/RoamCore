@@ -73,9 +73,12 @@ class RoamCoreVictronConnectCard extends HTMLElement {
 
     try {
       const base = this._getApiBase();
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 2500);
       const resp = await fetch(`${base}/api/v1/victron/discover`, {
         credentials: 'same-origin',
-      });
+        signal: ctl.signal,
+      }).finally(() => clearTimeout(t));
       
       if (!resp.ok) {
         throw new Error(`Discovery failed: ${resp.status} ${resp.statusText}`);
@@ -88,7 +91,11 @@ class RoamCoreVictronConnectCard extends HTMLElement {
         this._error = 'No Victron devices found on the network. Make sure your GX device is powered on and connected.';
       }
     } catch (err) {
-      this._error = `Discovery error: ${err.message}`;
+      if (err && (err.name === 'AbortError' || String(err.message || '').includes('aborted'))) {
+        this._error = 'Discovery timed out. Check network/Victron power and try again.';
+      } else {
+        this._error = `Discovery error: ${err.message}`;
+      }
       this._candidates = [];
     } finally {
       this._loading = false;
