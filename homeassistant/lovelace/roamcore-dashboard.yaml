@@ -78,3 +78,16 @@ views:
           - entity: sensor.vt_victron_snapshot_state
           - entity: sensor.vt_victron_devices_count
           - entity: sensor.vt_victron_topics_count
+
+      - type: entities
+        title: Networking (rc_net_*)
+        entities:
+          - entity: sensor.rc_net_wan_status
+          - entity: sensor.rc_net_wan_source
+          - entity: sensor.rc_net_ping
+          - entity: sensor.rc_net_download
+          - entity: sensor.rc_net_upload
+          - entity: sensor.rc_net_packet_loss
+          - entity: sensor.rc_net_jitter
+          - entity: sensor.rc_net_uptime
+          - entity: sensor.rc_net_last_disconnect
