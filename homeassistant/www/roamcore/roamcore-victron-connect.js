@@ -134,6 +134,37 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     }
   }
 
+  async _clear() {
+    this._connecting = true;
+    this._error = null;
+    this._success = null;
+    this._render();
+
+    try {
+      const base = this._getApiBase();
+      const resp = await fetch(`${base}/api/v1/victron/clear`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Clear failed: ${resp.status}`);
+      }
+
+      const data = await resp.json().catch(() => ({}));
+      this._success = data.message || 'Cleared configuration. The add-on may restart.';
+      this._candidates = [];
+    } catch (err) {
+      this._error = `Clear error: ${err.message}`;
+    } finally {
+      this._connecting = false;
+      this._render();
+    }
+  }
+
   _render() {
     const title = this._config.title || 'Connect Victron Device';
 
@@ -170,6 +201,28 @@ class RoamCoreVictronConnectCard extends HTMLElement {
         .refresh-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+        .btn-row {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          margin: -6px 0 12px;
+        }
+        .btn {
+          border: 1px solid var(--divider-color);
+          background: var(--secondary-background-color);
+          color: var(--primary-text-color);
+          padding: 8px 10px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .btn-danger {
+          border-color: color-mix(in srgb, var(--error-color, #b00020) 55%, var(--divider-color));
         }
         .loading {
           text-align: center;
@@ -262,6 +315,12 @@ class RoamCoreVictronConnectCard extends HTMLElement {
           </button>
         </div>
 
+        <div class="btn-row">
+          <button class="btn btn-danger" id="clearBtn" ${this._loading || this._connecting ? 'disabled' : ''}>
+            Clear
+          </button>
+        </div>
+
         ${this._error ? `<div class="error">${this._error}</div>` : ''}
         ${this._success ? `<div class="success">${this._success}</div>` : ''}
 
@@ -304,6 +363,14 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this._discover());
+    }
+
+    const clearBtn = this.shadowRoot.querySelector('#clearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        const ok = window.confirm('Clear Victron configuration? This will disconnect and may restart the add-on.');
+        if (ok) this._clear();
+      });
     }
 
     const candidateEls = this.shadowRoot.querySelectorAll('.candidate');
