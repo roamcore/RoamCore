@@ -658,12 +658,14 @@ discover();
                                 socket.setdefaulttimeout(old_timeout)
 
                             if ip:
+                                use_tls = bool(getattr(parent, "victron_use_tls", False))
+                                port = int(getattr(parent, "victron_port_tls", 8883) if use_tls else getattr(parent, "victron_port", 1883))
                                 candidates.append(
                                     {
                                         "name": "venus.local",
                                         "host": "venus.local",
                                         "ip": ip,
-                                        "port": 1883,
+                                        "port": port,
                                         "source": "dns:venus.local",
                                     }
                                 )
