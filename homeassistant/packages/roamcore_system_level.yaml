@@ -126,6 +126,5 @@ template:
           {% set r = states('sensor.rc_system_level_roll_deg')|float(0) %}
           {{ (p|abs <= tol) and (r|abs <= tol) }}
 
-## NOTE:
-# Template entities are defined in `roamcore_templates.yaml` to avoid Home Assistant
-# packages list-override behavior.
+# NOTE: This file is a Home Assistant package.
+# Keep template entity names/unique_ids stable to preserve entity_id continuity.
