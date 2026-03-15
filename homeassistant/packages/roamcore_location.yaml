@@ -107,6 +107,5 @@ template:
         unique_id: rc_trip_stops
         state: "{{ states('input_number.rc_mock_trip_stops') }}"
 
-## NOTE:
-# Template entities are defined in `roamcore_templates.yaml` to avoid Home Assistant
-# packages list-override behavior.
+# NOTE: This file is a Home Assistant package.
+# Keep template entity names/unique_ids stable to preserve entity_id continuity.
