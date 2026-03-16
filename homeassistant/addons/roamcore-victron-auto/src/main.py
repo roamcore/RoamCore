@@ -597,7 +597,14 @@ discover();
                     return
 
                 if path in ("/health", "/api/v1/health"):
-                    return self._json(200, {"ok": True})
+                    # Health is best-effort and should never cause Supervisor restart loops.
+                    # We always return HTTP 200, but `ok` reflects config validity.
+                    try:
+                        st = parent.status_dict()
+                        ok = bool(((st.get("config") or {}).get("valid")))
+                        return self._json(200, {"ok": ok, "status": st})
+                    except Exception:
+                        return self._json(200, {"ok": True})
 
                 if path in ("/api/v1/victron/status", "/api/v1/status"):
                     try:
