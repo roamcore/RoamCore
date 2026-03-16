@@ -173,6 +173,16 @@ class VictronAuto:
         self._config_warnings: list[str] = []
         self._validate_config()
 
+        # Surface config issues immediately in logs (helps the "plug-and-play" goal).
+        # We intentionally do not crash-loop: most errors are recoverable via UI/config.
+        try:
+            if self._config_errors:
+                LOG.error("Config validation errors: %s", "; ".join(self._config_errors))
+            if self._config_warnings:
+                LOG.warning("Config validation warnings: %s", "; ".join(self._config_warnings))
+        except Exception:
+            pass
+
         self._victron_connected_at: Optional[float] = None
         # Cache bad targets to avoid sticky failure when multiple MQTT brokers are
         # present on the LAN.
