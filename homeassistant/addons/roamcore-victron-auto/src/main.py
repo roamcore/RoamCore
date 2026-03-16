@@ -1205,14 +1205,48 @@ discover();
             protocol=mqtt.MQTTv311,
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         )
+
+        # Availability/LWT so HA can reflect add-on health even if the container dies.
+        try:
+            client.will_set(
+                f"roamcore/victron/{self.device_id}/availability",
+                payload="offline",
+                qos=0,
+                retain=True,
+            )
+        except Exception:
+            pass
         if user:
             client.username_pw_set(user, pw or "")
 
         # Callback API v2 signatures:
         #   on_connect(client, userdata, flags, reason_code, properties)
         #   on_disconnect(client, userdata, disconnect_flags, reason_code, properties)
-        client.on_connect = lambda c, u, f, rc, p: LOG.info("Connected to HA MQTT rc=%s", rc)
-        client.on_disconnect = lambda c, u, df, rc, p: LOG.warning("HA MQTT disconnected rc=%s", rc)
+        def _ha_on_connect(c, u, f, rc, p):
+            LOG.info("Connected to HA MQTT rc=%s", rc)
+            try:
+                c.publish(
+                    f"roamcore/victron/{self.device_id}/availability",
+                    payload="online",
+                    retain=True,
+                )
+            except Exception:
+                pass
+
+        def _ha_on_disconnect(c, u, df, rc, p):
+            LOG.warning("HA MQTT disconnected rc=%s", rc)
+            # Best-effort: publish offline. LWT covers hard-kill cases.
+            try:
+                c.publish(
+                    f"roamcore/victron/{self.device_id}/availability",
+                    payload="offline",
+                    retain=True,
+                )
+            except Exception:
+                pass
+
+        client.on_connect = _ha_on_connect
+        client.on_disconnect = _ha_on_disconnect
         client.reconnect_delay_set(min_delay=1, max_delay=30)
 
         # Start loop thread
@@ -1227,7 +1261,7 @@ discover();
         self._ha_mqtt_user = user
         self._ha_mqtt_pw = pw
 
-        # publish availability online
+        # publish availability online (again; safe/retained)
         self._ha_client.publish(f"roamcore/victron/{self.device_id}/availability", payload="online", retain=True)
 
     async def _connect_victron(self):
