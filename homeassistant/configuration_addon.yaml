@@ -1,6 +1,11 @@
 # RoamCore additions to configuration.yaml
 # Add these to your existing configuration.yaml
 
+# Enable RoamCore Home Assistant "packages" (YAML bundles under /config/packages)
+# so `homeassistant/packages/*.yaml` in this repo can be dropped into HAOS.
+homeassistant:
+  packages: !include_dir_named packages
+
 # Lovelace dashboard mode (YAML) and resources
 lovelace:
   mode: storage
