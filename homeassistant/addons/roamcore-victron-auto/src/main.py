@@ -160,6 +160,9 @@ class VictronAuto:
         self._last_discovery_publish = 0.0
         self._last_seen_victron_msg = 0.0
 
+        # Status sensor publish throttling (retain topics for dashboard health panels)
+        self._last_status_publish = 0.0
+
         # Publish observability
         self._last_ha_publish_at: float = 0.0
         self._ha_publish_count_total: int = 0
@@ -900,6 +903,10 @@ discover();
         if self.publish_discovery and self._ha_client and time.time() - self._last_discovery_publish > 120:
             self._publish_discovery_skeleton()
             self._last_discovery_publish = time.time()
+
+        # Publish lightweight retained status topics frequently so HA dashboards have
+        # near-real-time health without waiting for discovery refresh.
+        self._publish_status_topics()
 
         # If we haven't seen messages in a while, mark offline by publishing availability
         if self._ha_client and time.time() - self._last_seen_victron_msg > 30:
@@ -1819,12 +1826,7 @@ discover();
         }
         self._ha_client.publish(base, payload=json.dumps(payload), retain=True)
         # publish state
-        st = "connected" if (time.time() - self._last_seen_victron_msg) < 30 else "searching"
-        self._ha_client.publish(state_topic, payload=st, retain=True)
-
-        # Expose whether we've received a full publish snapshot yet.
-        snap_topic = f"roamcore/victron/{self.device_id}/snapshot_state"
-        self._ha_client.publish(snap_topic, payload="ready" if self._did_full_publish else "pending", retain=True)
+        self._publish_status_topics(force=True)
 
         snap_uniq = f"{self.device_id}_snapshot_state"
         snap_cfg_topic = f"{self.discovery_prefix}/sensor/{self.device_id}/{snap_uniq}/config"
@@ -1842,6 +1844,37 @@ discover();
             },
         }
         self._ha_client.publish(snap_cfg_topic, payload=json.dumps(snap_cfg), retain=True)
+
+    def _publish_status_topics(self, force: bool = False) -> None:
+        """Publish retained status + snapshot_state topics.
+
+        These are read by `homeassistant/packages/roamcore_victron_health.yaml` to
+        derive contract-level `rc_system_power_backend_*` entities.
+        """
+
+        if not self._ha_client:
+            return
+
+        now = time.time()
+        if not force and now - self._last_status_publish < 5:
+            return
+        self._last_status_publish = now
+
+        try:
+            st = "connected" if (now - self._last_seen_victron_msg) < 30 else "searching"
+            self._ha_client.publish(
+                f"roamcore/victron/{self.device_id}/status",
+                payload=st,
+                retain=True,
+            )
+            self._ha_client.publish(
+                f"roamcore/victron/{self.device_id}/snapshot_state",
+                payload="ready" if self._did_full_publish else "pending",
+                retain=True,
+            )
+        except Exception:
+            # Never let status publishing break the main loop.
+            return
 
         # Publish discovery for all mapped entities (idempotent).
         for _, meta in self._path_to_vt.items():
