@@ -313,6 +313,127 @@ class RoamcoreBasePage extends HTMLElement {
       }
     `;
   }
+
+  // -----------------
+  // Map helpers (Leaflet + breadcrumb trail)
+  // -----------------
+  async _ensureLeaflet() {
+    try {
+      if (window.L && window.L.map) return true;
+
+      const cssId = 'rc-leaflet-css';
+      const jsId = 'rc-leaflet-js';
+
+      if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/local/roamcore/vendor/leaflet/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!document.getElementById(jsId)) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.id = jsId;
+          s.src = '/local/roamcore/vendor/leaflet/leaflet.js';
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      return !!(window.L && window.L.map);
+    } catch (e) {
+      console.warn('leaflet load failed', e);
+      return false;
+    }
+  }
+
+  _pickTrackerEntity() {
+    const configured = this._getState('input_text.rc_location_tracker_entity');
+    if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
+      return String(configured).trim();
+    }
+    try {
+      const st = this._hass?.states || {};
+      for (const id of Object.keys(st)) {
+        if (!id.startsWith('device_tracker.')) continue;
+        const a = st[id]?.attributes || {};
+        if (a.latitude != null && a.longitude != null) return id;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async _loadTrail(trackerId, hours = 6) {
+    if (!this._hass || !trackerId) return [];
+    try {
+      const start = new Date(Date.now() - hours * 3600_000).toISOString();
+      const url = `history/period/${encodeURIComponent(start)}?filter_entity_id=${encodeURIComponent(trackerId)}`;
+      const rows = await this._hass.callApi('GET', url);
+      const list = Array.isArray(rows) && rows.length ? rows[0] : [];
+      const pts = [];
+      for (const s of list) {
+        const a = (s && s.attributes) || {};
+        const lat = Number(a.latitude);
+        const lon = Number(a.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        pts.push([lat, lon]);
+      }
+      const out = [];
+      for (const p of pts) {
+        const prev = out[out.length - 1];
+        if (prev && Math.abs(prev[0] - p[0]) < 1e-6 && Math.abs(prev[1] - p[1]) < 1e-6) continue;
+        out.push(p);
+      }
+      return out;
+    } catch (e) {
+      console.warn('trail load failed', e);
+      return [];
+    }
+  }
+
+  async _mountLeafletMap(el, { lat, lon, trackerId } = {}) {
+    try {
+      if (!el) return;
+      const ok = await this._ensureLeaflet();
+      if (!ok) {
+        el.innerHTML = '<div class="rc-label">Map failed to load (Leaflet missing).</div>';
+        return;
+      }
+      if (el._rcMap) return;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        el.innerHTML = '<div class="rc-label">No GPS fix yet.</div>';
+        return;
+      }
+
+      const L = window.L;
+      const m = L.map(el, { zoomControl: false, attributionControl: false });
+      el._rcMap = m;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+
+      const trail = await this._loadTrail(trackerId, 6);
+      const pts = (trail && trail.length ? trail : [[lat, lon]]);
+
+      if (pts.length >= 2) {
+        const line = L.polyline(pts, { color: '#22c55e', weight: 4, opacity: 0.85 });
+        line.addTo(m);
+        m.fitBounds(line.getBounds(), { padding: [18, 18] });
+      } else {
+        m.setView([lat, lon], 14);
+      }
+
+      L.circleMarker([lat, lon], { radius: 8, color: '#0ea5e9', weight: 3, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
+      L.control.zoom({ position: 'bottomright' }).addTo(m);
+    } catch (e) {
+      console.warn('leaflet mount failed', e);
+      try { el.innerHTML = '<div class="rc-label">Map failed to render.</div>'; } catch (e2) {}
+    }
+  }
 }
 
 class RoamcorePowerPage extends RoamcoreBasePage {
@@ -693,151 +814,6 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
 }
 
 class RoamcoreMapPage extends RoamcoreBasePage {
-  async _ensureLeaflet() {
-    try {
-      if (window.L && window.L.map) return true;
-
-      // Inject Leaflet assets from /local so we don't depend on external CDNs.
-      const cssId = 'rc-leaflet-css';
-      const jsId = 'rc-leaflet-js';
-
-      if (!document.getElementById(cssId)) {
-        const link = document.createElement('link');
-        link.id = cssId;
-        link.rel = 'stylesheet';
-        link.href = '/local/roamcore/vendor/leaflet/leaflet.css';
-        document.head.appendChild(link);
-      }
-
-      if (!document.getElementById(jsId)) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.id = jsId;
-          s.src = '/local/roamcore/vendor/leaflet/leaflet.js';
-          s.async = true;
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
-      return !!(window.L && window.L.map);
-    } catch (e) {
-      console.warn('leaflet load failed', e);
-      return false;
-    }
-  }
-
-  _pickTrackerEntity() {
-    // Prefer user-configured helper.
-    const configured = this._getState('input_text.rc_location_tracker_entity');
-    if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
-      return String(configured).trim();
-    }
-
-    // Fallback: try to find any device_tracker with latitude/longitude attrs.
-    try {
-      const st = this._hass?.states || {};
-      for (const id of Object.keys(st)) {
-        if (!id.startsWith('device_tracker.')) continue;
-        const a = st[id]?.attributes || {};
-        if (a.latitude != null && a.longitude != null) return id;
-      }
-    } catch (e) {}
-    return null;
-  }
-
-  async _loadTrail(trackerId) {
-    // Pull recent history from HA so we can draw a breadcrumb line.
-    // This avoids any Traccar UI embedding and works with any device_tracker.
-    if (!this._hass || !trackerId) return [];
-    try {
-      const hours = 6;
-      const start = new Date(Date.now() - hours * 3600_000).toISOString();
-      const url = `history/period/${encodeURIComponent(start)}?filter_entity_id=${encodeURIComponent(trackerId)}`;
-      const rows = await this._hass.callApi('GET', url);
-      const list = Array.isArray(rows) && rows.length ? rows[0] : [];
-      const pts = [];
-      for (const s of list) {
-        const a = (s && s.attributes) || {};
-        const lat = Number(a.latitude);
-        const lon = Number(a.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        pts.push([lat, lon, s.last_changed || s.last_updated || null]);
-      }
-      // De-dupe adjacent identical points.
-      const out = [];
-      for (const p of pts) {
-        const prev = out[out.length - 1];
-        if (prev && Math.abs(prev[0] - p[0]) < 1e-6 && Math.abs(prev[1] - p[1]) < 1e-6) continue;
-        out.push(p);
-      }
-      return out;
-    } catch (e) {
-      console.warn('trail load failed', e);
-      return [];
-    }
-  }
-
-  async _renderLeafletMap() {
-    const ok = await this._ensureLeaflet();
-    if (!ok) {
-      return '<div class="rc-label">Map failed to load (Leaflet assets missing).</div>';
-    }
-
-    // Create container
-    const mapId = 'rc-leaflet-map';
-    const trackerId = this._pickTrackerEntity();
-    const lat = this._num('sensor.rc_location_lat', null);
-    const lon = this._num('sensor.rc_location_lon', null);
-
-    // If we have no location source yet, show setup hint.
-    if (lat == null || lon == null) {
-      return `
-        <div class="rc-label">No GPS source configured yet.</div>
-        <div class="rc-label" style="margin-top:8px;">Set <b>RC Location Tracker Entity</b> to your device_tracker (Helpers).</div>
-        <div class="rc-label" style="margin-top:8px;">Detected tracker: <code>${trackerId || 'none'}</code></div>
-      `;
-    }
-
-    // Render placeholder; we will mount Leaflet after innerHTML is set.
-    setTimeout(async () => {
-      try {
-        const el = this._root?.querySelector('#' + mapId);
-        if (!el) return;
-        // Prevent re-init.
-        if (el._rcMap) return;
-
-        const L = window.L;
-        const m = L.map(el, { zoomControl: false, attributionControl: false });
-        el._rcMap = m;
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-        }).addTo(m);
-
-        const trail = await this._loadTrail(trackerId);
-        const pts = (trail.length ? trail : [[lat, lon]]).map(p => [p[0], p[1]]);
-
-        if (pts.length >= 2) {
-          const line = L.polyline(pts, { color: '#22c55e', weight: 4, opacity: 0.85 });
-          line.addTo(m);
-          m.fitBounds(line.getBounds(), { padding: [18, 18] });
-        } else {
-          m.setView([lat, lon], 14);
-        }
-
-        L.circleMarker([lat, lon], { radius: 8, color: '#0ea5e9', weight: 3, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
-
-        // Basic controls
-        L.control.zoom({ position: 'bottomright' }).addTo(m);
-      } catch (e) {
-        console.warn('leaflet mount failed', e);
-      }
-    }, 0);
-
-    return `<div id="${mapId}" style="height:360px; border-radius:12px; overflow:hidden;"></div>`;
-  }
-
   _render() {
     if (!this._root || !this._hass) return;
 
@@ -912,9 +888,12 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     try {
       const inner = this._root.querySelector('#rc-map-inner');
       if (inner) {
-        this._renderLeafletMap().then(html => {
-          inner.innerHTML = html;
-        });
+        inner.innerHTML = `<div id="rc-leaflet-map" style="height:360px; border-radius:12px; overflow:hidden;"></div>`;
+        const trackerId = this._pickTrackerEntity();
+        const lat = this._num('sensor.rc_location_lat', null);
+        const lon = this._num('sensor.rc_location_lon', null);
+        const el = this._root.querySelector('#rc-leaflet-map');
+        this._mountLeafletMap(el, { lat, lon, trackerId });
       }
     } catch (e) {}
 
@@ -955,13 +934,31 @@ class RoamcoreLocationPage extends RoamcoreBasePage {
               ${this._row('Longitude', lon == null ? '—' : lon)}
               ${this._row('Accuracy', acc == null ? '—' : Math.round(acc), acc == null ? '' : 'm')}
               ${this._row('Source', (src && src !== 'unknown' && src !== 'unavailable') ? src : '—')}
-              <button class="rc-btn" data-nav="${this._basePath()}/map" style="margin-top:10px;">Open Map</button>
+              <button class="rc-btn" data-nav="${this._basePath()}/location" style="margin-top:10px;">Refresh</button>
+            `
+          })}
+
+          ${this._tile({
+            title: 'Map',
+            icon: '🗺',
+            content: `
+              <div id="rc-location-map" style="height:360px; border-radius:12px; overflow:hidden;"></div>
+              <div class="rc-label" style="margin-top:8px;">Breadcrumb trail: last 6 hours (from HA history).</div>
             `
           })}
         </div>
       </div>
     `;
     this._wireNav();
+
+    // Mount Leaflet map.
+    try {
+      const el = this._root.querySelector('#rc-location-map');
+      const trackerId = this._pickTrackerEntity();
+      const latN = Number(lat);
+      const lonN = Number(lon);
+      this._mountLeafletMap(el, { lat: latN, lon: lonN, trackerId });
+    } catch (e) {}
   }
 }
 
