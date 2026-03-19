@@ -21,8 +21,9 @@ input_text:
 
   rc_traccar_ui_url:
     name: "RC Traccar UI URL"
-    # Traccar add-on exposes web UI on host port 8082 by default.
-    initial: "http://192.168.1.67:8082"
+    # Use the same-origin HA reverse proxy so the UI can be embedded in HA mobile,
+    # and auto-login can be handled server-side.
+    initial: "/api/roamcore/traccar"
 
   rc_trip_wrapped_from:
     name: "RC Trip Wrapped From (ISO8601)"

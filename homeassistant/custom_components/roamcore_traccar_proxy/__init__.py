@@ -110,6 +110,21 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             return None
         return None
 
+    async def _fetch_upstream(
+        method: str,
+        url: str,
+        headers: dict,
+        data: bytes | None,
+    ):
+        """Wrapper around aiohttp request to make retry logic clearer."""
+        return session.request(
+            method,
+            url,
+            headers=headers,
+            data=data,
+            allow_redirects=False,
+        )
+
     async def handle(request: web.Request) -> web.StreamResponse:
         path = request.match_info.get("path", "")
         # Preserve trailing slash behavior
@@ -130,25 +145,23 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             "upgrade",
         }}
 
-        # Best-effort auto-login: if the browser doesn't have a session yet,
-        # establish one using stored admin creds and pass it through.
-        cookie = request.headers.get("Cookie", "")
-        if "JSESSIONID=" not in cookie:
+        # Best-effort auto-login / session refresh:
+        # - If the browser doesn't have a session, establish one using stored admin creds.
+        # - If the browser *does* have a session but Traccar rejects it (401/403),
+        #   refresh the cached cookie and retry once.
+        browser_cookie = request.headers.get("Cookie", "") or ""
+        sent_cookie = None
+        if "JSESSIONID=" not in browser_cookie:
             js = await _ensure_logged_in()
             if js:
-                # Upstream expects Cookie: JSESSIONID=...
-                headers["Cookie"] = js.split(";", 1)[0]
+                sent_cookie = js.split(";", 1)[0]
+                headers["Cookie"] = sent_cookie
 
         data = await request.read() if request.can_read_body else None
 
         try:
-            async with session.request(
-                request.method,
-                upstream_url,
-                headers=headers,
-                data=data,
-                allow_redirects=False,
-            ) as resp:
+            # First attempt
+            async with await _fetch_upstream(request.method, upstream_url, headers, data) as resp:
                 # Stream response back
                 out_headers = {k: v for k, v in resp.headers.items() if k.lower() not in {
                     "content-length",
@@ -156,9 +169,41 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     "connection",
                 }}
 
+                # If upstream says unauthorized, retry once by refreshing the cached cookie.
+                if resp.status in (401, 403):
+                    global _cached_session_cookie
+                    _cached_session_cookie = None
+                    js2 = await _ensure_logged_in()
+                    if js2:
+                        headers2 = dict(headers)
+                        sent_cookie = js2.split(";", 1)[0]
+                        headers2["Cookie"] = sent_cookie
+                        async with await _fetch_upstream(request.method, upstream_url, headers2, data) as resp2:
+                            out_headers = {k: v for k, v in resp2.headers.items() if k.lower() not in {
+                                "content-length",
+                                "transfer-encoding",
+                                "connection",
+                            }}
+                            body = await resp2.read()
+
+                            # Rewrite redirect locations back into the proxy prefix
+                            loc = resp2.headers.get("Location")
+                            if loc and loc.startswith("/"):
+                                out_headers["Location"] = f"{PROXY_PREFIX}{loc}"
+
+                            ctype = (resp2.headers.get("Content-Type") or "").lower()
+                            if any(t in ctype for t in ("text/html", "text/css", "javascript")):
+                                body = _rewrite_text_payload(body)
+
+                            # If we established a session cookie, set it for the browser too.
+                            if "JSESSIONID=" not in browser_cookie and _cached_session_cookie:
+                                out_headers["Set-Cookie"] = _cached_session_cookie
+
+                            return web.Response(status=resp2.status, headers=out_headers, body=body)
+
                 # If we established a session cookie, set it for the browser too
-                if "JSESSIONID=" not in (request.headers.get("Cookie") or ""):
-                    if _cached_session_cookie and "Set-Cookie" not in out_headers:
+                if "JSESSIONID=" not in browser_cookie:
+                    if _cached_session_cookie:
                         out_headers["Set-Cookie"] = _cached_session_cookie
 
                 body = await resp.read()

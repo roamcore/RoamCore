@@ -13,8 +13,10 @@ from traccar_client import TraccarClient
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--base-url", required=True)
-    p.add_argument("--username", required=True)
-    p.add_argument("--password", required=True)
+    # Optional: if omitted (or passed as unknown/unavailable from HA templates),
+    # we will fall back to /config/secrets.yaml (keys: roamcore_traccar_admin_email/password)
+    p.add_argument("--username")
+    p.add_argument("--password")
     p.add_argument("--device-id", type=int, required=True)
     p.add_argument("--from", dest="from_ts", required=True)
     p.add_argument("--to", dest="to_ts", required=True)
@@ -24,10 +26,49 @@ def parse_args():
     return p.parse_args()
 
 
+def _load_secrets() -> dict[str, str]:
+    try:
+        p = "/config/secrets.yaml"
+        if not os.path.exists(p):
+            return {}
+        with open(p, "r", encoding="utf-8") as f:
+            text = f.read()
+        import re
+
+        out: dict[str, str] = {}
+        for key in ("roamcore_traccar_admin_email", "roamcore_traccar_admin_password"):
+            m = re.search(rf"^{key}:\s*\"?([^\"\n]+)\"?$", text, re.M)
+            if m:
+                out[key] = m.group(1).strip()
+        return out
+    except Exception:
+        return {}
+
+
+def _norm(v: str | None) -> str | None:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s or s in ("unknown", "unavailable", "None"):
+        return None
+    return s
+
+
 def main():
     a = parse_args()
 
-    client = TraccarClient(base_url=a.base_url, username=a.username, password=a.password)
+    user = _norm(a.username)
+    pw = _norm(a.password)
+    if not (user and pw):
+        sec = _load_secrets()
+        user = user or sec.get("roamcore_traccar_admin_email")
+        pw = pw or sec.get("roamcore_traccar_admin_password")
+    if not (user and pw):
+        raise SystemExit(
+            "Missing Traccar credentials. Provide --username/--password or set roamcore_traccar_admin_email/password in /config/secrets.yaml"
+        )
+
+    client = TraccarClient(base_url=a.base_url, username=user, password=pw)
     trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
 
     wrapped = build_wrapped(
@@ -50,4 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
