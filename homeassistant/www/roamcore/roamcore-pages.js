@@ -730,7 +730,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const history = `
       <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
-      <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
       <div class="rc-label" style="margin-top:4px;">Use Traccar UI above for route replay/history (MVP).</div>
       <div style="height: 8px"></div>
       ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
