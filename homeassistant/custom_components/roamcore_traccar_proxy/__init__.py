@@ -167,6 +167,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     "content-length",
                     "transfer-encoding",
                     "connection",
+                    # aiohttp may transparently decompress; don't forward encoding.
+                    "content-encoding",
                 }}
 
                 # If upstream says unauthorized, retry once by refreshing the cached cookie.
@@ -183,6 +185,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                                 "content-length",
                                 "transfer-encoding",
                                 "connection",
+                                "content-encoding",
                             }}
                             body = await resp2.read()
 
