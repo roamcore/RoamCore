@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 from typing import Final
 
-from aiohttp import ClientError, web
+from aiohttp import web
+from aiohttp.client_exceptions import ClientError
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -59,7 +60,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     def _load_traccar_admin_secrets() -> None:
         """Load Traccar admin credentials from /config/secrets.yaml (best-effort)."""
 
-        nonlocal hass
         global _cached_admin_email, _cached_admin_password
         if _cached_admin_email and _cached_admin_password:
             return
