@@ -694,21 +694,14 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
-    const traccarUrlRaw = this._getState('input_text.rc_traccar_ui_url');
-    let traccarUrl = (traccarUrlRaw && traccarUrlRaw !== 'unknown' && traccarUrlRaw !== 'unavailable' && String(traccarUrlRaw).trim())
-      ? String(traccarUrlRaw).replace(/\/+$/, '')
-      : this._traccarEmbedUrl();
-
-    // Cache-bust the proxied Traccar SPA. Mobile webviews can be aggressive about
-    // caching the JS bundle; when we change proxy rewrite logic, old bundles can
-    // keep making requests to the wrong /api/* endpoints and show 404.
-    if (traccarUrl.startsWith('/api/roamcore/traccar') && !traccarUrl.includes('?')) {
-      traccarUrl = traccarUrl + '?v=1';
-    }
+    // MVP reliability: use Home Assistant's native Map panel for the embedded map.
+    // This avoids Traccar's iframe/auth/WebGL quirks across mobile webviews.
+    // The tracking backend can still be Traccar (via device_tracker -> rc_location_*).
+    const mapUrl = '/map';
     const mapTile = `
       <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
         <iframe
-          src="${traccarUrl}"
+          src="${mapUrl}"
           style="width:100%; height:100%; border:0;"
           referrerpolicy="no-referrer"
           loading="lazy"
@@ -718,7 +711,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">Embedded Traccar add-on map.</div>
+      <div class="rc-label" style="margin-top: 6px;">Home Assistant map (MVP reliable embed).</div>
     `;
 
     const stats = `
@@ -737,7 +730,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const history = `
       <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
-      <div class="rc-label" style="margin-top:4px;">Use Traccar UI above for route replay/history (MVP).</div>
+      <div class="rc-label" style="margin-top:4px;">Trip saving/history (MVP): use Trip Wrapped below. (We can add richer trip history next.)</div>
       <div style="height: 8px"></div>
       ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
       ${this._row('Stops', stops == null ? '—' : Math.round(stops))}
