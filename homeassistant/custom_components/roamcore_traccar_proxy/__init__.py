@@ -139,6 +139,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             "keep-alive",
             "proxy-authenticate",
             "proxy-authorization",
+            # Never forward HA auth headers to Traccar.
+            "authorization",
             "te",
             "trailers",
             "transfer-encoding",
