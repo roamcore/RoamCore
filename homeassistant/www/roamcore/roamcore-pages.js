@@ -695,9 +695,16 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const stops = this._num('sensor.rc_trip_stops', null);
 
     const traccarUrlRaw = this._getState('input_text.rc_traccar_ui_url');
-    const traccarUrl = (traccarUrlRaw && traccarUrlRaw !== 'unknown' && traccarUrlRaw !== 'unavailable' && String(traccarUrlRaw).trim())
+    let traccarUrl = (traccarUrlRaw && traccarUrlRaw !== 'unknown' && traccarUrlRaw !== 'unavailable' && String(traccarUrlRaw).trim())
       ? String(traccarUrlRaw).replace(/\/+$/, '')
       : this._traccarEmbedUrl();
+
+    // Cache-bust the proxied Traccar SPA. Mobile webviews can be aggressive about
+    // caching the JS bundle; when we change proxy rewrite logic, old bundles can
+    // keep making requests to the wrong /api/* endpoints and show 404.
+    if (traccarUrl.startsWith('/api/roamcore/traccar') && !traccarUrl.includes('?')) {
+      traccarUrl = traccarUrl + '?v=1';
+    }
     const mapTile = `
       <div style="height: 360px; border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03);">
         <iframe
