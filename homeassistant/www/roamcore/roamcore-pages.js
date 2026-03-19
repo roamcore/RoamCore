@@ -150,7 +150,23 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _basePath() {
-    return '/roamcore';
+    // The RoamCore dashboard can be mounted at different base paths depending on
+    // whether it's a YAML dashboard or a storage dashboard.
+    // Common patterns we've used:
+    //   - /roam-core/...   (YAML dashboard id must include a hyphen)
+    //   - /roamcore/...    (legacy)
+    //   - /lovelace/roamcore/... (storage dashboard)
+    try {
+      const p = String(window.location?.pathname || '');
+      if (p.startsWith('/roam-core/')) return '/roam-core';
+      if (p === '/roam-core') return '/roam-core';
+      if (p.startsWith('/roamcore/')) return '/roamcore';
+      if (p === '/roamcore') return '/roamcore';
+      if (p.startsWith('/lovelace/roamcore/')) return '/lovelace/roamcore';
+      if (p === '/lovelace/roamcore') return '/lovelace/roamcore';
+    } catch (e) {}
+    // Safe default: if we can't tell, fall back to the YAML dashboard id.
+    return '/roam-core';
   }
 
   _header(title) {
