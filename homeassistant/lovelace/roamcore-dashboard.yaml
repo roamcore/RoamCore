@@ -40,6 +40,14 @@ views:
     cards:
       - type: custom:roamcore-location-page
 
+  # Map page (embedded)
+  - path: map
+    title: Map
+    icon: mdi:map
+    panel: true
+    cards:
+      - type: custom:roamcore-map-page
+
   # Level page
   - path: level
     title: Level
