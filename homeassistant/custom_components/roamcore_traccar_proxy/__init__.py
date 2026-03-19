@@ -60,6 +60,27 @@ def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
         s = s.replace('="/', f'="{PROXY_PREFIX}/')
         s = s.replace("='/", f"='{PROXY_PREFIX}/")
         s = s.replace("url(/", f"url({PROXY_PREFIX}/")
+
+        # Debug helper: inject a tiny runtime error banner so "blank page" failures
+        # are visible in embedded iframes.
+        if "text/html" in ct and "</head>" in s:
+            inj = """
+<script>
+(() => {
+  const show = (msg) => {
+    try {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;z-index:99999;left:0;right:0;bottom:0;padding:8px 10px;background:#7f1d1d;color:#fff;font:12px/1.3 system-ui';
+      el.textContent = '[RoamCore Traccar Proxy] ' + msg;
+      document.body.appendChild(el);
+    } catch (e) {}
+  };
+  window.addEventListener('error', (e) => show('JS error: ' + (e.message || 'unknown')));
+  window.addEventListener('unhandledrejection', (e) => show('Promise rejection: ' + (e.reason || 'unknown')));
+})();
+</script>
+""".strip()
+            s = s.replace("</head>", inj + "\n</head>")
         return s.encode("utf-8")
     except Exception:
         return payload
