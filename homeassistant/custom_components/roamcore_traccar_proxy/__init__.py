@@ -52,6 +52,8 @@ def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
 
             s = re.sub(r'"/api/(?!roamcore/traccar/)', f'"{PROXY_PREFIX}/api/', s)
             s = re.sub(r"'/api/(?!roamcore/traccar/)", f"'{PROXY_PREFIX}/api/", s)
+            # Template literals: fetch(`/api/...`)
+            s = re.sub(r"`/api/(?!roamcore/traccar/)", f"`{PROXY_PREFIX}/api/", s)
             return s.encode("utf-8")
 
         # HTML/CSS/etc: broad asset rewriting is OK.
