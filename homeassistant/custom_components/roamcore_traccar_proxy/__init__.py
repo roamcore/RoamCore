@@ -29,7 +29,7 @@ _cached_admin_email: str | None = None
 _cached_admin_password: str | None = None
 
 
-def _rewrite_text_payload(payload: bytes) -> bytes:
+def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
     """Rewrite absolute-root asset paths to stay inside the proxy prefix.
 
     Traccar serves many assets with absolute paths like `/modern/app.js`.
@@ -42,14 +42,21 @@ def _rewrite_text_payload(payload: bytes) -> bytes:
 
     try:
         s = payload.decode("utf-8", errors="ignore")
-        # Common HTML attrs
+        ct = (content_type or "").lower()
+
+        # JavaScript bundles: avoid the broad '="/' rewrite (it can double-prefix
+        # and create broken paths like /api/roamcore/traccar/api/roamcore/traccar/...).
+        # Only rewrite absolute API calls like "/api/...".
+        if "javascript" in ct:
+            import re
+
+            s = re.sub(r'"/api/(?!roamcore/traccar/)', f'"{PROXY_PREFIX}/api/', s)
+            s = re.sub(r"'/api/(?!roamcore/traccar/)", f"'{PROXY_PREFIX}/api/", s)
+            return s.encode("utf-8")
+
+        # HTML/CSS/etc: broad asset rewriting is OK.
         s = s.replace('="/', f'="{PROXY_PREFIX}/')
         s = s.replace("='/", f"='{PROXY_PREFIX}/")
-        # JS often calls Traccar API endpoints with absolute-root paths like "/api/...".
-        # When embedded under the HA proxy prefix, those must be rewritten too.
-        s = s.replace('"/api/', f'"{PROXY_PREFIX}/api/')
-        s = s.replace("'/api/", f"'{PROXY_PREFIX}/api/")
-        # CSS url(/...)
         s = s.replace("url(/", f"url({PROXY_PREFIX}/")
         return s.encode("utf-8")
     except Exception:
@@ -202,7 +209,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                             ctype = (resp2.headers.get("Content-Type") or "").lower()
                             if any(t in ctype for t in ("text/html", "text/css", "javascript")):
-                                body = _rewrite_text_payload(body)
+                                body = _rewrite_text_payload(body, ctype)
 
                             # If we established a session cookie, set it for the browser too.
                             if "JSESSIONID=" not in browser_cookie and _cached_session_cookie:
@@ -224,7 +231,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                 ctype = (resp.headers.get("Content-Type") or "").lower()
                 if any(t in ctype for t in ("text/html", "text/css", "javascript")):
-                    body = _rewrite_text_payload(body)
+                    body = _rewrite_text_payload(body, ctype)
 
                 return web.Response(status=resp.status, headers=out_headers, body=body)
         except (ClientError, asyncio.TimeoutError) as err:
