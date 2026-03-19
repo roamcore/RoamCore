@@ -45,6 +45,10 @@ def _rewrite_text_payload(payload: bytes) -> bytes:
         # Common HTML attrs
         s = s.replace('="/', f'="{PROXY_PREFIX}/')
         s = s.replace("='/", f"='{PROXY_PREFIX}/")
+        # JS often calls Traccar API endpoints with absolute-root paths like "/api/...".
+        # When embedded under the HA proxy prefix, those must be rewritten too.
+        s = s.replace('"/api/', f'"{PROXY_PREFIX}/api/')
+        s = s.replace("'/api/", f"'{PROXY_PREFIX}/api/")
         # CSS url(/...)
         s = s.replace("url(/", f"url({PROXY_PREFIX}/")
         return s.encode("utf-8")
