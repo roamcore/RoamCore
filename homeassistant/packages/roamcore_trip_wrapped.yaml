@@ -3,6 +3,10 @@
 # This package wires a dashboard button -> script -> shell_command that
 # generates `/config/www/roamcore/trip_wrapped/latest.html`.
 
+# Ensure the custom component reverse-proxy is loaded so we can embed Traccar
+# without local-network iframe blocks and without requiring the user to log in.
+roamcore_traccar_proxy:
+
 input_text:
   rc_traccar_base_url:
     name: "RC Traccar Base URL"
