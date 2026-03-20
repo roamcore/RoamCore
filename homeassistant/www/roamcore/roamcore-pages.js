@@ -570,6 +570,11 @@ class RoamcoreBasePage extends HTMLElement {
 
       let did = deviceId;
       if (!did) {
+        // Prefer dedicated route device (allows demo device without affecting other features).
+        const routeDid = Number(this._getState('input_number.rc_map_route_device_id'));
+        if (Number.isFinite(routeDid) && routeDid > 0) did = routeDid;
+      }
+      if (!did) {
         const configured = Number(this._getState('input_number.rc_traccar_device_id'));
         if (Number.isFinite(configured) && configured > 0) did = configured;
       }

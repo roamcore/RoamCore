@@ -1,0 +1,11 @@
+# RoamCore map: route polyline settings
+
+input_number:
+  rc_map_route_device_id:
+    name: "RC Map Route Device ID"
+    min: 1
+    max: 999999
+    step: 1
+    mode: box
+    initial: 2
+
