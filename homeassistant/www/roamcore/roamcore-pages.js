@@ -1114,6 +1114,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
+    const mode = this._mapMode();
     const mapTile = `
       <div style="border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); padding: 10px;">
         <div id="rc-map-inner" style="height: calc(100vh - 250px); min-height: 420px; max-height: 760px;">
@@ -1124,7 +1125,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">RoamCore map (${this._mapMode().mode === 'maplibre' ? 'MapLibre GL (vector)' : 'Leaflet (raster)'})${this._mapMode().mode === 'leaflet' ? ' with Traccar route overlay (last 6h)' : ''}.</div>
+      <div class="rc-label" style="margin-top: 6px;">RoamCore map (${mode.mode === 'maplibre' ? 'MapLibre GL (vector)' : 'Leaflet (raster)'})${mode.mode === 'leaflet' ? ' with Traccar route overlay (last 6h)' : ''}.</div>
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
@@ -1179,13 +1180,13 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
         const el = this._root.querySelector('#rc-map');
-        const mode = this._mapMode();
         if (mode.mode === 'maplibre') {
-          await this._mountMapLibreMap(el, { lat, lon });
+          // NOTE: _render is not async; keep this promise-based.
+          this._mountMapLibreMap(el, { lat, lon }).catch(() => {});
         } else {
-          const map = await this._mountLeafletMap(el, { lat, lon, trackerId });
+          const mapP = this._mountLeafletMap(el, { lat, lon, trackerId });
           // Best-effort: overlay last 6h track from Traccar (if available).
-          this._overlayTraccarTrack(map).catch(() => {});
+          Promise.resolve(mapP).then((map) => this._overlayTraccarTrack(map)).catch(() => {});
         }
       }
     } catch (e) {}
