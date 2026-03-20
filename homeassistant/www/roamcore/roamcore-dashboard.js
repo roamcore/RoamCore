@@ -72,7 +72,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       }
     } catch (e) {}
     // Fallback: same-origin HA proxy (frontend route; works in iframes)
-    return '/roamcore/traccar/';
+    return '/rc-traccar/';
   }
 
   _num(entityId, fallback = null) {
