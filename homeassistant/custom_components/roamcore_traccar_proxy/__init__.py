@@ -25,7 +25,9 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
-FRONTEND_PREFIX: Final = "/roamcore/traccar"
+# Frontend route for embedding Traccar UI. Must NOT collide with Lovelace dashboard
+# paths like /roamcore/<view>.
+FRONTEND_PREFIX: Final = "/rc-traccar"
 API_PREFIX: Final = "/api/roamcore/traccar_api"
 
 _cached_session_cookie: str | None = None
