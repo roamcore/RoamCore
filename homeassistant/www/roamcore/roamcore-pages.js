@@ -962,6 +962,32 @@ class RoamcoreBasePage extends HTMLElement {
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
 
+      // Raster basemap fallback: ensures we never show a flat grey background if the vector
+      // style fails to load tiles (offline / missing sources). Always available via /rc-tiles.
+      const ensureRasterFallback = () => {
+        try {
+          if (m.getSource('rc_raster_fallback')) return;
+          const maxZ = Number(this._getState('input_number.rc_map_offline_max_zoom'));
+          const offlineMaxZ = Number.isFinite(maxZ) ? maxZ : 6;
+          m.addSource('rc_raster_fallback', {
+            type: 'raster',
+            tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            maxzoom: offlineMaxZ,
+          });
+          m.addLayer({
+            id: 'rc_raster_fallback',
+            type: 'raster',
+            source: 'rc_raster_fallback',
+            paint: { 'raster-opacity': 1.0 },
+          });
+        } catch (e) {}
+      };
+      try {
+        m.on('load', ensureRasterFallback);
+        setTimeout(ensureRasterFallback, 250);
+      } catch (e) {}
+
       // Ensure marker exists and is updated on every render tick.
       const ensureMarker = () => {
         try {

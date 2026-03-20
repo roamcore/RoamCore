@@ -800,6 +800,30 @@ class RoamcoreDashboardCard extends HTMLElement {
           attributionControl: false,
         });
         el._rcMapLibre = m;
+
+        // Raster basemap fallback: never show a grey background if vector tiles are missing.
+        const ensureRasterFallback = () => {
+          try {
+            if (m.getSource('rc_raster_fallback')) return;
+            const offlineMaxZ = this._offlineMaxZoom();
+            m.addSource('rc_raster_fallback', {
+              type: 'raster',
+              tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              maxzoom: offlineMaxZ,
+            });
+            m.addLayer({
+              id: 'rc_raster_fallback',
+              type: 'raster',
+              source: 'rc_raster_fallback',
+              paint: { 'raster-opacity': 1.0 },
+            });
+          } catch (e) {}
+        };
+        try {
+          m.on('load', ensureRasterFallback);
+          setTimeout(ensureRasterFallback, 250);
+        } catch (e) {}
         try {
           m.on('error', (ev) => {
             try {
