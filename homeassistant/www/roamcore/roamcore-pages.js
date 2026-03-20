@@ -360,6 +360,14 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-btn { display:inline-flex; align-items:center; justify-content:center; width:100%; padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: var(--rc-text); font-weight: 800; cursor:pointer; }
       .rc-btn:hover { filter: brightness(1.05); }
 
+      /* Modal (Trip Wrapped options) */
+      .rc-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding: 14px; z-index: 9999; }
+      .rc-modal { width: min(720px, calc(100vw - 28px)); max-height: min(80vh, 760px); overflow:auto; background: linear-gradient(180deg, rgba(26,26,26,0.96), rgba(18,18,18,0.96)); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.55); }
+      .rc-modal-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+      .rc-input { width: 100%; padding: 10px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); color: var(--rc-text); font-weight: 700; box-sizing: border-box; }
+      .rc-input:focus { outline: none; border-color: rgba(67,209,122,0.55); }
+      .rc-modal a { color: rgba(255,255,255,0.92); }
+
       @media (min-width: 1280px) {
         .rc-page { max-width: 1100px; margin: 0 auto; }
       }
@@ -1236,6 +1244,22 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const mode = this._mapMode();
 
     // Below-map data tiles (do not touch the map itself when iterating on this section).
+    const tripWrappedTile = `
+      <div style="margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div>
+            <div style="font-weight: 900; font-size: 14px;">Trip Wrapped</div>
+            <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, biggest day/trip, stops proxy, etc.).</div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
+            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
+          </div>
+        </div>
+        <div id="rc-tripwrapped-preview" class="rc-label" style="margin-top:12px;">No summary loaded yet.</div>
+      </div>
+    `;
+
     const mapDataTiles = `
       <div style="margin-top: 14px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; min-width:0;">
@@ -1280,6 +1304,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
       ${mapDataTiles}
+      ${tripWrappedTile}
     `;
 
     this._root.innerHTML = `
@@ -1324,6 +1349,203 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         }
       }
     } catch (e) {}
+
+    // Trip Wrapped: async preview + modal.
+    try {
+      const btn = this._root.querySelector('#rc-tripwrapped-open');
+      if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
+      const prev = this._root.querySelector('#rc-tripwrapped-preview');
+      if (prev) this._loadTripWrappedPreview(prev);
+    } catch (e) {}
+  }
+
+  async _loadTripWrappedPreview(el) {
+    try {
+      if (!el) return;
+      // Prefer today's auto summary if available, otherwise latest.
+      const tryUrls = [
+        '/local/roamcore/trip_wrapped/today.json',
+        '/local/roamcore/trip_wrapped/latest.json',
+      ];
+      let obj = null;
+      for (const u of tryUrls) {
+        try {
+          const r = await fetch(u, { cache: 'no-cache' });
+          if (!r.ok) continue;
+          obj = await r.json();
+          break;
+        } catch (e) {}
+      }
+      if (!obj) {
+        el.textContent = 'No Trip Wrapped data found yet. Tap Options → Generate.';
+        return;
+      }
+
+      const stats = obj.stats || {};
+      const meta = obj.meta || {};
+      const distM = Number(stats.totalDistanceM || 0);
+      const durS = Number(stats.totalDurationS || 0);
+      const distMi = (Number.isFinite(distM) ? distM / 1609.344 : 0);
+      const h = Number.isFinite(durS) ? Math.floor(durS / 3600) : 0;
+      const m = Number.isFinite(durS) ? Math.floor((durS % 3600) / 60) : 0;
+      const trips = Number(meta.tripCount || 0);
+      const gen = meta.generatedAt ? new Date(meta.generatedAt).toLocaleString() : '—';
+      el.innerHTML = `Last generated: <b>${gen}</b> · Trips: <b>${trips}</b> · Distance: <b>${distMi.toFixed(1)} mi</b> · Drive time: <b>${h}:${String(m).padStart(2,'0')}</b>`;
+    } catch (e) {
+      try { el.textContent = 'Trip Wrapped preview failed to load.'; } catch (e2) {}
+    }
+  }
+
+  _tripWrappedModalHtml() {
+    // NOTE: keep this self-contained; do not touch the map container.
+    return `
+      <div class="rc-modal-backdrop" id="rc-tripwrapped-backdrop">
+        <div class="rc-modal" role="dialog" aria-modal="true">
+          <div class="rc-modal-head">
+            <div style="font-weight:900; font-size: 16px;">Trip Wrapped</div>
+            <button class="rc-btn" id="rc-tripwrapped-close">Close</button>
+          </div>
+
+          <div class="rc-label" style="margin-top:8px;">Pick a time range, then generate a shareable recap.</div>
+
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="rc-btn" id="rc-tripwrapped-preset-today">Today</button>
+            <button class="rc-btn" id="rc-tripwrapped-preset-7d">Last 7 days</button>
+            <button class="rc-btn" id="rc-tripwrapped-preset-30d">Last 30 days</button>
+          </div>
+
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">From</div>
+              <input id="rc-tripwrapped-from" type="datetime-local" class="rc-input" />
+            </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">To</div>
+              <input id="rc-tripwrapped-to" type="datetime-local" class="rc-input" />
+            </div>
+          </div>
+
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Export</div>
+              <select id="rc-tripwrapped-export" class="rc-input">
+                <option value="html_json" selected>HTML + JSON (recommended)</option>
+                <option value="json">JSON only</option>
+                <option value="html">HTML only</option>
+              </select>
+            </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">After generate</div>
+              <select id="rc-tripwrapped-after" class="rc-input">
+                <option value="none" selected>Do nothing</option>
+                <option value="open_latest">Open latest report</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="rc-label" style="margin-top:12px;">Metrics inspiration: total distance/time, #trips, longest trip, top speed (later), “biggest day”, and a shareable card.</div>
+
+          <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
+            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
+          </div>
+
+          <div id="rc-tripwrapped-status" class="rc-label" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  _openTripWrappedModal() {
+    try {
+      if (!this._root) return;
+      // Remove any existing modal.
+      try { this._root.querySelector('#rc-tripwrapped-backdrop')?.remove?.(); } catch (e) {}
+
+      const host = document.createElement('div');
+      host.innerHTML = this._tripWrappedModalHtml();
+      const backdrop = host.firstElementChild;
+      if (!backdrop) return;
+      this._root.appendChild(backdrop);
+
+      const close = () => { try { backdrop.remove(); } catch (e) {} };
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+      const closeBtn = backdrop.querySelector('#rc-tripwrapped-close');
+      if (closeBtn) closeBtn.addEventListener('click', close);
+
+      const fromEl = backdrop.querySelector('#rc-tripwrapped-from');
+      const toEl = backdrop.querySelector('#rc-tripwrapped-to');
+      const statusEl = backdrop.querySelector('#rc-tripwrapped-status');
+
+      const setRange = (fromDate, toDate) => {
+        try {
+          const pad = (n) => String(n).padStart(2, '0');
+          const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          if (fromEl) fromEl.value = fmt(fromDate);
+          if (toEl) toEl.value = fmt(toDate);
+        } catch (e) {}
+      };
+
+      const now = new Date();
+      setRange(new Date(now.getTime() - 7*24*3600*1000), now);
+
+      const todayBtn = backdrop.querySelector('#rc-tripwrapped-preset-today');
+      if (todayBtn) todayBtn.addEventListener('click', () => {
+        const d = new Date();
+        const from = new Date(d);
+        from.setHours(0,0,0,0);
+        setRange(from, d);
+      });
+      const d7Btn = backdrop.querySelector('#rc-tripwrapped-preset-7d');
+      if (d7Btn) d7Btn.addEventListener('click', () => setRange(new Date(Date.now()-7*24*3600*1000), new Date()));
+      const d30Btn = backdrop.querySelector('#rc-tripwrapped-preset-30d');
+      if (d30Btn) d30Btn.addEventListener('click', () => setRange(new Date(Date.now()-30*24*3600*1000), new Date()));
+
+      const genBtn = backdrop.querySelector('#rc-tripwrapped-generate');
+      if (genBtn) genBtn.addEventListener('click', async () => {
+        try {
+          genBtn.disabled = true;
+          if (statusEl) statusEl.textContent = 'Generating…';
+
+          const fromVal = fromEl?.value;
+          const toVal = toEl?.value;
+          const fromIso = fromVal ? new Date(fromVal).toISOString() : null;
+          const toIso = toVal ? new Date(toVal).toISOString() : null;
+          if (!fromIso || !toIso) {
+            if (statusEl) statusEl.textContent = 'Pick valid From/To dates.';
+            return;
+          }
+
+          // Persist selected dates into HA helpers so the export command uses them.
+          await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_from', value: fromIso });
+          await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_to', value: toIso });
+
+          // For now, export always generates both HTML+JSON (shell_command does both).
+          // We keep the UI option for future, but do not branch yet.
+          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
+
+          if (statusEl) statusEl.innerHTML = 'Done. Open: <a href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">latest.html</a>';
+
+          // Refresh preview (best effort)
+          try {
+            const prev = this._root.querySelector('#rc-tripwrapped-preview');
+            if (prev) this._loadTripWrappedPreview(prev);
+          } catch (e) {}
+
+          const after = backdrop.querySelector('#rc-tripwrapped-after')?.value;
+          if (after === 'open_latest') {
+            try { window.open('/local/roamcore/trip_wrapped/latest.html', '_blank'); } catch (e) {}
+          }
+        } catch (e) {
+          console.warn('trip wrapped generate failed', e);
+          if (statusEl) statusEl.textContent = 'Generate failed (check Traccar credentials/config).';
+        } finally {
+          try { genBtn.disabled = false; } catch (e) {}
+        }
+      });
+    } catch (e) {
+      console.warn('open trip wrapped modal failed', e);
+    }
   }
 
   async _overlayTraccarTrack(map) {
