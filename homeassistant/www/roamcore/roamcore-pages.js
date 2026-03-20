@@ -148,6 +148,26 @@ class RoamcoreBasePage extends HTMLElement {
     return '/rc-tiles/{z}/{x}/{y}.png';
   }
 
+  _onlineTileUrl() {
+    // Optional online tile URL for detailed view when internet is available.
+    // Set via HA Helper: input_text.rc_map_tile_url_online
+    // Leave empty to disable online fallback.
+    const v = this._getState('input_text.rc_map_tile_url_online');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
+      return String(v).trim();
+    }
+    // Default: OSM tiles (free, may occasionally block; good fallback)
+    return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  }
+
+  _offlineMaxZoom() {
+    // Max zoom level with offline tile coverage. Above this, online tiles are used.
+    // Adjust based on how much you've preloaded.
+    const v = this._getState('input_number.rc_map_offline_max_zoom');
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 6;
+  }
+
   _navigate(path) {
     try {
       if (!path) return;
@@ -487,14 +507,32 @@ class RoamcoreBasePage extends HTMLElement {
       const m = L.map(el, { zoomControl: false, attributionControl: false });
       el._rcMap = m;
 
-      // Tile source is configurable (see _tileUrl). For offline-first operation,
-      // point this at a local tile server and/or preloaded tile cache.
-      L.tileLayer(this._tileUrl(), {
-        maxZoom: 19,
+      // Hybrid tile setup: local offline tiles + online fallback for higher zooms.
+      // Local tiles serve z0–offlineMaxZoom (default 6); online tiles fill in above that.
+      const offlineMaxZ = this._offlineMaxZoom();
+      const localUrl = this._tileUrl();
+      const onlineUrl = this._onlineTileUrl();
+
+      // Base layer: local offline tiles (always available, even without internet)
+      const localLayer = L.tileLayer(localUrl, {
+        maxZoom: offlineMaxZ,
         crossOrigin: true,
         updateWhenIdle: true,
         keepBuffer: 4,
-      }).addTo(m);
+      });
+      localLayer.addTo(m);
+
+      // Detail layer: online tiles for higher zoom levels (only loads when zoomed past offline coverage)
+      if (onlineUrl) {
+        const onlineLayer = L.tileLayer(onlineUrl, {
+          minZoom: offlineMaxZ + 1,
+          maxZoom: 19,
+          crossOrigin: true,
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        });
+        onlineLayer.addTo(m);
+      }
 
       const trail = await this._loadTrail(trackerId, 6);
       const pts = (trail && trail.length ? trail : [[lat, lon]]);
