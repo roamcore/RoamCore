@@ -11,6 +11,7 @@ Endpoint:
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Final
 
 from aiohttp import web
@@ -385,6 +386,60 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             return await _proxy_traccar_api(request, path)
 
     hass.http.register_view(RoamcoreTraccarApiProxyView)
+
+    async def _ensure_roamcore_device() -> dict[str, object] | None:
+        """Ensure a default RoamCore device exists in Traccar."""
+
+        js = await _ensure_logged_in()
+        if not js:
+            return None
+        cookie = js.split(";", 1)[0]
+        headers = {"Cookie": cookie, "Accept": "application/json"}
+
+        devices = []
+        try:
+            async with session.get(
+                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/devices",
+                headers=headers,
+                allow_redirects=False,
+            ) as resp:
+                devices = await resp.json(content_type=None)
+        except Exception:
+            devices = []
+
+        try:
+            for d in devices or []:
+                if str(d.get("name") or "").strip().lower() == "roamcore":
+                    return d
+        except Exception:
+            pass
+
+        payload = {"name": "RoamCore", "uniqueId": "roamcore"}
+        try:
+            async with session.post(
+                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/devices",
+                headers={**headers, "Content-Type": "application/json"},
+                data=json.dumps(payload).encode("utf-8"),
+                allow_redirects=False,
+            ) as resp:
+                if resp.status not in (200, 201):
+                    return None
+                return await resp.json(content_type=None)
+        except Exception:
+            return None
+
+    class RoamcoreTraccarEnsureDeviceView(HomeAssistantView):
+        url = API_PREFIX + "/_ensure_device"
+        name = "roamcore_traccar_api_ensure_device"
+        requires_auth = True
+
+        async def post(self, request: web.Request):
+            d = await _ensure_roamcore_device()
+            if not d:
+                return web.json_response({"ok": False, "error": "ensure_device_failed"}, status=503)
+            return web.json_response({"ok": True, "device": d})
+
+    hass.http.register_view(RoamcoreTraccarEnsureDeviceView)
 
     # Frontend-friendly routes for iframe embedding.
     # These paths are not under /api, so HA's session-based auth works.
