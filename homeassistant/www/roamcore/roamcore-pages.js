@@ -474,7 +474,13 @@ class RoamcoreBasePage extends HTMLElement {
       const m = L.map(el, { zoomControl: false, attributionControl: false });
       el._rcMap = m;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(m);
+      // Do NOT use the default OSM volunteer tile servers in production.
+      // They enforce usage policies (incl. referer requirements) and can block.
+      // Use a proper tile provider (MapTiler, Stadia, self-hosted, etc.).
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        crossOrigin: true,
+      }).addTo(m);
 
       const trail = await this._loadTrail(trackerId, 6);
       const pts = (trail && trail.length ? trail : [[lat, lon]]);
