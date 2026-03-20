@@ -25,9 +25,10 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
-# Frontend route for embedding Traccar UI. Must NOT collide with Lovelace dashboard
-# paths like /roamcore/<view>.
-FRONTEND_PREFIX: Final = "/rc-traccar"
+# Public (no-HA-auth) embed route. We keep it under /api to avoid collisions with
+# Lovelace routes. This is acceptable because the Traccar app itself is still
+# protected by its own session.
+PUBLIC_PREFIX: Final = "/api/roamcore/traccar_public"
 API_PREFIX: Final = "/api/roamcore/traccar_api"
 
 _cached_session_cookie: str | None = None
@@ -186,8 +187,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         # to stay within that prefix (so iframes work without /api bearer tokens).
         prefix = PROXY_PREFIX
         try:
-            if str(request.path).startswith(FRONTEND_PREFIX):
-                prefix = FRONTEND_PREFIX
+            if str(request.path).startswith(PUBLIC_PREFIX):
+                prefix = PUBLIC_PREFIX
         except Exception:
             prefix = PROXY_PREFIX
 
@@ -438,11 +439,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(RoamcoreTraccarApiProxyView)
 
 
-    # Frontend-friendly routes for iframe embedding.
-    # NOTE: use aiohttp router (not HomeAssistantView) to support trailing path matching.
-    # aiohttp does not always match an empty `{path:.*}` for the trailing-slash case,
-    # so register both root forms explicitly.
-    hass.http.app.router.add_route("*", FRONTEND_PREFIX + "/{path:.*}", handle)
-    hass.http.app.router.add_route("*", FRONTEND_PREFIX + "/", handle)
-    hass.http.app.router.add_route("*", FRONTEND_PREFIX, handle)
+    # Public embed route (no HA auth). Needed because iframes don't include
+    # Authorization headers and HA session auth is inconsistent in some clients.
+    hass.http.app.router.add_route("*", PUBLIC_PREFIX + "/{path:.*}", handle)
+    hass.http.app.router.add_route("*", PUBLIC_PREFIX + "/", handle)
+    hass.http.app.router.add_route("*", PUBLIC_PREFIX, handle)
     return True
