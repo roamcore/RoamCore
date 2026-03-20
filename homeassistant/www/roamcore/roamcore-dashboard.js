@@ -371,6 +371,18 @@ class RoamcoreDashboardCard extends HTMLElement {
     return '/rc-tiles/{z}/{x}/{y}.png';
   }
 
+  _mapStyleUrl() {
+    const v = this._getState('input_text.rc_map_style_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
+    return '';
+  }
+
+  _mapMode() {
+    const styleUrl = this._mapStyleUrl();
+    if (styleUrl) return { mode: 'maplibre', styleUrl };
+    return { mode: 'leaflet', tileUrl: this._tileUrl() };
+  }
+
   _offlineMaxZoom() {
     const v = this._getState('input_number.rc_map_offline_max_zoom');
     const n = Number(v);
@@ -405,6 +417,36 @@ class RoamcoreDashboardCard extends HTMLElement {
         await new Promise(r => setTimeout(r, 50));
       }
       return !!(window.L && window.L.map);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async _ensureMapLibre() {
+    try {
+      if (window.maplibregl && window.maplibregl.Map) return true;
+      const cssId = 'rc-maplibre-css';
+      const jsId = 'rc-maplibre-js';
+      if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css?v=' + Date.now();
+        document.head.appendChild(link);
+      }
+      if (!document.getElementById(jsId)) {
+        const s = document.createElement('script');
+        s.id = jsId;
+        s.src = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.js';
+        s.async = true;
+        document.head.appendChild(s);
+      }
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        if (window.maplibregl && window.maplibregl.Map) return true;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return !!(window.maplibregl && window.maplibregl.Map);
     } catch (e) {
       return false;
     }
@@ -456,10 +498,18 @@ class RoamcoreDashboardCard extends HTMLElement {
   async _mountOverviewMap() {
     try {
       const el = this.shadowRoot?.querySelector('#rc-overview-leaflet');
-      if (!el || el._rcMap) return;
+      if (!el) return;
 
-      const ok = await this._ensureLeaflet();
-      if (!ok) return;
+      const mode = this._mapMode();
+      if (mode.mode === 'maplibre') {
+        if (el._rcMapLibre) return;
+        const ok = await this._ensureMapLibre();
+        if (!ok) return;
+      } else {
+        if (el._rcMap) return;
+        const ok = await this._ensureLeaflet();
+        if (!ok) return;
+      }
 
       const trackerId = this._pickTrackerEntity();
       let lat = this._num('sensor.rc_location_lat', null);
@@ -472,39 +522,63 @@ class RoamcoreDashboardCard extends HTMLElement {
 
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-      const L = window.L;
-      const m = L.map(el, {
-        zoomControl: false,
-        attributionControl: false,
-        dragging: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        boxZoom: false,
-        keyboard: false,
-        tap: false,
-      });
-      el._rcMap = m;
-
-      const offlineMaxZ = this._offlineMaxZoom();
-      L.tileLayer(this._tileUrl(), {
-        maxZoom: offlineMaxZ,
-        crossOrigin: true,
-        updateWhenIdle: true,
-        keepBuffer: 2,
-      }).addTo(m);
-
-      const trail = await this._loadTrail(trackerId, 6);
-      const pts = (trail && trail.length ? trail : [[lat, lon]]);
-      if (pts.length >= 2) {
-        const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
-        line.addTo(m);
-        m.fitBounds(line.getBounds(), { padding: [10, 10] });
+      if (mode.mode === 'maplibre') {
+        // MapLibre overview (simple marker).
+        el.innerHTML = '';
+        const container = document.createElement('div');
+        container.style.width = '100%';
+        container.style.height = '100%';
+        el.appendChild(container);
+        const m = new maplibregl.Map({
+          container,
+          style: mode.styleUrl,
+          center: [Number(lon), Number(lat)],
+          zoom: 6,
+          interactive: false,
+          attributionControl: false,
+        });
+        el._rcMapLibre = m;
+        try {
+          new maplibregl.Marker({ color: '#0ea5e9' })
+            .setLngLat([Number(lon), Number(lat)])
+            .addTo(m);
+        } catch (e) {}
+        try { setTimeout(() => { try { m.resize(); } catch (e) {} }, 50); } catch (e) {}
       } else {
-        m.setView([lat, lon], Math.min(offlineMaxZ, 7));
-      }
-      L.circleMarker([lat, lon], { radius: 6, color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
+        const L = window.L;
+        const m = L.map(el, {
+          zoomControl: false,
+          attributionControl: false,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+          tap: false,
+        });
+        el._rcMap = m;
 
-      try { setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50); } catch (e) {}
+        const offlineMaxZ = this._offlineMaxZoom();
+        L.tileLayer(this._tileUrl(), {
+          maxZoom: offlineMaxZ,
+          crossOrigin: true,
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        }).addTo(m);
+
+        const trail = await this._loadTrail(trackerId, 6);
+        const pts = (trail && trail.length ? trail : [[lat, lon]]);
+        if (pts.length >= 2) {
+          const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
+          line.addTo(m);
+          m.fitBounds(line.getBounds(), { padding: [10, 10] });
+        } else {
+          m.setView([lat, lon], Math.min(offlineMaxZ, 7));
+        }
+        L.circleMarker([lat, lon], { radius: 6, color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
+
+        try { setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50); } catch (e) {}
+      }
     } catch (e) {
       // best-effort
     }

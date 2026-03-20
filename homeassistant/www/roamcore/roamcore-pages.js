@@ -148,6 +148,24 @@ class RoamcoreBasePage extends HTMLElement {
     return '/rc-tiles/{z}/{x}/{y}.png';
   }
 
+  _mapStyleUrl() {
+    // Optional MapLibre style URL (vector). If set, we use MapLibre GL instead of Leaflet raster.
+    // Set via HA Helper: input_text.rc_map_style_url
+    // Example (LocationIQ streets): https://tiles.locationiq.com/v3/streets/vector.json?key=YOUR_KEY
+    const v = this._getState('input_text.rc_map_style_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
+      return String(v).trim();
+    }
+    return '';
+  }
+
+  _mapMode() {
+    // Prefer MapLibre if a style URL is provided; otherwise fall back to Leaflet raster tiles.
+    const styleUrl = this._mapStyleUrl();
+    if (styleUrl) return { mode: 'maplibre', styleUrl };
+    return { mode: 'leaflet', tileUrl: this._tileUrl() };
+  }
+
   _onlineTileUrl() {
     // Optional online tile URL for detailed view when internet is available.
     // Set via HA Helper: input_text.rc_map_tile_url_online
@@ -407,6 +425,51 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  async _ensureMapLibre() {
+    try {
+      if (window.maplibregl && window.maplibregl.Map) return true;
+
+      const jsId = 'rc-maplibre-js';
+      const cssId = 'rc-maplibre-css';
+      const jsUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.js';
+      const cssUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css';
+
+      // IMPORTANT: MapLibre CSS must be available inside this component's shadow root.
+      if (!this.shadowRoot?.getElementById?.(cssId)) {
+        // Use <link> so the browser handles relative URLs inside CSS correctly.
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = cssUrl + '?v=' + Date.now();
+        const p = new Promise((resolve) => {
+          link.onload = () => resolve(true);
+          link.onerror = () => resolve(false);
+        });
+        (this.shadowRoot || document.head).appendChild(link);
+        try { await Promise.race([p, new Promise(r => setTimeout(r, 800))]); } catch (e) {}
+      } else {
+        try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
+      }
+
+      if (!document.getElementById(jsId)) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.id = jsId;
+          s.src = jsUrl;
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      return !!(window.maplibregl && window.maplibregl.Map);
+    } catch (e) {
+      console.warn('maplibre load failed', e);
+      return false;
+    }
+  }
+
   _loadSavedMapView() {
     try {
       const raw = localStorage.getItem('rc_map_view_v1');
@@ -566,6 +629,67 @@ class RoamcoreBasePage extends HTMLElement {
       return m;
     } catch (e) {
       console.warn('leaflet mount failed', e);
+      try { el.innerHTML = '<div class="rc-label">Map failed to render.</div>'; } catch (e2) {}
+    }
+  }
+
+  async _mountMapLibreMap(el, { lat, lon } = {}) {
+    try {
+      if (!el) return;
+      const ok = await this._ensureMapLibre();
+      if (!ok) {
+        el.innerHTML = '<div class="rc-label">Map failed to load (MapLibre missing).</div>';
+        return;
+      }
+      if (el._rcMapLibre) return el._rcMapLibre;
+
+      // If we don't have a GPS fix yet, fall back to Traccar last fix.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        try {
+          const fix = await this._getTraccarLastFix();
+          if (fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) {
+            lat = fix.lat;
+            lon = fix.lon;
+          }
+        } catch (e) {}
+      }
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        el.innerHTML = '<div class="rc-label">No GPS fix yet.</div>';
+        return;
+      }
+
+      const styleUrl = this._mapStyleUrl();
+      if (!styleUrl) {
+        el.innerHTML = '<div class="rc-label">No vector map style URL configured.</div>';
+        return;
+      }
+
+      // MapLibre wants a dedicated container node.
+      el.innerHTML = '';
+      const container = document.createElement('div');
+      container.style.width = '100%';
+      container.style.height = '100%';
+      el.appendChild(container);
+
+      const m = new maplibregl.Map({
+        container,
+        style: styleUrl,
+        center: [Number(lon), Number(lat)],
+        zoom: 10,
+        attributionControl: false,
+      });
+      m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
+      el._rcMapLibre = m;
+
+      // Resize after layout.
+      try {
+        setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
+        setTimeout(() => { try { m.resize(); } catch (e) {} }, 300);
+      } catch (e) {}
+
+      return m;
+    } catch (e) {
+      console.warn('maplibre mount failed', e);
       try { el.innerHTML = '<div class="rc-label">Map failed to render.</div>'; } catch (e2) {}
     }
   }
@@ -1000,7 +1124,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">RoamCore map (Leaflet) with Traccar route overlay (last 6h).</div>
+      <div class="rc-label" style="margin-top: 6px;">RoamCore map (${this._mapMode().mode === 'maplibre' ? 'MapLibre GL (vector)' : 'Leaflet (raster)'})${this._mapMode().mode === 'leaflet' ? ' with Traccar route overlay (last 6h)' : ''}.</div>
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
@@ -1046,19 +1170,23 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
-    // Mount Leaflet map into placeholder.
+    // Mount map into placeholder.
     try {
       const inner = this._root.querySelector('#rc-map-inner');
       if (inner) {
-        inner.innerHTML = `<div id="rc-leaflet-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
+        inner.innerHTML = `<div id="rc-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
         const trackerId = this._pickTrackerEntity();
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
-        const el = this._root.querySelector('#rc-leaflet-map');
-        const map = this._mountLeafletMap(el, { lat, lon, trackerId });
-
-        // Best-effort: overlay last 6h track from Traccar (if available).
-        this._overlayTraccarTrack(map).catch(() => {});
+        const el = this._root.querySelector('#rc-map');
+        const mode = this._mapMode();
+        if (mode.mode === 'maplibre') {
+          await this._mountMapLibreMap(el, { lat, lon });
+        } else {
+          const map = await this._mountLeafletMap(el, { lat, lon, trackerId });
+          // Best-effort: overlay last 6h track from Traccar (if available).
+          this._overlayTraccarTrack(map).catch(() => {});
+        }
       }
     } catch (e) {}
 

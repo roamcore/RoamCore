@@ -6,6 +6,16 @@ input_text:
     initial: "/rc-tiles/{z}/{x}/{y}.png"
     max: 255
 
+  rc_map_tile_url_online:
+    name: "RC Map Tile URL (Online Fallback)"
+    initial: ""
+    max: 255
+
+  rc_map_style_url:
+    name: "RC Map Style URL (MapLibre Vector)"
+    initial: ""
+    max: 255
+
 # How far the offline MBTiles currently goes. Once we finish building z8,
 # bump this to 8 to allow deeper zoom without blank tiles.
 input_number:
@@ -16,4 +26,3 @@ input_number:
     step: 1
     mode: box
     initial: 8
-
