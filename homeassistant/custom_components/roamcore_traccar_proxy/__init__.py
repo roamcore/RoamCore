@@ -439,49 +439,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
     # Frontend-friendly routes for iframe embedding.
-    # These paths are not under /api, so HA's session-based auth works.
-    class RoamcoreTraccarFrontendRootView(HomeAssistantView):
-        url = FRONTEND_PREFIX
-        name = "roamcore_traccar_proxy_frontend_root"
-        # NOTE: iframe cards in some HA clients (notably mobile/webview) can fail
-        # to forward HA session auth to non-/api endpoints, resulting in 401.
-        # For MVP, allow anonymous access to the proxied Traccar UI on the LAN.
-        # The Traccar app itself is still protected by its own session.
-        requires_auth = False
-
-        async def get(self, request: web.Request):
-            request.match_info["path"] = ""
-            return await handle(request)
-
-    class RoamcoreTraccarFrontendView(HomeAssistantView):
-        url = FRONTEND_PREFIX + "/{path:.*}"
-        name = "roamcore_traccar_proxy_frontend"
-        requires_auth = False
-
-        async def get(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def post(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def put(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def delete(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def patch(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def options(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-    hass.http.register_view(RoamcoreTraccarFrontendRootView)
-    hass.http.register_view(RoamcoreTraccarFrontendView)
+    # NOTE: use aiohttp router (not HomeAssistantView) to support trailing path matching.
+    hass.http.app.router.add_route("*", FRONTEND_PREFIX + "/{path:.*}", handle)
+    hass.http.app.router.add_route("*", FRONTEND_PREFIX, handle)
     return True
