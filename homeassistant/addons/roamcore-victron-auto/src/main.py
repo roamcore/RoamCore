@@ -707,6 +707,35 @@ discover();
                     except Exception:
                         pass
 
+                    # Best-effort reachability probe (short TCP connect) so the UI can
+                    # present an actionable "reachable" signal.
+                    # Keep this very fast; this handler is synchronous.
+                    try:
+                        old_timeout = socket.getdefaulttimeout()
+                        socket.setdefaulttimeout(0.2)
+                        try:
+                            for c in out:
+                                host = str(c.get("ip") or c.get("host") or "").strip()
+                                port = int(c.get("port") or 1883)
+                                reachable = False
+                                if host:
+                                    try:
+                                        sock = socket.create_connection((host, port), timeout=0.2)
+                                        try:
+                                            reachable = True
+                                        finally:
+                                            try:
+                                                sock.close()
+                                            except Exception:
+                                                pass
+                                    except Exception:
+                                        reachable = False
+                                c["reachable"] = reachable
+                        finally:
+                            socket.setdefaulttimeout(old_timeout)
+                    except Exception:
+                        pass
+
                     return self._json(
                         200,
                         {
