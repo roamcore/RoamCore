@@ -833,18 +833,15 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const mapTile = `
       <div style="border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); padding: 10px;">
-        <iframe
-          id="rc-traccar-iframe"
-          src="http://192.168.1.66:8082/"
-          style="width:100%; height:360px; border:0; border-radius:12px; overflow:hidden; background:#111"
-          referrerpolicy="no-referrer"
-        ></iframe>
+        <div id="rc-map-inner" style="height:360px;">
+          <div class="rc-label">Loading map…</div>
+        </div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; margin-top: 10px;">
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">Embedded Traccar map (temporary). We will swap back to native RoamCore map once embedding is stable.</div>
+      <div class="rc-label" style="margin-top: 6px;">RoamCore map (Leaflet) with Traccar route overlay (last 6h).</div>
     `;
 
     const stats = `
@@ -887,7 +884,21 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
-    // NOTE: native Leaflet map temporarily disabled while we stabilize Traccar embedding.
+    // Mount Leaflet map into placeholder.
+    try {
+      const inner = this._root.querySelector('#rc-map-inner');
+      if (inner) {
+        inner.innerHTML = `<div id="rc-leaflet-map" style="height:360px; border-radius:12px; overflow:hidden;"></div>`;
+        const trackerId = this._pickTrackerEntity();
+        const lat = this._num('sensor.rc_location_lat', null);
+        const lon = this._num('sensor.rc_location_lon', null);
+        const el = this._root.querySelector('#rc-leaflet-map');
+        const map = this._mountLeafletMap(el, { lat, lon, trackerId });
+
+        // Best-effort: overlay last 6h track from Traccar (if available).
+        this._overlayTraccarTrack(map).catch(() => {});
+      }
+    } catch (e) {}
 
     const genBtn = this._root.querySelector('#rc-tripwrapped-generate');
     if (genBtn) {
