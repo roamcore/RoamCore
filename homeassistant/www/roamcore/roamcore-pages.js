@@ -151,13 +151,12 @@ class RoamcoreBasePage extends HTMLElement {
   _onlineTileUrl() {
     // Optional online tile URL for detailed view when internet is available.
     // Set via HA Helper: input_text.rc_map_tile_url_online
-    // Leave empty to disable online fallback.
+    // Default OFF (empty) to keep the map fully offline unless explicitly enabled.
     const v = this._getState('input_text.rc_map_tile_url_online');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    // Default: OSM tiles (free, may occasionally block; good fallback)
-    return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    return '';
   }
 
   _offlineMaxZoom() {
