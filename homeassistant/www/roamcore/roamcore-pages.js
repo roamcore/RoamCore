@@ -198,7 +198,7 @@ class RoamcoreBasePage extends HTMLElement {
       // ignore
     }
     // Fallback: same-origin HA proxy (frontend route; works in iframes)
-    return '/rc-traccar/';
+    return '/api/roamcore/traccar_public/';
   }
 
   _tile({ title, icon, content, className = '' }) {
