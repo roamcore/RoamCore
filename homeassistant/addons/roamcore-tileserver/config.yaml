@@ -1,0 +1,24 @@
+name: "RoamCore Tile Server"
+version: "0.1.0"
+slug: "roamcore_tileserver"
+description: "Serve offline map tiles (MBTiles) to RoamCore/HA dashboards"
+url: "https://github.com/roamcore/RoamCore"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+init: false
+startup: services
+boot: auto
+ports:
+  8000/tcp: 8000
+map:
+  - config:rw
+options:
+  mbtiles_path: "/config/roamcore/tiles.mbtiles"
+  default_tile: "transparent"
+schema:
+  mbtiles_path: str
+  default_tile: list(transparent|404)
+"""
+
