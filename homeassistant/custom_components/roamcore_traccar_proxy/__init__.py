@@ -16,6 +16,7 @@ from typing import Final
 from aiohttp import web
 from aiohttp.client_exceptions import ClientError
 
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -23,6 +24,7 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
+FRONTEND_PREFIX: Final = "/roamcore/traccar"
 
 _cached_session_cookie: str | None = None
 _cached_admin_email: str | None = None
@@ -30,7 +32,7 @@ _cached_admin_password: str | None = None
 _cached_user_token: str | None = None
 
 
-def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
+def _rewrite_text_payload(payload: bytes, content_type: str, prefix: str) -> bytes:
     """Rewrite absolute-root asset paths to stay inside the proxy prefix.
 
     Traccar serves many assets with absolute paths like `/modern/app.js`.
@@ -51,16 +53,16 @@ def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
         if "javascript" in ct:
             import re
 
-            s = re.sub(r'"/api/(?!roamcore/traccar/)', f'"{PROXY_PREFIX}/api/', s)
-            s = re.sub(r"'/api/(?!roamcore/traccar/)", f"'{PROXY_PREFIX}/api/", s)
+            s = re.sub(r'"/api/(?!roamcore/traccar/)', f'"{prefix}/api/', s)
+            s = re.sub(r"'/api/(?!roamcore/traccar/)", f"'{prefix}/api/", s)
             # Template literals: fetch(`/api/...`)
-            s = re.sub(r"`/api/(?!roamcore/traccar/)", f"`{PROXY_PREFIX}/api/", s)
+            s = re.sub(r"`/api/(?!roamcore/traccar/)", f"`{prefix}/api/", s)
             return s.encode("utf-8")
 
         # HTML/CSS/etc: broad asset rewriting is OK.
-        s = s.replace('="/', f'="{PROXY_PREFIX}/')
-        s = s.replace("='/", f"='{PROXY_PREFIX}/")
-        s = s.replace("url(/", f"url({PROXY_PREFIX}/")
+        s = s.replace('="/', f'="{prefix}/')
+        s = s.replace("='/", f"='{prefix}/")
+        s = s.replace("url(/", f"url({prefix}/")
 
         # Debug helper: inject a tiny runtime error banner so "blank page" failures
         # are visible in embedded iframes.
@@ -176,6 +178,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         global _cached_session_cookie, _cached_admin_email, _cached_admin_password
         path = request.match_info.get("path", "")
 
+        # If accessed via the frontend-friendly route, rewrite assets/redirects
+        # to stay within that prefix (so iframes work without /api bearer tokens).
+        prefix = PROXY_PREFIX
+        try:
+            if str(request.path).startswith(FRONTEND_PREFIX):
+                prefix = FRONTEND_PREFIX
+        except Exception:
+            prefix = PROXY_PREFIX
+
         # Debug/status endpoint (no secrets returned).
         if path == "_proxy_status":
             _load_traccar_admin_secrets()
@@ -260,11 +271,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                             # Rewrite redirect locations back into the proxy prefix
                             loc = resp2.headers.get("Location")
                             if loc and loc.startswith("/"):
-                                out_headers["Location"] = f"{PROXY_PREFIX}{loc}"
+                                out_headers["Location"] = f"{prefix}{loc}"
 
                             ctype = (resp2.headers.get("Content-Type") or "").lower()
                             if any(t in ctype for t in ("text/html", "text/css", "javascript")):
-                                body = _rewrite_text_payload(body, ctype)
+                                body = _rewrite_text_payload(body, ctype, prefix)
 
                             # If we established a session cookie, set it for the browser too.
                             if "JSESSIONID=" not in browser_cookie and _cached_session_cookie:
@@ -282,11 +293,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 # Rewrite redirect locations back into the proxy prefix
                 loc = resp.headers.get("Location")
                 if loc and loc.startswith("/"):
-                    out_headers["Location"] = f"{PROXY_PREFIX}{loc}"
+                    out_headers["Location"] = f"{prefix}{loc}"
 
                 ctype = (resp.headers.get("Content-Type") or "").lower()
                 if any(t in ctype for t in ("text/html", "text/css", "javascript")):
-                    body = _rewrite_text_payload(body, ctype)
+                    body = _rewrite_text_payload(body, ctype, prefix)
 
                 return web.Response(status=resp.status, headers=out_headers, body=body)
         except (ClientError, asyncio.TimeoutError) as err:
@@ -295,4 +306,47 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Register route
     hass.http.app.router.add_route("*", PROXY_PREFIX + "/{path:.*}", handle)
     hass.http.app.router.add_route("*", PROXY_PREFIX, handle)
+
+    # Frontend-friendly routes for iframe embedding.
+    # These paths are not under /api, so HA's session-based auth works.
+    class RoamcoreTraccarFrontendRootView(HomeAssistantView):
+        url = FRONTEND_PREFIX
+        name = "roamcore_traccar_proxy_frontend_root"
+        requires_auth = True
+
+        async def get(self, request: web.Request):
+            request.match_info["path"] = ""
+            return await handle(request)
+
+    class RoamcoreTraccarFrontendView(HomeAssistantView):
+        url = FRONTEND_PREFIX + "/{path:.*}"
+        name = "roamcore_traccar_proxy_frontend"
+        requires_auth = True
+
+        async def get(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def post(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def put(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def delete(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def patch(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def options(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+    hass.http.register_view(RoamcoreTraccarFrontendRootView)
+    hass.http.register_view(RoamcoreTraccarFrontendView)
     return True
