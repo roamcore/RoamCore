@@ -5,6 +5,8 @@
   "sources": {
     "protomaps": {
       "type": "vector",
+      "minzoom": 0,
+      "maxzoom": 8,
       "url": "pmtiles://__ORIGIN__/local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
     }
