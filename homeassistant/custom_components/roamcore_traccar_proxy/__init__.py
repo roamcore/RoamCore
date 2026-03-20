@@ -25,10 +25,10 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
-# Public (no-HA-auth) embed route. We keep it under /api to avoid collisions with
-# Lovelace routes. This is acceptable because the Traccar app itself is still
-# protected by its own session.
-PUBLIC_PREFIX: Final = "/api/roamcore/traccar_public"
+# Public (no-HA-auth) embed route for iframes.
+# We host it under a top-level non-/api path so it doesn't require a Bearer token
+# and avoids the HA mobile "public page -> local network" block.
+PUBLIC_WEB_PREFIX: Final = "/traccar"
 API_PREFIX: Final = "/api/roamcore/traccar_api"
 
 _cached_session_cookie: str | None = None
@@ -187,8 +187,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         # to stay within that prefix (so iframes work without /api bearer tokens).
         prefix = PROXY_PREFIX
         try:
-            if str(request.path).startswith(PUBLIC_PREFIX):
-                prefix = PUBLIC_PREFIX
+            if str(request.path).startswith(PUBLIC_WEB_PREFIX):
+                prefix = PUBLIC_WEB_PREFIX
         except Exception:
             prefix = PROXY_PREFIX
 
@@ -447,57 +447,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     # Public embed route (no HA auth). Needed because iframes don't include
     # Authorization headers and HA session auth is inconsistent in some clients.
-    # Note: HA applies auth middleware to /api/* unless the handler is registered
-    # as a view with requires_auth=False.
-    class RoamcoreTraccarPublicView(HomeAssistantView):
-        url = PUBLIC_PREFIX + "/{path:.*}"
-        name = "roamcore_traccar_proxy_public"
-        requires_auth = False
-
-        async def get(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def post(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def put(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def delete(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def patch(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-        async def options(self, request: web.Request, path: str = ""):
-            request.match_info["path"] = path or ""
-            return await handle(request)
-
-    class RoamcoreTraccarPublicRootView(HomeAssistantView):
-        url = PUBLIC_PREFIX
-        name = "roamcore_traccar_proxy_public_root"
-        requires_auth = False
-
-        async def get(self, request: web.Request):
-            request.match_info["path"] = ""
-            return await handle(request)
-
-    # Explicit trailing-slash form (HA routing doesn't always normalize)
-    class RoamcoreTraccarPublicRootSlashView(HomeAssistantView):
-        url = PUBLIC_PREFIX + "/"
-        name = "roamcore_traccar_proxy_public_root_slash"
-        requires_auth = False
-
-        async def get(self, request: web.Request):
-            request.match_info["path"] = ""
-            return await handle(request)
-
-    hass.http.register_view(RoamcoreTraccarPublicView)
-    hass.http.register_view(RoamcoreTraccarPublicRootView)
-    hass.http.register_view(RoamcoreTraccarPublicRootSlashView)
+    # Host this under a non-/api prefix so it does not require a Bearer token.
+    hass.http.app.router.add_route("*", PUBLIC_WEB_PREFIX + "/{path:.*}", handle)
+    hass.http.app.router.add_route("*", PUBLIC_WEB_PREFIX + "/", handle)
+    hass.http.app.router.add_route("*", PUBLIC_WEB_PREFIX, handle)
     return True
