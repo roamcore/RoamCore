@@ -382,6 +382,12 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             "transfer-encoding",
             "upgrade",
         }}
+        # Force JSON for report endpoints (Traccar defaults to XLSX when Accept is missing).
+        try:
+            if path.lstrip("/").startswith("reports/"):
+                headers["Accept"] = "application/json"
+        except Exception:
+            pass
         headers["Cookie"] = js.split(";", 1)[0]
 
         data = await request.read() if request.can_read_body else None
