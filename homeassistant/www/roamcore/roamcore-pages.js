@@ -485,6 +485,31 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  _loadSavedMapViewMapLibre() {
+    try {
+      const raw = localStorage.getItem('rc_map_view_maplibre_v1');
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      const lat = Number(o?.lat);
+      const lon = Number(o?.lon);
+      const zoom = Number(o?.zoom);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(zoom)) return null;
+      return { lat, lon, zoom };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _saveMapViewMapLibre(map) {
+    try {
+      if (!map) return;
+      const c = map.getCenter?.();
+      const z = map.getZoom?.();
+      if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng) || !Number.isFinite(z)) return;
+      localStorage.setItem('rc_map_view_maplibre_v1', JSON.stringify({ lat: c.lat, lon: c.lng, zoom: z }));
+    } catch (e) {}
+  }
+
   _saveMapView(map) {
     try {
       if (!map) return;
@@ -641,7 +666,11 @@ class RoamcoreBasePage extends HTMLElement {
         el.innerHTML = '<div class="rc-label">Map failed to load (MapLibre missing).</div>';
         return;
       }
-      if (el._rcMapLibre) return el._rcMapLibre;
+      if (el._rcMapLibre) {
+        // Idempotent: don't recreate the map on HA re-renders.
+        try { el._rcMapLibre.resize(); } catch (e) {}
+        return el._rcMapLibre;
+      }
 
       // If we don't have a GPS fix yet, fall back to Traccar last fix.
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
@@ -671,15 +700,32 @@ class RoamcoreBasePage extends HTMLElement {
       container.style.height = '100%';
       el.appendChild(container);
 
+      const saved = this._loadSavedMapViewMapLibre();
+      const centerLon = saved ? Number(saved.lon) : Number(lon);
+      const centerLat = saved ? Number(saved.lat) : Number(lat);
+      const zoom = saved ? Number(saved.zoom) : 10;
+
       const m = new maplibregl.Map({
         container,
         style: styleUrl,
-        center: [Number(lon), Number(lat)],
-        zoom: 10,
+        center: [centerLon, centerLat],
+        zoom,
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
+
+      // Keep a simple marker we can update without remounting.
+      try {
+        const marker = new maplibregl.Marker({ color: '#0ea5e9' }).setLngLat([Number(lon), Number(lat)]).addTo(m);
+        el._rcMapLibreMarker = marker;
+      } catch (e) {}
+
+      // Persist view so refresh doesn't snap back.
+      try {
+        m.on('moveend', () => this._saveMapViewMapLibre(m));
+        m.on('zoomend', () => this._saveMapViewMapLibre(m));
+      } catch (e) {}
 
       // Resize after layout.
       try {
@@ -1182,7 +1228,17 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         const el = this._root.querySelector('#rc-map');
         if (mode.mode === 'maplibre') {
           // NOTE: _render is not async; keep this promise-based.
-          this._mountMapLibreMap(el, { lat, lon }).catch(() => {});
+          this._mountMapLibreMap(el, { lat, lon })
+            .then((m) => {
+              try {
+                // Update marker to current location without moving the camera.
+                const marker = el?._rcMapLibreMarker;
+                if (marker && Number.isFinite(lon) && Number.isFinite(lat)) {
+                  marker.setLngLat([Number(lon), Number(lat)]);
+                }
+              } catch (e) {}
+            })
+            .catch(() => {});
         } else {
           const mapP = this._mountLeafletMap(el, { lat, lon, trackerId });
           // Best-effort: overlay last 6h track from Traccar (if available).
