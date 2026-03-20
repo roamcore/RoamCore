@@ -324,7 +324,9 @@ class RoamcoreBasePage extends HTMLElement {
       const cssId = 'rc-leaflet-css';
       const jsId = 'rc-leaflet-js';
 
-      if (!document.getElementById(cssId)) {
+      // IMPORTANT: Leaflet CSS must be available inside this component's shadow root
+      // (global document styles don't pierce shadow DOM).
+      if (!this.shadowRoot?.getElementById?.(cssId)) {
         const link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';
@@ -333,7 +335,7 @@ class RoamcoreBasePage extends HTMLElement {
           link.onload = () => resolve(true);
           link.onerror = () => resolve(false);
         });
-        document.head.appendChild(link);
+        (this.shadowRoot || document.head).appendChild(link);
         // Best-effort: wait a bit so tile positioning CSS is present before map init.
         try { await Promise.race([p, new Promise(r => setTimeout(r, 800))]); } catch (e) {}
       } else {
