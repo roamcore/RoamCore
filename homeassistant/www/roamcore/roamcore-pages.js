@@ -1220,7 +1220,51 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const segments = this._num('sensor.rc_trip_segments', null);
     const stops = this._num('sensor.rc_trip_stops', null);
 
+    const trackerId = this._pickTrackerEntity();
+    const tracker = trackerId ? (this._hass?.states?.[trackerId] || null) : null;
+    const lastUpdated = tracker?.last_updated || tracker?.last_changed || null;
+    const lastUpdatedTxt = lastUpdated ? new Date(lastUpdated).toLocaleString() : '—';
+
+    const spdTxt = spd == null ? '—' : `${round1(spd)} mph`;
+    const elevTxt = elev == null ? '—' : `${round1(elev)} m`;
+    const distTodayTxt = distToday == null ? '—' : `${round1(distToday)} mi`;
+    const distTotalTxt = distTotal == null ? '—' : `${round1(distTotal)} mi`;
+    const timeTodayTxt = (timeToday && timeToday !== 'unknown' && timeToday !== 'unavailable') ? timeToday : '—';
+    const timeTotalTxt = (timeTotal && timeTotal !== 'unknown' && timeTotal !== 'unavailable') ? timeTotal : '—';
+    const stopsTodayTxt = stops == null ? '—' : `${Math.round(stops)}`;
+
     const mode = this._mapMode();
+
+    // Below-map data tiles (do not touch the map itself when iterating on this section).
+    const mapDataTiles = `
+      <div style="margin-top: 14px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; min-width:0;">
+          <div class="rc-label" style="font-weight:900; color: var(--rc-text);">Today’s trip</div>
+          <div style="height:8px"></div>
+          ${this._row('Distance', distTodayTxt)}
+          ${this._row('Drive time', timeTodayTxt)}
+          ${this._row('Stops', stopsTodayTxt)}
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; min-width:0;">
+          <div class="rc-label" style="font-weight:900; color: var(--rc-text);">Live position</div>
+          <div style="height:8px"></div>
+          ${this._row('Location', (loc && loc !== 'unknown' && loc !== 'unavailable') ? loc : '—')}
+          ${this._row('Speed', spdTxt)}
+          ${this._row('Elevation', elevTxt)}
+          ${this._row('Last updated', lastUpdatedTxt)}
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; min-width:0;">
+          <div class="rc-label" style="font-weight:900; color: var(--rc-text);">Trip summary</div>
+          <div style="height:8px"></div>
+          ${this._row('Total distance', distTotalTxt)}
+          ${this._row('Total drive time', timeTotalTxt)}
+          ${this._row('Segments', segments == null ? '—' : `${Math.round(segments)}`)}
+        </div>
+      </div>
+    `;
+
     const mapTile = `
       <div style="border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); padding: 10px;">
         <div id="rc-map-inner" style="height: calc(100vh - 250px); min-height: 420px; max-height: 760px;">
@@ -1235,35 +1279,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
-    `;
-
-    const stats = `
-      ${this._row('Latitude', lat == null ? '—' : lat.toFixed(5))}
-      ${this._row('Longitude', lon == null ? '—' : lon.toFixed(5))}
-      ${this._row('Accuracy', acc == null ? '—' : Math.round(acc), 'm')}
-      ${this._row('Speed', spd == null ? '—' : round1(spd))}
-      ${this._row('Heading', head == null ? '—' : Math.round(head), '°')}
-      <div style="height: 10px"></div>
-      ${this._row('Elevation', elev == null ? '—' : round1(elev), 'm')}
-      ${this._row('Distance (Today)', distToday == null ? '—' : round1(distToday), 'mi')}
-      ${this._row('Distance (Total)', distTotal == null ? '—' : round1(distTotal), 'mi')}
-      ${this._row('Time (Today)', (timeToday && timeToday!=='unknown' && timeToday!=='unavailable') ? timeToday : '—')}
-      ${this._row('Time (Total)', (timeTotal && timeTotal!=='unknown' && timeTotal!=='unavailable') ? timeTotal : '—')}
-    `;
-
-    const history = `
-      <div class="rc-label" style="margin-bottom:8px;">Full trip history</div>
-      <div class="rc-label" style="margin-top:4px;">Trip saving/history (MVP): use Trip Wrapped below. (We can add richer trip history next.)</div>
-      <div style="height: 8px"></div>
-      ${this._row('Segments', segments == null ? '—' : Math.round(segments))}
-      ${this._row('Stops', stops == null ? '—' : Math.round(stops))}
-      <div style="height: 12px"></div>
-      <div class="rc-label" style="margin-bottom:8px;">Trip Wrapped (MVP)</div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
-        <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
-      </div>
-      <div class="rc-label" style="margin-top:10px;">Configure Traccar creds + device id in HA helpers, then tap Generate.</div>
+      ${mapDataTiles}
     `;
 
     this._root.innerHTML = `
@@ -1271,8 +1287,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         ${this._header('Map')}
         <div class="rc-grid">
           ${this._tile({title:'Map', icon:'↗', content: mapTile, className:'span-2'})}
-          ${this._tile({title:'Stats', icon:'⟰', content: stats})}
-          ${this._tile({title:'History', icon:'⟲', content: history})}
         </div>
       </div>
     `;
@@ -1288,7 +1302,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           inner.innerHTML = `<div id="rc-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
           el = this._root.querySelector('#rc-map');
         }
-        const trackerId = this._pickTrackerEntity();
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
         if (mode.mode === 'maplibre') {
@@ -1311,20 +1324,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         }
       }
     } catch (e) {}
-
-    const genBtn = this._root.querySelector('#rc-tripwrapped-generate');
-    if (genBtn) {
-      genBtn.addEventListener('click', async () => {
-        try {
-          genBtn.disabled = true;
-          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
-        } catch (e) {
-          console.warn('trip wrapped generate failed', e);
-        } finally {
-          genBtn.disabled = false;
-        }
-      });
-    }
   }
 
   async _overlayTraccarTrack(map) {
