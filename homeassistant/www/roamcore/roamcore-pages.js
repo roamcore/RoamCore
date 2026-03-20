@@ -603,13 +603,50 @@ class RoamcoreBasePage extends HTMLElement {
 
   _positionsToGeojsonLine(positions) {
     try {
-      const coords = (positions || [])
+      // Convert to [lon,lat] and aggressively de-noise/decimate so rendering stays stable on mobile.
+      // Traccar can return a lot of points (30s cadence), and MapLibre line triangulation can glitch.
+      const raw = (positions || [])
         .map(p => {
           const lat = Number(p?.latitude);
           const lon = Number(p?.longitude);
           return (Number.isFinite(lat) && Number.isFinite(lon)) ? [lon, lat] : null;
         })
         .filter(Boolean);
+
+      if (raw.length < 2) return null;
+
+      const coords = [];
+      let last = null;
+      const minMeters = 25; // keep points only if moved at least this far
+      const toRad = (x) => (x * Math.PI) / 180;
+      const distM = (a, b) => {
+        // Haversine
+        const R = 6371000;
+        const dLat = toRad(b[1] - a[1]);
+        const dLon = toRad(b[0] - a[0]);
+        const lat1 = toRad(a[1]);
+        const lat2 = toRad(b[1]);
+        const s = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(s));
+      };
+
+      for (const c of raw) {
+        if (!last) {
+          coords.push(c);
+          last = c;
+          continue;
+        }
+        if (distM(last, c) >= minMeters) {
+          coords.push(c);
+          last = c;
+        }
+      }
+
+      // Always include final point.
+      const final = raw[raw.length - 1];
+      if (coords.length && (coords[coords.length - 1][0] != final[0] || coords[coords.length - 1][1] != final[1])) {
+        coords.push(final);
+      }
       if (coords.length < 2) return null;
       return {
         type: 'Feature',
