@@ -70,6 +70,20 @@ shell_command:
     --out-json /config/www/roamcore/trip_wrapped/latest.json
     --out-html /config/www/roamcore/trip_wrapped/latest.html
 
+  # Automatic "Today" export for dashboard tiles.
+  # Uses HA's current time (UTC by default in this deployment) and writes a stable JSON used by sensors.
+  rc_trip_wrapped_export_today: >-
+    python3 /config/tools/trip_wrapped/export.py
+    --base-url {{ states('input_text.rc_traccar_base_url') }}
+    --username {{ states('input_text.rc_traccar_username') }}
+    --password {{ states('input_text.rc_traccar_password') }}
+    --device-id {{ states('input_number.rc_traccar_device_id') | int }}
+    --from {{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}
+    --to {{ now().isoformat() }}
+    --title "RoamCore Trip Wrapped (Today)"
+    --out-json /config/www/roamcore/trip_wrapped/today.json
+    --out-html /config/www/roamcore/trip_wrapped/today.html
+
 script:
   rc_trip_wrapped_run:
     alias: "RC: Generate Trip Wrapped"
@@ -80,3 +94,75 @@ script:
         data:
           title: "Trip Wrapped ready"
           message: "Open: /local/roamcore/trip_wrapped/latest.html"
+
+  rc_trip_wrapped_run_today:
+    alias: "RC: Generate Trip Wrapped (Today)"
+    mode: single
+    sequence:
+      - service: shell_command.rc_trip_wrapped_export_today
+
+automation:
+  - id: rc_trip_wrapped_auto_today
+    alias: "RC: Auto-generate Trip Wrapped (Today)"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    condition: []
+    action:
+      - service: script.rc_trip_wrapped_run_today
+
+sensor:
+  # Today summary sensors used by dashboard tiles.
+  # These read the generated /local JSON so we don't recompute in the frontend.
+  - platform: command_line
+    name: "RC Trip Wrapped Today Distance"
+    unique_id: rc_trip_wrapped_today_distance_mi
+    unit_of_measurement: "mi"
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json,math
+      p="/config/www/roamcore/trip_wrapped/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        m=float(o.get("stats",{}).get("totalDistanceM") or 0)
+        mi=m/1609.344
+        print(round(mi,2))
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Wrapped Today Duration"
+    unique_id: rc_trip_wrapped_today_duration_hms
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_wrapped/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        s=int(o.get("stats",{}).get("totalDurationS") or 0)
+        h=s//3600
+        m=(s%3600)//60
+        print(f"{h}:{m:02d}")
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Wrapped Today Stops"
+    unique_id: rc_trip_wrapped_today_stops
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_wrapped/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        # MVP: use tripCount as a rough proxy for stops/segments until we compute real stop events.
+        print(int((o.get("meta",{}).get("tripCount") or 0)))
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
