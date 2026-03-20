@@ -703,6 +703,36 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  _lineToEndpoints(lineFeature) {
+    try {
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      const getFirstLast = (coords) => ({ first: coords?.[0], last: coords?.[coords.length - 1] });
+      let first = null;
+      let last = null;
+      if (geom.type === 'LineString') {
+        ({ first, last } = getFirstLast(geom.coordinates));
+      } else if (geom.type === 'MultiLineString') {
+        const segs = geom.coordinates || [];
+        if (segs.length) {
+          first = segs[0]?.[0];
+          const tail = segs[segs.length - 1];
+          last = tail?.[tail.length - 1];
+        }
+      }
+      if (!first || !last) return null;
+      return {
+        type: 'FeatureCollection',
+        features: [
+          { type: 'Feature', properties: { kind: 'start' }, geometry: { type: 'Point', coordinates: first } },
+          { type: 'Feature', properties: { kind: 'end' }, geometry: { type: 'Point', coordinates: last } },
+        ],
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   _pickTrackerEntity() {
     const configured = this._getState('input_text.rc_location_tracker_entity');
     if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
@@ -957,11 +987,13 @@ class RoamcoreBasePage extends HTMLElement {
             if (!gj) return;
 
             const crumbs = this._lineToBreadcrumbPoints(gj, { everyN: 10 });
+            const ends = this._lineToEndpoints(gj);
 
             if (!m.getSource('rc_route')) {
               m.addSource('rc_route', { type: 'geojson', data: gj });
 
               if (crumbs) m.addSource('rc_route_points', { type: 'geojson', data: crumbs });
+              if (ends) m.addSource('rc_route_ends', { type: 'geojson', data: ends });
 
               // Google-ish route styling: casing + inner stroke.
               m.addLayer({
@@ -1011,10 +1043,52 @@ class RoamcoreBasePage extends HTMLElement {
                   },
                 });
               }
+
+              // Start/end markers.
+              if (ends) {
+                m.addLayer({
+                  id: 'rc_route_ends',
+                  type: 'circle',
+                  source: 'rc_route_ends',
+                  paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 8, 6, 12, 8, 16, 10],
+                    'circle-color': [
+                      'match',
+                      ['get', 'kind'],
+                      'start', '#34a853',
+                      'end', '#ea4335',
+                      '#1a73e8',
+                    ],
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': 2,
+                    'circle-opacity': 0.95,
+                  },
+                });
+              }
+
+              // Auto-fit to the route once, so the demo immediately looks like a trip.
+              try {
+                if (!this._rcRouteFitDone) {
+                  const bounds = new maplibregl.LngLatBounds();
+                  const addCoord = (c) => { if (c && c.length >= 2) bounds.extend([c[0], c[1]]); };
+                  if (gj.geometry.type === 'LineString') {
+                    for (const c of gj.geometry.coordinates) addCoord(c);
+                  } else if (gj.geometry.type === 'MultiLineString') {
+                    for (const seg of gj.geometry.coordinates) for (const c of seg) addCoord(c);
+                  }
+                  if (!bounds.isEmpty()) {
+                    m.fitBounds(bounds, { padding: 40, duration: 0, maxZoom: 8 });
+                    this._rcRouteFitDone = true;
+                  }
+                }
+              } catch (e) {}
             } else {
               m.getSource('rc_route').setData(gj);
               try {
                 if (crumbs && m.getSource('rc_route_points')) m.getSource('rc_route_points').setData(crumbs);
+              } catch (e) {}
+              try {
+                if (ends && m.getSource('rc_route_ends')) m.getSource('rc_route_ends').setData(ends);
               } catch (e) {}
             }
           } catch (e) {}
