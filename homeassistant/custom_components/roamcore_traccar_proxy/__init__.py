@@ -312,7 +312,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     class RoamcoreTraccarFrontendRootView(HomeAssistantView):
         url = FRONTEND_PREFIX
         name = "roamcore_traccar_proxy_frontend_root"
-        requires_auth = True
+        # NOTE: iframe cards in some HA clients (notably mobile/webview) can fail
+        # to forward HA session auth to non-/api endpoints, resulting in 401.
+        # For MVP, allow anonymous access to the proxied Traccar UI on the LAN.
+        # The Traccar app itself is still protected by its own session.
+        requires_auth = False
 
         async def get(self, request: web.Request):
             request.match_info["path"] = ""
@@ -321,7 +325,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     class RoamcoreTraccarFrontendView(HomeAssistantView):
         url = FRONTEND_PREFIX + "/{path:.*}"
         name = "roamcore_traccar_proxy_frontend"
-        requires_auth = True
+        requires_auth = False
 
         async def get(self, request: web.Request, path: str = ""):
             request.match_info["path"] = path or ""
