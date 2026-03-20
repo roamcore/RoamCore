@@ -812,14 +812,15 @@ class RoamcoreDashboardCard extends HTMLElement {
               tileSize: 256,
               maxzoom: offlineMaxZ,
             });
-            // Insert at the very bottom so the vector style draws on top.
+            // Insert just above the style background (background is often opaque grey).
             const style = m.getStyle?.();
-            const beforeId = style?.layers?.[0]?.id;
+            const beforeId = (style?.layers || []).find(l => l && l.type !== 'background')?.id;
             m.addLayer({
               id: 'rc_raster_fallback',
               type: 'raster',
               source: 'rc_raster_fallback',
               paint: { 'raster-opacity': 1.0 },
+              minzoom: 9,
             }, beforeId);
           } catch (e) {}
         };
