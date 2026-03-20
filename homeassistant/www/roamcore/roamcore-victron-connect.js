@@ -85,7 +85,22 @@ class RoamCoreVictronConnectCard extends HTMLElement {
       }
       
       const data = await resp.json();
-      this._candidates = data.candidates || [];
+      this._candidates = (data.candidates || []).slice();
+
+      // Prefer reachable + non-bad candidates first.
+      try {
+        this._candidates.sort((a, b) => {
+          const ar = a && a.reachable === true;
+          const br = b && b.reachable === true;
+          if (ar !== br) return ar ? -1 : 1;
+          const ab = a && a.bad === true;
+          const bb = b && b.bad === true;
+          if (ab !== bb) return ab ? 1 : -1;
+          return 0;
+        });
+      } catch (e) {
+        // ignore
+      }
       
       if (this._candidates.length === 0) {
         this._error = 'No Victron devices found on the network. Make sure your GX device is powered on and connected.';
@@ -281,6 +296,9 @@ class RoamCoreVictronConnectCard extends HTMLElement {
           opacity: 0.55;
           cursor: not-allowed;
         }
+        .candidate.unreachable {
+          opacity: 0.72;
+        }
         .candidate:hover {
           background: var(--primary-color);
           color: var(--text-primary-color, white);
@@ -352,11 +370,11 @@ class RoamCoreVictronConnectCard extends HTMLElement {
         ` : this._candidates.length > 0 ? `
           <div class="candidates">
             ${this._candidates.map((c, i) => `
-              <div class="candidate ${c.bad ? 'bad' : ''}" data-index="${i}">
+              <div class="candidate ${c.bad ? 'bad' : ''} ${c.reachable === false ? 'unreachable' : ''}" data-index="${i}">
                 <div class="candidate-info">
                   <div class="candidate-name">${this._escapeHtml(c.name || 'Victron Device')}</div>
                   <div class="candidate-host">${this._escapeHtml(c.host || c.ip)}:${c.port || 1883}</div>
-                  <div class="candidate-source">${this._escapeHtml(c.source || 'unknown')}${c.bad ? ' (bad)' : ''}</div>
+                  <div class="candidate-source">${this._escapeHtml(c.source || 'unknown')}${c.reachable === true ? ' (reachable)' : c.reachable === false ? ' (unreachable)' : ''}${c.bad ? ' (bad)' : ''}</div>
                 </div>
                 <div class="candidate-action">
                   <ha-icon icon="mdi:chevron-right"></ha-icon>
