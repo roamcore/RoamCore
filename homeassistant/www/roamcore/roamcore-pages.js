@@ -1290,7 +1290,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
           <div>
             <div style="font-weight: 900; font-size: 14px;">Trip Wrapped</div>
-            <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, biggest day/trip, stops proxy, etc.).</div>
+          <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, top trip, etc.). Source-of-truth comes from Traccar reports.</div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
@@ -1484,7 +1484,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
             </div>
           </div>
 
-          <div class="rc-label" style="margin-top:12px;">Metrics inspiration: total distance/time, #trips, longest trip, top speed (later), “biggest day”, and a shareable card.</div>
+          <div class="rc-label" style="margin-top:12px;">Metrics come from Traccar (reports/trips/route/etc). RoamCore only renders the results.</div>
 
           <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>

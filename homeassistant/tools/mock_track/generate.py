@@ -4,6 +4,8 @@
 
 Writes a LineString feature to be served by Home Assistant under /local/...
 This is intentionally dependency-free (stdlib only) for HAOS.
+
+NOTE: Production tracking source-of-truth is Traccar. This tool is for UI demos only.
 """
 
 import argparse
@@ -104,4 +106,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
