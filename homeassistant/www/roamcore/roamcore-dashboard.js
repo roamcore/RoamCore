@@ -796,6 +796,7 @@ class RoamcoreDashboardCard extends HTMLElement {
           style,
           center: [Number(lon), Number(lat)],
           zoom: 6,
+          maxZoom: 11,
           interactive: false,
           attributionControl: false,
         });

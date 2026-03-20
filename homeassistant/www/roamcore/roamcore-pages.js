@@ -957,6 +957,8 @@ class RoamcoreBasePage extends HTMLElement {
         style,
         center: [centerLon, centerLat],
         zoom,
+        // Prevent zooming into empty PMTiles ranges (avoids grey gaps).
+        maxZoom: 11,
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
