@@ -25,6 +25,7 @@ DOMAIN: Final = "roamcore_traccar_proxy"
 DEFAULT_UPSTREAM: Final = "http://127.0.0.1:8082"
 PROXY_PREFIX: Final = "/api/roamcore/traccar"
 FRONTEND_PREFIX: Final = "/roamcore/traccar"
+API_PREFIX: Final = "/api/roamcore/traccar_api"
 
 _cached_session_cookie: str | None = None
 _cached_admin_email: str | None = None
@@ -303,9 +304,87 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         except (ClientError, asyncio.TimeoutError) as err:
             return web.Response(status=502, text=f"Traccar proxy error: {err}")
 
+    async def _proxy_traccar_api(request: web.Request, path: str) -> web.StreamResponse:
+        """Proxy Traccar REST API using the cached Traccar session.
+
+        This is intended for HA frontend code via hass.callApi(), i.e. HA-authenticated.
+        """
+
+        js = await _ensure_logged_in()
+        if not js:
+            return web.json_response({"ok": False, "error": "traccar_login_failed"}, status=503)
+
+        upstream_url = f"{DEFAULT_UPSTREAM.rstrip('/')}/api/{path.lstrip('/')}"
+        if request.query_string:
+            upstream_url = f"{upstream_url}?{request.query_string}"
+
+        headers = {k: v for k, v in request.headers.items() if k.lower() not in {
+            "host",
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "authorization",
+            "te",
+            "trailers",
+            "transfer-encoding",
+            "upgrade",
+        }}
+        headers["Cookie"] = js.split(";", 1)[0]
+
+        data = await request.read() if request.can_read_body else None
+        try:
+            async with session.request(
+                request.method,
+                upstream_url,
+                headers=headers,
+                data=data,
+                allow_redirects=False,
+            ) as resp:
+                body = await resp.read()
+                out_headers = {k: v for k, v in resp.headers.items() if k.lower() not in {
+                    "content-length",
+                    "transfer-encoding",
+                    "connection",
+                    "content-encoding",
+                    "set-cookie",
+                }}
+                return web.Response(status=resp.status, headers=out_headers, body=body)
+        except (ClientError, asyncio.TimeoutError) as err:
+            return web.json_response(
+                {"ok": False, "error": "traccar_api_proxy_error", "detail": str(err)},
+                status=502,
+            )
+
     # Register route
     hass.http.app.router.add_route("*", PROXY_PREFIX + "/{path:.*}", handle)
     hass.http.app.router.add_route("*", PROXY_PREFIX, handle)
+
+    # Register HA-authenticated Traccar REST API proxy
+    class RoamcoreTraccarApiProxyView(HomeAssistantView):
+        url = API_PREFIX + "/{path:.*}"
+        name = "roamcore_traccar_api_proxy"
+        requires_auth = True
+
+        async def get(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+        async def post(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+        async def put(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+        async def delete(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+        async def patch(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+        async def options(self, request: web.Request, path: str = ""):
+            return await _proxy_traccar_api(request, path)
+
+    hass.http.register_view(RoamcoreTraccarApiProxyView)
 
     # Frontend-friendly routes for iframe embedding.
     # These paths are not under /api, so HA's session-based auth works.
