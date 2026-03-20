@@ -427,12 +427,14 @@ class RoamcoreDashboardCard extends HTMLElement {
       if (window.maplibregl && window.maplibregl.Map) return true;
       const cssId = 'rc-maplibre-css';
       const jsId = 'rc-maplibre-js';
-      if (!document.getElementById(cssId)) {
+      // IMPORTANT: this card uses shadow DOM; ensure CSS is available inside shadow root.
+      if (!this.shadowRoot?.getElementById?.(cssId)) {
         const link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';
         link.href = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css?v=' + Date.now();
-        document.head.appendChild(link);
+        (this.shadowRoot || document.head).appendChild(link);
+        try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
       }
       if (!document.getElementById(jsId)) {
         const s = document.createElement('script');
