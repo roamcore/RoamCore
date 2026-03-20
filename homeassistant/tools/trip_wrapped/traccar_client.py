@@ -49,6 +49,11 @@ class TraccarClient:
         url = self.base_url + self.path_prefix + path
         if query:
             url += "?" + urllib.parse.urlencode(query)
+        try:
+            if os.environ.get("RC_TRACCAR_DEBUG") == "1":
+                print("TraccarClient GET", url)
+        except Exception:
+            pass
         req = urllib.request.Request(
             url,
             headers={
