@@ -783,31 +783,33 @@ class RoamcoreBasePage extends HTMLElement {
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
 
+      // Ensure marker exists and is updated on every render tick.
+      const ensureMarker = () => {
+        try {
+          if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+          if (!el._rcMapLibreMarker) {
+            el._rcMapLibreMarker = new maplibregl.Marker({ color: '#0ea5e9' })
+              .setLngLat([Number(lon), Number(lat)])
+              .addTo(m);
+          } else {
+            el._rcMapLibreMarker.setLngLat([Number(lon), Number(lat)]);
+          }
+        } catch (e) {}
+      };
+
       // Optional: render a mock polyline trail for demos (when Traccar route isn't used).
       try {
-        const rawTrail = this._getState('input_text.rc_mock_location_trail');
-        if (rawTrail && rawTrail !== 'unknown' && rawTrail !== 'unavailable' && String(rawTrail).trim()) {
-          m.on('load', () => {
-            try {
-              if (m.getSource('rc_mock_trail')) return;
-              const pts = String(rawTrail)
-                .split(';')
-                .map(s => s.trim())
-                .filter(Boolean)
-                .map(pair => {
-                  const [a,b] = pair.split(',').map(x => Number(String(x).trim()));
-                  return (Number.isFinite(a) && Number.isFinite(b)) ? [b,a] : null; // GeoJSON expects [lon,lat]
-                })
-                .filter(Boolean);
-              if (!pts || pts.length < 2) return;
-              m.addSource('rc_mock_trail', {
-                type: 'geojson',
-                data: {
-                  type: 'Feature',
-                  geometry: { type: 'LineString', coordinates: pts },
-                  properties: {},
-                },
-              });
+        // Prefer a served GeoJSON file so we can demo a long route without HA helper length limits.
+        const mockUrl = '/local/roamcore/mock/track.geojson';
+        m.on('load', async () => {
+          try {
+            ensureMarker();
+            const r = await fetch(mockUrl, { cache: 'no-cache' });
+            if (!r.ok) return;
+            const gj = await r.json();
+            if (!gj || !gj.geometry) return;
+            if (!m.getSource('rc_mock_trail')) {
+              m.addSource('rc_mock_trail', { type: 'geojson', data: gj });
               m.addLayer({
                 id: 'rc_mock_trail_line',
                 type: 'line',
@@ -815,15 +817,17 @@ class RoamcoreBasePage extends HTMLElement {
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: { 'line-color': '#43d17a', 'line-width': 4, 'line-opacity': 0.9 },
               });
-            } catch (e) {}
-          });
-        }
+            } else {
+              m.getSource('rc_mock_trail').setData(gj);
+            }
+          } catch (e) {}
+        });
       } catch (e) {}
 
-      // Keep a simple marker we can update without remounting.
+      // Keep marker in sync even if the map was mounted before we had a fix.
       try {
-        const marker = new maplibregl.Marker({ color: '#0ea5e9' }).setLngLat([Number(lon), Number(lat)]).addTo(m);
-        el._rcMapLibreMarker = marker;
+        ensureMarker();
+        m.on('styledata', ensureMarker);
       } catch (e) {}
 
       // Persist view so refresh doesn't snap back.

@@ -661,6 +661,12 @@ class RoamcoreDashboardCard extends HTMLElement {
             .setLngLat([Number(lon), Number(lat)])
             .addTo(m);
         } catch (e) {}
+        // Force a resize after first render; HA navigation sometimes mounts at 0 width.
+        try {
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 300);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 1200);
+        } catch (e) {}
         try {
           setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
           setTimeout(() => { try { m.resize(); } catch (e) {} }, 500);

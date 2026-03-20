@@ -1,0 +1,26 @@
+# RoamCore dev mock: longer GPS track for polyline demos
+
+shell_command:
+  rc_mock_track_generate: >-
+    python3 /config/tools/mock_track/generate.py
+    --preset uk_roadtrip
+    --points-per-leg 80
+    --jitter-m 10
+    --out /config/www/roamcore/mock/track.geojson
+
+script:
+  rc_mock_track_generate:
+    alias: "RC: Generate mock track"
+    mode: single
+    sequence:
+      - service: shell_command.rc_mock_track_generate
+
+automation:
+  - id: rc_mock_track_generate_on_startup
+    alias: "RC: Generate mock track on startup"
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - service: script.rc_mock_track_generate
+
