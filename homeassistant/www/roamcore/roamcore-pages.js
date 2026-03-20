@@ -405,6 +405,17 @@ class RoamcoreBasePage extends HTMLElement {
       }
       if (el._rcMap) return;
 
+      // If we don't have an HA GPS fix yet, try Traccar last known position
+      // so the map still renders during early bring-up / mock-data testing.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        try {
+          const fix = await this._getTraccarLastFix();
+          if (fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) {
+            lat = fix.lat;
+            lon = fix.lon;
+          }
+        } catch (e) {}
+      }
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
         el.innerHTML = '<div class="rc-label">No GPS fix yet.</div>';
         return;
@@ -432,6 +443,30 @@ class RoamcoreBasePage extends HTMLElement {
     } catch (e) {
       console.warn('leaflet mount failed', e);
       try { el.innerHTML = '<div class="rc-label">Map failed to render.</div>'; } catch (e2) {}
+    }
+  }
+
+  async _getTraccarLastFix() {
+    try {
+      if (!this._hass) return null;
+
+      // Pick the first device and follow its positionId.
+      const devs = await this._hass.callApi('GET', 'roamcore/traccar_api/devices').catch(() => []);
+      if (!Array.isArray(devs) || devs.length === 0) return null;
+      const d = devs[0] || {};
+      const posId = d.positionId;
+      if (!posId) return null;
+
+      const positions = await this._hass.callApi('GET', `roamcore/traccar_api/positions?id=${encodeURIComponent(posId)}`).catch(() => []);
+      const p = Array.isArray(positions) && positions.length ? positions[0] : null;
+      if (!p) return null;
+
+      const lat = Number(p.latitude);
+      const lon = Number(p.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return { lat, lon, fixTime: p.fixTime || null };
+    } catch (e) {
+      return null;
     }
   }
 }
