@@ -27,6 +27,7 @@ PROXY_PREFIX: Final = "/api/roamcore/traccar"
 _cached_session_cookie: str | None = None
 _cached_admin_email: str | None = None
 _cached_admin_password: str | None = None
+_cached_user_token: str | None = None
 
 
 def _rewrite_text_payload(payload: bytes, content_type: str) -> bytes:
@@ -94,8 +95,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     def _load_traccar_admin_secrets() -> None:
         """Load Traccar admin credentials from /config/secrets.yaml (best-effort)."""
 
-        global _cached_admin_email, _cached_admin_password
-        if _cached_admin_email and _cached_admin_password:
+        global _cached_admin_email, _cached_admin_password, _cached_user_token
+        if _cached_user_token or (_cached_admin_email and _cached_admin_password):
             return
         try:
             secrets_path = hass.config.path("secrets.yaml")
@@ -106,9 +107,12 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
             m1 = re.search(r"^roamcore_traccar_admin_email:\s*\"?([^\"\n]+)\"?$", text, re.M)
             m2 = re.search(r"^roamcore_traccar_admin_password:\s*\"?([^\"\n]+)\"?$", text, re.M)
+            m3 = re.search(r"^roamcore_traccar_user_token:\s*\"?([^\"\n]+)\"?$", text, re.M)
             if m1 and m2:
                 _cached_admin_email = m1.group(1).strip()
                 _cached_admin_password = m2.group(1).strip()
+            if m3:
+                _cached_user_token = m3.group(1).strip()
         except Exception:
             return
 
@@ -123,15 +127,24 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             return _cached_session_cookie
 
         _load_traccar_admin_secrets()
-        if not (_cached_admin_email and _cached_admin_password):
-            return None
 
         try:
-            async with session.post(
-                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session",
-                data={"email": _cached_admin_email, "password": _cached_admin_password},
-                allow_redirects=False,
-            ) as resp:
+            # Prefer token-based session creation (no password required).
+            if _cached_user_token:
+                req = session.get(
+                    f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session?token={_cached_user_token}",
+                    allow_redirects=False,
+                )
+            else:
+                if not (_cached_admin_email and _cached_admin_password):
+                    return None
+                req = session.post(
+                    f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session",
+                    data={"email": _cached_admin_email, "password": _cached_admin_password},
+                    allow_redirects=False,
+                )
+
+            async with req as resp:
                 if resp.status != 200:
                     return None
                 sc = resp.headers.getall("Set-Cookie", [])
@@ -173,6 +186,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                     "ok": ok,
                     "upstream": DEFAULT_UPSTREAM,
                     "proxy_prefix": PROXY_PREFIX,
+                    "has_user_token": bool(_cached_user_token),
                     "has_admin_email": bool(_cached_admin_email),
                     "has_admin_password": bool(_cached_admin_password),
                     "has_session_cookie": bool(_cached_session_cookie),
