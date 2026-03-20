@@ -328,8 +328,17 @@ class RoamcoreBasePage extends HTMLElement {
         const link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';
-        link.href = '/local/roamcore/vendor/leaflet/leaflet.css';
+        link.href = '/local/roamcore/vendor/leaflet/leaflet.css?v=' + Date.now();
+        const p = new Promise((resolve) => {
+          link.onload = () => resolve(true);
+          link.onerror = () => resolve(false);
+        });
         document.head.appendChild(link);
+        // Best-effort: wait a bit so tile positioning CSS is present before map init.
+        try { await Promise.race([p, new Promise(r => setTimeout(r, 800))]); } catch (e) {}
+      } else {
+        // If CSS tag exists but stylesheet hasn't applied yet, give it a moment.
+        try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
       }
 
       if (!document.getElementById(jsId)) {
@@ -362,6 +371,31 @@ class RoamcoreBasePage extends HTMLElement {
       console.warn('leaflet load failed', e);
       return false;
     }
+  }
+
+  _loadSavedMapView() {
+    try {
+      const raw = localStorage.getItem('rc_map_view_v1');
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      const lat = Number(o?.lat);
+      const lon = Number(o?.lon);
+      const zoom = Number(o?.zoom);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(zoom)) return null;
+      return { lat, lon, zoom };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _saveMapView(map) {
+    try {
+      if (!map) return;
+      const c = map.getCenter?.();
+      const z = map.getZoom?.();
+      if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng) || !Number.isFinite(z)) return;
+      localStorage.setItem('rc_map_view_v1', JSON.stringify({ lat: c.lat, lon: c.lng, zoom: z }));
+    } catch (e) {}
   }
 
   _pickTrackerEntity() {
@@ -443,7 +477,10 @@ class RoamcoreBasePage extends HTMLElement {
       const trail = await this._loadTrail(trackerId, 6);
       const pts = (trail && trail.length ? trail : [[lat, lon]]);
 
-      if (pts.length >= 2) {
+      const saved = this._loadSavedMapView();
+      if (saved) {
+        m.setView([saved.lat, saved.lon], saved.zoom);
+      } else if (pts.length >= 2) {
         const line = L.polyline(pts, { color: '#22c55e', weight: 4, opacity: 0.85 });
         line.addTo(m);
         m.fitBounds(line.getBounds(), { padding: [18, 18] });
@@ -458,6 +495,13 @@ class RoamcoreBasePage extends HTMLElement {
       try {
         setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50);
         setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 300);
+        setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 1200);
+      } catch (e) {}
+
+      // Persist view so refresh doesn't snap back every time.
+      try {
+        m.on('moveend', () => this._saveMapView(m));
+        m.on('zoomend', () => this._saveMapView(m));
       } catch (e) {}
 
       return m;
