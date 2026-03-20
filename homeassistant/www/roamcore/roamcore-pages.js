@@ -1221,11 +1221,16 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     try {
       const inner = this._root.querySelector('#rc-map-inner');
       if (inner) {
-        inner.innerHTML = `<div id="rc-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
+        // Don't nuke the DOM on every HA re-render (causes a visible flash).
+        // Create the container once, then keep it stable.
+        let el = this._root.querySelector('#rc-map');
+        if (!el) {
+          inner.innerHTML = `<div id="rc-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
+          el = this._root.querySelector('#rc-map');
+        }
         const trackerId = this._pickTrackerEntity();
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
-        const el = this._root.querySelector('#rc-map');
         if (mode.mode === 'maplibre') {
           // NOTE: _render is not async; keep this promise-based.
           this._mountMapLibreMap(el, { lat, lon })
