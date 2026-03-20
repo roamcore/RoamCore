@@ -52,6 +52,13 @@ input_number:
     unit_of_measurement: ms
     mode: slider
     initial: 53
+
+input_text:
+  rc_mock_location_trail:
+    name: RC Mock Location Trail (lat,lon;...)
+    # Semicolon-separated list of lat,lon pairs. Used to render a mock polyline on the map.
+    # Example: "54.5000,-3.0000;54.5100,-3.0200"
+    initial: "54.5310,-3.0120;54.5275,-3.0005;54.5210,-2.9860;54.5135,-2.9700;54.5060,-2.9550;54.4980,-2.9400"
   rc_mock_system_level_pitch_deg:
     name: RC Mock Pitch
     min: -15
