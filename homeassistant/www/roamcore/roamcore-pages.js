@@ -135,6 +135,18 @@ class RoamcoreBasePage extends HTMLElement {
     return Number.isFinite(n) ? n : fallback;
   }
 
+  _tileUrl() {
+    // Prefer a configurable tile URL so we can support offline/local tiles.
+    // Set via HA Helper: input_text.rc_map_tile_url
+    // Example local/offline tile server:
+    //   http://homeassistant.local:8123/local/tiles/{z}/{x}/{y}.png
+    const v = this._getState('input_text.rc_map_tile_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
+      return String(v).trim();
+    }
+    return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  }
+
   _navigate(path) {
     try {
       if (!path) return;
@@ -474,12 +486,13 @@ class RoamcoreBasePage extends HTMLElement {
       const m = L.map(el, { zoomControl: false, attributionControl: false });
       el._rcMap = m;
 
-      // Do NOT use the default OSM volunteer tile servers in production.
-      // They enforce usage policies (incl. referer requirements) and can block.
-      // Use a proper tile provider (MapTiler, Stadia, self-hosted, etc.).
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // Tile source is configurable (see _tileUrl). For offline-first operation,
+      // point this at a local tile server and/or preloaded tile cache.
+      L.tileLayer(this._tileUrl(), {
         maxZoom: 19,
         crossOrigin: true,
+        updateWhenIdle: true,
+        keepBuffer: 4,
       }).addTo(m);
 
       const trail = await this._loadTrail(trackerId, 6);
