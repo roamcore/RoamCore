@@ -156,9 +156,9 @@ class RoamcoreBasePage extends HTMLElement {
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    // Fallback: match Traccar default (LocationIQ Streets) so the UI doesn't revert to raster
-    // when HA restarts clear the helper state.
-    return 'https://tiles.locationiq.com/v3/streets/vector.json?key=pk.0f147952a41c555a5b70614039fd148b';
+    // Default: offline/local protomaps basemap (z0–8) served by Home Assistant.
+    // Style JSON is patched at runtime to replace __ORIGIN__ with window.location.origin.
+    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
   }
 
   _mapMode() {
@@ -433,8 +433,10 @@ class RoamcoreBasePage extends HTMLElement {
 
       const jsId = 'rc-maplibre-js';
       const cssId = 'rc-maplibre-css';
+      const pmtilesId = 'rc-pmtiles-js';
       const jsUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.js';
       const cssUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css';
+      const pmtilesUrl = '/local/roamcore/vendor/pmtiles/pmtiles.js';
 
       // IMPORTANT: MapLibre CSS must be available inside this component's shadow root.
       if (!this.shadowRoot?.getElementById?.(cssId)) {
@@ -465,11 +467,43 @@ class RoamcoreBasePage extends HTMLElement {
         });
       }
 
-      return !!(window.maplibregl && window.maplibregl.Map);
+      if (!document.getElementById(pmtilesId)) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.id = pmtilesId;
+          s.src = pmtilesUrl;
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      return !!(window.maplibregl && window.maplibregl.Map && window.pmtiles);
     } catch (e) {
       console.warn('maplibre load failed', e);
       return false;
     }
+  }
+
+  _ensurePmtilesProtocol() {
+    try {
+      if (!window.maplibregl || !window.pmtiles) return false;
+      if (window.__rcPmtilesProtocol) return true;
+      const protocol = new window.pmtiles.Protocol();
+      window.maplibregl.addProtocol('pmtiles', protocol.tile);
+      window.__rcPmtilesProtocol = protocol;
+      return true;
+    } catch (e) {
+      console.warn('pmtiles protocol init failed', e);
+      return false;
+    }
+  }
+
+  async _loadJson(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`fetch failed ${res.status} for ${url}`);
+    return await res.json();
   }
 
   _loadSavedMapView() {
@@ -695,6 +729,9 @@ class RoamcoreBasePage extends HTMLElement {
         return;
       }
 
+      // Register PMTiles protocol (once) so styles can reference pmtiles:// URLs.
+      this._ensurePmtilesProtocol();
+
       // MapLibre wants a dedicated container node.
       el.innerHTML = '';
       const container = document.createElement('div');
@@ -707,9 +744,30 @@ class RoamcoreBasePage extends HTMLElement {
       const centerLat = saved ? Number(saved.lat) : Number(lat);
       const zoom = saved ? Number(saved.zoom) : 10;
 
+      // Allow using a local JSON style and patching in the current origin.
+      let style = styleUrl;
+      try {
+        if (typeof styleUrl === 'string' && styleUrl.startsWith('/local/roamcore/styles/') && styleUrl.endsWith('.json')) {
+          const obj = await this._loadJson(styleUrl);
+          const origin = window.location.origin;
+          const replaceOrigin = (v) => (typeof v === 'string' ? v.replaceAll('__ORIGIN__', origin) : v);
+          if (obj && obj.sources) {
+            for (const k of Object.keys(obj.sources)) {
+              if (obj.sources[k] && obj.sources[k].url) obj.sources[k].url = replaceOrigin(obj.sources[k].url);
+              if (obj.sources[k] && obj.sources[k].tiles) obj.sources[k].tiles = (obj.sources[k].tiles || []).map(replaceOrigin);
+            }
+          }
+          if (obj && obj.sprite) obj.sprite = replaceOrigin(obj.sprite);
+          if (obj && obj.glyphs) obj.glyphs = replaceOrigin(obj.glyphs);
+          style = obj;
+        }
+      } catch (e) {
+        console.warn('failed to load/patch style json', e);
+      }
+
       const m = new maplibregl.Map({
         container,
-        style: styleUrl,
+        style,
         center: [centerLon, centerLat],
         zoom,
         attributionControl: false,

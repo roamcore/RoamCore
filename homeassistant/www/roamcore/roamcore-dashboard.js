@@ -374,8 +374,8 @@ class RoamcoreDashboardCard extends HTMLElement {
   _mapStyleUrl() {
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
-    // Fallback: match Traccar default (LocationIQ Streets) so overview doesn't regress on HA restarts.
-    return 'https://tiles.locationiq.com/v3/streets/vector.json?key=pk.0f147952a41c555a5b70614039fd148b';
+    // Default: offline/local protomaps basemap style.
+    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
   }
 
   _mapMode() {
@@ -428,6 +428,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       if (window.maplibregl && window.maplibregl.Map) return true;
       const cssId = 'rc-maplibre-css';
       const jsId = 'rc-maplibre-js';
+      const pmtilesId = 'rc-pmtiles-js';
       // IMPORTANT: this card uses shadow DOM; ensure CSS is available inside shadow root.
       if (!this.shadowRoot?.getElementById?.(cssId)) {
         const link = document.createElement('link');
@@ -444,15 +445,42 @@ class RoamcoreDashboardCard extends HTMLElement {
         s.async = true;
         document.head.appendChild(s);
       }
+      if (!document.getElementById(pmtilesId)) {
+        const s = document.createElement('script');
+        s.id = pmtilesId;
+        s.src = '/local/roamcore/vendor/pmtiles/pmtiles.js';
+        s.async = true;
+        document.head.appendChild(s);
+      }
       const start = Date.now();
       while (Date.now() - start < 4000) {
-        if (window.maplibregl && window.maplibregl.Map) return true;
+        if (window.maplibregl && window.maplibregl.Map && window.pmtiles) return true;
         await new Promise(r => setTimeout(r, 50));
       }
-      return !!(window.maplibregl && window.maplibregl.Map);
+      return !!(window.maplibregl && window.maplibregl.Map && window.pmtiles);
     } catch (e) {
       return false;
     }
+  }
+
+  _ensurePmtilesProtocol() {
+    try {
+      if (!window.maplibregl || !window.pmtiles) return false;
+      if (window.__rcPmtilesProtocol) return true;
+      const protocol = new window.pmtiles.Protocol();
+      window.maplibregl.addProtocol('pmtiles', protocol.tile);
+      window.__rcPmtilesProtocol = protocol;
+      return true;
+    } catch (e) {
+      console.warn('pmtiles protocol init failed', e);
+      return false;
+    }
+  }
+
+  async _loadJson(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`fetch failed ${res.status} for ${url}`);
+    return await res.json();
   }
 
   _pickTrackerEntity() {
@@ -581,15 +609,39 @@ class RoamcoreDashboardCard extends HTMLElement {
       }
 
       if (mode.mode === 'maplibre') {
+        // Ensure PMTiles protocol is registered.
+        this._ensurePmtilesProtocol();
+
         // MapLibre overview (simple marker).
         el.innerHTML = '';
         const container = document.createElement('div');
         container.style.width = '100%';
         container.style.height = '100%';
         el.appendChild(container);
+
+        let style = mode.styleUrl;
+        try {
+          if (typeof style === 'string' && style.startsWith('/local/roamcore/styles/') && style.endsWith('.json')) {
+            const obj = await this._loadJson(style);
+            const origin = window.location.origin;
+            const replaceOrigin = (v) => (typeof v === 'string' ? v.replaceAll('__ORIGIN__', origin) : v);
+            if (obj && obj.sources) {
+              for (const k of Object.keys(obj.sources)) {
+                if (obj.sources[k] && obj.sources[k].url) obj.sources[k].url = replaceOrigin(obj.sources[k].url);
+                if (obj.sources[k] && obj.sources[k].tiles) obj.sources[k].tiles = (obj.sources[k].tiles || []).map(replaceOrigin);
+              }
+            }
+            if (obj && obj.sprite) obj.sprite = replaceOrigin(obj.sprite);
+            if (obj && obj.glyphs) obj.glyphs = replaceOrigin(obj.glyphs);
+            style = obj;
+          }
+        } catch (e) {
+          console.warn('failed to load/patch style json (overview)', e);
+        }
+
         const m = new maplibregl.Map({
           container,
-          style: mode.styleUrl,
+          style,
           center: [Number(lon), Number(lat)],
           zoom: 6,
           interactive: false,
@@ -689,6 +741,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         padding: 14px;
         /* Slightly taller overall so the overview doesn't feel squashed */
         min-height: 190px;
+        /* Prevent grid items from expanding the column due to min-content sizing */
+        min-width: 0;
         box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       }
 
@@ -725,9 +779,12 @@ class RoamcoreDashboardCard extends HTMLElement {
 
       /* Make the map preview dominate the tile (~70-80% of tile body). */
       .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
-      .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+      .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
       .rc-map-leaflet { width: 100%; height: 100%; }
+      /* MapLibre sometimes sets an explicit canvas width that can force grid columns to grow. */
+      .rc-map-box canvas { max-width: 100% !important; }
+      .rc-map-box .maplibregl-canvas { max-width: 100% !important; }
       .rc-map-svg { width:100%; height:100%; }
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
       .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
