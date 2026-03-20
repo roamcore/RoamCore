@@ -21,6 +21,8 @@ class RoamcoreDashboardCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._render();
+    // Mount the embedded Leaflet overview map (idempotent).
+    try { this._mountOverviewMap(); } catch (e) {}
   }
 
   getCardSize() {
@@ -272,7 +274,7 @@ class RoamcoreDashboardCard extends HTMLElement {
 
         <div class="rc-map-main">
           <div class="rc-map-box">
-            <iframe class="rc-map-iframe" src="${this._traccarEmbedUrl()}" title="Traccar" loading="lazy" referrerpolicy="no-referrer"></iframe>
+            <div class="rc-map-leaflet" id="rc-overview-leaflet"></div>
           </div>
           <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
         </div>
@@ -363,6 +365,151 @@ class RoamcoreDashboardCard extends HTMLElement {
     `;
   }
 
+  _tileUrl() {
+    const v = this._getState('input_text.rc_map_tile_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
+    return '/rc-tiles/{z}/{x}/{y}.png';
+  }
+
+  _offlineMaxZoom() {
+    const v = this._getState('input_number.rc_map_offline_max_zoom');
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 6;
+  }
+
+  async _ensureLeaflet() {
+    try {
+      if (window.L && window.L.map) return true;
+      const cssId = 'rc-leaflet-css';
+      const jsId = 'rc-leaflet-js';
+
+      if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/local/roamcore/vendor/leaflet/leaflet.css?v=' + Date.now();
+        document.head.appendChild(link);
+      }
+
+      if (!document.getElementById(jsId)) {
+        const s = document.createElement('script');
+        s.id = jsId;
+        s.src = '/local/roamcore/vendor/leaflet/leaflet.js';
+        s.async = true;
+        document.head.appendChild(s);
+      }
+
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        if (window.L && window.L.map) return true;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return !!(window.L && window.L.map);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _pickTrackerEntity() {
+    const configured = this._getState('input_text.rc_location_tracker_entity');
+    if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
+      return String(configured).trim();
+    }
+    try {
+      const st = this._hass?.states || {};
+      for (const id of Object.keys(st)) {
+        if (!id.startsWith('device_tracker.')) continue;
+        const a = st[id]?.attributes || {};
+        if (a.latitude != null && a.longitude != null) return id;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async _loadTrail(trackerId, hours = 6) {
+    if (!this._hass || !trackerId) return [];
+    try {
+      const start = new Date(Date.now() - hours * 3600_000).toISOString();
+      const url = `history/period/${encodeURIComponent(start)}?filter_entity_id=${encodeURIComponent(trackerId)}`;
+      const rows = await this._hass.callApi('GET', url);
+      const list = Array.isArray(rows) && rows.length ? rows[0] : [];
+      const pts = [];
+      for (const s of list) {
+        const a = (s && s.attributes) || {};
+        const lat = Number(a.latitude);
+        const lon = Number(a.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        pts.push([lat, lon]);
+      }
+      const out = [];
+      for (const p of pts) {
+        const prev = out[out.length - 1];
+        if (prev && Math.abs(prev[0] - p[0]) < 1e-6 && Math.abs(prev[1] - p[1]) < 1e-6) continue;
+        out.push(p);
+      }
+      return out;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async _mountOverviewMap() {
+    try {
+      const el = this.shadowRoot?.querySelector('#rc-overview-leaflet');
+      if (!el || el._rcMap) return;
+
+      const ok = await this._ensureLeaflet();
+      if (!ok) return;
+
+      const trackerId = this._pickTrackerEntity();
+      let lat = this._num('sensor.rc_location_lat', null);
+      let lon = this._num('sensor.rc_location_lon', null);
+      try {
+        const a = trackerId ? (this._hass?.states?.[trackerId]?.attributes || {}) : {};
+        if (!Number.isFinite(lat)) lat = Number(a.latitude);
+        if (!Number.isFinite(lon)) lon = Number(a.longitude);
+      } catch (e) {}
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+      const L = window.L;
+      const m = L.map(el, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        tap: false,
+      });
+      el._rcMap = m;
+
+      const offlineMaxZ = this._offlineMaxZoom();
+      L.tileLayer(this._tileUrl(), {
+        maxZoom: offlineMaxZ,
+        crossOrigin: true,
+        updateWhenIdle: true,
+        keepBuffer: 2,
+      }).addTo(m);
+
+      const trail = await this._loadTrail(trackerId, 6);
+      const pts = (trail && trail.length ? trail : [[lat, lon]]);
+      if (pts.length >= 2) {
+        const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
+        line.addTo(m);
+        m.fitBounds(line.getBounds(), { padding: [10, 10] });
+      } else {
+        m.setView([lat, lon], Math.min(offlineMaxZ, 7));
+      }
+      L.circleMarker([lat, lon], { radius: 6, color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
+
+      try { setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50); } catch (e) {}
+    } catch (e) {
+      // best-effort
+    }
+  }
+
   _css() {
     return `
       :host {
@@ -437,6 +584,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
       .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
+      .rc-map-leaflet { width: 100%; height: 100%; }
       .rc-map-svg { width:100%; height:100%; }
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
       .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
