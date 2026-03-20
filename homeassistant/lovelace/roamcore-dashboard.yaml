@@ -48,6 +48,16 @@ views:
     cards:
       - type: custom:roamcore-map-page
 
+  # Traccar page (full UI, proxied + auto-login)
+  - path: traccar
+    title: Traccar
+    icon: mdi:map-clock
+    panel: true
+    cards:
+      - type: iframe
+        url: /api/roamcore/traccar/
+        aspect_ratio: 75%
+
   # Level page
   - path: level
     title: Level
