@@ -605,7 +605,13 @@ class RoamcoreBasePage extends HTMLElement {
     try {
       // Convert to [lon,lat] and aggressively de-noise/decimate so rendering stays stable on mobile.
       // Traccar can return a lot of points (30s cadence), and MapLibre line triangulation can glitch.
-      const raw = (positions || [])
+      const sorted = [...(positions || [])].sort((a, b) => {
+        const ta = new Date(a?.fixTime || a?.deviceTime || a?.serverTime || 0).getTime();
+        const tb = new Date(b?.fixTime || b?.deviceTime || b?.serverTime || 0).getTime();
+        return ta - tb;
+      });
+
+      const raw = sorted
         .map(p => {
           const lat = Number(p?.latitude);
           const lon = Number(p?.longitude);
@@ -682,7 +688,11 @@ class RoamcoreBasePage extends HTMLElement {
 
   _lineToBreadcrumbPoints(lineFeature, { everyN = 12 } = {}) {
     try {
-      const coords = lineFeature?.geometry?.coordinates;
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      let coords = null;
+      if (geom.type === 'LineString') coords = geom.coordinates;
+      else if (geom.type === 'MultiLineString') coords = (geom.coordinates || []).flat();
       if (!Array.isArray(coords) || coords.length < 2) return null;
       const features = [];
       for (let i = 0; i < coords.length; i += Math.max(2, everyN)) {
