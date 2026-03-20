@@ -15,5 +15,5 @@ input_number:
     max: 19
     step: 1
     mode: box
-    initial: 7
+    initial: 8
 
