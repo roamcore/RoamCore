@@ -59,16 +59,27 @@ def main():
 
     user = _norm(a.username)
     pw = _norm(a.password)
+
+    client = None
     if not (user and pw):
+        # Fallback 1: HA secrets.yaml
         sec = _load_secrets()
         user = user or sec.get("roamcore_traccar_admin_email")
         pw = pw or sec.get("roamcore_traccar_admin_password")
-    if not (user and pw):
-        raise SystemExit(
-            "Missing Traccar credentials. Provide --username/--password or set roamcore_traccar_admin_email/password in /config/secrets.yaml"
-        )
 
-    client = TraccarClient(base_url=a.base_url, username=user, password=pw)
+    if user and pw:
+        client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
+    else:
+        # Fallback 2 (preferred for RoamCore): use HA Supervisor token and the
+        # roamcore_traccar_proxy endpoint, so we don't need to store Traccar creds.
+        try:
+            client = TraccarClient.ha_supervisor_proxy(base_url="http://supervisor/core")
+        except Exception as e:
+            raise SystemExit(
+                "Missing Traccar credentials and HA Supervisor proxy fallback failed. "
+                "Either provide --username/--password (or set roamcore_traccar_admin_email/password in /config/secrets.yaml) "
+                f"or fix HA Supervisor access. Details: {e}"
+            )
     trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
 
     wrapped = build_wrapped(
