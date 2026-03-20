@@ -564,6 +564,58 @@ class RoamcoreBasePage extends HTMLElement {
     } catch (e) {}
   }
 
+  async _getTraccarRoutePositions({ deviceId = null, hours = 6 } = {}) {
+    try {
+      if (!this._hass) return [];
+
+      let did = deviceId;
+      if (!did) {
+        const configured = Number(this._getState('input_number.rc_traccar_device_id'));
+        if (Number.isFinite(configured) && configured > 0) did = configured;
+      }
+      if (!did) {
+        const devices = await this._hass.callApi('get', 'roamcore/traccar_api/devices').catch(() => []);
+        did = Array.isArray(devices) && devices[0]?.id ? devices[0].id : null;
+      }
+      if (!did) return [];
+
+      const to = new Date();
+      const from = new Date(to.getTime() - (hours * 3600_000));
+      const q = new URLSearchParams({
+        deviceId: String(did),
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      const positions = await this._hass
+        .callApi('get', `roamcore/traccar_api/reports/route?${q.toString()}`)
+        .catch(() => []);
+      if (!Array.isArray(positions)) return [];
+      return positions;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  _positionsToGeojsonLine(positions) {
+    try {
+      const coords = (positions || [])
+        .map(p => {
+          const lat = Number(p?.latitude);
+          const lon = Number(p?.longitude);
+          return (Number.isFinite(lat) && Number.isFinite(lon)) ? [lon, lat] : null;
+        })
+        .filter(Boolean);
+      if (coords.length < 2) return null;
+      return {
+        type: 'Feature',
+        properties: { pointCount: coords.length },
+        geometry: { type: 'LineString', coordinates: coords },
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   _pickTrackerEntity() {
     const configured = this._getState('input_text.rc_location_tracker_entity');
     if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
@@ -797,30 +849,63 @@ class RoamcoreBasePage extends HTMLElement {
         } catch (e) {}
       };
 
-      // Optional: render a mock polyline trail for demos (when Traccar route isn't used).
+      // Route polyline: production path is Traccar reports/route. Fall back to mock GeoJSON.
       try {
-        // Prefer a served GeoJSON file so we can demo a long route without HA helper length limits.
         const mockUrl = '/local/roamcore/mock/track.geojson';
-        m.on('load', async () => {
+
+        const upsertRoute = async () => {
           try {
-            ensureMarker();
-            const r = await fetch(mockUrl, { cache: 'no-cache' });
-            if (!r.ok) return;
-            const gj = await r.json();
-            if (!gj || !gj.geometry) return;
-            if (!m.getSource('rc_mock_trail')) {
-              m.addSource('rc_mock_trail', { type: 'geojson', data: gj });
+            // 1) Source-of-truth: Traccar route
+            const positions = await this._getTraccarRoutePositions({ hours: 6 });
+            let gj = this._positionsToGeojsonLine(positions);
+
+            // 2) Fallback: mock demo route
+            if (!gj) {
+              const r = await fetch(mockUrl, { cache: 'no-cache' }).catch(() => null);
+              if (r && r.ok) {
+                const j = await r.json().catch(() => null);
+                if (j && j.geometry) gj = j;
+              }
+            }
+            if (!gj) return;
+
+            if (!m.getSource('rc_route')) {
+              m.addSource('rc_route', { type: 'geojson', data: gj });
+
+              // Google-ish route styling: casing + inner stroke.
               m.addLayer({
-                id: 'rc_mock_trail_line',
+                id: 'rc_route_casing',
                 type: 'line',
-                source: 'rc_mock_trail',
+                source: 'rc_route',
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#43d17a', 'line-width': 4, 'line-opacity': 0.9 },
+                paint: {
+                  'line-color': 'rgba(0,0,0,0.35)',
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 8, 12, 12, 16, 16],
+                  'line-opacity': 0.9,
+                },
+              });
+              m.addLayer({
+                id: 'rc_route_line',
+                type: 'line',
+                source: 'rc_route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                  'line-color': '#1a73e8',
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 8, 5, 12, 8, 16, 11],
+                  'line-opacity': 0.95,
+                },
               });
             } else {
-              m.getSource('rc_mock_trail').setData(gj);
+              m.getSource('rc_route').setData(gj);
             }
           } catch (e) {}
+        };
+
+        m.on('load', async () => {
+          try { ensureMarker(); } catch (e) {}
+          await upsertRoute();
+          // Refresh once after initial render; navigation sometimes races style load.
+          try { setTimeout(() => { upsertRoute(); }, 1200); } catch (e) {}
         });
       } catch (e) {}
 
