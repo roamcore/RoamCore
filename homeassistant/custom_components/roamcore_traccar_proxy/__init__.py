@@ -160,7 +160,26 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
 
     async def handle(request: web.Request) -> web.StreamResponse:
+        global _cached_session_cookie, _cached_admin_email, _cached_admin_password
         path = request.match_info.get("path", "")
+
+        # Debug/status endpoint (no secrets returned).
+        if path == "_proxy_status":
+            _load_traccar_admin_secrets()
+            js = await _ensure_logged_in()
+            ok = bool(js)
+            return web.json_response(
+                {
+                    "ok": ok,
+                    "upstream": DEFAULT_UPSTREAM,
+                    "proxy_prefix": PROXY_PREFIX,
+                    "has_admin_email": bool(_cached_admin_email),
+                    "has_admin_password": bool(_cached_admin_password),
+                    "has_session_cookie": bool(_cached_session_cookie),
+                },
+                status=200 if ok else 503,
+            )
+
         # Preserve trailing slash behavior
         upstream_url = f"{DEFAULT_UPSTREAM.rstrip('/')}/{path}" if path else f"{DEFAULT_UPSTREAM.rstrip('/')}/"
         if request.query_string:
@@ -209,7 +228,6 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
                 # If upstream says unauthorized, retry once by refreshing the cached cookie.
                 if resp.status in (401, 403):
-                    global _cached_session_cookie
                     _cached_session_cookie = None
                     js2 = await _ensure_logged_in()
                     if js2:
