@@ -487,6 +487,17 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             request.match_info["path"] = ""
             return await handle(request)
 
+    # Explicit trailing-slash form (HA routing doesn't always normalize)
+    class RoamcoreTraccarPublicRootSlashView(HomeAssistantView):
+        url = PUBLIC_PREFIX + "/"
+        name = "roamcore_traccar_proxy_public_root_slash"
+        requires_auth = False
+
+        async def get(self, request: web.Request):
+            request.match_info["path"] = ""
+            return await handle(request)
+
     hass.http.register_view(RoamcoreTraccarPublicView)
     hass.http.register_view(RoamcoreTraccarPublicRootView)
+    hass.http.register_view(RoamcoreTraccarPublicRootSlashView)
     return True
