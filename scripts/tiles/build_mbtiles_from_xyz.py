@@ -88,6 +88,10 @@ def main() -> int:
     ap.add_argument("--global", dest="is_global", action="store_true", help="Download full world tile range for each zoom")
     ap.add_argument("--min-z", type=int, default=9)
     ap.add_argument("--max-z", type=int, default=14)
+    ap.add_argument("--x-min", type=int, help="optional: limit tile x range")
+    ap.add_argument("--x-max", type=int, help="optional: limit tile x range")
+    ap.add_argument("--y-min", type=int, help="optional: limit tile y range")
+    ap.add_argument("--y-max", type=int, help="optional: limit tile y range")
     ap.add_argument("--delay", type=float, default=0.05)
     ap.add_argument("--max-tiles", type=int, default=5000)
     args = ap.parse_args()
@@ -133,6 +137,16 @@ def main() -> int:
             x_max = clamp(x_max, 0, n - 1)
             y_min = clamp(y_min, 0, n - 1)
             y_max = clamp(y_max, 0, n - 1)
+
+        # Optional range limiting (useful for chunking large zooms)
+        if args.x_min is not None:
+            x_min = clamp(int(args.x_min), 0, n - 1)
+        if args.x_max is not None:
+            x_max = clamp(int(args.x_max), 0, n - 1)
+        if args.y_min is not None:
+            y_min = clamp(int(args.y_min), 0, n - 1)
+        if args.y_max is not None:
+            y_max = clamp(int(args.y_max), 0, n - 1)
 
         for x in range(x_min, x_max + 1):
             for y in range(y_min, y_max + 1):
