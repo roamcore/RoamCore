@@ -440,6 +440,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     # Frontend-friendly routes for iframe embedding.
     # NOTE: use aiohttp router (not HomeAssistantView) to support trailing path matching.
+    # aiohttp does not always match an empty `{path:.*}` for the trailing-slash case,
+    # so register both root forms explicitly.
     hass.http.app.router.add_route("*", FRONTEND_PREFIX + "/{path:.*}", handle)
+    hass.http.app.router.add_route("*", FRONTEND_PREFIX + "/", handle)
     hass.http.app.router.add_route("*", FRONTEND_PREFIX, handle)
     return True
