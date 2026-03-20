@@ -83,6 +83,158 @@ class RoamcoreDashboardCard extends HTMLElement {
     return Number.isFinite(n) ? n : fallback;
   }
 
+  async _getTraccarRoutePositions({ deviceId = null, hours = 6 } = {}) {
+    try {
+      if (!this._hass) return [];
+      let did = deviceId;
+      if (!did) {
+        const routeDid = Number(this._getState('input_number.rc_map_route_device_id'));
+        if (Number.isFinite(routeDid) && routeDid > 0) did = routeDid;
+      }
+      if (!did) {
+        const configured = Number(this._getState('input_number.rc_traccar_device_id'));
+        if (Number.isFinite(configured) && configured > 0) did = configured;
+      }
+      if (!did) return [];
+
+      const to = new Date();
+      const from = new Date(Date.now() - (Number(hours) || 6) * 3600_000);
+      const qs = new URLSearchParams({
+        deviceId: String(did),
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      const path = `roamcore/traccar_api/reports/route?${qs.toString()}`;
+      const rows = await this._hass.callApi('GET', path).catch(() => []);
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  _positionsToGeojsonLine(positions) {
+    try {
+      const sorted = [...(positions || [])].sort((a, b) => {
+        const ta = new Date(a?.fixTime || a?.deviceTime || a?.serverTime || 0).getTime();
+        const tb = new Date(b?.fixTime || b?.deviceTime || b?.serverTime || 0).getTime();
+        return ta - tb;
+      });
+      const raw = sorted
+        .map(p => {
+          const lat = Number(p?.latitude);
+          const lon = Number(p?.longitude);
+          return (Number.isFinite(lat) && Number.isFinite(lon)) ? [lon, lat] : null;
+        })
+        .filter(Boolean);
+      if (raw.length < 2) return null;
+
+      // Light decimation to keep preview stable.
+      const coords = [];
+      let last = null;
+      const minMeters = 50;
+      const toRad = (x) => (x * Math.PI) / 180;
+      const distM = (a, b) => {
+        const R = 6371000;
+        const dLat = toRad(b[1] - a[1]);
+        const dLon = toRad(b[0] - a[0]);
+        const lat1 = toRad(a[1]);
+        const lat2 = toRad(b[1]);
+        const s = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(s));
+      };
+
+      for (const c of raw) {
+        if (!last) {
+          coords.push(c);
+          last = c;
+          continue;
+        }
+        if (distM(last, c) >= minMeters) {
+          coords.push(c);
+          last = c;
+        }
+      }
+      const final = raw[raw.length - 1];
+      if (coords.length && (coords[coords.length - 1][0] != final[0] || coords[coords.length - 1][1] != final[1])) coords.push(final);
+      if (coords.length < 2) return null;
+
+      // Split on big jumps to avoid triangle artifacts.
+      const jumpMeters = 2500;
+      const segments = [];
+      let seg = [coords[0]];
+      for (let i = 1; i < coords.length; i++) {
+        const a = coords[i - 1];
+        const b = coords[i];
+        if (distM(a, b) > jumpMeters) {
+          if (seg.length >= 2) segments.push(seg);
+          seg = [b];
+        } else {
+          seg.push(b);
+        }
+      }
+      if (seg.length >= 2) segments.push(seg);
+      if (!segments.length) return null;
+
+      const geom = segments.length === 1
+        ? { type: 'LineString', coordinates: segments[0] }
+        : { type: 'MultiLineString', coordinates: segments };
+
+      return { type: 'Feature', properties: {}, geometry: geom };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _lineToBreadcrumbPoints(lineFeature, { everyN = 8 } = {}) {
+    try {
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      let coords = null;
+      if (geom.type === 'LineString') coords = geom.coordinates;
+      else if (geom.type === 'MultiLineString') coords = (geom.coordinates || []).flat();
+      if (!Array.isArray(coords) || coords.length < 2) return null;
+      const features = [];
+      for (let i = 0; i < coords.length; i += Math.max(2, everyN)) {
+        const c = coords[i];
+        if (!Array.isArray(c) || c.length < 2) continue;
+        features.push({ type: 'Feature', properties: { i }, geometry: { type: 'Point', coordinates: c } });
+      }
+      return { type: 'FeatureCollection', features };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _lineToEndpoints(lineFeature) {
+    try {
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      let first = null;
+      let last = null;
+      if (geom.type === 'LineString') {
+        first = geom.coordinates?.[0];
+        last = geom.coordinates?.[geom.coordinates.length - 1];
+      } else if (geom.type === 'MultiLineString') {
+        const segs = geom.coordinates || [];
+        if (segs.length) {
+          first = segs[0]?.[0];
+          const tail = segs[segs.length - 1];
+          last = tail?.[tail.length - 1];
+        }
+      }
+      if (!first || !last) return null;
+      return {
+        type: 'FeatureCollection',
+        features: [
+          { type: 'Feature', properties: { kind: 'start' }, geometry: { type: 'Point', coordinates: first } },
+          { type: 'Feature', properties: { kind: 'end' }, geometry: { type: 'Point', coordinates: last } },
+        ],
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   _statusToColor(status) {
     if (status === 'good') return 'var(--rc-good)';
     if (status === 'ok') return 'var(--rc-ok)';
@@ -661,6 +813,77 @@ class RoamcoreDashboardCard extends HTMLElement {
             .setLngLat([Number(lon), Number(lat)])
             .addTo(m);
         } catch (e) {}
+
+        // Add trip route preview (same data as Map page) and auto-fit.
+        try {
+          const positions = await this._getTraccarRoutePositions({ hours: 6 });
+          const line = this._positionsToGeojsonLine(positions);
+          if (line) {
+            const crumbs = this._lineToBreadcrumbPoints(line, { everyN: 8 });
+            const ends = this._lineToEndpoints(line);
+            m.on('load', () => {
+              try {
+                if (!m.getSource('rc_overview_route')) {
+                  m.addSource('rc_overview_route', { type: 'geojson', data: line });
+                  if (crumbs) m.addSource('rc_overview_route_points', { type: 'geojson', data: crumbs });
+                  if (ends) m.addSource('rc_overview_route_ends', { type: 'geojson', data: ends });
+
+                  m.addLayer({
+                    id: 'rc_overview_route_casing',
+                    type: 'line',
+                    source: 'rc_overview_route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': 'rgba(0,0,0,0.35)', 'line-width': 4, 'line-opacity': 0.9 },
+                  });
+                  m.addLayer({
+                    id: 'rc_overview_route_line',
+                    type: 'line',
+                    source: 'rc_overview_route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#1a73e8', 'line-width': 3, 'line-opacity': 0.95 },
+                  });
+                  if (crumbs) {
+                    m.addLayer({
+                      id: 'rc_overview_route_dots_outline',
+                      type: 'circle',
+                      source: 'rc_overview_route_points',
+                      paint: { 'circle-radius': 2.5, 'circle-color': '#1a73e8', 'circle-opacity': 0.9 },
+                    });
+                    m.addLayer({
+                      id: 'rc_overview_route_dots',
+                      type: 'circle',
+                      source: 'rc_overview_route_points',
+                      paint: { 'circle-radius': 1.5, 'circle-color': '#ffffff', 'circle-opacity': 0.85 },
+                    });
+                  }
+                  if (ends) {
+                    m.addLayer({
+                      id: 'rc_overview_route_ends',
+                      type: 'circle',
+                      source: 'rc_overview_route_ends',
+                      paint: {
+                        'circle-radius': 4,
+                        'circle-color': ['match', ['get', 'kind'], 'start', '#34a853', 'end', '#ea4335', '#1a73e8'],
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 2,
+                        'circle-opacity': 0.95,
+                      },
+                    });
+                  }
+                }
+
+                const bounds = new maplibregl.LngLatBounds();
+                const addCoord = (c) => { if (c && c.length >= 2) bounds.extend([c[0], c[1]]); };
+                if (line.geometry.type === 'LineString') {
+                  for (const c of line.geometry.coordinates) addCoord(c);
+                } else if (line.geometry.type === 'MultiLineString') {
+                  for (const seg of line.geometry.coordinates) for (const c of seg) addCoord(c);
+                }
+                if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 20, duration: 0, maxZoom: 6 });
+              } catch (e) {}
+            });
+          }
+        } catch (e) {}
         // Force a resize after first render; HA navigation sometimes mounts at 0 width.
         try {
           setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
@@ -693,14 +916,33 @@ class RoamcoreDashboardCard extends HTMLElement {
           keepBuffer: 2,
         }).addTo(m);
 
-        const trail = await this._loadTrail(trackerId, 6);
-        const pts = (trail && trail.length ? trail : [[lat, lon]]);
-        if (pts.length >= 2) {
-          const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
-          line.addTo(m);
-          m.fitBounds(line.getBounds(), { padding: [10, 10] });
-        } else {
-          m.setView([lat, lon], Math.min(offlineMaxZ, 7));
+        // Prefer Traccar route preview when available; fallback to device_tracker history.
+        let didFit = false;
+        try {
+          const positions = await this._getTraccarRoutePositions({ hours: 6 });
+          const line = this._positionsToGeojsonLine(positions);
+          const coords = line?.geometry?.type === 'LineString'
+            ? (line.geometry.coordinates || [])
+            : (line?.geometry?.type === 'MultiLineString' ? (line.geometry.coordinates || []).flat() : []);
+          const pts = coords.map(c => [c[1], c[0]]);
+          if (pts.length >= 2) {
+            const poly = L.polyline(pts, { color: '#1a73e8', weight: 3, opacity: 0.9 });
+            poly.addTo(m);
+            m.fitBounds(poly.getBounds(), { padding: [10, 10] });
+            didFit = true;
+          }
+        } catch (e) {}
+
+        if (!didFit) {
+          const trail = await this._loadTrail(trackerId, 6);
+          const pts = (trail && trail.length ? trail : [[lat, lon]]);
+          if (pts.length >= 2) {
+            const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
+            line.addTo(m);
+            m.fitBounds(line.getBounds(), { padding: [10, 10] });
+          } else {
+            m.setView([lat, lon], Math.min(offlineMaxZ, 7));
+          }
         }
         L.circleMarker([lat, lon], { radius: 6, color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
 
