@@ -32,13 +32,22 @@ want=(
 for ent in "${want[@]}"; do
   echo
   echo "--- $ent"
-  curl -fsS \
+  if ! out="$(curl -fsS \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    "$HA_URL/api/states/$ent" \
+    "$HA_URL/api/states/$ent" 2>/dev/null)"; then
+    echo "NOT FOUND (404): $ent"
+    missing=1
+    continue
+  fi
+  printf '%s' "$out" \
     | python3 -c 'import json,sys; s=json.load(sys.stdin); print(json.dumps({"state": s.get("state"), "attributes": s.get("attributes", {})}, indent=2, sort_keys=True))'
 done
 
 echo
-echo "OK: rc_* entity probe completed. If any curl call 404s, the package likely isn't loaded (or entity ids differ)."
+if [[ "${missing:-0}" == "1" ]]; then
+  echo "WARN: one or more rc_* entities were not found. Likely the Victron health package isn't loaded/deployed to HA (/config/packages/*) or entity ids differ."
+  exit 2
+fi
 
+echo "OK: rc_* entity probe completed."
