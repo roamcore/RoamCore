@@ -7,5 +7,4 @@ input_number:
     max: 999999
     step: 1
     mode: box
-    initial: 2
-
+    initial: 3

@@ -821,7 +821,8 @@ class RoamcoreDashboardCard extends HTMLElement {
           if (line) {
             const crumbs = this._lineToBreadcrumbPoints(line, { everyN: 8 });
             const ends = this._lineToEndpoints(line);
-            m.on('load', () => {
+
+            const applyRoute = () => {
               try {
                 if (!m.getSource('rc_overview_route')) {
                   m.addSource('rc_overview_route', { type: 'geojson', data: line });
@@ -881,7 +882,10 @@ class RoamcoreDashboardCard extends HTMLElement {
                 }
                 if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 20, duration: 0, maxZoom: 6 });
               } catch (e) {}
-            });
+            };
+
+            if (m.loaded && m.loaded()) applyRoute();
+            else m.on('load', applyRoute);
           }
         } catch (e) {}
         // Force a resize after first render; HA navigation sometimes mounts at 0 width.
