@@ -333,15 +333,28 @@ class RoamcoreBasePage extends HTMLElement {
       }
 
       if (!document.getElementById(jsId)) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.id = jsId;
-          s.src = '/local/roamcore/vendor/leaflet/leaflet.js';
-          s.async = true;
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
+        const src = '/local/roamcore/vendor/leaflet/leaflet.js';
+        let lastErr = null;
+        for (let i = 0; i < 4; i++) {
+          try {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement('script');
+              s.id = jsId;
+              s.src = src + (i ? `?v=${Date.now()}` : '');
+              s.async = true;
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+            break;
+          } catch (e) {
+            lastErr = e;
+            try { await new Promise(r => setTimeout(r, 400)); } catch (e2) {}
+          }
+        }
+        if (lastErr && !(window.L && window.L.map)) {
+          throw lastErr;
+        }
       }
 
       return !!(window.L && window.L.map);
@@ -440,6 +453,14 @@ class RoamcoreBasePage extends HTMLElement {
 
       L.circleMarker([lat, lon], { radius: 8, color: '#0ea5e9', weight: 3, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
       L.control.zoom({ position: 'bottomright' }).addTo(m);
+
+      // Leaflet often needs an explicit resize once the container is visible / laid out.
+      try {
+        setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50);
+        setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 300);
+      } catch (e) {}
+
+      return m;
     } catch (e) {
       console.warn('leaflet mount failed', e);
       try { el.innerHTML = '<div class="rc-label">Map failed to render.</div>'; } catch (e2) {}
@@ -868,7 +889,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const mapTile = `
       <div style="border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); padding: 10px;">
-        <div id="rc-map-inner" style="height:360px;">
+        <div id="rc-map-inner" style="height: calc(100vh - 250px); min-height: 420px; max-height: 760px;">
           <div class="rc-label">Loading map…</div>
         </div>
       </div>
@@ -877,6 +898,9 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
       <div class="rc-label" style="margin-top: 6px;">RoamCore map (Leaflet) with Traccar route overlay (last 6h).</div>
+      <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
+      </div>
     `;
 
     const stats = `
@@ -923,7 +947,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     try {
       const inner = this._root.querySelector('#rc-map-inner');
       if (inner) {
-        inner.innerHTML = `<div id="rc-leaflet-map" style="height:360px; border-radius:12px; overflow:hidden;"></div>`;
+        inner.innerHTML = `<div id="rc-leaflet-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
         const trackerId = this._pickTrackerEntity();
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
