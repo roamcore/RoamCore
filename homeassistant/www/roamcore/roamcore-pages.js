@@ -648,10 +648,32 @@ class RoamcoreBasePage extends HTMLElement {
         coords.push(final);
       }
       if (coords.length < 2) return null;
+
+      // Split into segments if there are big jumps (prevents huge "wedge" joins rendering as triangles).
+      const jumpMeters = 2500;
+      const segments = [];
+      let seg = [coords[0]];
+      for (let i = 1; i < coords.length; i++) {
+        const a = coords[i - 1];
+        const b = coords[i];
+        if (distM(a, b) > jumpMeters) {
+          if (seg.length >= 2) segments.push(seg);
+          seg = [b];
+        } else {
+          seg.push(b);
+        }
+      }
+      if (seg.length >= 2) segments.push(seg);
+      if (!segments.length) return null;
+
+      const geom = segments.length === 1
+        ? { type: 'LineString', coordinates: segments[0] }
+        : { type: 'MultiLineString', coordinates: segments };
+
       return {
         type: 'Feature',
-        properties: { pointCount: coords.length },
-        geometry: { type: 'LineString', coordinates: coords },
+        properties: { pointCount: coords.length, segmentCount: segments.length },
+        geometry: geom,
       };
     } catch (e) {
       return null;
@@ -949,7 +971,8 @@ class RoamcoreBasePage extends HTMLElement {
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
                   'line-color': 'rgba(0,0,0,0.35)',
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 5, 8, 8, 12, 12, 16, 16],
+                  // Keep widths modest to avoid GPU triangulation artifacts.
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 8, 5, 12, 7, 16, 10],
                   'line-opacity': 0.9,
                 },
               });
@@ -960,7 +983,7 @@ class RoamcoreBasePage extends HTMLElement {
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
                   'line-color': '#1a73e8',
-                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 8, 5, 12, 8, 16, 11],
+                  'line-width': ['interpolate', ['linear'], ['zoom'], 4, 2, 8, 3.5, 12, 5.5, 16, 8],
                   'line-opacity': 0.95,
                 },
               });
