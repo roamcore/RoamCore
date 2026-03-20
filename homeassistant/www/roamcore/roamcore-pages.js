@@ -893,7 +893,11 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
         const el = this._root.querySelector('#rc-leaflet-map');
-        this._mountLeafletMap(el, { lat, lon, trackerId });
+        const map = this._mountLeafletMap(el, { lat, lon, trackerId });
+
+        // Best-effort: overlay last 6h track from Traccar (if available).
+        // This avoids embedding the full Traccar UI and gives a native RoamCore map.
+        this._overlayTraccarTrack(map).catch(() => {});
       }
     } catch (e) {}
 
@@ -909,6 +913,44 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           genBtn.disabled = false;
         }
       });
+    }
+  }
+
+  async _overlayTraccarTrack(map) {
+    try {
+      if (!map || !this._hass) return;
+
+      // 1) Choose a device
+      const devices = await this._hass.callApi('get', 'roamcore/traccar_api/devices').catch(() => []);
+      if (!Array.isArray(devices) || devices.length === 0) return;
+      const deviceId = devices[0]?.id;
+      if (!deviceId) return;
+
+      // 2) Query route for last 6h
+      const to = new Date();
+      const from = new Date(to.getTime() - 6 * 3600 * 1000);
+      const q = new URLSearchParams({
+        deviceId: String(deviceId),
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      const positions = await this._hass.callApi('get', `roamcore/traccar_api/reports/route?${q.toString()}`).catch(() => []);
+      if (!Array.isArray(positions) || positions.length < 2) return;
+
+      // 3) Draw polyline
+      const pts = positions
+        .map(p => ({ lat: Number(p.latitude), lon: Number(p.longitude) }))
+        .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+      if (pts.length < 2) return;
+      const latlngs = pts.map(p => [p.lat, p.lon]);
+
+      // Leaflet is loaded by _mountLeafletMap.
+      const L = window.L;
+      if (!L) return;
+      const line = L.polyline(latlngs, { color: '#43d17a', weight: 4, opacity: 0.9 });
+      line.addTo(map);
+    } catch (e) {
+      return;
     }
   }
 }
