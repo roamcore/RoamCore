@@ -82,9 +82,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--tile-url", default="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    ap.add_argument("--lat", type=float, required=True)
-    ap.add_argument("--lon", type=float, required=True)
+    ap.add_argument("--lat", type=float)
+    ap.add_argument("--lon", type=float)
     ap.add_argument("--radius-km", type=float, default=35.0)
+    ap.add_argument("--global", dest="is_global", action="store_true", help="Download full world tile range for each zoom")
     ap.add_argument("--min-z", type=int, default=9)
     ap.add_argument("--max-z", type=int, default=14)
     ap.add_argument("--delay", type=float, default=0.05)
@@ -94,13 +95,16 @@ def main() -> int:
     out = os.path.abspath(args.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
 
-    # crude bbox degrees; OK for small radius
-    dlat = args.radius_km / 111.0
-    dlon = args.radius_km / (111.0 * max(0.2, math.cos(math.radians(args.lat))))
-    lat_min = args.lat - dlat
-    lat_max = args.lat + dlat
-    lon_min = args.lon - dlon
-    lon_max = args.lon + dlon
+    if not args.is_global:
+        if args.lat is None or args.lon is None:
+            raise SystemExit("--lat/--lon required unless --global")
+        # crude bbox degrees; OK for small radius
+        dlat = args.radius_km / 111.0
+        dlon = args.radius_km / (111.0 * max(0.2, math.cos(math.radians(args.lat))))
+        lat_min = args.lat - dlat
+        lat_max = args.lat + dlat
+        lon_min = args.lon - dlon
+        lon_max = args.lon + dlon
 
     conn = sqlite3.connect(out)
     ensure_schema(conn)
@@ -116,15 +120,19 @@ def main() -> int:
     cur = conn.cursor()
 
     for z in range(args.min_z, args.max_z + 1):
-        x1, y1 = latlon_to_tile(lat_max, lon_min, z)
-        x2, y2 = latlon_to_tile(lat_min, lon_max, z)
-        x_min, x_max = sorted((x1, x2))
-        y_min, y_max = sorted((y1, y2))
         n = 2**z
-        x_min = clamp(x_min, 0, n - 1)
-        x_max = clamp(x_max, 0, n - 1)
-        y_min = clamp(y_min, 0, n - 1)
-        y_max = clamp(y_max, 0, n - 1)
+        if args.is_global:
+            x_min, x_max = 0, n - 1
+            y_min, y_max = 0, n - 1
+        else:
+            x1, y1 = latlon_to_tile(lat_max, lon_min, z)
+            x2, y2 = latlon_to_tile(lat_min, lon_max, z)
+            x_min, x_max = sorted((x1, x2))
+            y_min, y_max = sorted((y1, y2))
+            x_min = clamp(x_min, 0, n - 1)
+            x_max = clamp(x_max, 0, n - 1)
+            y_min = clamp(y_min, 0, n - 1)
+            y_max = clamp(y_max, 0, n - 1)
 
         for x in range(x_min, x_max + 1):
             for y in range(y_min, y_max + 1):
@@ -158,4 +166,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
