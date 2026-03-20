@@ -505,10 +505,20 @@ class RoamcoreDashboardCard extends HTMLElement {
       const mode = this._mapMode();
       if (mode.mode === 'maplibre') {
         if (el._rcMapLibre) return;
+        // If Leaflet map was mounted earlier (before style URL was set), remove it and switch.
+        if (el._rcMap) {
+          try { el._rcMap.remove?.(); } catch (e) {}
+          try { delete el._rcMap; } catch (e) { el._rcMap = null; }
+        }
         const ok = await this._ensureMapLibre();
         if (!ok) return;
       } else {
         if (el._rcMap) return;
+        // If MapLibre map was mounted earlier, remove it and switch.
+        if (el._rcMapLibre) {
+          try { el._rcMapLibre.remove?.(); } catch (e) {}
+          try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
+        }
         const ok = await this._ensureLeaflet();
         if (!ok) return;
       }
