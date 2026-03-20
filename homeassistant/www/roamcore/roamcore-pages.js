@@ -658,6 +658,29 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  _lineToBreadcrumbPoints(lineFeature, { everyN = 12 } = {}) {
+    try {
+      const coords = lineFeature?.geometry?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) return null;
+      const features = [];
+      for (let i = 0; i < coords.length; i += Math.max(2, everyN)) {
+        const c = coords[i];
+        if (!Array.isArray(c) || c.length < 2) continue;
+        features.push({
+          type: 'Feature',
+          properties: { i },
+          geometry: { type: 'Point', coordinates: c },
+        });
+      }
+      // Always add end point.
+      const last = coords[coords.length - 1];
+      features.push({ type: 'Feature', properties: { i: coords.length - 1, end: true }, geometry: { type: 'Point', coordinates: last } });
+      return { type: 'FeatureCollection', features };
+    } catch (e) {
+      return null;
+    }
+  }
+
   _pickTrackerEntity() {
     const configured = this._getState('input_text.rc_location_tracker_entity');
     if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
@@ -911,8 +934,12 @@ class RoamcoreBasePage extends HTMLElement {
             }
             if (!gj) return;
 
+            const crumbs = this._lineToBreadcrumbPoints(gj, { everyN: 10 });
+
             if (!m.getSource('rc_route')) {
               m.addSource('rc_route', { type: 'geojson', data: gj });
+
+              if (crumbs) m.addSource('rc_route_points', { type: 'geojson', data: crumbs });
 
               // Google-ish route styling: casing + inner stroke.
               m.addLayer({
@@ -937,8 +964,35 @@ class RoamcoreBasePage extends HTMLElement {
                   'line-opacity': 0.95,
                 },
               });
+
+              // Breadcrumb dots along the route.
+              if (crumbs) {
+                m.addLayer({
+                  id: 'rc_route_dots_outline',
+                  type: 'circle',
+                  source: 'rc_route_points',
+                  paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2, 8, 3, 12, 4, 16, 5],
+                    'circle-color': '#1a73e8',
+                    'circle-opacity': 0.95,
+                  },
+                });
+                m.addLayer({
+                  id: 'rc_route_dots',
+                  type: 'circle',
+                  source: 'rc_route_points',
+                  paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 1.2, 8, 2, 12, 2.6, 16, 3.2],
+                    'circle-color': '#ffffff',
+                    'circle-opacity': 0.9,
+                  },
+                });
+              }
             } else {
               m.getSource('rc_route').setData(gj);
+              try {
+                if (crumbs && m.getSource('rc_route_points')) m.getSource('rc_route_points').setData(crumbs);
+              } catch (e) {}
             }
           } catch (e) {}
         };
