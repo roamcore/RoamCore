@@ -447,7 +447,46 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     # Public embed route (no HA auth). Needed because iframes don't include
     # Authorization headers and HA session auth is inconsistent in some clients.
-    hass.http.app.router.add_route("*", PUBLIC_PREFIX + "/{path:.*}", handle)
-    hass.http.app.router.add_route("*", PUBLIC_PREFIX + "/", handle)
-    hass.http.app.router.add_route("*", PUBLIC_PREFIX, handle)
+    # Note: HA applies auth middleware to /api/* unless the handler is registered
+    # as a view with requires_auth=False.
+    class RoamcoreTraccarPublicView(HomeAssistantView):
+        url = PUBLIC_PREFIX + "/{path:.*}"
+        name = "roamcore_traccar_proxy_public"
+        requires_auth = False
+
+        async def get(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def post(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def put(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def delete(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def patch(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+        async def options(self, request: web.Request, path: str = ""):
+            request.match_info["path"] = path or ""
+            return await handle(request)
+
+    class RoamcoreTraccarPublicRootView(HomeAssistantView):
+        url = PUBLIC_PREFIX
+        name = "roamcore_traccar_proxy_public_root"
+        requires_auth = False
+
+        async def get(self, request: web.Request):
+            request.match_info["path"] = ""
+            return await handle(request)
+
+    hass.http.register_view(RoamcoreTraccarPublicView)
+    hass.http.register_view(RoamcoreTraccarPublicRootView)
     return True
