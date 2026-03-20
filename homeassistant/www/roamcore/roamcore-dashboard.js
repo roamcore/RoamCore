@@ -374,7 +374,8 @@ class RoamcoreDashboardCard extends HTMLElement {
   _mapStyleUrl() {
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
-    return '';
+    // Fallback: match Traccar default (LocationIQ Streets) so overview doesn't regress on HA restarts.
+    return 'https://tiles.locationiq.com/v3/streets/vector.json?key=pk.0f147952a41c555a5b70614039fd148b';
   }
 
   _mapMode() {

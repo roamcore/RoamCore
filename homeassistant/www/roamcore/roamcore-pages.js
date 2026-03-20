@@ -156,7 +156,9 @@ class RoamcoreBasePage extends HTMLElement {
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    return '';
+    // Fallback: match Traccar default (LocationIQ Streets) so the UI doesn't revert to raster
+    // when HA restarts clear the helper state.
+    return 'https://tiles.locationiq.com/v3/streets/vector.json?key=pk.0f147952a41c555a5b70614039fd148b';
   }
 
   _mapMode() {
