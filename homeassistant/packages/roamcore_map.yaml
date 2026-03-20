@@ -1,0 +1,8 @@
+# RoamCore map configuration
+
+input_text:
+  rc_map_tile_url:
+    name: "RC Map Tile URL"
+    initial: "/rc-tiles/{z}/{x}/{y}.png"
+    max: 255
+

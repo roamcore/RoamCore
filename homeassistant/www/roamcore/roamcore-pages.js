@@ -144,7 +144,8 @@ class RoamcoreBasePage extends HTMLElement {
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    // Default: RoamCore local offline tile endpoint.
+    return '/rc-tiles/{z}/{x}/{y}.png';
   }
 
   _navigate(path) {
