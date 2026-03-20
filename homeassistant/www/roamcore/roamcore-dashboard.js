@@ -471,6 +471,28 @@ class RoamcoreDashboardCard extends HTMLElement {
     return null;
   }
 
+  async _getTraccarLastFix() {
+    try {
+      if (!this._hass) return null;
+      // Pick first device and follow its positionId.
+      const devs = await this._hass.callApi('GET', 'roamcore/traccar_api/devices').catch(() => []);
+      if (!Array.isArray(devs) || devs.length === 0) return null;
+      const d = devs[0] || {};
+      const posId = d.positionId;
+      if (!posId) return null;
+
+      const positions = await this._hass.callApi('GET', `roamcore/traccar_api/positions?id=${encodeURIComponent(posId)}`).catch(() => []);
+      const p = Array.isArray(positions) && positions.length ? positions[0] : null;
+      if (!p) return null;
+      const lat = Number(p.latitude);
+      const lon = Number(p.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return { lat, lon, fixTime: p.fixTime || null };
+    } catch (e) {
+      return null;
+    }
+  }
+
   async _loadTrail(trackerId, hours = 6) {
     if (!this._hass || !trackerId) return [];
     try {
@@ -541,7 +563,22 @@ class RoamcoreDashboardCard extends HTMLElement {
         if (!Number.isFinite(lon)) lon = Number(a.longitude);
       } catch (e) {}
 
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      // If we still don't have a fix, fall back to Traccar last known position.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        try {
+          const fix = await this._getTraccarLastFix();
+          if (fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) {
+            lat = fix.lat;
+            lon = fix.lon;
+          }
+        } catch (e) {}
+      }
+
+      // As a last resort, pick a reasonable UK-ish default so the preview renders.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        lat = 54.5;
+        lon = -3.0;
+      }
 
       if (mode.mode === 'maplibre') {
         // MapLibre overview (simple marker).
