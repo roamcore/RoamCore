@@ -503,6 +503,14 @@ class RoamcoreDashboardCard extends HTMLElement {
       const el = this.shadowRoot?.querySelector('#rc-overview-leaflet');
       if (!el) return;
 
+      // If nothing is mounted yet, show a lightweight placeholder so it isn't an empty box.
+      if (!el._rcMap && !el._rcMapLibre && !el._rcMapPlaceholder) {
+        try {
+          el._rcMapPlaceholder = true;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.45);font-size:12px;">Loading map…</div>';
+        } catch (e) {}
+      }
+
       const mode = this._mapMode();
       if (mode.mode === 'maplibre') {
         if (el._rcMapLibre) return;
@@ -552,11 +560,22 @@ class RoamcoreDashboardCard extends HTMLElement {
         });
         el._rcMapLibre = m;
         try {
+          m.on('error', (ev) => {
+            try {
+              console.warn('roamcore overview maplibre error', ev?.error || ev);
+            } catch (e) {}
+          });
+          m.on('load', () => { try { m.resize(); } catch (e) {} });
+        } catch (e) {}
+        try {
           new maplibregl.Marker({ color: '#0ea5e9' })
             .setLngLat([Number(lon), Number(lat)])
             .addTo(m);
         } catch (e) {}
-        try { setTimeout(() => { try { m.resize(); } catch (e) {} }, 50); } catch (e) {}
+        try {
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 500);
+        } catch (e) {}
       } else {
         const L = window.L;
         const m = L.map(el, {
