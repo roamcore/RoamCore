@@ -197,8 +197,8 @@ class RoamcoreBasePage extends HTMLElement {
     } catch (e) {
       // ignore
     }
-    // Fallback: LAN URL
-    return 'http://192.168.1.67:8082';
+    // Fallback: same-origin HA proxy (preferred over raw :8082)
+    return '/api/roamcore/traccar/';
   }
 
   _tile({ title, icon, content, className = '' }) {

@@ -71,7 +71,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         }
       }
     } catch (e) {}
-    return 'http://192.168.1.67:8082';
+    // Fallback: same-origin HA proxy (preferred over raw :8082)
+    return '/api/roamcore/traccar/';
   }
 
   _num(entityId, fallback = null) {
