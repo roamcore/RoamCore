@@ -6,3 +6,14 @@ input_text:
     initial: "/rc-tiles/{z}/{x}/{y}.png"
     max: 255
 
+# How far the offline MBTiles currently goes. Once we finish building z8,
+# bump this to 8 to allow deeper zoom without blank tiles.
+input_number:
+  rc_map_offline_max_zoom:
+    name: "RC Map Offline Max Zoom"
+    min: 0
+    max: 19
+    step: 1
+    mode: box
+    initial: 7
+
