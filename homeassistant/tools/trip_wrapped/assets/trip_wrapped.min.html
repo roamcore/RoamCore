@@ -46,21 +46,15 @@
     .mapOverlay{position:absolute; left:14px; top:14px; right:14px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; pointer-events:none;}
     .mapTag{pointer-events:none; display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(7,10,18,0.55); backdrop-filter: blur(10px); color:rgba(255,255,255,0.78); font-size:12px;}
 
-    .kpis{display:grid; grid-template-columns:1fr; gap:10px;}
-    .kpi{padding:12px;border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.16);}
-    .kLabel{font-size:12px; color:var(--muted);}
-    .kValue{margin-top:6px; font-size:26px; font-weight:950; letter-spacing:-0.6px;}
-    .kSub{margin-top:2px; font-size:12px; color:var(--muted2);}
-
-    .headline{display:grid; gap:10px;}
-    .big{padding:14px 14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.16);}
-    .bigLine{font-size:28px; font-weight:1000; letter-spacing:-0.8px;}
-    .bigSub{margin-top:4px; color:var(--muted); font-size:12px;}
-
-    .list{margin-top:12px; display:grid; gap:8px;}
-    .row{display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);}
-    .row .l{color:var(--muted); font-size:12px;}
-    .row .r{font-weight:800; font-size:12px; color:rgba(255,255,255,0.86); text-align:right;}
+    /* Wrapped-style story cards */
+    .storyScroll{margin-top:2px; max-height:420px; overflow:auto; padding-right:4px; scroll-snap-type:y mandatory;}
+    .story{display:grid; gap:10px; padding:0; margin:0;}
+    .storyCard{scroll-snap-align:start; padding:14px 14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.16);}
+    .storyKicker{font-size:12px; color:var(--muted); letter-spacing:0.2px;}
+    .storyValue{margin-top:6px; font-size:28px; font-weight:1000; letter-spacing:-0.8px;}
+    .storySub{margin-top:4px; color:var(--muted2); font-size:12px;}
+    .storyScroll::-webkit-scrollbar{width:8px}
+    .storyScroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:999px}
 
     .foot{margin-top:14px; color:rgba(255,255,255,0.45); font-size:11px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
     a{color:inherit}
@@ -96,9 +90,9 @@
 
       <div class="card">
         <div class="cardPad">
-          <div class="headline" id="headline"></div>
-
-          <div class="list" id="metrics"></div>
+          <div class="storyScroll">
+            <div class="story" id="story"></div>
+          </div>
 
           <div class="foot">
             <div>Shareable recap · inspired by Strava × Wrapped</div>
@@ -149,105 +143,75 @@
     const totalDays = Number(stats.totalDays || 0);
     const stops = Number(stats.numberOfStops || 0);
 
-    const headline = document.getElementById('headline');
-    const addBig = (line, sub) => {
+    const story = document.getElementById('story');
+    const addCard = (kicker, value, sub) => {
       const el = document.createElement('div');
-      el.className = 'big';
-      el.innerHTML = `<div class="bigLine">${line}</div><div class="bigSub">${sub||''}</div>`;
-      headline.appendChild(el);
+      el.className = 'storyCard';
+      el.innerHTML = `<div class="storyKicker">${kicker||''}</div><div class="storyValue">${value||''}</div><div class="storySub">${sub||''}</div>`;
+      story.appendChild(el);
     };
 
-    // Headline story metrics (max 3, as per spec)
-    addBig(`${fmtInt(Math.round((Number(totalM)||0)/1000))} km travelled`, 'Distance covered');
-    addBig(`${fmtInt(totalDays)} days on the road`, 'From your selected date range');
-    addBig(`${fmtInt(stops)} stops`, 'Movement segments detected');
+    // Headline cards (3)
+    addCard('You covered', `${fmtInt(Math.round((Number(totalM)||0)/1000))} km`, 'Distance travelled');
+    addCard('You were out there for', `${fmtInt(totalDays)} days`, 'In the selected date range');
+    addCard('You made', `${fmtInt(stops)} stops`, 'Places you paused long enough to count');
 
-    // Secondary "cool" metrics (best-effort, from raw trips)
-    const trips = Array.isArray(d.trips) ? d.trips : [];
-
-    const safeNum = (x) => Number.isFinite(Number(x)) ? Number(x) : 0;
-
-    const addRow = (l, r) => {
-      const el = document.createElement('div');
-      el.className = 'row';
-      el.innerHTML = `<div class="l">${l}</div><div class="r">${r}</div>`;
-      document.getElementById('metrics').appendChild(el);
-    };
-
-    // Behaviour metrics (secondary)
-    const avgDaysPerStop = stats.avgDaysPerStop;
-    if (avgDaysPerStop !== null && avgDaysPerStop !== undefined && Number.isFinite(Number(avgDaysPerStop))) {
-      addRow('Movement frequency', `You moved every ${fmt1(avgDaysPerStop)} days`);
+    // Behaviour + fun story cards
+    const avgDaysPerStop = Number(stats.avgDaysPerStop);
+    if (Number.isFinite(avgDaysPerStop) && avgDaysPerStop > 0) {
+      addCard('You moved every', `${fmt1(avgDaysPerStop)} days`, 'Movement frequency');
     }
+
     const longestDriveM = Number(stats.longestDriveM || 0);
+    const longestDriveH = Number(stats.longestDriveHours || 0);
     if (longestDriveM > 0) {
-      addRow('Longest drive', `${fmtKm(longestDriveM)} km`);
+      addCard('Your longest drive was', `${fmtKm(longestDriveM)} km`, longestDriveH > 0.25 ? `…in about ${fmtHours(longestDriveH)}` : '');
     }
+
     const lsMs = Number(stats.longestStopDurationMs || 0);
     const lsName = (stats.longestStopLocationName || '').toString().trim();
     if (lsMs > 0) {
       const d = Math.max(0.1, lsMs / (1000*60*60*24));
       const dTxt = d >= 2 ? `${d.toFixed(0)} days` : `${d.toFixed(1)} days`;
-      addRow('Longest stop', lsName ? `${lsName} (${dTxt})` : `${dTxt}`);
+      addCard('Longest stop', lsName ? `${dTxt} in ${lsName}` : dTxt, '');
     }
 
-    // Fun/shareable: stationary vs moving
     const pct = Number(stats.percentStationary);
     const movingH = Number(stats.movingHours || 0);
     const stationaryH = Number(stats.stationaryHours || 0);
     if (Number.isFinite(pct) && pct >= 0) {
-      addRow('Trip rhythm', `${pct.toFixed(0)}% stationary · ${fmtHours(movingH)} moving`);
+      addCard('Trip rhythm', `${pct.toFixed(0)}% parked`, `${fmtHours(movingH)} driving · ${fmtHours(stationaryH)} parked`);
     }
 
-    // Additional story metrics (keep it short; bottom section)
-    const totalH = Number(stats.totalHours || 0);
-    if (totalH > 0) {
-      addRow('Time window', `${fmtHours(totalH)} total`);
-    }
-    if (stationaryH > 0) {
-      addRow('Time parked', `${fmtHours(stationaryH)}`);
-    }
-    if (movingH > 0) {
-      addRow('Time driving', `${fmtHours(movingH)}`);
-    }
-
-    // More story metrics (still deterministic)
     const avgDaily = Number(stats.avgDailyDistanceKm);
     if (Number.isFinite(avgDaily) && avgDaily > 0) {
-      addRow('Average day', `${avgDaily.toFixed(0)} km/day`);
+      addCard('Average day', `${avgDaily.toFixed(0)} km/day`, '');
     }
+
     const avgSpd = Number(stats.avgSpeedKph);
     if (Number.isFinite(avgSpd) && avgSpd > 0) {
-      addRow('Cruising pace', `${avgSpd.toFixed(0)} km/h`);
+      addCard('Cruising pace', `${avgSpd.toFixed(0)} km/h`, 'Average while moving');
     }
+
     const nights = Number(stats.nightsParked);
     if (Number.isFinite(nights) && nights >= 1) {
-      addRow('Nights parked', `${Math.round(nights)}`);
+      addCard('Nights parked', `${Math.round(nights)}`, '');
+    }
+
+    const avgStop = Number(stats.avgStopHours);
+    if (Number.isFinite(avgStop) && avgStop > 0.1) {
+      addCard('Average stop lasted', fmtHours(avgStop), '');
     }
 
     const disp = Number(stats.displacementKm);
     if (Number.isFinite(disp) && disp > 0) {
-      addRow('As the crow flies', `${disp.toFixed(0)} km start → end`);
-    }
-    const loop = Number(stats.loopiness);
-    if (Number.isFinite(loop) && loop > 0) {
-      addRow('Detour factor', `${loop.toFixed(1)}×`);
+      addCard('As the crow flies', `${disp.toFixed(0)} km`, 'Start → end displacement');
     }
 
-    // Start → End (best-effort from route endpoints)
-    try {
-      if (route && route.length >= 2) {
-        const a = route[0];
-        const b = route[route.length-1];
-        const lat1 = Number(a.lat), lon1 = Number(a.lon);
-        const lat2 = Number(b.lat), lon2 = Number(b.lon);
-        if (Number.isFinite(lat1) && Number.isFinite(lon1) && Number.isFinite(lat2) && Number.isFinite(lon2)) {
-          const s1 = `${lat1.toFixed(3)}, ${lon1.toFixed(3)}`;
-          const s2 = `${lat2.toFixed(3)}, ${lon2.toFixed(3)}`;
-          addRow('Start → End', `${s1} → ${s2}`);
-        }
-      }
-    } catch(e) {}
+    const loop = Number(stats.loopiness);
+    if (Number.isFinite(loop) && loop > 0) {
+      addCard('Detour factor', `${loop.toFixed(1)}×`, 'How much you wandered vs straight-line');
+    }
 
     // --- Static map snapshot (non-interactive) ---
     // We render a MapLibre map once (raster OSM w/ labels) then snapshot it to PNG
@@ -293,21 +257,28 @@
       const base = '/local/roamcore/vendor/maplibre-gl';
       await loadCss(base + '/maplibre-gl.css');
       await loadJs(base + '/maplibre-gl.js');
+      await loadJs('/local/roamcore/vendor/pmtiles/pmtiles.js');
 
-      const style = {
-        version: 8,
-        sources: {
-          osm: {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
-          }
-        },
-        layers: [
-          {id:'osm', type:'raster', source:'osm', paint:{'raster-opacity': 0.92, 'raster-saturation': -0.2, 'raster-contrast': 0.1}}
-        ]
-      };
+      // PMTiles protocol + RoamCore vector style (better than raster for share cards)
+      // @ts-ignore
+      const protocol = new pmtiles.Protocol();
+      // @ts-ignore
+      maplibregl.addProtocol('pmtiles', protocol.tile);
+
+      // Load style JSON from HA and resolve __ORIGIN__ placeholders.
+      const styleUrl = '/local/roamcore/styles/rc-offline-protomaps-light.json';
+      const style = await (await fetch(styleUrl)).json();
+      const origin = window.location.origin;
+      const fix = (v) => (typeof v === 'string') ? v.replaceAll('__ORIGIN__', origin) : v;
+      try {
+        style.glyphs = fix(style.glyphs);
+        // sprite is external in this style; OK when internet is available.
+        for (const k of Object.keys(style.sources||{})) {
+          const s = style.sources[k];
+          if (s && s.url) s.url = fix(s.url);
+          if (s && s.tiles) s.tiles = (s.tiles||[]).map(fix);
+        }
+      } catch(e) {}
 
       // @ts-ignore
       const map = new maplibregl.Map({

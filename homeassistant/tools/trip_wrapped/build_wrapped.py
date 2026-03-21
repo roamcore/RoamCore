@@ -127,6 +127,7 @@ def build_wrapped(
 
     # --- Behaviour metrics ---
     longest_drive_m = max((_m(t.get("distance")) for t in trips), default=0.0)
+    longest_drive_ms = max((_ms(t.get("duration")) for t in trips), default=0)
     total_days = 0
     if total_duration_ms:
         total_days = max(1, round(total_duration_ms / (1000 * 60 * 60 * 24)))
@@ -165,6 +166,13 @@ def build_wrapped(
             nights_parked = int(round(stationary_hours / 24.0))
         except Exception:
             nights_parked = None
+
+    avg_stop_hours = None
+    if stops:
+        try:
+            avg_stop_hours = (stationary_duration_ms / (1000 * 60 * 60)) / float(len(stops))
+        except Exception:
+            avg_stop_hours = None
 
     # Optional: include a simplified route polyline for the top trip.
     # Keep payload bounded so the HTML remains lightweight and shareable.
@@ -228,6 +236,7 @@ def build_wrapped(
             # Behaviour metrics
             "avgDaysPerStop": avg_days_per_stop,
             "longestDriveM": longest_drive_m,
+            "longestDriveHours": (longest_drive_ms / (1000 * 60 * 60)) if longest_drive_ms else 0.0,
             "longestStopDurationMs": longest_stop_ms,
             "longestStopLocationName": longest_stop_name,
 
@@ -241,6 +250,7 @@ def build_wrapped(
             "avgDailyDistanceKm": avg_daily_distance_km,
             "avgSpeedKph": avg_speed_kph,
             "nightsParked": nights_parked,
+            "avgStopHours": avg_stop_hours,
 
             "displacementKm": displacement_km,
             "loopiness": loopiness,
