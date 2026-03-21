@@ -1805,6 +1805,23 @@ class RoamcoreMapPage extends RoamcoreBasePage {
             </div>
           </div>
 
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Map theme</div>
+              <select id="rc-tripwrapped-theme" class="rc-input">
+                <option value="light" selected>Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Open</div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Latest (light)</a>
+                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html?theme=dark" target="_blank" rel="noreferrer">Latest (dark)</a>
+              </div>
+            </div>
+          </div>
+
           <div class="rc-label" style="margin-top:12px;">Metrics come from Traccar (reports/trips/route/etc). RoamCore only renders the results.</div>
 
           <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
@@ -1886,7 +1903,12 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           // We keep the UI option for future, but do not branch yet.
           await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
 
-          if (statusEl) statusEl.innerHTML = 'Done. Open: <a href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">latest.html</a>';
+          const theme = backdrop.querySelector('#rc-tripwrapped-theme')?.value || 'light';
+          const url = theme === 'dark'
+            ? '/local/roamcore/trip_wrapped/latest.html?theme=dark'
+            : '/local/roamcore/trip_wrapped/latest.html';
+
+          if (statusEl) statusEl.innerHTML = `Done. Open: <a href="${url}" target="_blank" rel="noreferrer">latest.html</a>`;
 
           // Refresh preview (best effort)
           try {
@@ -1896,7 +1918,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
           const after = backdrop.querySelector('#rc-tripwrapped-after')?.value;
           if (after === 'open_latest') {
-            try { window.open('/local/roamcore/trip_wrapped/latest.html', '_blank'); } catch (e) {}
+            try { window.open(url, '_blank'); } catch (e) {}
           }
         } catch (e) {
           console.warn('trip wrapped generate failed', e);
