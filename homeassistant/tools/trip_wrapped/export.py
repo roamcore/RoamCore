@@ -58,7 +58,8 @@ def _build_staticmap_url(points: list[tuple[float, float]], w: int, h: int) -> s
     z, c_lat, c_lon = _choose_zoom(points, w=w, h=h)
 
     # Reduce path points for URL length.
-    max_pts = 180
+    # Keep URL length reasonable for hosted static map servers.
+    max_pts = 70
     if len(points) > max_pts:
         step = max(1, int(len(points) / max_pts))
         pts = points[::step]
