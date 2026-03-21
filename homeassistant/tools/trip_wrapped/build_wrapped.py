@@ -56,6 +56,7 @@ def build_wrapped(
     generated_at,
     journey_route=None,
     top_trip_route=None,
+    stops=None,
 ):
     trips = trips or []
     total_distance_m = sum(_m(t.get("distance")) for t in trips)
@@ -74,29 +75,38 @@ def build_wrapped(
     top_trip = max(trips, key=best_trip_key) if trips else None
 
     # --- Stops + longest stop ---
-    # We treat each Traccar "trip" as a movement segment. A "stop" is the dwell
-    # between two movement segments; for the MVP story metric we approximate
-    # "number of stops" as the number of movement segments (easy to understand).
-    number_of_stops = len(trips)
+    stops = stops or []
+    # Traccar stops report returns entries with startTime/endTime/duration(ms).
+    number_of_stops = len(stops) if stops else len(trips)
 
     longest_stop_ms = 0
     longest_stop_name = None
-    if len(trips) >= 2:
-        # Sort by start time to compute gaps.
-        def _k(t):
-            d = _parse_dt(t.get("startTime") or "")
-            return d.timestamp() if d else 0
-
-        ordered = sorted(trips, key=_k)
-        for prev, nxt in zip(ordered, ordered[1:]):
-            prev_end = _parse_dt(prev.get("endTime") or "")
-            nxt_start = _parse_dt(nxt.get("startTime") or "")
-            if not (prev_end and nxt_start):
+    stationary_duration_ms = 0
+    if stops:
+        for s in stops:
+            if not s:
                 continue
-            gap_ms = int((nxt_start - prev_end).total_seconds() * 1000)
-            if gap_ms > longest_stop_ms:
-                longest_stop_ms = gap_ms
-                longest_stop_name = prev.get("endAddress") or nxt.get("startAddress")
+            dur = _ms(s.get("duration"))
+            stationary_duration_ms += max(0, dur)
+            if dur > longest_stop_ms:
+                longest_stop_ms = dur
+                longest_stop_name = s.get("address") or None
+    else:
+        # Fallback: estimate stops from gaps between trips.
+        if len(trips) >= 2:
+            def _k(t):
+                d = _parse_dt(t.get("startTime") or "")
+                return d.timestamp() if d else 0
+            ordered = sorted(trips, key=_k)
+            for prev, nxt in zip(ordered, ordered[1:]):
+                prev_end = _parse_dt(prev.get("endTime") or "")
+                nxt_start = _parse_dt(nxt.get("startTime") or "")
+                if not (prev_end and nxt_start):
+                    continue
+                gap_ms = int((nxt_start - prev_end).total_seconds() * 1000)
+                if gap_ms > longest_stop_ms:
+                    longest_stop_ms = gap_ms
+                    longest_stop_name = prev.get("endAddress") or nxt.get("startAddress")
 
     # --- Behaviour metrics ---
     longest_drive_m = max((_m(t.get("distance")) for t in trips), default=0.0)
@@ -112,7 +122,10 @@ def build_wrapped(
 
     moving_hours = moving_duration_ms / (1000 * 60 * 60) if moving_duration_ms else 0.0
     total_hours = total_duration_ms / (1000 * 60 * 60) if total_duration_ms else 0.0
-    stationary_hours = max(0.0, total_hours - moving_hours)
+    if stationary_duration_ms > 0:
+        stationary_hours = stationary_duration_ms / (1000 * 60 * 60)
+    else:
+        stationary_hours = max(0.0, total_hours - moving_hours)
     percent_stationary = None
     if total_hours > 0:
         percent_stationary = (stationary_hours / total_hours) * 100.0

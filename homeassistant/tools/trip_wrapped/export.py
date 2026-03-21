@@ -101,21 +101,26 @@ def main():
         client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
         trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
 
-    # Best-effort: pull a full-journey route polyline (hero map) plus a top-trip
-    # route (optional secondary).
+    # Best-effort: pull a full-journey route polyline (hero map) + stops report
+    # for story metrics, plus a top-trip route (optional secondary).
     journey_route = None
     top_trip_route = None
+    stops = None
     try:
         # Prefer HA proxy client if available (no creds), otherwise fall back to direct.
         try:
             if "tok_client" in locals() and tok_client:
                 journey_route = tok_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+                stops = tok_client.get_stops(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
             elif ha_client:
                 journey_route = ha_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+                stops = ha_client.get_stops(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
             elif "client" in locals() and client:
                 journey_route = client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+                stops = client.get_stops(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
         except Exception:
             journey_route = None
+            stops = None
 
         if trips:
             top_trip = max(trips, key=lambda t: (t.get("distance") or 0, t.get("duration") or 0))
@@ -135,6 +140,7 @@ def main():
     except Exception:
         journey_route = None
         top_trip_route = None
+        stops = None
 
     wrapped = build_wrapped(
         title=a.title,
@@ -145,6 +151,7 @@ def main():
         generated_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         journey_route=journey_route,
         top_trip_route=top_trip_route,
+        stops=stops,
     )
 
     os.makedirs(os.path.dirname(a.out_json), exist_ok=True)

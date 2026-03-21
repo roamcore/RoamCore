@@ -127,3 +127,14 @@ class TraccarClient:
                 "to": to_ts,
             },
         )
+
+    def get_stops(self, device_id: int, from_ts: str, to_ts: str):
+        """Fetch stop report rows for a device over a time range."""
+        return self._get_json(
+            "/reports/stops" if self.path_prefix else "/api/reports/stops",
+            {
+                "deviceId": device_id,
+                "from": from_ts,
+                "to": to_ts,
+            },
+        )
