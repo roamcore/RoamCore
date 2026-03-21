@@ -117,6 +117,35 @@ template:
             {{ states('input_number.rc_mock_power_battery_current') }}
           {% endif %}
 
+      - name: "RC Power Battery Power"
+        unique_id: rc_power_battery_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set v = states('sensor.vt_battery_power_w') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {# Best-effort fallback for mocks: V * A #}
+            {% set vv = states('input_number.rc_mock_power_battery_voltage') | float(0) %}
+            {% set aa = states('input_number.rc_mock_power_battery_current') | float(0) %}
+            {{ (vv * aa) | round(1) }}
+          {% endif %}
+
+      - name: "RC Power Battery State"
+        unique_id: rc_power_battery_state
+        icon: mdi:battery
+        state: >-
+          {# Derived from battery power sign. Positive => charging, negative => discharging. #}
+          {% set p = states('sensor.rc_power_battery_power') | float(0) %}
+          {% if p > 50 %}
+            charging
+          {% elif p < -50 %}
+            discharging
+          {% else %}
+            idle
+          {% endif %}
+
       - name: "RC Power Battery Temperature"
         unique_id: rc_power_battery_temperature_c
         unit_of_measurement: "°C"
