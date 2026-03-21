@@ -76,3 +76,18 @@ class TraccarClient:
                 "to": to_ts,
             },
         )
+
+    def get_route(self, device_id: int, from_ts: str, to_ts: str):
+        """Fetch route (positions) for a device over a time range.
+
+        Traccar returns a list of positions; each typically contains latitude/longitude,
+        speed, deviceTime, etc.
+        """
+        return self._get_json(
+            "/reports/route" if self.path_prefix else "/api/reports/route",
+            {
+                "deviceId": device_id,
+                "from": from_ts,
+                "to": to_ts,
+            },
+        )

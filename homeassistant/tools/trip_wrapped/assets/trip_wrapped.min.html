@@ -1,41 +1,335 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Trip Wrapped</title>
+  <title>RoamCore — Trip Wrapped</title>
   <style>
-    body{font-family:system-ui;margin:16px;max-width:900px}
-    .kpi{display:flex;gap:16px;flex-wrap:wrap}
-    .card{border:1px solid #ddd;border-radius:10px;padding:12px;min-width:220px}
-    code{background:#f6f6f6;padding:2px 6px;border-radius:6px}
-    pre{white-space:pre-wrap;word-break:break-word}
+    :root{
+      --bg:#070A12;
+      --card:#0B1020;
+      --card2:#0A0F1C;
+      --border:rgba(255,255,255,0.08);
+      --text:rgba(255,255,255,0.92);
+      --muted:rgba(255,255,255,0.62);
+      --muted2:rgba(255,255,255,0.44);
+      --accent:#6EE7FF;
+      --accent2:#A78BFA;
+      --good:#34D399;
+      --warn:#FBBF24;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(1200px 700px at 70% -10%, rgba(110,231,255,0.10), transparent 60%), radial-gradient(900px 600px at 10% 0%, rgba(167,139,250,0.10), transparent 55%), var(--bg); color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+    .wrap{max-width:980px;margin:0 auto;padding:22px 16px 28px;}
+    .top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+    .brand{display:flex;gap:10px;align-items:center;}
+    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg, rgba(110,231,255,0.28), rgba(167,139,250,0.22)); border:1px solid var(--border); position:relative; overflow:hidden;}
+    .logo:after{content:""; position:absolute; inset:-40%; background:radial-gradient(circle at 30% 30%, rgba(110,231,255,0.55), transparent 55%), radial-gradient(circle at 70% 70%, rgba(167,139,250,0.45), transparent 55%); transform:rotate(12deg);}
+    .brandText{line-height:1.1;}
+    .brandName{font-weight:900;letter-spacing:0.3px;font-size:14px;color:rgba(255,255,255,0.86)}
+    .brandSub{font-size:12px;color:var(--muted)}
+
+    .title{font-weight:950;font-size:22px;letter-spacing:-0.3px;margin:10px 0 0;}
+    .subtitle{margin-top:6px;color:var(--muted); font-size:13px;}
+
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px;color:var(--muted);}
+    .dot{width:7px;height:7px;border-radius:99px;background:var(--accent); box-shadow: 0 0 16px rgba(110,231,255,0.55);}
+
+    .grid{display:grid;grid-template-columns: 1.6fr 1fr;gap:14px;margin-top:16px;}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr;}}
+
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.018)); border:1px solid var(--border); border-radius:16px; overflow:hidden;}
+    .cardPad{padding:14px;}
+
+    .mapBox{position:relative; height:420px; background: radial-gradient(900px 520px at 50% 20%, rgba(110,231,255,0.06), transparent 62%), radial-gradient(700px 450px at 15% 110%, rgba(167,139,250,0.08), transparent 55%), rgba(255,255,255,0.02);}
+    .mapCanvas{position:absolute; inset:0; width:100%; height:100%;}
+    .mapOverlay{position:absolute; left:14px; top:14px; right:14px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; pointer-events:none;}
+    .mapTag{pointer-events:none; display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(7,10,18,0.55); backdrop-filter: blur(10px); color:rgba(255,255,255,0.78); font-size:12px;}
+
+    .kpis{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .kpi{padding:12px;border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.16);}
+    .kLabel{font-size:12px; color:var(--muted);}
+    .kValue{margin-top:6px; font-size:22px; font-weight:950; letter-spacing:-0.4px;}
+    .kSub{margin-top:2px; font-size:12px; color:var(--muted2);}
+
+    .list{margin-top:12px; display:grid; gap:8px;}
+    .row{display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);}
+    .row .l{color:var(--muted); font-size:12px;}
+    .row .r{font-weight:800; font-size:12px; color:rgba(255,255,255,0.86); text-align:right;}
+
+    .foot{margin-top:14px; color:rgba(255,255,255,0.45); font-size:11px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+    a{color:inherit}
   </style>
 </head>
 <body>
-  <h1 id="title">Trip Wrapped</h1>
-  <div class="kpi">
-    <div class="card"><div>Trips</div><div id="tripCount"></div></div>
-    <div class="card"><div>Total distance</div><div id="distance"></div></div>
-    <div class="card"><div>Total duration</div><div id="duration"></div></div>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="brand">
+          <div class="logo"></div>
+          <div class="brandText">
+            <div class="brandName">RoamCore</div>
+            <div class="brandSub">Trip Wrapped</div>
+          </div>
+        </div>
+        <div class="title" id="title">Trip Wrapped</div>
+        <div class="subtitle" id="range">—</div>
+      </div>
+      <div class="pill"><span class="dot"></span><span id="generated">Generated —</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="mapBox">
+          <canvas class="mapCanvas" id="map"></canvas>
+          <div class="mapOverlay">
+            <div class="mapTag">Route · <span id="routeInfo">—</span></div>
+            <div class="mapTag">Clean · Dark · Minimal</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardPad">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="kLabel">Total distance</div>
+              <div class="kValue" id="distance">—</div>
+              <div class="kSub" id="tripCount">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kLabel">Drive time</div>
+              <div class="kValue" id="duration">—</div>
+              <div class="kSub" id="pace">—</div>
+            </div>
+          </div>
+
+          <div class="list" id="metrics"></div>
+
+          <div class="foot">
+            <div>Shareable recap · inspired by Strava × Wrapped</div>
+            <div id="device">Device —</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <h2>Top trip</h2>
-  <pre id="topTrip"></pre>
-
-  <h2>Trips (raw)</h2>
-  <pre id="trips"></pre>
 
   <script>
     /*__TRIP_WRAPPED_DATA__*/
-    const d = window.TRIP_WRAPPED_DATA;
-    document.getElementById("title").textContent = d?.meta?.title || 'Trip Wrapped';
-    document.getElementById("tripCount").textContent = d?.meta?.tripCount ?? 0;
-    document.getElementById("distance").textContent = Math.round((d?.stats?.totalDistanceM || 0)/1000) + " km";
-    document.getElementById("duration").textContent = Math.round((d?.stats?.totalDurationS || 0)/3600) + " h";
-    document.getElementById("topTrip").textContent = JSON.stringify(d?.stats?.topTrip, null, 2);
-    document.getElementById("trips").textContent = JSON.stringify(d?.trips || [], null, 2);
+
+    const d = window.TRIP_WRAPPED_DATA || {};
+    const meta = d.meta || {};
+    const stats = d.stats || {};
+
+    const fmtMi = (m) => {
+      const mi = (Number(m)||0) / 1609.344;
+      return mi >= 100 ? mi.toFixed(0) : mi.toFixed(1);
+    };
+    const fmtKm = (m) => {
+      const km = (Number(m)||0) / 1000;
+      return km >= 100 ? km.toFixed(0) : km.toFixed(1);
+    };
+    const fmtDur = (s) => {
+      s = Number(s)||0;
+      const h = Math.floor(s/3600);
+      const m = Math.floor((s%3600)/60);
+      return `${h}:${String(m).padStart(2,'0')}`;
+    };
+
+    const title = meta.title || 'Trip Wrapped';
+    const from = meta.from ? new Date(meta.from) : null;
+    const to = meta.to ? new Date(meta.to) : null;
+    const gen = meta.generatedAt ? new Date(meta.generatedAt) : null;
+
+    document.getElementById('title').textContent = title;
+    document.getElementById('range').textContent = (from && to) ? `${from.toLocaleString()} → ${to.toLocaleString()}` : '—';
+    document.getElementById('generated').textContent = gen ? `Generated ${gen.toLocaleString()}` : 'Generated —';
+    document.getElementById('device').textContent = meta.deviceId ? `Device ${meta.deviceId}` : 'Device —';
+
+    const totalM = Number(stats.totalDistanceM || 0);
+    const totalS = Number(stats.totalDurationS || 0);
+
+    // Default to miles display (fits UK/US audiences for vanlife); can be changed later.
+    document.getElementById('distance').textContent = `${fmtMi(totalM)} mi`;
+    document.getElementById('tripCount').textContent = `${Number(meta.tripCount||0)} trips`;
+    document.getElementById('duration').textContent = fmtDur(totalS);
+
+    const hrs = Math.max(0.0001, totalS/3600);
+    const mph = (totalM/1609.344) / hrs;
+    document.getElementById('pace').textContent = `Avg speed ${mph.toFixed(1)} mph`;
+
+    // Secondary "cool" metrics (best-effort, from raw trips)
+    const trips = Array.isArray(d.trips) ? d.trips : [];
+    const topTrip = stats.topTrip || null;
+
+    const safeNum = (x) => Number.isFinite(Number(x)) ? Number(x) : 0;
+    const sum = (arr, fn) => arr.reduce((a,v)=>a+safeNum(fn(v)),0);
+
+    const totalStops = trips.length ? Math.max(0, trips.length - 1) : 0;
+    const movingHours = hrs;
+
+    const addRow = (l, r) => {
+      const el = document.createElement('div');
+      el.className = 'row';
+      el.innerHTML = `<div class="l">${l}</div><div class="r">${r}</div>`;
+      document.getElementById('metrics').appendChild(el);
+    };
+
+    addRow('Total distance (km)', `${fmtKm(totalM)} km`);
+    addRow('Total drive time', `${fmtDur(totalS)}`);
+    addRow('Trips', `${Number(meta.tripCount||0)}`);
+    addRow('Stops (est.)', `${totalStops}`);
+
+    if (topTrip) {
+      const dist = safeNum(topTrip.distance);
+      const dur = safeNum(topTrip.duration);
+      const avg = dur > 0 ? (dist/1609.344)/(dur/3600) : 0;
+      addRow('Top trip', `${fmtMi(dist)} mi · ${fmtDur(dur)} · ${avg.toFixed(1)} mph`);
+    }
+
+    // --- Minimal dark "map" + glowing route ---
+    const canvas = document.getElementById('map');
+    const ctx = canvas.getContext('2d');
+
+    const resize = () => {
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      draw();
+    };
+
+    const merc = (lat, lon) => {
+      // Web mercator-ish, good enough for a stylized share card.
+      const x = (lon + 180) / 360;
+      const s = Math.sin((lat * Math.PI) / 180);
+      const y = 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
+      return { x, y };
+    };
+
+    const route = Array.isArray(stats.topTripRoute) ? stats.topTripRoute : [];
+
+    const bounds = () => {
+      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+      for (const p of route) {
+        const lat = Number(p.lat); const lon = Number(p.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const m = merc(lat, lon);
+        minX=Math.min(minX,m.x); minY=Math.min(minY,m.y);
+        maxX=Math.max(maxX,m.x); maxY=Math.max(maxY,m.y);
+      }
+      if (!Number.isFinite(minX)) return null;
+      return {minX,minY,maxX,maxY};
+    };
+
+    const drawGrid = (w,h) => {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      // Base
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'rgba(255,255,255,0.03)');
+      g.addColorStop(1,'rgba(255,255,255,0.01)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,w,h);
+
+      // Subtle grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      const step = 48;
+      for (let x=0; x<=w; x+=step){
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+      }
+      for (let y=0; y<=h; y+=step){
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width; const h = rect.height;
+      ctx.clearRect(0,0,w,h);
+
+      drawGrid(w,h);
+
+      // If no route, show placeholder.
+      if (!route.length) {
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.font = '600 13px ui-sans-serif, system-ui';
+        ctx.fillText('No route data available for this range.', 16, 28);
+        document.getElementById('routeInfo').textContent = '—';
+        return;
+      }
+
+      const b = bounds();
+      if (!b) return;
+      // Pad and fit.
+      const pad = 28;
+      const bw = Math.max(1e-9, b.maxX - b.minX);
+      const bh = Math.max(1e-9, b.maxY - b.minY);
+      const sx = (w - pad*2) / bw;
+      const sy = (h - pad*2) / bh;
+      const s = Math.min(sx, sy);
+      const ox = pad - b.minX * s + (w - (bw*s + pad*2))/2;
+      const oy = pad - b.minY * s + (h - (bh*s + pad*2))/2;
+
+      const pts = [];
+      for (const p of route) {
+        const lat = Number(p.lat); const lon = Number(p.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const m = merc(lat, lon);
+        pts.push({ x: m.x * s + ox, y: m.y * s + oy });
+      }
+
+      // Route glow layers
+      const drawPath = (lw, color, alpha, blur=0) => {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = lw;
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = blur;
+        ctx.beginPath();
+        for (let i=0;i<pts.length;i++) {
+          const p = pts[i];
+          if (i===0) ctx.moveTo(p.x,p.y);
+          else ctx.lineTo(p.x,p.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      // Under-glow
+      drawPath(10, 'rgba(110,231,255,0.18)', 1, 22);
+      drawPath(6,  'rgba(167,139,250,0.18)', 1, 18);
+      // Core
+      drawPath(3.5,'rgba(110,231,255,0.95)', 1, 8);
+      // Highlight
+      drawPath(2.0,'rgba(255,255,255,0.92)', 0.9, 0);
+
+      // Start/end dots
+      const start = pts[0];
+      const end = pts[pts.length-1];
+      const dot = (p, color) => {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      };
+      if (start) dot(start, 'rgba(52,211,153,0.95)');
+      if (end) dot(end, 'rgba(251,191,36,0.95)');
+
+      document.getElementById('routeInfo').textContent = `${pts.length} pts`;
+    };
+
+    window.addEventListener('resize', () => resize());
+    resize();
   </script>
 </body>
 </html>
-
