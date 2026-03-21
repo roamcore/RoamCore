@@ -10,6 +10,74 @@ from render_html import render_html
 from traccar_client import TraccarClient
 
 
+def _merc_x(lon: float) -> float:
+    return (lon + 180.0) / 360.0
+
+
+def _merc_y(lat: float) -> float:
+    import math
+
+    s = math.sin(lat * math.pi / 180.0)
+    y = 0.5 - math.log((1 + s) / (1 - s)) / (4 * math.pi)
+    return y
+
+
+def _choose_zoom(points, w: int, h: int, pad: int = 48) -> tuple[int, float, float]:
+    """Choose OSM zoom + center lat/lon to fit points."""
+    import math
+
+    lats = [p[0] for p in points]
+    lons = [p[1] for p in points]
+    min_lat, max_lat = min(lats), max(lats)
+    min_lon, max_lon = min(lons), max(lons)
+
+    cx = (min_lon + max_lon) / 2.0
+    cy = (min_lat + max_lat) / 2.0
+
+    # Clamp zoom search.
+    best = 12
+    for z in range(16, 3, -1):
+        scale = 256 * (2**z)
+        x1 = _merc_x(min_lon) * scale
+        x2 = _merc_x(max_lon) * scale
+        y1 = _merc_y(min_lat) * scale
+        y2 = _merc_y(max_lat) * scale
+        bw = abs(x2 - x1)
+        bh = abs(y2 - y1)
+        if bw <= max(1, (w - pad * 2)) and bh <= max(1, (h - pad * 2)):
+            best = z
+            break
+    return best, cy, cx
+
+
+def _build_staticmap_url(points: list[tuple[float, float]], w: int, h: int) -> str:
+    import urllib.parse
+
+    # Use staticmap.openstreetmap.de (mapnik) for labels/city names.
+    # Path format is "color:0xRRGGBB|weight:N|lat,lon|lat,lon|...".
+    z, c_lat, c_lon = _choose_zoom(points, w=w, h=h)
+
+    # Reduce path points for URL length.
+    max_pts = 180
+    if len(points) > max_pts:
+        step = max(1, int(len(points) / max_pts))
+        pts = points[::step]
+        if pts[-1] != points[-1]:
+            pts.append(points[-1])
+    else:
+        pts = points
+
+    path = "color:0x6EE7FF|weight:4" + "".join([f"|{lat:.5f},{lon:.5f}" for (lat, lon) in pts])
+    qs = {
+        "center": f"{c_lat:.5f},{c_lon:.5f}",
+        "zoom": str(z),
+        "size": f"{w}x{h}",
+        "maptype": "mapnik",
+        "path": path,
+    }
+    return "https://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--base-url", required=True)
@@ -152,7 +220,28 @@ def main():
         journey_route=journey_route,
         top_trip_route=top_trip_route,
         stops=stops,
+        map_image_url=None,
     )
+
+    # Generate a static map PNG (non-interactive) and reference it from HTML.
+    map_url = None
+    try:
+        pts = []
+        for p in wrapped.get("stats", {}).get("journeyRoute") or []:
+            lat = p.get("lat")
+            lon = p.get("lon")
+            if lat is None or lon is None:
+                continue
+            pts.append((float(lat), float(lon)))
+        if len(pts) >= 2:
+            map_url = _build_staticmap_url(pts, w=980, h=420)
+            out_png = os.path.join(os.path.dirname(a.out_html), "latest_map.png")
+            import urllib.request
+
+            urllib.request.urlretrieve(map_url, out_png)
+            wrapped["meta"]["mapImageUrl"] = "/local/roamcore/trip_wrapped/latest_map.png"
+    except Exception:
+        map_url = None
 
     os.makedirs(os.path.dirname(a.out_json), exist_ok=True)
     with open(a.out_json, "w", encoding="utf-8") as f:

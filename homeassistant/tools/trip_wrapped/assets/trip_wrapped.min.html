@@ -86,7 +86,7 @@
     <div class="grid">
       <div class="card">
         <div class="mapBox">
-          <canvas class="mapCanvas" id="map"></canvas>
+          <img class="mapCanvas" id="mapimg" alt="Trip route map" />
           <div class="mapOverlay">
             <div class="mapTag">Route · <span id="routeInfo">—</span></div>
             <div class="mapTag" id="mapHint">RoamCore Trip Wrapped</div>
@@ -164,10 +164,8 @@
 
     // Secondary "cool" metrics (best-effort, from raw trips)
     const trips = Array.isArray(d.trips) ? d.trips : [];
-    const topTrip = stats.topTrip || null;
 
     const safeNum = (x) => Number.isFinite(Number(x)) ? Number(x) : 0;
-    const sum = (arr, fn) => arr.reduce((a,v)=>a+safeNum(fn(v)),0);
 
     const addRow = (l, r) => {
       const el = document.createElement('div');
@@ -213,6 +211,20 @@
       addRow('Time driving', `${fmtHours(movingH)}`);
     }
 
+    // More story metrics (still deterministic)
+    const avgDaily = Number(stats.avgDailyDistanceKm);
+    if (Number.isFinite(avgDaily) && avgDaily > 0) {
+      addRow('Average day', `${avgDaily.toFixed(0)} km/day`);
+    }
+    const avgSpd = Number(stats.avgSpeedKph);
+    if (Number.isFinite(avgSpd) && avgSpd > 0) {
+      addRow('Cruising pace', `${avgSpd.toFixed(0)} km/h`);
+    }
+    const nights = Number(stats.nightsParked);
+    if (Number.isFinite(nights) && nights >= 1) {
+      addRow('Nights parked', `${Math.round(nights)}`);
+    }
+
     // Start → End (best-effort from route endpoints)
     try {
       if (route && route.length >= 2) {
@@ -228,206 +240,17 @@
       }
     } catch(e) {}
 
-    // --- Minimal dark "map" + glowing route ---
-    const canvas = document.getElementById('map');
-    const ctx = canvas.getContext('2d');
-
-    const resize = () => {
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-      draw();
-    };
-
-    const merc = (lat, lon) => {
-      // Web mercator-ish, good enough for a stylized share card.
-      const x = (lon + 180) / 360;
-      const s = Math.sin((lat * Math.PI) / 180);
-      const y = 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI);
-      return { x, y };
-    };
-
-    const route = Array.isArray(stats.journeyRoute) ? stats.journeyRoute : (Array.isArray(stats.topTripRoute) ? stats.topTripRoute : []);
-
-    const bounds = () => {
-      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-      for (const p of route) {
-        const lat = Number(p.lat); const lon = Number(p.lon);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        const m = merc(lat, lon);
-        minX=Math.min(minX,m.x); minY=Math.min(minY,m.y);
-        maxX=Math.max(maxX,m.x); maxY=Math.max(maxY,m.y);
-      }
-      if (!Number.isFinite(minX)) return null;
-      return {minX,minY,maxX,maxY};
-    };
-
-    // Stylised basemap (self-contained): soft "terrain" + faint roads grid.
-    // This is intentionally not a real map tile source (no network dependency),
-    // but gives the route context and depth for share screenshots.
-    const drawBaseMap = (w,h, seed=1) => {
-      ctx.save();
-      // Base wash
-      const g = ctx.createLinearGradient(0,0,0,h);
-      g.addColorStop(0,'rgba(255,255,255,0.030)');
-      g.addColorStop(1,'rgba(255,255,255,0.010)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,w,h);
-
-      // Terrain-like noise
-      const off = document.createElement('canvas');
-      off.width = Math.max(64, Math.floor(w/6));
-      off.height = Math.max(48, Math.floor(h/6));
-      const o = off.getContext('2d');
-      const img = o.createImageData(off.width, off.height);
-      // Seeded RNG (deterministic per trip)
-      let s = (seed|0) || 1;
-      const rnd = () => {
-        // xorshift32
-        s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
-        return ((s >>> 0) / 4294967296);
-      };
-      // Value noise
-      for (let y=0; y<off.height; y++){
-        for (let x=0; x<off.width; x++){
-          const i = (y*off.width + x)*4;
-          const v = rnd();
-          // map to subtle bluish terrain
-          const c = Math.floor(16 + v*28);
-          img.data[i+0]=c;
-          img.data[i+1]=c+2;
-          img.data[i+2]=c+6;
-          img.data[i+3]=28; // alpha
-        }
-      }
-      o.putImageData(img,0,0);
-      ctx.imageSmoothingEnabled = true;
-      ctx.globalCompositeOperation = 'screen';
-      ctx.drawImage(off,0,0,w,h);
-      ctx.globalCompositeOperation = 'source-over';
-
-      // A few faint "contour" strokes
-      ctx.globalAlpha = 0.18;
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-      ctx.lineWidth = 1;
-      const loops = 6;
-      for (let k=0; k<loops; k++){
-        const y0 = (k+1) * (h/(loops+1));
-        ctx.beginPath();
-        for (let x=0; x<=w; x+=18){
-          const wob = Math.sin((x*0.010) + k*1.3) * (6 + k*0.8);
-          const wob2 = Math.cos((x*0.006) + k*0.9) * (4 + k*0.6);
-          const yy = y0 + wob + wob2;
-          if (x===0) ctx.moveTo(x,yy);
-          else ctx.lineTo(x,yy);
-        }
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      // Subtle road grid (much fainter than before)
-      ctx.strokeStyle = 'rgba(255,255,255,0.030)';
-      ctx.lineWidth = 1;
-      const step = 56;
-      for (let x=0; x<=w; x+=step){
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
-      }
-      for (let y=0; y<=h; y+=step){
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-      }
-      ctx.restore();
-    };
-
-    const draw = () => {
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width; const h = rect.height;
-      ctx.clearRect(0,0,w,h);
-
-      // Seed based on route bounds so the basemap is stable for the same trip.
-      let seed = 1;
-      try{
-        seed = Math.floor((totalM||0) + (meta.deviceId||0)*1000 + (route.length||0));
-      }catch(e){ seed = 1; }
-      drawBaseMap(w,h,seed);
-
-      // If no route, show placeholder.
-      if (!route.length) {
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.font = '600 13px ui-sans-serif, system-ui';
-        ctx.fillText('No route data available for this range.', 16, 28);
-        document.getElementById('routeInfo').textContent = '—';
-        return;
-      }
-
-      const b = bounds();
-      if (!b) return;
-      // Pad and fit.
-      const pad = 28;
-      const bw = Math.max(1e-9, b.maxX - b.minX);
-      const bh = Math.max(1e-9, b.maxY - b.minY);
-      const sx = (w - pad*2) / bw;
-      const sy = (h - pad*2) / bh;
-      const s = Math.min(sx, sy);
-      const ox = pad - b.minX * s + (w - (bw*s + pad*2))/2;
-      const oy = pad - b.minY * s + (h - (bh*s + pad*2))/2;
-
-      const pts = [];
-      for (const p of route) {
-        const lat = Number(p.lat); const lon = Number(p.lon);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        const m = merc(lat, lon);
-        pts.push({ x: m.x * s + ox, y: m.y * s + oy });
-      }
-
-      // Route glow layers
-      const drawPath = (lw, color, alpha, blur=0) => {
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = lw;
-        ctx.strokeStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = blur;
-        ctx.beginPath();
-        for (let i=0;i<pts.length;i++) {
-          const p = pts[i];
-          if (i===0) ctx.moveTo(p.x,p.y);
-          else ctx.lineTo(p.x,p.y);
-        }
-        ctx.stroke();
-        ctx.restore();
-      };
-
-      // Under-glow
-      drawPath(10, 'rgba(110,231,255,0.18)', 1, 22);
-      drawPath(6,  'rgba(167,139,250,0.18)', 1, 18);
-      // Core
-      drawPath(3.5,'rgba(110,231,255,0.95)', 1, 8);
-      // Highlight
-      drawPath(2.0,'rgba(255,255,255,0.92)', 0.9, 0);
-
-      // Start/end dots
-      const start = pts[0];
-      const end = pts[pts.length-1];
-      const dot = (p, color) => {
-        ctx.save();
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
-        ctx.restore();
-      };
-      if (start) dot(start, 'rgba(52,211,153,0.95)');
-      if (end) dot(end, 'rgba(251,191,36,0.95)');
-
-      document.getElementById('routeInfo').textContent = `${pts.length} pts`;
-    };
-
-    window.addEventListener('resize', () => resize());
-    resize();
+    // --- Static map image (non-interactive) ---
+    const mapimg = document.getElementById('mapimg');
+    const mapUrl = (meta.mapImageUrl || '').toString().trim();
+    if (mapUrl) {
+      mapimg.src = mapUrl + `?t=${encodeURIComponent(meta.generatedAt || '')}`;
+      document.getElementById('routeInfo').textContent = `${Number(route.length||0)} pts`;
+    } else {
+      // Fallback: keep the placeholder styling
+      mapimg.style.display = 'none';
+      document.getElementById('routeInfo').textContent = '—';
+    }
   </script>
 </body>
 </html>

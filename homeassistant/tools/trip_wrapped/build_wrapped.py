@@ -57,6 +57,7 @@ def build_wrapped(
     journey_route=None,
     top_trip_route=None,
     stops=None,
+    map_image_url=None,
 ):
     trips = trips or []
     total_distance_m = sum(_m(t.get("distance")) for t in trips)
@@ -130,6 +131,25 @@ def build_wrapped(
     if total_hours > 0:
         percent_stationary = (stationary_hours / total_hours) * 100.0
 
+    total_distance_km = total_distance_m / 1000.0 if total_distance_m else 0.0
+    avg_daily_distance_km = None
+    if total_days and total_distance_km:
+        try:
+            avg_daily_distance_km = total_distance_km / float(total_days)
+        except Exception:
+            avg_daily_distance_km = None
+
+    avg_speed_kph = None
+    if moving_hours and moving_hours > 0 and total_distance_km > 0:
+        avg_speed_kph = total_distance_km / moving_hours
+
+    nights_parked = None
+    if stationary_hours and stationary_hours > 0:
+        try:
+            nights_parked = int(round(stationary_hours / 24.0))
+        except Exception:
+            nights_parked = None
+
     # Optional: include a simplified route polyline for the top trip.
     # Keep payload bounded so the HTML remains lightweight and shareable.
     route = []
@@ -167,6 +187,7 @@ def build_wrapped(
             "to": to_ts,
             "generatedAt": generated_at,
             "tripCount": len(trips or []),
+            "mapImageUrl": map_image_url,
         },
         "stats": {
             # Primary headline metrics
@@ -185,6 +206,11 @@ def build_wrapped(
             "stationaryHours": stationary_hours,
             "totalHours": total_hours,
             "percentStationary": percent_stationary,
+
+            "totalDistanceKm": total_distance_km,
+            "avgDailyDistanceKm": avg_daily_distance_km,
+            "avgSpeedKph": avg_speed_kph,
+            "nightsParked": nights_parked,
 
             # Route(s)
             "journeyRoute": journey,
