@@ -19,16 +19,45 @@ class TraccarClient:
         self,
         base_url: str,
         auth_header: str,
+        auth_header_name: str = "Authorization",
         path_prefix: str = "",
     ):
         self.base_url = (base_url or "").rstrip("/")
         self.path_prefix = (path_prefix or "").rstrip("/")
         self._auth_header = auth_header
+        self._auth_header_name = auth_header_name
 
     @classmethod
     def direct_basic(cls, base_url: str, username: str, password: str):
         token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
         return cls(base_url=base_url, auth_header=f"Basic {token}")
+
+    @classmethod
+    def direct_user_token(cls, base_url: str, user_token: str):
+        """Create a client using a Traccar user token.
+
+        Traccar supports creating a session via:
+          GET /api/session?token=...
+
+        We then use the returned JSESSIONID cookie for subsequent API calls.
+        """
+        u = (base_url or "").rstrip("/") + "/api/session?" + urllib.parse.urlencode({"token": user_token})
+        req = urllib.request.Request(u, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            sc = resp.headers.get("Set-Cookie") or ""
+        js = None
+        try:
+            # Example: JSESSIONID=...; Path=/
+            for part in sc.split(","):
+                p = part.strip()
+                if p.startswith("JSESSIONID="):
+                    js = p.split(";", 1)[0]
+                    break
+        except Exception:
+            js = None
+        if not js:
+            raise RuntimeError("Traccar token session did not return JSESSIONID")
+        return cls(base_url=base_url, auth_header=js, auth_header_name="Cookie")
 
     @classmethod
     def ha_supervisor_proxy(cls, base_url: str = "http://supervisor/core"):
@@ -64,7 +93,7 @@ class TraccarClient:
         req = urllib.request.Request(
             url,
             headers={
-                "Authorization": self._auth_header,
+                self._auth_header_name: self._auth_header,
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },

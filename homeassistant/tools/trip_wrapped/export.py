@@ -36,7 +36,11 @@ def _load_secrets() -> dict[str, str]:
         import re
 
         out: dict[str, str] = {}
-        for key in ("roamcore_traccar_admin_email", "roamcore_traccar_admin_password"):
+        for key in (
+            "roamcore_traccar_admin_email",
+            "roamcore_traccar_admin_password",
+            "roamcore_traccar_user_token",
+        ):
             m = re.search(rf"^{key}:\s*\"?([^\"\n]+)\"?$", text, re.M)
             if m:
                 out[key] = m.group(1).strip()
@@ -60,15 +64,27 @@ def main():
     user = _norm(a.username)
     pw = _norm(a.password)
 
-    # Preferred (for RoamCore): use HA Supervisor token and the roamcore_traccar_proxy
-    # endpoint, so we don't need to store Traccar creds.
+    # Preferred (for RoamCore): use the Traccar user token (works even when the
+    # email/password session endpoint is broken) so we don't need to store creds.
     trips = None
-    ha_err = None
+    pref_err = None
     try:
-        ha_client = TraccarClient.ha_supervisor_proxy(base_url="http://supervisor/core")
-        trips = ha_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+        sec = _load_secrets()
+        tok = sec.get("roamcore_traccar_user_token")
+        if tok:
+            tok_client = TraccarClient.direct_user_token(base_url=a.base_url, user_token=tok)
+            trips = tok_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
     except Exception as e:
-        ha_err = e
+        pref_err = e
+
+    # Secondary preference: HA proxy (no direct token required)
+    ha_client = None
+    if trips is None:
+        try:
+            ha_client = TraccarClient.ha_supervisor_proxy(base_url="http://supervisor/core")
+            trips = ha_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+        except Exception as e:
+            pref_err = e
 
     if trips is None:
         # Fallback: direct Traccar Basic Auth using args or secrets.yaml
@@ -78,9 +94,9 @@ def main():
             pw = pw or sec.get("roamcore_traccar_admin_password")
         if not (user and pw):
             raise SystemExit(
-                "Trip Wrapped export failed. HA Supervisor proxy was unavailable and Traccar credentials are missing. "
+                "Trip Wrapped export failed. Preferred token/proxy methods were unavailable and Traccar credentials are missing. "
                 "Provide --username/--password or set roamcore_traccar_admin_email/password in /config/secrets.yaml. "
-                f"Proxy error: {ha_err}"
+                f"Last error: {pref_err}"
             )
         client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
         trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
@@ -92,20 +108,23 @@ def main():
     try:
         # Prefer HA proxy client if available (no creds), otherwise fall back to direct.
         try:
-            journey_route = ha_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
-        except Exception:
-            if "client" in locals() and client:
+            if "tok_client" in locals() and tok_client:
+                journey_route = tok_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+            elif ha_client:
+                journey_route = ha_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+            elif "client" in locals() and client:
                 journey_route = client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+        except Exception:
+            journey_route = None
 
         if trips:
             top_trip = max(trips, key=lambda t: (t.get("distance") or 0, t.get("duration") or 0))
             if top_trip and top_trip.get("startTime") and top_trip.get("endTime"):
                 try:
-                    top_trip_route = ha_client.get_route(
-                        device_id=a.device_id,
-                        from_ts=top_trip.get("startTime"),
-                        to_ts=top_trip.get("endTime"),
-                    )
+                    if "tok_client" in locals() and tok_client:
+                        top_trip_route = tok_client.get_route(device_id=a.device_id, from_ts=top_trip.get("startTime"), to_ts=top_trip.get("endTime"))
+                    elif ha_client:
+                        top_trip_route = ha_client.get_route(device_id=a.device_id, from_ts=top_trip.get("startTime"), to_ts=top_trip.get("endTime"))
                 except Exception:
                     if "client" in locals() and client:
                         top_trip_route = client.get_route(
