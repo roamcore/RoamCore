@@ -32,7 +32,7 @@ Published by `homeassistant/addons/roamcore-victron-auto`:
 ## rc_* contract entities (initial)
 
 Mirrored via Home Assistant templates in:
-- `homeassistant/packages/roamcore_victron_map.yaml`
+- `homeassistant/packages/roamcore_power.yaml`
 
 | rc_* | Type | Source vt_* |
 |---|---|---|
@@ -50,4 +50,3 @@ Mirrored via Home Assistant templates in:
 - Add charger/inverter/bus voltage/current detail signals as needed.
 - Introduce a battery “mode/state” rc entity (charging/discharging/idle) derived from `vt_battery_power_w`.
 - Add multi-instance device list diagnostic entity (already tracked by the add-on).
-
