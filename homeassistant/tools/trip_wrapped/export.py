@@ -75,7 +75,8 @@ def _build_staticmap_url(points: list[tuple[float, float]], w: int, h: int) -> s
         "maptype": "mapnik",
         "path": path,
     }
-    return "https://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
+    # Use http to avoid SSL/CA issues in constrained HA containers.
+    return "http://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
 
 
 def parse_args():
@@ -238,7 +239,14 @@ def main():
             out_png = os.path.join(os.path.dirname(a.out_html), "latest_map.png")
             import urllib.request
 
-            urllib.request.urlretrieve(map_url, out_png)
+            req = urllib.request.Request(
+                map_url,
+                headers={"User-Agent": "RoamCore-TripWrapped/0.1"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = resp.read()
+            with open(out_png, "wb") as f:
+                f.write(data)
             wrapped["meta"]["mapImageUrl"] = "/local/roamcore/trip_wrapped/latest_map.png"
     except Exception:
         map_url = None
