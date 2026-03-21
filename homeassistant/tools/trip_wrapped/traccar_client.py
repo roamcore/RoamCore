@@ -73,10 +73,10 @@ class TraccarClient:
             return json.loads(resp.read().decode("utf-8"))
 
     def get_trips(self, device_id: int, from_ts: str, to_ts: str):
-        # Note: path differs between direct Traccar (/api/reports/...) vs HA proxy (/reports/...).
-        # We normalize by setting a path_prefix for the HA proxy.
+        # We always call Traccar's canonical API path (/api/reports/...).
+        # When using the HA Supervisor proxy, `path_prefix` prepends the proxy base.
         return self._get_json(
-            "/reports/trips" if self.path_prefix else "/api/reports/trips",
+            "/api/reports/trips",
             {
                 "deviceId": device_id,
                 "from": from_ts,
@@ -91,7 +91,7 @@ class TraccarClient:
         speed, deviceTime, etc.
         """
         return self._get_json(
-            "/reports/route" if self.path_prefix else "/api/reports/route",
+            "/api/reports/route",
             {
                 "deviceId": device_id,
                 "from": from_ts,
