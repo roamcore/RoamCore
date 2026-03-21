@@ -85,15 +85,21 @@ def main():
         client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
         trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
 
-    # Best-effort: pull the route polyline for the top trip so the shareable
-    # HTML can render a real path on a minimalist basemap.
+    # Best-effort: pull a full-journey route polyline (hero map) plus a top-trip
+    # route (optional secondary).
+    journey_route = None
     top_trip_route = None
     try:
+        # Prefer HA proxy client if available (no creds), otherwise fall back to direct.
+        try:
+            journey_route = ha_client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+        except Exception:
+            if "client" in locals() and client:
+                journey_route = client.get_route(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+
         if trips:
-            # Choose the same "top trip" criteria as build_wrapped.
             top_trip = max(trips, key=lambda t: (t.get("distance") or 0, t.get("duration") or 0))
             if top_trip and top_trip.get("startTime") and top_trip.get("endTime"):
-                # Prefer HA proxy client if available (no creds), otherwise fall back to direct client.
                 try:
                     top_trip_route = ha_client.get_route(
                         device_id=a.device_id,
@@ -101,7 +107,6 @@ def main():
                         to_ts=top_trip.get("endTime"),
                     )
                 except Exception:
-                    # Build a direct client if we had to fall back for trips.
                     if "client" in locals() and client:
                         top_trip_route = client.get_route(
                             device_id=a.device_id,
@@ -109,6 +114,7 @@ def main():
                             to_ts=top_trip.get("endTime"),
                         )
     except Exception:
+        journey_route = None
         top_trip_route = None
 
     wrapped = build_wrapped(
@@ -118,6 +124,7 @@ def main():
         to_ts=a.to_ts,
         trips=trips,
         generated_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        journey_route=journey_route,
         top_trip_route=top_trip_route,
     )
 

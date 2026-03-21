@@ -46,11 +46,16 @@
     .mapOverlay{position:absolute; left:14px; top:14px; right:14px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; pointer-events:none;}
     .mapTag{pointer-events:none; display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(7,10,18,0.55); backdrop-filter: blur(10px); color:rgba(255,255,255,0.78); font-size:12px;}
 
-    .kpis{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .kpis{display:grid; grid-template-columns:1fr; gap:10px;}
     .kpi{padding:12px;border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.16);}
     .kLabel{font-size:12px; color:var(--muted);}
-    .kValue{margin-top:6px; font-size:22px; font-weight:950; letter-spacing:-0.4px;}
+    .kValue{margin-top:6px; font-size:26px; font-weight:950; letter-spacing:-0.6px;}
     .kSub{margin-top:2px; font-size:12px; color:var(--muted2);}
+
+    .headline{display:grid; gap:10px;}
+    .big{padding:14px 14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.16);}
+    .bigLine{font-size:28px; font-weight:1000; letter-spacing:-0.8px;}
+    .bigSub{margin-top:4px; color:var(--muted); font-size:12px;}
 
     .list{margin-top:12px; display:grid; gap:8px;}
     .row{display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);}
@@ -72,8 +77,8 @@
             <div class="brandSub">Trip Wrapped</div>
           </div>
         </div>
-        <div class="title" id="title">Trip Wrapped</div>
-        <div class="subtitle" id="range">—</div>
+        <div class="title" id="title">Your RoamCore Journey</div>
+        <div class="subtitle" id="subtitle">—</div>
       </div>
       <div class="pill"><span class="dot"></span><span id="generated">Generated —</span></div>
     </div>
@@ -91,18 +96,7 @@
 
       <div class="card">
         <div class="cardPad">
-          <div class="kpis">
-            <div class="kpi">
-              <div class="kLabel">Total distance</div>
-              <div class="kValue" id="distance">—</div>
-              <div class="kSub" id="tripCount">—</div>
-            </div>
-            <div class="kpi">
-              <div class="kLabel">Drive time</div>
-              <div class="kValue" id="duration">—</div>
-              <div class="kSub" id="pace">—</div>
-            </div>
-          </div>
+          <div class="headline" id="headline"></div>
 
           <div class="list" id="metrics"></div>
 
@@ -122,42 +116,49 @@
     const meta = d.meta || {};
     const stats = d.stats || {};
 
-    const fmtMi = (m) => {
-      const mi = (Number(m)||0) / 1609.344;
-      return mi >= 100 ? mi.toFixed(0) : mi.toFixed(1);
-    };
     const fmtKm = (m) => {
       const km = (Number(m)||0) / 1000;
       return km >= 100 ? km.toFixed(0) : km.toFixed(1);
     };
-    const fmtDur = (s) => {
-      s = Number(s)||0;
-      const h = Math.floor(s/3600);
-      const m = Math.floor((s%3600)/60);
-      return `${h}:${String(m).padStart(2,'0')}`;
+    const fmtInt = (n) => (Number(n)||0).toLocaleString();
+    const fmt1 = (n) => (Number(n)||0).toFixed(1);
+    const fmtDays = (d) => {
+      d = Number(d)||0;
+      if (d === 1) return '1 day';
+      return `${fmtInt(d)} days`;
+    };
+    const fmtHours = (h) => {
+      h = Number(h)||0;
+      return h >= 10 ? `${h.toFixed(0)}h` : `${h.toFixed(1)}h`;
     };
 
-    const title = meta.title || 'Trip Wrapped';
+    const title = meta.title || 'Your RoamCore Journey';
     const from = meta.from ? new Date(meta.from) : null;
     const to = meta.to ? new Date(meta.to) : null;
     const gen = meta.generatedAt ? new Date(meta.generatedAt) : null;
 
     document.getElementById('title').textContent = title;
-    document.getElementById('range').textContent = (from && to) ? `${from.toLocaleString()} → ${to.toLocaleString()}` : '—';
+    // Subtitle: Month Year (derived from start)
+    document.getElementById('subtitle').textContent = from ? from.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : '—';
     document.getElementById('generated').textContent = gen ? `Generated ${gen.toLocaleString()}` : 'Generated —';
     document.getElementById('device').textContent = meta.deviceId ? `Device ${meta.deviceId}` : 'Device —';
 
     const totalM = Number(stats.totalDistanceM || 0);
-    const totalS = Number(stats.totalDurationS || 0);
+    const totalDays = Number(stats.totalDays || 0);
+    const stops = Number(stats.numberOfStops || 0);
 
-    // Default to miles display (fits UK/US audiences for vanlife); can be changed later.
-    document.getElementById('distance').textContent = `${fmtMi(totalM)} mi`;
-    document.getElementById('tripCount').textContent = `${Number(meta.tripCount||0)} trips`;
-    document.getElementById('duration').textContent = fmtDur(totalS);
+    const headline = document.getElementById('headline');
+    const addBig = (line, sub) => {
+      const el = document.createElement('div');
+      el.className = 'big';
+      el.innerHTML = `<div class="bigLine">${line}</div><div class="bigSub">${sub||''}</div>`;
+      headline.appendChild(el);
+    };
 
-    const hrs = Math.max(0.0001, totalS/3600);
-    const mph = (totalM/1609.344) / hrs;
-    document.getElementById('pace').textContent = `Avg speed ${mph.toFixed(1)} mph`;
+    // Headline story metrics (max 3, as per spec)
+    addBig(`${fmtInt(Math.round((Number(totalM)||0)/1000))} km travelled`, 'Distance covered');
+    addBig(`${fmtInt(totalDays)} days on the road`, 'From your selected date range');
+    addBig(`${fmtInt(stops)} stops`, 'Movement segments detected');
 
     // Secondary "cool" metrics (best-effort, from raw trips)
     const trips = Array.isArray(d.trips) ? d.trips : [];
@@ -166,9 +167,6 @@
     const safeNum = (x) => Number.isFinite(Number(x)) ? Number(x) : 0;
     const sum = (arr, fn) => arr.reduce((a,v)=>a+safeNum(fn(v)),0);
 
-    const totalStops = trips.length ? Math.max(0, trips.length - 1) : 0;
-    const movingHours = hrs;
-
     const addRow = (l, r) => {
       const el = document.createElement('div');
       el.className = 'row';
@@ -176,16 +174,29 @@
       document.getElementById('metrics').appendChild(el);
     };
 
-    addRow('Total distance (km)', `${fmtKm(totalM)} km`);
-    addRow('Total drive time', `${fmtDur(totalS)}`);
-    addRow('Trips', `${Number(meta.tripCount||0)}`);
-    addRow('Stops (est.)', `${totalStops}`);
+    // Behaviour metrics (secondary)
+    const avgDaysPerStop = stats.avgDaysPerStop;
+    if (avgDaysPerStop !== null && avgDaysPerStop !== undefined && Number.isFinite(Number(avgDaysPerStop))) {
+      addRow('Movement frequency', `You moved every ${fmt1(avgDaysPerStop)} days`);
+    }
+    const longestDriveM = Number(stats.longestDriveM || 0);
+    if (longestDriveM > 0) {
+      addRow('Longest drive', `${fmtKm(longestDriveM)} km`);
+    }
+    const lsMs = Number(stats.longestStopDurationMs || 0);
+    const lsName = (stats.longestStopLocationName || '').toString().trim();
+    if (lsMs > 0) {
+      const d = Math.max(0.1, lsMs / (1000*60*60*24));
+      const dTxt = d >= 2 ? `${d.toFixed(0)} days` : `${d.toFixed(1)} days`;
+      addRow('Longest stop', lsName ? `${lsName} (${dTxt})` : `${dTxt}`);
+    }
 
-    if (topTrip) {
-      const dist = safeNum(topTrip.distance);
-      const dur = safeNum(topTrip.duration);
-      const avg = dur > 0 ? (dist/1609.344)/(dur/3600) : 0;
-      addRow('Top trip', `${fmtMi(dist)} mi · ${fmtDur(dur)} · ${avg.toFixed(1)} mph`);
+    // Fun/shareable: stationary vs moving
+    const pct = Number(stats.percentStationary);
+    const movingH = Number(stats.movingHours || 0);
+    const stationaryH = Number(stats.stationaryHours || 0);
+    if (Number.isFinite(pct) && pct >= 0) {
+      addRow('Trip rhythm', `${pct.toFixed(0)}% stationary · ${fmtHours(movingH)} moving`);
     }
 
     // --- Minimal dark "map" + glowing route ---
@@ -209,7 +220,7 @@
       return { x, y };
     };
 
-    const route = Array.isArray(stats.topTripRoute) ? stats.topTripRoute : [];
+    const route = Array.isArray(stats.journeyRoute) ? stats.journeyRoute : (Array.isArray(stats.topTripRoute) ? stats.topTripRoute : []);
 
     const bounds = () => {
       let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
