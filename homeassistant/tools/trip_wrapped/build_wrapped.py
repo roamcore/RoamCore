@@ -47,6 +47,22 @@ def _m(v):
         return 0.0
 
 
+def _haversine_km(lat1, lon1, lat2, lon2) -> float:
+    import math
+
+    try:
+        r = 6371.0
+        p1 = math.radians(float(lat1))
+        p2 = math.radians(float(lat2))
+        dlat = math.radians(float(lat2) - float(lat1))
+        dlon = math.radians(float(lon2) - float(lon1))
+        a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return r * c
+    except Exception:
+        return 0.0
+
+
 def build_wrapped(
     title,
     device_id,
@@ -179,6 +195,20 @@ def build_wrapped(
         except Exception:
             journey = []
 
+    # Start/end displacement + loopiness (story-friendly)
+    displacement_km = None
+    loopiness = None
+    if journey and len(journey) >= 2:
+        try:
+            a = journey[0]
+            b = journey[-1]
+            displacement_km = _haversine_km(a["lat"], a["lon"], b["lat"], b["lon"])
+            if displacement_km and displacement_km > 0:
+                loopiness = (total_distance_km / displacement_km) if total_distance_km else None
+        except Exception:
+            displacement_km = None
+            loopiness = None
+
     return {
         "meta": {
             "title": title,
@@ -211,6 +241,9 @@ def build_wrapped(
             "avgDailyDistanceKm": avg_daily_distance_km,
             "avgSpeedKph": avg_speed_kph,
             "nightsParked": nights_parked,
+
+            "displacementKm": displacement_km,
+            "loopiness": loopiness,
 
             # Route(s)
             "journeyRoute": journey,

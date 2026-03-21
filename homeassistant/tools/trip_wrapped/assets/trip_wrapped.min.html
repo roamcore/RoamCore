@@ -225,6 +225,15 @@
       addRow('Nights parked', `${Math.round(nights)}`);
     }
 
+    const disp = Number(stats.displacementKm);
+    if (Number.isFinite(disp) && disp > 0) {
+      addRow('As the crow flies', `${disp.toFixed(0)} km start → end`);
+    }
+    const loop = Number(stats.loopiness);
+    if (Number.isFinite(loop) && loop > 0) {
+      addRow('Detour factor', `${loop.toFixed(1)}×`);
+    }
+
     // Start → End (best-effort from route endpoints)
     try {
       if (route && route.length >= 2) {
@@ -240,17 +249,107 @@
       }
     } catch(e) {}
 
-    // --- Static map image (non-interactive) ---
+    // --- Static map snapshot (non-interactive) ---
+    // We render a MapLibre map once (raster OSM w/ labels) then snapshot it to PNG
+    // and replace the map with a simple <img> so users cannot pan/zoom.
+    const route = Array.isArray(stats.journeyRoute) ? stats.journeyRoute : (Array.isArray(stats.topTripRoute) ? stats.topTripRoute : []);
     const mapimg = document.getElementById('mapimg');
-    const mapUrl = (meta.mapImageUrl || '').toString().trim();
-    if (mapUrl) {
-      mapimg.src = mapUrl + `?t=${encodeURIComponent(meta.generatedAt || '')}`;
+    const mapBox = document.querySelector('.mapBox');
+
+    const loadCss = (href) => new Promise((res, rej) => {
+      const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; l.onload=res; l.onerror=rej; document.head.appendChild(l);
+    });
+    const loadJs = (src) => new Promise((res, rej) => {
+      const s=document.createElement('script'); s.src=src; s.defer=true; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    });
+
+    const fitBounds = (m, coords) => {
+      let minLat= 90, minLon=180, maxLat=-90, maxLon=-180;
+      for (const p of coords){
+        const lat=Number(p.lat), lon=Number(p.lon);
+        if(!Number.isFinite(lat)||!Number.isFinite(lon)) continue;
+        minLat=Math.min(minLat,lat); minLon=Math.min(minLon,lon);
+        maxLat=Math.max(maxLat,lat); maxLon=Math.max(maxLon,lon);
+      }
+      if (minLat>maxLat) return;
+      m.fitBounds([[minLon, minLat],[maxLon, maxLat]], {padding: 40, duration: 0});
+    };
+
+    const renderStaticSnapshot = async () => {
+      if (!route || route.length < 2) {
+        mapimg.style.display = 'none';
+        document.getElementById('routeInfo').textContent = '—';
+        return;
+      }
       document.getElementById('routeInfo').textContent = `${Number(route.length||0)} pts`;
-    } else {
-      // Fallback: keep the placeholder styling
-      mapimg.style.display = 'none';
-      document.getElementById('routeInfo').textContent = '—';
-    }
+
+      // Create a temporary div for MapLibre
+      const div = document.createElement('div');
+      div.style.position='absolute';
+      div.style.inset='0';
+      mapBox.appendChild(div);
+
+      // Load MapLibre from local HA assets
+      const base = '/local/roamcore/vendor/maplibre-gl';
+      await loadCss(base + '/maplibre-gl.css');
+      await loadJs(base + '/maplibre-gl.js');
+
+      const style = {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
+          }
+        },
+        layers: [
+          {id:'osm', type:'raster', source:'osm', paint:{'raster-opacity': 0.92, 'raster-saturation': -0.2, 'raster-contrast': 0.1}}
+        ]
+      };
+
+      // @ts-ignore
+      const map = new maplibregl.Map({
+        container: div,
+        style,
+        interactive: false,
+        attributionControl: false,
+        preserveDrawingBuffer: true,
+      });
+
+      map.once('load', () => {
+        // Add route layer
+        const coords = route.map(p => [Number(p.lon), Number(p.lat)]).filter(x => Number.isFinite(x[0]) && Number.isFinite(x[1]));
+        map.addSource('route', {type:'geojson', data:{type:'Feature', geometry:{type:'LineString', coordinates: coords}}});
+        map.addLayer({id:'route-glow', type:'line', source:'route', paint:{'line-color':'#6EE7FF','line-width':7,'line-opacity':0.35}});
+        map.addLayer({id:'route', type:'line', source:'route', paint:{'line-color':'#E6FDFF','line-width':3,'line-opacity':0.95}});
+        // Start/end dots
+        const start = coords[0];
+        const end = coords[coords.length-1];
+        map.addSource('se', {type:'geojson', data:{type:'FeatureCollection', features:[
+          {type:'Feature', properties:{c:'#34D399'}, geometry:{type:'Point', coordinates:start}},
+          {type:'Feature', properties:{c:'#FBBF24'}, geometry:{type:'Point', coordinates:end}},
+        ]}});
+        map.addLayer({id:'se', type:'circle', source:'se', paint:{'circle-radius':5,'circle-color':['get','c'],'circle-stroke-color':'#0B1020','circle-stroke-width':2}});
+        fitBounds(map, route);
+      });
+
+      map.once('idle', () => {
+        try {
+          const png = map.getCanvas().toDataURL('image/png');
+          map.remove();
+          div.remove();
+          mapimg.src = png;
+          mapimg.style.display = 'block';
+        } catch (e) {
+          try { map.remove(); } catch(e2) {}
+          try { div.remove(); } catch(e3) {}
+        }
+      });
+    };
+
+    renderStaticSnapshot();
   </script>
 </body>
 </html>
