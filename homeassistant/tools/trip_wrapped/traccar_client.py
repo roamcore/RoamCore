@@ -32,9 +32,16 @@ class TraccarClient:
 
     @classmethod
     def ha_supervisor_proxy(cls, base_url: str = "http://supervisor/core"):
-        token_path = "/run/s6/container_environment/SUPERVISOR_TOKEN"
-        if not os.path.exists(token_path):
-            raise RuntimeError(f"Supervisor token not found at {token_path}")
+        # In the Home Assistant Core container, Supervisor auth is exposed as
+        # /run/s6/container_environment/HASSIO_TOKEN.
+        # Older docs/examples sometimes reference SUPERVISOR_TOKEN.
+        token_paths = [
+            "/run/s6/container_environment/HASSIO_TOKEN",
+            "/run/s6/container_environment/SUPERVISOR_TOKEN",
+        ]
+        token_path = next((p for p in token_paths if os.path.exists(p)), None)
+        if not token_path:
+            raise RuntimeError(f"Supervisor token not found (tried: {', '.join(token_paths)})")
         token = open(token_path, "r", encoding="utf-8").read().strip()
         if not token:
             raise RuntimeError("Supervisor token was empty")
