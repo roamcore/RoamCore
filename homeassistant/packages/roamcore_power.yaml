@@ -59,6 +59,30 @@ template:
             {% endif %}
           {% endif %}
 
+      - name: "RC Power AC In Power"
+        unique_id: rc_power_ac_in_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set v = states('sensor.vt_ac_in_power_w') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {{ states('input_number.rc_mock_power_shore_power_w') }}
+          {% endif %}
+
+      - name: "RC Power AC Out Power"
+        unique_id: rc_power_ac_out_power
+        unit_of_measurement: "W"
+        device_class: power
+        state: >-
+          {% set v = states('sensor.vt_ac_out_power_w') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {{ states('input_number.rc_mock_power_inverter_output_power_w') }}
+          {% endif %}
+
       - name: "RC Power Inverter Status"
         unique_id: rc_power_inverter_status
         icon: mdi:power
@@ -240,9 +264,15 @@ template:
       - name: "RC Power Shore Connected"
         unique_id: rc_power_shore_connected
         state: >-
-          {% set src = states("binary_sensor.victron_grid_connected") %}
-          {% if src in ["on","off"] %}
-            {{ true if src == "on" else false }}
+          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
+          {% set v = states('binary_sensor.vt_shore_connected') %}
+          {% if v in ['on','off'] %}
+            {{ true if v == 'on' else false }}
           {% else %}
-            {{ is_state("input_boolean.rc_mock_power_shore_connected", "on") }}
+            {% set src = states('binary_sensor.victron_grid_connected') %}
+            {% if src in ['on','off'] %}
+              {{ true if src == 'on' else false }}
+            {% else %}
+              {{ is_state('input_boolean.rc_mock_power_shore_connected', 'on') }}
+            {% endif %}
           {% endif %}
