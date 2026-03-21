@@ -280,6 +280,87 @@
         }
       } catch(e) {}
 
+      // Optional dark mode: ?theme=dark
+      const theme = (new URLSearchParams(location.search).get('theme') || '').toLowerCase();
+      const wantDark = theme === 'dark';
+
+      try {
+        if (wantDark) document.getElementById('mapHint').textContent = 'RoamCore Trip Wrapped · Dark';
+      } catch(e) {}
+
+      const parseHex = (hex) => {
+        const h = hex.replace('#','').trim();
+        if (h.length === 3) {
+          const r = parseInt(h[0]+h[0],16), g=parseInt(h[1]+h[1],16), b=parseInt(h[2]+h[2],16);
+          return [r,g,b,1];
+        }
+        if (h.length === 6) {
+          const r = parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+          return [r,g,b,1];
+        }
+        return null;
+      };
+
+      const parseRgba = (s) => {
+        const m = String(s).match(/rgba?\(([^)]+)\)/i);
+        if (!m) return null;
+        const parts = m[1].split(',').map(x=>x.trim());
+        if (parts.length < 3) return null;
+        const r = Number(parts[0]), g = Number(parts[1]), b = Number(parts[2]);
+        const a = parts.length>=4 ? Number(parts[3]) : 1;
+        if (![r,g,b,a].every(x=>Number.isFinite(x))) return null;
+        return [r,g,b,a];
+      };
+
+      const toRgbaStr = (c) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${Math.max(0,Math.min(1,c[3]??1))})`;
+
+      const darkenColor = (s) => {
+        // Heuristic: invert lightness-ish and bias towards deep navy.
+        const hex = parseHex(s);
+        const rgba = hex || parseRgba(s);
+        if (!rgba) return s;
+        let [r,g,b,a] = rgba;
+        // Convert to luminance and remap
+        const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+        const t = 1 - lum;
+        // Base dark palette anchor
+        const base = [7,10,18];
+        // Mix original inverted color with base
+        const rr = base[0] + (255 - r) * 0.55 * (0.35 + 0.65*t);
+        const gg = base[1] + (255 - g) * 0.55 * (0.35 + 0.65*t);
+        const bb = base[2] + (255 - b) * 0.65 * (0.35 + 0.65*t);
+        return toRgbaStr([rr,gg,bb,a]);
+      };
+
+      const mapPaint = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        for (const k of Object.keys(obj)) {
+          const v = obj[k];
+          if (typeof v === 'string') {
+            if (v.startsWith('#') || v.toLowerCase().startsWith('rgb')) obj[k] = darkenColor(v);
+          } else if (Array.isArray(v)) {
+            // Expressions can contain colors as string literals.
+            obj[k] = v.map(x => (typeof x === 'string' && (x.startsWith('#') || x.toLowerCase().startsWith('rgb'))) ? darkenColor(x) : x);
+          } else if (v && typeof v === 'object') {
+            mapPaint(v);
+          }
+        }
+      };
+
+      if (wantDark) {
+        try {
+          style.sprite = 'https://protomaps.github.io/basemaps-assets/sprites/v4/dark';
+          // Darken background + most paints (heuristic)
+          for (const lyr of (style.layers || [])) {
+            if (lyr && lyr.paint) mapPaint(lyr.paint);
+            if (lyr && lyr.type === 'background') {
+              lyr.paint = lyr.paint || {};
+              lyr.paint['background-color'] = 'rgba(7,10,18,1)';
+            }
+          }
+        } catch(e) {}
+      }
+
       // @ts-ignore
       const map = new maplibregl.Map({
         container: div,
