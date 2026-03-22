@@ -1859,6 +1859,7 @@ discover();
 
         snap_uniq = f"{self.device_id}_snapshot_state"
         snap_cfg_topic = f"{self.discovery_prefix}/sensor/{self.device_id}/{snap_uniq}/config"
+        snap_topic = f"roamcore/victron/{self.device_id}/snapshot_state"
         snap_cfg = {
             "name": "Victron Snapshot State",
             "unique_id": snap_uniq,
