@@ -22,3 +22,6 @@ Thumbs.db
 *.key
 *.pem
 secrets/
+
+# Build artifacts / scratch
+artifacts/tmp/

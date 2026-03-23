@@ -255,6 +255,15 @@ class VictronAuto:
                 "icon": "mdi:battery",
             },
 
+            # VE.Bus inverter/charger state (best-effort).
+            # Published by com.victronenergy.vebus.<id> on most systems.
+            # Value is typically an integer state code.
+            ("vebus", "State"): {
+                "vt_key": "vt_inverter_state_code",
+                "name": "Victron inverter state (code)",
+                "icon": "mdi:power",
+            },
+
             # Total solar power (best-effort). Many GX systems publish this under
             # com.victronenergy.system.
             ("system", "Dc/Pv/Power"): {

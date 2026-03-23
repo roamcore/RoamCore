@@ -87,11 +87,29 @@ template:
         unique_id: rc_power_inverter_status
         icon: mdi:power
         state: >-
-          {% set v = states('sensor.victron_inverter_state') %}
-          {% if v not in ['unknown','unavailable','none',''] %}
-            {{ v }}
+          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
+          {% set code = states('sensor.vt_inverter_state_code') %}
+          {% if code not in ['unknown','unavailable','none',''] %}
+            {# Map common VE.Bus codes to friendly labels; otherwise keep the code. #}
+            {% set c = code | int(-1) %}
+            {% if c == 0 %}
+              off
+            {% elif c == 8 %}
+              passthru
+            {% elif c == 9 %}
+              inverting
+            {% elif c == 2 %}
+              fault
+            {% else %}
+              state_{{ c }}
+            {% endif %}
           {% else %}
-            {{ states('input_select.rc_mock_power_inverter_status') }}
+            {% set v2 = states('sensor.victron_inverter_state') %}
+            {% if v2 not in ['unknown','unavailable','none',''] %}
+              {{ v2 }}
+            {% else %}
+              {{ states('input_select.rc_mock_power_inverter_status') }}
+            {% endif %}
           {% endif %}
 
       # --- Power detail metrics ---
