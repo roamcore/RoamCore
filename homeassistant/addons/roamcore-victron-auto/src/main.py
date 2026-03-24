@@ -247,6 +247,13 @@ class VictronAuto:
                 "unit": "W",
                 "icon": "mdi:battery-charging",
             },
+            ("system", "Dc/Battery/Temperature"): {
+                "vt_key": "vt_battery_temperature_c",
+                "name": "Victron battery temperature",
+                "device_class": "temperature",
+                "unit": "°C",
+                "icon": "mdi:thermometer",
+            },
             ("system", "Soc"): {
                 "vt_key": "vt_battery_soc_percent",
                 "name": "Victron battery state of charge",

@@ -168,7 +168,12 @@ template:
         unique_id: rc_power_battery_temperature_c
         unit_of_measurement: "°C"
         state: >-
-          {{ states("input_number.rc_mock_power_battery_temperature_c") }}
+          {% set v = states('sensor.vt_battery_temperature_c') %}
+          {% if v not in ['unknown','unavailable','none',''] %}
+            {{ v }}
+          {% else %}
+            {{ states("input_number.rc_mock_power_battery_temperature_c") }}
+          {% endif %}
 
       - name: "RC Power Battery Capacity"
         unique_id: rc_power_battery_capacity_ah
