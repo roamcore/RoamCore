@@ -61,6 +61,7 @@ def main():
         f"N/{portal_id}/system/0/Dc/Battery/Voltage": j(52.3),
         f"N/{portal_id}/system/0/Dc/Battery/Current": j(-12.4),
         f"N/{portal_id}/system/0/Dc/Battery/Power": j(-650.0),
+        f"N/{portal_id}/system/0/Dc/Battery/Temperature": j(24.7),
         f"N/{portal_id}/system/0/Soc": j(78.0),
         f"N/{portal_id}/system/0/Dc/Pv/Power": j(1230.0),
         f"N/{portal_id}/system/0/Dc/System/Power": j(410.0),
@@ -69,6 +70,7 @@ def main():
         f"N/{portal_id}/vebus/0/Ac/ActiveIn/P": j(980.0),
         f"N/{portal_id}/vebus/0/Ac/Out/P": j(740.0),
         f"N/{portal_id}/vebus/0/Ac/ActiveIn/Connected": j(1),
+        f"N/{portal_id}/vebus/0/State": j(8),
         f"N/{portal_id}/solarcharger/0/Yield/Power": j(1200.0),
 
         # Example device instance discovery signal
@@ -125,4 +127,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
