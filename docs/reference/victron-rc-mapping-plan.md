@@ -22,11 +22,13 @@ Published by `homeassistant/addons/roamcore-victron-auto`:
 - `sensor.vt_battery_voltage_v`
 - `sensor.vt_battery_current_a`
 - `sensor.vt_battery_power_w`
+- `sensor.vt_battery_temperature_c`
 - `sensor.vt_battery_soc_percent`
 - `sensor.vt_solar_power_w`
 - `sensor.vt_dc_load_power_w`
 - `sensor.vt_ac_in_power_w`
 - `sensor.vt_ac_out_power_w`
+- `sensor.vt_inverter_state_code`
 - `binary_sensor.vt_shore_connected`
 
 ## rc_* contract entities (initial)
