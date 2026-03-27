@@ -321,6 +321,27 @@ class VictronAuto:
             },
         }
 
+        # Guardrail: vt_key should be unique across mappings.
+        # If we ever add multiple sources for the same vt_key (e.g. direct system path
+        # + aggregated fallback), we want that to be an explicit, reviewed decision.
+        _seen_vt: dict[str, tuple[str, str]] = {}
+        for (svc, path), spec in self._path_to_vt.items():
+            vt_key = str(spec.get("vt_key") or "")
+            if not vt_key:
+                continue
+            if vt_key in _seen_vt:
+                prev = _seen_vt[vt_key]
+                LOG.warning(
+                    "Duplicate vt_key mapping detected: %s maps both %s/%s and %s/%s",
+                    vt_key,
+                    prev[0],
+                    prev[1],
+                    svc,
+                    path,
+                )
+            else:
+                _seen_vt[vt_key] = (svc, path)
+
         # Aggregation caches for multi-instance services.
         self._vebus_ac_in_w: dict[str, float] = {}
         self._vebus_ac_out_w: dict[str, float] = {}
