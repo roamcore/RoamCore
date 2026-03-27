@@ -67,15 +67,25 @@ def main():
         f"N/{portal_id}/system/0/Dc/System/Power": j(410.0),
 
         # Multi-instance aggregates (VE.Bus + solarcharger)
+        # Publish multiple instances so roamcore-victron-auto aggregation paths are exercised.
         f"N/{portal_id}/vebus/0/Ac/ActiveIn/P": j(980.0),
         f"N/{portal_id}/vebus/0/Ac/Out/P": j(740.0),
         f"N/{portal_id}/vebus/0/Ac/ActiveIn/Connected": j(1),
         f"N/{portal_id}/vebus/0/State": j(8),
-        f"N/{portal_id}/solarcharger/0/Yield/Power": j(1200.0),
 
-        # Example device instance discovery signal
+        f"N/{portal_id}/vebus/1/Ac/ActiveIn/P": j(120.0),
+        f"N/{portal_id}/vebus/1/Ac/Out/P": j(80.0),
+        f"N/{portal_id}/vebus/1/Ac/ActiveIn/Connected": j(0),
+        f"N/{portal_id}/vebus/1/State": j(0),
+
+        f"N/{portal_id}/solarcharger/0/Yield/Power": j(1200.0),
+        f"N/{portal_id}/solarcharger/1/Yield/Power": j(200.0),
+
+        # Example device instance discovery signals
         f"N/{portal_id}/vebus/0/ProductId": j("0xA381"),
+        f"N/{portal_id}/vebus/1/ProductId": j("0xA381"),
         f"N/{portal_id}/solarcharger/0/ProductId": j("0xA042"),
+        f"N/{portal_id}/solarcharger/1/ProductId": j("0xA042"),
     }
 
     # Subscribe to keepalive requests and respond with full_publish_completed
