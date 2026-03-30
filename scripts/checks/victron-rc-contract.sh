@@ -9,6 +9,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PLAN_MD="$ROOT_DIR/docs/reference/victron-rc-mapping-plan.md"
 PKG_DIR="$ROOT_DIR/homeassistant/packages"
+PKG_FILE="$PKG_DIR/roamcore_power.yaml"
 
 if [[ ! -f "$PLAN_MD" ]]; then
   echo "Missing: $PLAN_MD" >&2
@@ -16,6 +17,10 @@ if [[ ! -f "$PLAN_MD" ]]; then
 fi
 if [[ ! -d "$PKG_DIR" ]]; then
   echo "Missing dir: $PKG_DIR" >&2
+  exit 2
+fi
+if [[ ! -f "$PKG_FILE" ]]; then
+  echo "Missing: $PKG_FILE" >&2
   exit 2
 fi
 
@@ -27,20 +32,22 @@ doc_rc="$(
     | sort -u
 )"
 
-# Extract unique_id values from packages.
+# Extract unique_id values from the RoamCore power package.
+# This keeps the check scoped to the Victron → power contract layer.
 # unique_id: rc_...
 code_rc="$(
-  grep -RhoE '^\s*unique_id:\s*rc_[a-zA-Z0-9_]+' "$PKG_DIR" \
+  grep -hoE '^\s*unique_id:\s*rc_[a-zA-Z0-9_]+' "$PKG_FILE" \
     | sed -E 's/^\s*unique_id:\s*//' \
     | sort -u
 )"
 
 echo "== Victron rc_* contract check =="
 echo "Docs: $(echo "$doc_rc" | wc -l | tr -d ' ') rc_* ids"
-echo "Code: $(echo "$code_rc" | wc -l | tr -d ' ') rc_* ids (packages)"
+echo "Code: $(echo "$code_rc" | wc -l | tr -d ' ') rc_* ids ($PKG_FILE)"
 echo
 
 missing_in_code="$({ comm -23 <(echo "$doc_rc") <(echo "$code_rc") || true; } | sed '/^$/d')"
+extra_in_code="$({ comm -13 <(echo "$doc_rc") <(echo "$code_rc") || true; } | sed '/^$/d')"
 
 if [[ -n "$missing_in_code" ]]; then
   echo "FAIL: rc_* ids present in docs but missing unique_id in homeassistant/packages:" >&2
@@ -49,3 +56,11 @@ if [[ -n "$missing_in_code" ]]; then
 fi
 
 echo "OK: all docs rc_* ids exist in packages"
+
+if [[ -n "$extra_in_code" ]]; then
+  echo
+  echo "WARN: rc_* ids present in packages but not listed in docs/reference/victron-rc-mapping-plan.md:"
+  echo "$extra_in_code" | sed 's/^/  - /'
+  echo
+  echo "Tip: update the mapping plan doc (or intentionally ignore) to keep contract docs current."
+fi
