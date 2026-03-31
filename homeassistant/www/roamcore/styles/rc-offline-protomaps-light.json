@@ -13,8 +13,9 @@
     "protomaps_hi": {
       "type": "vector",
       "minzoom": 9,
-      "maxzoom": 11,
-      "url": "pmtiles://__ORIGIN__/local/roamcore/pmtiles/protomaps_europe_z9-11.pmtiles",
+      "maxzoom": 12,
+      "url": "pmtiles://__ORIGIN__/local/roamcore/pmtiles/protomaps_uk_z0-12.pmtiles",
+      "bounds": [-12.5, 49.5, 3.5, 61.5],
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     }
   },
