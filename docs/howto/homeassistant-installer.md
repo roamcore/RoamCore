@@ -28,6 +28,8 @@ From this repo’s `homeassistant/` folder into HA’s `/config`:
 - `homeassistant/www/*` → `/config/www/*`  
   (RoamCore JS ends up at `/config/www/roamcore/*.js`, served as `/local/roamcore/*.js`)
 - `homeassistant/lovelace/*` → `/config/lovelace/*`
+- `homeassistant/tools/*` → `/config/tools/*`
+  (used by local exporters like Trip Wrapped)
 
 The installer writes state to:
 
@@ -57,4 +59,3 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistan
    - Settings → Devices & services: confirm any RoamCore custom integrations appear/initialize.
 4. Optional API probe (from a machine with an HA token) using the repo helper:
    - `scripts/ha/check-rc-entities.sh`
-

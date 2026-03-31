@@ -151,6 +151,10 @@ install_dir_children "$HA_SRC/www" "$CONFIG_DIR/www"
 # 4) Lovelace yaml → /config/lovelace/
 install_dir_children "$HA_SRC/lovelace" "$CONFIG_DIR/lovelace"
 
+# 5) Tools (exporters/helpers) → /config/tools/
+# This is required for features like Trip Wrapped which execute local python.
+install_dir_children "$HA_SRC/tools" "$CONFIG_DIR/tools"
+
 # Write install metadata.
 {
   echo "installed_at=$(date)"
@@ -181,4 +185,3 @@ echo "Next steps (in Home Assistant UI):"
 echo "- Settings → System → Restart (or restart Core)"
 echo "- Developer Tools → YAML → Reload Template Entities / Automations as needed"
 echo "- Lovelace: add the dashboard yaml, and add /local/roamcore/*.js as resources if required"
-
