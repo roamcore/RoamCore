@@ -10,12 +10,14 @@ from datetime import datetime, timezone
 try:
     # When executed as a module/package.
     from .build_wrapped import build_wrapped
+    from .comparisons import compute_comparisons
     from .history import upsert_history
     from .render_html import render_html
     from .traccar_client import TraccarClient, TraccarError
 except Exception:  # pragma: no cover
     # When executed as a standalone script.
     from build_wrapped import build_wrapped
+    from comparisons import compute_comparisons
     from history import upsert_history
     from render_html import render_html
     from traccar_client import TraccarClient, TraccarError
@@ -256,10 +258,9 @@ def main():
     # Local, privacy-first comparisons vs past trips.
     try:
         history = upsert_history(config_dir=a.config_dir, wrapped=wrapped)
-        # comparisons are computed in a later step (kept empty for now, but persisted history exists)
-        wrapped["comparisons"] = {"historyCount": max(0, len(history) - 1)}
+        wrapped["comparisons"] = compute_comparisons(history=history, wrapped=wrapped)
     except Exception:
-        pass
+        wrapped["comparisons"] = {"historyCount": 0, "records": {}, "vsAverage": {}, "insights": []}
 
     # Generate a static map PNG (non-interactive) and reference it from HTML.
     map_url = None
