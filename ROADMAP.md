@@ -138,7 +138,6 @@ A community showcase for power user setups, custom dashboards, creative integrat
 ### Mobile App
 A dedicated mobile application (PWA initially, native later) for a streamlined on-the-go experience. Auto-discovery, adaptive layouts, and quick access to the most-used controls.
 
-
 ---
 
 ## Guiding Principles
