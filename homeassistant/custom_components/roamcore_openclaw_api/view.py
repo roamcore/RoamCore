@@ -158,3 +158,32 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
         }
 
         return self.json(payload)
+
+
+class RoamCoreOpenClawSkillView(HomeAssistantView):
+    """Return copy/paste friendly agent config (legacy integration)."""
+
+    url = "/api/roamcore/openclaw/skill"
+    name = "api:roamcore:openclaw:skill"
+    requires_auth = False
+
+    async def get(self, request):
+        hass: HomeAssistant = request.app["hass"]
+        base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
+        summary = f"{base}/api/roamcore/openclaw/summary"
+
+        payload: dict[str, Any] = {
+            "contract": {"name": "roamcore_openclaw_skill", "version": 1},
+            "generated_at": dt_util.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+            "roamcore": {
+                "openclaw_summary_url": summary,
+                "requires_auth": False,
+                "summary_contract": {"name": "roamcore_openclaw_summary", "version": CONTRACT_VERSION},
+            },
+            "user_instructions": [
+                "Copy openclaw_summary_url into your agent skill/config.",
+                "If you expose Home Assistant beyond a trusted LAN, put it behind a VPN/proxy and enable auth.",
+            ],
+        }
+
+        return self.json(payload)

@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
-from .view import RoamCoreOpenClawSummaryView
+from .view import RoamCoreOpenClawSummaryView, RoamCoreOpenClawSkillView
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -20,5 +20,5 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return True
 
     hass.http.register_view(RoamCoreOpenClawSummaryView())
+    hass.http.register_view(RoamCoreOpenClawSkillView())
     return True
-
