@@ -931,12 +931,33 @@ class RoamcoreBasePage extends HTMLElement {
       const centerLat = saved ? Number(saved.lat) : Number(lat);
       const zoom = saved ? Number(saved.zoom) : 10;
 
+      const origin = (() => {
+        try { return window.location.origin; } catch (e) { return ''; }
+      })();
+
+      const minimalRasterStyle = () => ({
+        version: 8,
+        glyphs: `${origin}/local/roamcore/fonts/{fontstack}/{range}.pbf`,
+        sprite: `${origin}/local/roamcore/sprites/rc-sprite`,
+        sources: {
+          rc_raster: {
+            type: 'raster',
+            tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            maxzoom: 18,
+          },
+        },
+        layers: [
+          { id: 'background', type: 'background', paint: { 'background-color': '#0b1220' } },
+          { id: 'rc_raster', type: 'raster', source: 'rc_raster', paint: { 'raster-opacity': 1.0 } },
+        ],
+      });
+
       // Allow using a local JSON style and patching in the current origin.
       let style = styleUrl;
       try {
         if (typeof styleUrl === 'string' && styleUrl.startsWith('/local/roamcore/styles/') && styleUrl.endsWith('.json')) {
           const obj = await this._loadJson(styleUrl);
-          const origin = window.location.origin;
           const replaceOrigin = (v) => (typeof v === 'string' ? v.replaceAll('__ORIGIN__', origin) : v);
           if (obj && obj.sources) {
             for (const k of Object.keys(obj.sources)) {
@@ -949,8 +970,12 @@ class RoamcoreBasePage extends HTMLElement {
           style = obj;
         }
       } catch (e) {
-        console.warn('failed to load/patch style json', e);
+        console.warn('failed to load/patch style json; falling back to raster-only style', e);
+        style = minimalRasterStyle();
       }
+
+      // If a remote style URL is configured and fails later, MapLibre will emit an error.
+      // We still always add a raster base layer so the user never sees a flat grey background.
 
       const m = new maplibregl.Map({
         container,
@@ -975,7 +1000,9 @@ class RoamcoreBasePage extends HTMLElement {
             type: 'raster',
             tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
             tileSize: 256,
-            maxzoom: offlineMaxZ,
+            // Allow zooming beyond offline coverage; the tile endpoint can decide what to return.
+            // Keeping this high avoids MapLibre clamping/blanking.
+            maxzoom: Math.max(offlineMaxZ, 18),
           });
           // Insert just above the style background (background is often opaque grey).
           const style = m.getStyle?.();
@@ -985,8 +1012,7 @@ class RoamcoreBasePage extends HTMLElement {
             type: 'raster',
             source: 'rc_raster_fallback',
             paint: { 'raster-opacity': 1.0 },
-            // Only show when vector zooms are likely missing.
-            minzoom: 9,
+            minzoom: 0,
           }, beforeId);
         } catch (e) {}
       };

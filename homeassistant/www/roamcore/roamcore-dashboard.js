@@ -771,11 +771,32 @@ class RoamcoreDashboardCard extends HTMLElement {
         container.style.height = '100%';
         el.appendChild(container);
 
+        const origin = (() => {
+          try { return window.location.origin; } catch (e) { return ''; }
+        })();
+
+        const minimalRasterStyle = () => ({
+          version: 8,
+          glyphs: `${origin}/local/roamcore/fonts/{fontstack}/{range}.pbf`,
+          sprite: `${origin}/local/roamcore/sprites/rc-sprite`,
+          sources: {
+            rc_raster: {
+              type: 'raster',
+              tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              maxzoom: 18,
+            },
+          },
+          layers: [
+            { id: 'background', type: 'background', paint: { 'background-color': '#0b1220' } },
+            { id: 'rc_raster', type: 'raster', source: 'rc_raster', paint: { 'raster-opacity': 1.0 } },
+          ],
+        });
+
         let style = mode.styleUrl;
         try {
           if (typeof style === 'string' && style.startsWith('/local/roamcore/styles/') && style.endsWith('.json')) {
             const obj = await this._loadJson(style);
-            const origin = window.location.origin;
             const replaceOrigin = (v) => (typeof v === 'string' ? v.replaceAll('__ORIGIN__', origin) : v);
             if (obj && obj.sources) {
               for (const k of Object.keys(obj.sources)) {
@@ -788,7 +809,8 @@ class RoamcoreDashboardCard extends HTMLElement {
             style = obj;
           }
         } catch (e) {
-          console.warn('failed to load/patch style json (overview)', e);
+          console.warn('failed to load/patch style json (overview); falling back to raster-only style', e);
+          style = minimalRasterStyle();
         }
 
         const m = new maplibregl.Map({
@@ -811,7 +833,7 @@ class RoamcoreDashboardCard extends HTMLElement {
               type: 'raster',
               tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
               tileSize: 256,
-              maxzoom: offlineMaxZ,
+              maxzoom: Math.max(offlineMaxZ, 18),
             });
             // Insert just above the style background (background is often opaque grey).
             const style = m.getStyle?.();
@@ -821,7 +843,7 @@ class RoamcoreDashboardCard extends HTMLElement {
               type: 'raster',
               source: 'rc_raster_fallback',
               paint: { 'raster-opacity': 1.0 },
-              minzoom: 9,
+              minzoom: 0,
             }, beforeId);
           } catch (e) {}
         };
