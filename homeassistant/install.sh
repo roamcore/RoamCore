@@ -145,6 +145,10 @@ install_dir_children "$HA_SRC/packages" "$CONFIG_DIR/packages"
 # 2) Custom components → /config/custom_components/
 install_dir_children "$HA_SRC/custom_components" "$CONFIG_DIR/custom_components"
 
+# HACS note: if both legacy roamcore_openclaw_api and new roamcore are present,
+# both will attempt to register the same endpoint. The RoamCore HACS integration
+# supersedes the legacy component.
+
 # 3) Dashboard JS → /config/www/roamcore/
 install_dir_children "$HA_SRC/www" "$CONFIG_DIR/www"
 

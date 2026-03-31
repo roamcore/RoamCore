@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "RoamCore",
+        "description": "Enable core RoamCore helpers. You can change these later in Options.",
+        "data": {
+          "openclaw_api_enabled": "Enable OpenClaw JSON API endpoint",
+          "openclaw_api_requires_auth": "Require Home Assistant auth for OpenClaw endpoint"
+        }
+      }
+    }
+  }
+}
+

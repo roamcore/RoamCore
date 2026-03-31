@@ -1,0 +1,12 @@
+{
+  "domain": "roamcore",
+  "name": "RoamCore",
+  "version": "0.1.0-beta.1",
+  "documentation": "https://github.com/roamcore/RoamCore",
+  "issue_tracker": "https://github.com/roamcore/RoamCore/issues",
+  "codeowners": ["@roamcore"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "requirements": []
+}
+

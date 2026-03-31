@@ -67,6 +67,19 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistan
 
 Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
 
+### HACS install (beta: Custom Repository)
+
+If you want installs/updates through the Home Assistant UI, you can add RoamCore as a **HACS Custom Repository** (beta path):
+
+1) Install HACS (if you haven’t already): https://hacs.xyz/
+2) In Home Assistant: **HACS → Integrations → ⋮ → Custom repositories**
+3) Add the repository:
+   - URL: `https://github.com/roamcore/RoamCore`
+   - Category: **Integration**
+4) Install **RoamCore** from HACS, then restart Home Assistant.
+
+Docs: [`docs/howto/hacs-custom-repo-install.md`](docs/howto/hacs-custom-repo-install.md)
+
 ### RoamCore OS
 
 The full experience. A pre-configured Proxmox image running Home Assistant OS and OpenWrt as VMs on supported hardware (Protectli VP2430). Integrated cellular connectivity, WAN failover, modem GPS — all pre-configured.

@@ -1,0 +1,10 @@
+{
+  "name": "RoamCore",
+  "content_in_root": false,
+  "domains": [
+    "roamcore"
+  ],
+  "country": "ALL",
+  "render_readme": true
+}
+
