@@ -1,0 +1,229 @@
+# RoamCore contract entities: Levelling / tilt (HA-only beta)
+#
+# Goal:
+# - Provide stable rc_level_* entities for the UI/automations.
+# - Support ESPHome IMU nodes (recommended) without hardcoding a single vendor/entity.
+# - Provide a simple, HA-native calibration flow (store offsets in helpers).
+#
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+#
+# Upstream expectations (ESPHome):
+# - Ideally publish pitch/roll in degrees as Home Assistant sensors.
+# - Common entity_id patterns are auto-detected below.
+
+input_number:
+  rc_level_pitch_offset_deg:
+    name: "RC Level Pitch Offset"
+    min: -45
+    max: 45
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: box
+    initial: 0
+
+  rc_level_roll_offset_deg:
+    name: "RC Level Roll Offset"
+    min: -45
+    max: 45
+    step: 0.1
+    unit_of_measurement: "°"
+    mode: box
+    initial: 0
+
+template:
+  # Calibration button: capture current raw pitch/roll as offsets.
+  - button:
+      - name: "RC Level Calibrate"
+        unique_id: rc_level_calibrate
+        icon: mdi:target
+        press:
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.rc_level_pitch_offset_deg
+            data:
+              value: "{{ states('sensor.rc_level_pitch_raw_deg') | float(0) }}"
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.rc_level_roll_offset_deg
+            data:
+              value: "{{ states('sensor.rc_level_roll_raw_deg') | float(0) }}"
+
+  - sensor:
+      # --- Source auto-detection ---
+      # These sensors choose the first available upstream ESPHome entity from a
+      # curated list of common names. Extend the candidate lists as needed.
+
+      - name: "RC Level Pitch Source"
+        unique_id: rc_level_pitch_source
+        icon: mdi:source-branch
+        state: >-
+          {% set candidates = [
+            'sensor.rc_esphome_level_pitch_deg',
+            'sensor.esphome_level_pitch_deg',
+            'sensor.level_pitch_deg',
+            'sensor.pitch_deg',
+            'sensor.pitch',
+            'sensor.imu_pitch',
+            'sensor.imu_pitch_deg',
+            'sensor.tilt_pitch',
+            'sensor.tilt_pitch_deg',
+            'sensor.mpu6050_pitch',
+            'sensor.mpu6050_pitch_deg',
+            'sensor.bno085_pitch',
+            'sensor.bno085_pitch_deg'
+          ] %}
+          {% set found = none %}
+          {% for e in candidates %}
+            {% set s = states(e) %}
+            {% if s not in ['unknown','unavailable','none',''] %}
+              {% set found = e %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ found if found is not none else 'none' }}
+
+      - name: "RC Level Roll Source"
+        unique_id: rc_level_roll_source
+        icon: mdi:source-branch
+        state: >-
+          {% set candidates = [
+            'sensor.rc_esphome_level_roll_deg',
+            'sensor.esphome_level_roll_deg',
+            'sensor.level_roll_deg',
+            'sensor.roll_deg',
+            'sensor.roll',
+            'sensor.imu_roll',
+            'sensor.imu_roll_deg',
+            'sensor.tilt_roll',
+            'sensor.tilt_roll_deg',
+            'sensor.mpu6050_roll',
+            'sensor.mpu6050_roll_deg',
+            'sensor.bno085_roll',
+            'sensor.bno085_roll_deg'
+          ] %}
+          {% set found = none %}
+          {% for e in candidates %}
+            {% set s = states(e) %}
+            {% if s not in ['unknown','unavailable','none',''] %}
+              {% set found = e %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ found if found is not none else 'none' }}
+
+      # --- Raw pitch/roll (degrees) ---
+      - name: "RC Level Pitch Raw"
+        unique_id: rc_level_pitch_raw_deg
+        unit_of_measurement: "°"
+        state: >-
+          {% set src = states('sensor.rc_level_pitch_source') %}
+          {% if src in ['none','unknown','unavailable',''] %}
+            {{ 'unknown' }}
+          {% else %}
+            {{ states(src) | float }}
+          {% endif %}
+        availability: >-
+          {% set src = states('sensor.rc_level_pitch_source') %}
+          {{ src not in ['none','unknown','unavailable',''] }}
+
+      - name: "RC Level Roll Raw"
+        unique_id: rc_level_roll_raw_deg
+        unit_of_measurement: "°"
+        state: >-
+          {% set src = states('sensor.rc_level_roll_source') %}
+          {% if src in ['none','unknown','unavailable',''] %}
+            {{ 'unknown' }}
+          {% else %}
+            {{ states(src) | float }}
+          {% endif %}
+        availability: >-
+          {% set src = states('sensor.rc_level_roll_source') %}
+          {{ src not in ['none','unknown','unavailable',''] }}
+
+      # --- Corrected pitch/roll (raw - offset) ---
+      - name: "RC Level Pitch"
+        unique_id: rc_level_pitch_deg
+        unit_of_measurement: "°"
+        icon: mdi:axis-x-rotate-clockwise
+        state: >-
+          {{ (states('sensor.rc_level_pitch_raw_deg')|float
+              - states('input_number.rc_level_pitch_offset_deg')|float)
+              | round(2) }}
+        availability: "{{ states('sensor.rc_level_pitch_raw_deg') not in ['unknown','unavailable','none',''] }}"
+
+      - name: "RC Level Roll"
+        unique_id: rc_level_roll_deg
+        unit_of_measurement: "°"
+        icon: mdi:axis-y-rotate-clockwise
+        state: >-
+          {{ (states('sensor.rc_level_roll_raw_deg')|float
+              - states('input_number.rc_level_roll_offset_deg')|float)
+              | round(2) }}
+        availability: "{{ states('sensor.rc_level_roll_raw_deg') not in ['unknown','unavailable','none',''] }}"
+
+      - name: "RC Level Status"
+        unique_id: rc_level_status
+        icon: mdi:spirit-level
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_level_roll_deg')|float(0) %}
+          {% set max_abs = [p|abs, r|abs] | max %}
+          {% if max_abs <= tol %}
+            level
+          {% elif max_abs <= 3.0 %}
+            close
+          {% else %}
+            adjust
+          {% endif %}
+        availability: >-
+          {{ states('sensor.rc_level_pitch_deg') not in ['unknown','unavailable','none','']
+             and states('sensor.rc_level_roll_deg') not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Level Adjustment Hint"
+        unique_id: rc_level_adjustment_hint
+        icon: mdi:arrow-expand-all
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_level_roll_deg')|float(0) %}
+          {% if (p|abs <= tol) and (r|abs <= tol) %}
+            No adjustment needed
+          {% else %}
+            {% set parts = [] %}
+            {% if p|abs > tol %}
+              {% if p > 0 %}
+                {% set _ = parts.append('Pitch +: lower front or raise rear') %}
+              {% else %}
+                {% set _ = parts.append('Pitch -: raise front or lower rear') %}
+              {% endif %}
+            {% endif %}
+            {% if r|abs > tol %}
+              {% if r > 0 %}
+                {% set _ = parts.append('Roll +: lower left or raise right') %}
+              {% else %}
+                {% set _ = parts.append('Roll -: raise left or lower right') %}
+              {% endif %}
+            {% endif %}
+            {{ parts | join('; ') }}
+          {% endif %}
+        availability: >-
+          {{ states('sensor.rc_level_pitch_deg') not in ['unknown','unavailable','none','']
+             and states('sensor.rc_level_roll_deg') not in ['unknown','unavailable','none',''] }}
+
+  - binary_sensor:
+      - name: "RC Level"
+        unique_id: rc_level
+        icon: mdi:spirit-level
+        state: >-
+          {% set tol = 1.0 %}
+          {% set p = states('sensor.rc_level_pitch_deg')|float(0) %}
+          {% set r = states('sensor.rc_level_roll_deg')|float(0) %}
+          {{ (p|abs <= tol) and (r|abs <= tol) }}
+        availability: >-
+          {{ states('sensor.rc_level_pitch_deg') not in ['unknown','unavailable','none','']
+             and states('sensor.rc_level_roll_deg') not in ['unknown','unavailable','none',''] }}
+
+# NOTE: This file is a Home Assistant package.
+# Keep template entity names/unique_ids stable to preserve entity_id continuity.
