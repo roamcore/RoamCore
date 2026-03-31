@@ -1,7 +1,7 @@
 {
   "version": 8,
   "glyphs": "__ORIGIN__/local/roamcore/fonts/{fontstack}/{range}.pbf",
-  "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+  "sprite": "__ORIGIN__/local/roamcore/sprites/rc-sprite",
   "sources": {
     "protomaps_low": {
       "type": "vector",
