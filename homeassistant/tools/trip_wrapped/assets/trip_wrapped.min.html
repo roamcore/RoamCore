@@ -65,7 +65,16 @@
       position:relative;
       height:280px;
     }
-    .mapCanvas{position:absolute; inset:0; width:100%; height:100%;}
+    .mapCanvas{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none;}
+    .mapFallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+      padding:18px;
+      color: rgba(255,255,255,0.68);
+      background:
+        radial-gradient(700px 280px at 30% 20%, rgba(110,231,255,0.10), transparent 60%),
+        radial-gradient(700px 280px at 70% 80%, rgba(167,139,250,0.10), transparent 60%),
+        rgba(8,12,24,0.55);
+    }
+    .mapFallback b{color: rgba(255,255,255,0.88)}
 
     .stats{display:grid; gap:10px; margin-top:14px; grid-template-columns:1fr 1fr;}
     .stat{
@@ -131,6 +140,7 @@
 
           <div class="mapBox">
             <img class="mapCanvas" id="mapimg" alt="Trip route map" />
+            <div class="mapFallback" id="mapFallback"><div><b>Map unavailable</b><br/><span style="opacity:.8">(still generating)</span></div></div>
           </div>
 
           <div class="stats">
@@ -221,10 +231,21 @@
     const to = meta.to ? new Date(meta.to) : null;
     const gen = meta.generatedAt ? new Date(meta.generatedAt) : null;
 
+    const fmtDateUTC = (dt) => {
+      try {
+        if (!dt) return '—';
+        const y = dt.getUTCFullYear();
+        const m = String(dt.getUTCMonth()+1).padStart(2,'0');
+        const d0 = String(dt.getUTCDate()).padStart(2,'0');
+        return `${d0}/${m}/${y}`;
+      } catch(e){ return '—'; }
+    };
+
     document.getElementById('title').textContent = title.toUpperCase();
+    // Use UTC dates to avoid “next day” surprises when viewing in local time.
     document.getElementById('subtitle').textContent = from && to
-      ? `${from.toLocaleDateString(undefined)} → ${to.toLocaleDateString(undefined)}`
-      : (from ? from.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : '—');
+      ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}`
+      : (from ? fmtDateUTC(from) : '—');
     document.getElementById('generated').textContent = gen ? `Generated ${gen.toLocaleString()}` : 'Generated —';
     document.getElementById('device').textContent = meta.deviceId ? `Device ${meta.deviceId}` : 'Device —';
 
@@ -232,6 +253,7 @@
     const totalDays = Number(stats.totalDays || 0);
     const stops = Number(stats.numberOfStops || 0);
     const totalDurMs = Number(stats.totalDurationMs || 0);
+    const movingHours = Number(stats.movingHours || 0);
 
     // Stat tiles
     const unit = (meta.units || '').toString().toLowerCase();
@@ -241,10 +263,10 @@
       : `${fmtInt(Math.round(Number(totalM)/1000))} KM`;
     document.getElementById('statDistance').textContent = distTxt;
 
-    // Total time
+    // Total time (prefer moving time if available; span time can be misleading for "today")
     try {
-      if (totalDurMs > 0) {
-        const totalH = totalDurMs / (1000*60*60);
+      const totalH = movingHours > 0 ? movingHours : (totalDurMs > 0 ? (totalDurMs / (1000*60*60)) : 0);
+      if (totalH > 0) {
         const d = Math.floor(totalH / 24);
         const h = Math.round(totalH - d*24);
         const txt = d >= 1 ? `${fmtInt(d)}D ${fmtInt(h)}H` : `${fmtInt(Math.round(totalH))}H`;
@@ -372,6 +394,24 @@
     const route = Array.isArray(stats.journeyRoute) ? stats.journeyRoute : (Array.isArray(stats.topTripRoute) ? stats.topTripRoute : []);
     const mapimg = document.getElementById('mapimg');
     const mapBox = document.querySelector('.mapBox');
+    const mapFallback = document.getElementById('mapFallback');
+
+    const showMap = (src) => {
+      try {
+        if (src) mapimg.src = src;
+        mapimg.style.display = 'block';
+        if (mapFallback) mapFallback.style.display = 'none';
+      } catch(e) {}
+    };
+
+    const hideMap = () => {
+      try {
+        mapimg.style.display = 'none';
+        if (mapFallback) mapFallback.style.display = 'flex';
+      } catch(e) {}
+    };
+
+    mapimg.addEventListener('error', () => hideMap());
 
     const loadCss = (href) => new Promise((res, rej) => {
       const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; l.onload=res; l.onerror=rej; document.head.appendChild(l);
@@ -395,12 +435,11 @@
     const renderStaticSnapshot = async () => {
       // Prefer a pre-rendered static PNG generated at export time.
       if (meta.mapImageUrl) {
-        mapimg.src = meta.mapImageUrl;
-        mapimg.style.display = 'block';
+        showMap(meta.mapImageUrl);
         return;
       }
       if (!route || route.length < 2) {
-        mapimg.style.display = 'none';
+        hideMap();
         return;
       }
 
@@ -556,7 +595,15 @@
       });
     };
 
-    renderStaticSnapshot();
+    // Run (best-effort) and never leave a blank rectangle.
+    (async () => {
+      try {
+        await renderStaticSnapshot();
+      } catch (e) {
+        hideMap();
+      }
+    })();
+
   </script>
 </body>
 </html>
