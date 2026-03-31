@@ -7,9 +7,18 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 
-from build_wrapped import build_wrapped
-from render_html import render_html
-from traccar_client import TraccarClient, TraccarError
+try:
+    # When executed as a module/package.
+    from .build_wrapped import build_wrapped
+    from .history import upsert_history
+    from .render_html import render_html
+    from .traccar_client import TraccarClient, TraccarError
+except Exception:  # pragma: no cover
+    # When executed as a standalone script.
+    from build_wrapped import build_wrapped
+    from history import upsert_history
+    from render_html import render_html
+    from traccar_client import TraccarClient, TraccarError
 
 
 def _merc_x(lon: float) -> float:
@@ -105,6 +114,11 @@ def parse_args():
     p.add_argument("--out-html", required=True)
     p.add_argument("--title", default="Trip Wrapped")
     p.add_argument("--owner-name", help="Optional owner name used for auto-title (e.g. Emily)")
+    p.add_argument(
+        "--config-dir",
+        default="/config",
+        help="Home Assistant config dir (used for local trip history persistence).",
+    )
     return p.parse_args()
 
 
@@ -236,7 +250,16 @@ def main():
         top_trip_route=top_trip_route,
         stops=stops,
         map_image_url=None,
+        comparisons={},
     )
+
+    # Local, privacy-first comparisons vs past trips.
+    try:
+        history = upsert_history(config_dir=a.config_dir, wrapped=wrapped)
+        # comparisons are computed in a later step (kept empty for now, but persisted history exists)
+        wrapped["comparisons"] = {"historyCount": max(0, len(history) - 1)}
+    except Exception:
+        pass
 
     # Generate a static map PNG (non-interactive) and reference it from HTML.
     map_url = None

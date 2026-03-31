@@ -158,6 +158,7 @@ def build_wrapped(
     stops=None,
     map_image_url=None,
     owner_name=None,
+    comparisons=None,
 ):
     trips = trips or []
     total_distance_m = sum(_m(t.get("distance")) for t in trips)
@@ -452,6 +453,7 @@ def build_wrapped(
             "topTrip": top_trip,
             "topTripRoute": route,
         },
+        "comparisons": comparisons or {},
         # Keep raw trips for MVP (HTML renders these directly)
         "trips": trips or [],
     }
