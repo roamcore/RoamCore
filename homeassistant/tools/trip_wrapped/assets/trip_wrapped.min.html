@@ -91,6 +91,12 @@
     .v{margin-top:4px; font-size:28px; font-weight:1000; letter-spacing:-0.6px;}
     .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:6px;}
 
+    .elevBox{margin-top:14px; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,24,0.45); backdrop-filter: blur(10px);
+    }
+    .elevHead{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase; margin-bottom:8px;}
+    #elevChart{width:100%; height:120px; display:block;}
+
     .foot{margin-top:14px; color:rgba(255,255,255,0.45); font-size:11px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
     a{color:inherit}
   </style>
@@ -139,6 +145,11 @@
                 <div class="v" id="statPlaces">—</div>
               </div>
             </div>
+          </div>
+
+          <div class="elevBox" id="elevBox" style="display:none;">
+            <div class="elevHead">Elevation profile</div>
+            <canvas id="elevChart"></canvas>
           </div>
 
           <div class="foot">
@@ -206,7 +217,7 @@
     const nights = Number(stats.nightsParked || 0) || (Number.isFinite(totalDays) ? Math.max(0, Math.round(totalDays)) : 0);
     document.getElementById('statNights').textContent = nights ? `${fmtInt(nights)} NIGHTS` : '—';
 
-    const elevM = Number(stats.totalElevationGainM || 0);
+    const elevM = Number(stats.totalElevationGainM || stats.elevationGainM || 0);
     if (elevM > 0) {
       const ft = elevM * 3.28084;
       const elevTxt = useMiles ? `${fmtInt(Math.round(ft))} FT` : `${fmtInt(Math.round(elevM))} M`;
@@ -214,6 +225,71 @@
     } else {
       document.getElementById('statElev').textContent = '—';
     }
+
+    // Elevation profile chart (best-effort)
+    try {
+      const prof = stats.elevationProfile && Array.isArray(stats.elevationProfile.points)
+        ? stats.elevationProfile
+        : null;
+      if (prof && prof.points.length >= 2) {
+        const pts = prof.points
+          .map(p => ({x: Number(p.dKm), y: Number(p.alt)}))
+          .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+        if (pts.length >= 2) {
+          const box = document.getElementById('elevBox');
+          const c = document.getElementById('elevChart');
+          box.style.display = '';
+
+          const dpr = window.devicePixelRatio || 1;
+          const w = Math.max(1, c.clientWidth || 1);
+          const h = Math.max(1, c.clientHeight || 120);
+          c.width = Math.floor(w * dpr);
+          c.height = Math.floor(h * dpr);
+          const ctx = c.getContext('2d');
+          ctx.scale(dpr, dpr);
+
+          const pad = 8;
+          const minX = Math.min(...pts.map(p => p.x));
+          const maxX = Math.max(...pts.map(p => p.x));
+          const minY = Math.min(...pts.map(p => p.y));
+          const maxY = Math.max(...pts.map(p => p.y));
+          const dx = Math.max(1e-9, maxX - minX);
+          const dy = Math.max(1e-9, maxY - minY);
+
+          const X = (x) => pad + ((x - minX) / dx) * (w - pad * 2);
+          const Y = (y) => (h - pad) - ((y - minY) / dy) * (h - pad * 2);
+
+          // Background grid (subtle)
+          ctx.clearRect(0, 0, w, h);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+          for (let i=1;i<=3;i++) {
+            const yy = pad + (i/4)*(h-pad*2);
+            ctx.beginPath(); ctx.moveTo(pad, yy); ctx.lineTo(w-pad, yy); ctx.stroke();
+          }
+
+          // Area fill
+          ctx.beginPath();
+          ctx.moveTo(X(pts[0].x), h - pad);
+          for (const p of pts) ctx.lineTo(X(p.x), Y(p.y));
+          ctx.lineTo(X(pts[pts.length-1].x), h - pad);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(110,231,255,0.10)';
+          ctx.fill();
+
+          // Line
+          ctx.beginPath();
+          for (let i=0;i<pts.length;i++) {
+            const p = pts[i];
+            const xx = X(p.x), yy = Y(p.y);
+            if (i===0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+          }
+          ctx.strokeStyle = 'rgba(110,231,255,0.90)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+    } catch (e) {}
 
     document.getElementById('statPlaces').textContent = stops ? `${fmtInt(stops)} PLACES` : '—';
 

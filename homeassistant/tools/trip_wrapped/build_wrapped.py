@@ -104,6 +104,72 @@ def _max_alt(points):
         return None, None
 
 
+def _build_elevation_profile(points):
+    """Build an elevation profile from journey route points.
+
+    Input points: list of {lat, lon, alt?, t?}.
+    Output: dict with points [{dKm, alt, t?}] plus min/max/range.
+
+    Degrades gracefully when altitude is missing/unusable.
+    """
+    try:
+        if not points or len(points) < 2:
+            return None
+
+        prof = []
+        cum_km = 0.0
+        prev = None
+
+        for p in points:
+            if not p:
+                continue
+            lat = p.get("lat")
+            lon = p.get("lon")
+            if lat is None or lon is None:
+                continue
+
+            if prev is not None:
+                cum_km += _haversine_km(prev.get("lat"), prev.get("lon"), lat, lon)
+            prev = p
+
+            a = p.get("alt")
+            if a is None:
+                continue
+            try:
+                a = float(a)
+            except Exception:
+                continue
+            # NaN check
+            if not (a == a):
+                continue
+
+            prof.append({"dKm": float(cum_km), "alt": float(a), "t": p.get("t")})
+
+        # Need at least 2 altitude samples to chart.
+        if len(prof) < 2:
+            return None
+
+        # Bound payload.
+        prof = _downsample(prof, max_points=450)
+
+        alts = [p["alt"] for p in prof if p and p.get("alt") is not None]
+        if len(alts) < 2:
+            return None
+        mn = min(alts)
+        mx = max(alts)
+
+        return {
+            "by": "distanceKm",
+            "points": prof,
+            "minM": float(mn),
+            "maxM": float(mx),
+            "rangeM": float(mx - mn),
+            "distanceKm": float(prof[-1].get("dKm") or 0.0),
+        }
+    except Exception:
+        return None
+
+
 def _distance_equivalent_km(km: float) -> dict:
     """Return a fun distance equivalent from a small local list."""
     try:
@@ -341,6 +407,7 @@ def build_wrapped(
     # Elevation metrics (if altitude exists)
     elevation_gain_m = _elevation_gain_m(journey)
     max_alt_m, max_alt_p = _max_alt(journey)
+    elevation_profile = _build_elevation_profile(journey)
 
     # Furthest point from start (km)
     furthest_km = None
@@ -417,8 +484,12 @@ def build_wrapped(
             "totalDays": total_days,
             "numberOfStops": number_of_stops,
 
+            # Back-compat key used by the current HTML asset.
+            "totalElevationGainM": elevation_gain_m,
+            # Preferred key.
             "elevationGainM": elevation_gain_m,
             "highestPointM": max_alt_m,
+            "elevationProfile": elevation_profile,
             "furthestFromStartKm": furthest_km,
             "longestMovementStreakDays": longest_streak_days,
 
