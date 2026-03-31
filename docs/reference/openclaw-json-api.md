@@ -4,6 +4,22 @@ RoamCore exposes a small, stable JSON endpoint intended to be consumed by **Open
 
 This is a thin HA-native wrapper around the existing **`rc_*` contract entities**.
 
+## Why this matters (what it unlocks)
+
+Dashboards are great for glanceable status — but they still force *you* to translate data into decisions.
+
+The OpenClaw API turns RoamCore into something different: a **machine-readable contract** that a local agent can use to reason about your van.
+Once connected to an OpenClaw-based agent (eventually something we can ship locally on RoamCore hardware like the VP2430), you can interact with your van in natural language:
+
+- “Are we good to run the kettle right now?”
+- “What’s draining the battery?”
+- “How much solar did we get today?”
+- “Are we level enough to sleep?”
+- “Where did we stop last night and how long did we drive?”
+
+Because the API is derived from stable `rc_*` entities, this stays consistent even as you change hardware or vendors behind the scenes.
+This is the logical next step after consolidating everything into one clean dashboard: **a conversational interface for your system**.
+
 ## Endpoint
 
 - **GET** `/api/roamcore/openclaw/summary`
@@ -137,5 +153,6 @@ curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/summary
 Recommended smoke tests:
 
 1. Verify the endpoint returns HTTP 200 and valid JSON.
+   - `homeassistant/tools/openclaw_api_smoketest.sh`
 2. Force upstream entities to `unknown/unavailable` (or disable a source integration) and confirm the API returns `null` for those fields (no exceptions / stack traces).
 3. Confirm the output fields and types remain stable while vendor entities change (the entire point of the `rc_*` contract layer).

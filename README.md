@@ -107,6 +107,13 @@ RoamCore is built around a few non-negotiables:
 
 If you like software that’s pragmatic, inspectable, and built to last, you’ll like where RoamCore is going.
 
+## OpenClaw API (conversational interface)
+
+RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van’s state.
+That unlocks a new interface: once you connect it to a local agent, you can *ask your van questions* in natural language and get context-heavy answers (power, location, levelling, trip context) without hunting through multiple apps.
+
+Docs: [`docs/reference/openclaw-json-api.md`](docs/reference/openclaw-json-api.md)
+
 ## HACS (planned)
 
 For beta, install is via the one-line script above.
