@@ -19,13 +19,11 @@ rest:
     sensor:
       - name: "RC OpenWrt Internet"
         unique_id: rc_openwrt_internet
-        object_id: rc_openwrt_internet
         value_template: "{{ value_json.internet }}"
         icon: mdi:web
 
       - name: "RC OpenWrt Active WAN"
         unique_id: rc_openwrt_active_wan
-        object_id: rc_openwrt_active_wan
         value_template: "{{ value_json.active_wan }}"
         icon: mdi:swap-horizontal
 
@@ -40,19 +38,16 @@ rest:
     sensor:
       - name: "RC Preferred WAN"
         unique_id: rc_openwrt_preferred_wan
-        object_id: rc_openwrt_preferred_wan
         value_template: "{{ value_json.preferred | default('') }}"
         icon: mdi:swap-horizontal
 
       - name: "RC Starlink State"
         unique_id: rc_openwrt_starlink_state
-        object_id: rc_openwrt_starlink_state
         value_template: "{{ value_json.starlink.state }}"
         icon: mdi:satellite-variant
 
       - name: "RC LTE State"
         unique_id: rc_openwrt_lte_state
-        object_id: rc_openwrt_lte_state
         value_template: "{{ value_json.lte.state }}"
         icon: mdi:signal-4g
 
@@ -62,25 +57,21 @@ rest:
     sensor:
       - name: "RC LTE SIM State"
         unique_id: rc_openwrt_lte_sim_ready_state
-        object_id: rc_lte_sim_state
         value_template: "{{ value_json.sim_ready_state | default('') }}"
         icon: mdi:sim
 
       - name: "RC LTE Registration"
         unique_id: rc_openwrt_lte_registration_state
-        object_id: rc_lte_registration
         value_template: "{{ value_json.registration_state | default('') }}"
         icon: mdi:cellphone-wireless
 
       - name: "RC LTE Provider"
         unique_id: rc_openwrt_lte_provider_name
-        object_id: rc_lte_provider
         value_template: "{{ value_json.provider_name | default('') }}"
         icon: mdi:cellphone-wireless
 
       - name: "RC LTE RSSI"
         unique_id: rc_openwrt_lte_signal_rssi
-        object_id: rc_lte_rssi
         value_template: "{{ value_json.signal_rssi | default('') }}"
         icon: mdi:signal
 
@@ -89,21 +80,18 @@ rest:
     sensor:
       - name: "RC Router CPU"
         unique_id: rc_openwrt_router_cpu_pct
-        object_id: rc_router_cpu
         value_template: "{{ value_json.cpu_percent | float(0) }}"
         unit_of_measurement: "%"
         icon: mdi:cpu-64-bit
 
       - name: "RC Router Memory"
         unique_id: rc_openwrt_router_memory_pct
-        object_id: rc_router_memory
         value_template: "{{ value_json.memory_percent | float(0) }}"
         unit_of_measurement: "%"
         icon: mdi:memory
 
       - name: "RC Router Temperature"
         unique_id: rc_openwrt_router_temp_c
-        object_id: rc_router_temperature
         value_template: "{{ value_json.temperature_celsius | float(0) }}"
         unit_of_measurement: "°C"
         device_class: temperature

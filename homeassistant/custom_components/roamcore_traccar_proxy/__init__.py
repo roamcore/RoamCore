@@ -442,7 +442,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         async def options(self, request: web.Request, path: str = ""):
             return await _proxy_traccar_api(request, path)
 
-    hass.http.register_view(RoamcoreTraccarApiProxyView)
+    # On some HA versions / reload sequences, custom components can be set up
+    # more than once. Registering the same DynamicResource twice will raise.
+    try:
+        hass.http.register_view(RoamcoreTraccarApiProxyView)
+    except Exception:
+        # Best-effort: if already registered, continue so the rest of the
+        # component stays functional.
+        pass
 
 
     # Public embed route (no HA auth). Needed because iframes don't include
