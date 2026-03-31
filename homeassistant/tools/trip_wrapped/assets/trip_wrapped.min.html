@@ -142,10 +142,10 @@
               </div>
             </div>
             <div class="stat">
-              <div class="icon">🔥</div>
+              <div class="icon">⏱️</div>
               <div>
-                <div class="k">Nights on the road</div>
-                <div class="v" id="statNights">—</div>
+                <div class="k">Total time</div>
+                <div class="v" id="statTime">—</div>
               </div>
             </div>
             <div class="stat">
@@ -156,10 +156,10 @@
               </div>
             </div>
             <div class="stat">
-              <div class="icon">📍</div>
+              <div class="icon">🛑</div>
               <div>
-                <div class="k">Places explored</div>
-                <div class="v" id="statPlaces">—</div>
+                <div class="k">Total stops</div>
+                <div class="v" id="statStops">—</div>
               </div>
             </div>
           </div>
@@ -231,6 +231,7 @@
     const totalM = Number(stats.totalDistanceM || 0);
     const totalDays = Number(stats.totalDays || 0);
     const stops = Number(stats.numberOfStops || 0);
+    const totalDurMs = Number(stats.totalDurationMs || 0);
 
     // Stat tiles
     const unit = (meta.units || '').toString().toLowerCase();
@@ -240,8 +241,18 @@
       : `${fmtInt(Math.round(Number(totalM)/1000))} KM`;
     document.getElementById('statDistance').textContent = distTxt;
 
-    const nights = Number(stats.nightsParked || 0) || (Number.isFinite(totalDays) ? Math.max(0, Math.round(totalDays)) : 0);
-    document.getElementById('statNights').textContent = nights ? `${fmtInt(nights)} NIGHTS` : '—';
+    // Total time
+    try {
+      if (totalDurMs > 0) {
+        const totalH = totalDurMs / (1000*60*60);
+        const d = Math.floor(totalH / 24);
+        const h = Math.round(totalH - d*24);
+        const txt = d >= 1 ? `${fmtInt(d)}D ${fmtInt(h)}H` : `${fmtInt(Math.round(totalH))}H`;
+        document.getElementById('statTime').textContent = txt;
+      } else {
+        document.getElementById('statTime').textContent = totalDays ? `${fmtInt(totalDays)} DAYS` : '—';
+      }
+    } catch(e) { document.getElementById('statTime').textContent = '—'; }
 
     const elevM = Number(stats.totalElevationGainM || stats.elevationGainM || 0);
     if (elevM > 0) {
@@ -317,7 +328,7 @@
       }
     } catch (e) {}
 
-    document.getElementById('statPlaces').textContent = stops ? `${fmtInt(stops)} PLACES` : '—';
+    document.getElementById('statStops').textContent = stops ? `${fmtInt(stops)} STOPS` : '—';
 
     // Highlights (local history comparisons)
     try {
