@@ -65,7 +65,8 @@
       position:relative;
       height:280px;
     }
-    .mapCanvas{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none;}
+    .mapImg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none;}
+    .mapCanvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
     .mapFallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
       padding:18px;
       color: rgba(255,255,255,0.68);
@@ -97,6 +98,7 @@
       color: rgba(255,255,255,0.90);
       font-size:22px;
     }
+    .icon svg{width:22px;height:22px;display:block;opacity:0.95}
     .k{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase;}
     .v{margin-top:4px; font-size:24px; font-weight:1000; letter-spacing:-0.6px; line-height:1.02;}
     .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:6px;}
@@ -139,34 +141,58 @@
           </div>
 
           <div class="mapBox">
-            <img class="mapCanvas" id="mapimg" alt="Trip route map" />
-            <div class="mapFallback" id="mapFallback"><div><b>Map unavailable</b><br/><span style="opacity:.8">(still generating)</span></div></div>
+            <img class="mapImg" id="mapimg" alt="Trip route map" />
+            <canvas class="mapCanvas" id="mapCanvas" aria-label="Trip route" role="img"></canvas>
+            <div class="mapFallback" id="mapFallback"><div><b>Route preview</b><br/><span style="opacity:.8">(offline)</span></div></div>
           </div>
 
           <div class="stats">
             <div class="stat">
-              <div class="icon">🚐</div>
+              <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 14V7.8c0-.9.6-1.7 1.5-1.9l9.8-2.2c1.2-.3 2.4.6 2.4 1.9V6h1.6c.8 0 1.6.4 2 1.1l1.3 2.1c.3.5.4 1 .4 1.6V14" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M5.5 14h13" stroke="rgba(255,255,255,0.6)" stroke-width="1.8" stroke-linecap="round"/>
+                  <circle cx="7" cy="17" r="2" fill="rgba(110,231,255,0.95)"/>
+                  <circle cx="17" cy="17" r="2" fill="rgba(255,122,69,0.95)"/>
+                </svg>
+              </div>
               <div>
                 <div class="k">Total distance</div>
                 <div class="v" id="statDistance">—</div>
               </div>
             </div>
             <div class="stat">
-              <div class="icon">⏱️</div>
+              <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 2h6" stroke="rgba(255,255,255,0.75)" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M12 7a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/>
+                  <path d="M12 11v4l2.5 1.5" stroke="rgba(110,231,255,0.95)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
               <div>
                 <div class="k">Total time</div>
                 <div class="v" id="statTime">—</div>
               </div>
             </div>
             <div class="stat">
-              <div class="icon">⛰️</div>
+              <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 19l6-10 4 6 2-3 6 7H3Z" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M9 9l1.5 2.3" stroke="rgba(110,231,255,0.85)" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </div>
               <div>
                 <div class="k">Elevation gain</div>
                 <div class="v" id="statElev">—</div>
               </div>
             </div>
             <div class="stat">
-              <div class="icon">🛑</div>
+              <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5Z" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M9 12h6" stroke="rgba(255,122,69,0.95)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
               <div>
                 <div class="k">Total stops</div>
                 <div class="v" id="statStops">—</div>
@@ -350,7 +376,16 @@
       }
     } catch (e) {}
 
-    document.getElementById('statStops').textContent = stops ? `${fmtInt(stops)} STOPS` : '—';
+    // Hide elevation box when no usable data (avoid empty chart area).
+    try {
+      const box = document.getElementById('elevBox');
+      const prof = stats.elevationProfile && Array.isArray(stats.elevationProfile.points) ? stats.elevationProfile : null;
+      if (box && !(prof && prof.points && prof.points.length >= 2)) box.style.display = 'none';
+    } catch(e) {}
+
+    document.getElementById('statStops').textContent = stops
+      ? `${fmtInt(stops)} ${stops === 1 ? 'STOP' : 'STOPS'}`
+      : '—';
 
     // Highlights (local history comparisons)
     try {
@@ -393,216 +428,119 @@
     // and replace the map with a simple <img> so users cannot pan/zoom.
     const route = Array.isArray(stats.journeyRoute) ? stats.journeyRoute : (Array.isArray(stats.topTripRoute) ? stats.topTripRoute : []);
     const mapimg = document.getElementById('mapimg');
-    const mapBox = document.querySelector('.mapBox');
+    const mapCanvas = document.getElementById('mapCanvas');
     const mapFallback = document.getElementById('mapFallback');
 
-    const showMap = (src) => {
+    const showImg = (src) => {
       try {
         if (src) mapimg.src = src;
         mapimg.style.display = 'block';
+        if (mapCanvas) mapCanvas.style.display = 'none';
         if (mapFallback) mapFallback.style.display = 'none';
       } catch(e) {}
     };
 
-    const hideMap = () => {
+    const showCanvas = () => {
       try {
         mapimg.style.display = 'none';
+        if (mapCanvas) mapCanvas.style.display = 'block';
+        if (mapFallback) mapFallback.style.display = 'none';
+      } catch(e) {}
+    };
+
+    const showFallback = () => {
+      try {
+        mapimg.style.display = 'none';
+        if (mapCanvas) mapCanvas.style.display = 'none';
         if (mapFallback) mapFallback.style.display = 'flex';
       } catch(e) {}
     };
 
-    mapimg.addEventListener('error', () => hideMap());
+    mapimg.addEventListener('error', () => showCanvas());
 
-    const loadCss = (href) => new Promise((res, rej) => {
-      const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; l.onload=res; l.onerror=rej; document.head.appendChild(l);
-    });
-    const loadJs = (src) => new Promise((res, rej) => {
-      const s=document.createElement('script'); s.src=src; s.defer=true; s.onload=res; s.onerror=rej; document.head.appendChild(s);
-    });
+    const drawRouteCanvas = () => {
+      try {
+        if (!mapCanvas) return false;
+        if (!route || route.length < 2) return false;
+        const pts = route
+          .map(p => ({lat: Number(p.lat), lon: Number(p.lon)}))
+          .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+        if (pts.length < 2) return false;
 
-    const fitBounds = (m, coords) => {
-      let minLat= 90, minLon=180, maxLat=-90, maxLon=-180;
-      for (const p of coords){
-        const lat=Number(p.lat), lon=Number(p.lon);
-        if(!Number.isFinite(lat)||!Number.isFinite(lon)) continue;
-        minLat=Math.min(minLat,lat); minLon=Math.min(minLon,lon);
-        maxLat=Math.max(maxLat,lat); maxLon=Math.max(maxLon,lon);
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.max(1, mapCanvas.clientWidth || 1);
+        const h = Math.max(1, mapCanvas.clientHeight || 1);
+        mapCanvas.width = Math.floor(w * dpr);
+        mapCanvas.height = Math.floor(h * dpr);
+        const ctx = mapCanvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Background
+        const g = ctx.createLinearGradient(0, 0, w, h);
+        g.addColorStop(0, 'rgba(110,231,255,0.10)');
+        g.addColorStop(0.55, 'rgba(167,139,250,0.10)');
+        g.addColorStop(1, 'rgba(255,122,69,0.08)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(8,12,24,0.55)';
+        ctx.fillRect(0, 0, w, h);
+
+        // Bounds
+        let minLat= 90, minLon=180, maxLat=-90, maxLon=-180;
+        for (const p of pts){
+          minLat=Math.min(minLat,p.lat); minLon=Math.min(minLon,p.lon);
+          maxLat=Math.max(maxLat,p.lat); maxLon=Math.max(maxLon,p.lon);
+        }
+        if (minLat > maxLat) return false;
+
+        const pad = 26;
+        const dx = Math.max(1e-9, maxLon - minLon);
+        const dy = Math.max(1e-9, maxLat - minLat);
+        const X = (lon) => pad + ((lon - minLon) / dx) * (w - pad*2);
+        const Y = (lat) => (h - pad) - ((lat - minLat) / dy) * (h - pad*2);
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const draw = (lw, stroke) => {
+          ctx.beginPath();
+          for (let i=0;i<pts.length;i++) {
+            const p = pts[i];
+            const xx = X(p.lon), yy = Y(p.lat);
+            if (i===0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+          }
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = stroke;
+          ctx.stroke();
+        };
+        draw(10, 'rgba(110,231,255,0.20)');
+        draw(6, 'rgba(167,139,250,0.25)');
+        draw(3, 'rgba(110,231,255,0.95)');
+
+        const dot = (p, fill) => {
+          ctx.beginPath();
+          ctx.arc(X(p.lon), Y(p.lat), 5, 0, Math.PI*2);
+          ctx.fillStyle = fill;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        };
+        dot(pts[0], 'rgba(110,231,255,0.95)');
+        dot(pts[pts.length-1], 'rgba(255,122,69,0.95)');
+        return true;
+      } catch(e) {
+        return false;
       }
-      if (minLat>maxLat) return;
-      m.fitBounds([[minLon, minLat],[maxLon, maxLat]], {padding: 40, duration: 0});
     };
 
-    const renderStaticSnapshot = async () => {
-      // Prefer a pre-rendered static PNG generated at export time.
-      if (meta.mapImageUrl) {
-        showMap(meta.mapImageUrl);
-        return;
-      }
-      if (!route || route.length < 2) {
-        hideMap();
-        return;
-      }
+    // Prefer a pre-rendered static PNG generated at export time; else draw an offline preview.
+    if (meta.mapImageUrl) {
+      showImg(meta.mapImageUrl);
+    } else {
+      const ok = drawRouteCanvas();
+      if (ok) showCanvas(); else showFallback();
+    }
 
-      // Create a temporary div for MapLibre
-      const div = document.createElement('div');
-      div.style.position='absolute';
-      div.style.inset='0';
-      mapBox.appendChild(div);
-
-      // Load MapLibre from local HA assets
-      const base = '/local/roamcore/vendor/maplibre-gl';
-      await loadCss(base + '/maplibre-gl.css');
-      await loadJs(base + '/maplibre-gl.js');
-      await loadJs('/local/roamcore/vendor/pmtiles/pmtiles.js');
-
-      // PMTiles protocol + RoamCore vector style (better than raster for share cards)
-      // @ts-ignore
-      const protocol = new pmtiles.Protocol();
-      // @ts-ignore
-      maplibregl.addProtocol('pmtiles', protocol.tile);
-
-      // Load style JSON from HA and resolve __ORIGIN__ placeholders.
-      const styleUrl = '/local/roamcore/styles/rc-offline-protomaps-light.json';
-      const style = await (await fetch(styleUrl)).json();
-      const origin = window.location.origin;
-      const fix = (v) => (typeof v === 'string') ? v.replaceAll('__ORIGIN__', origin) : v;
-      try {
-        style.glyphs = fix(style.glyphs);
-        // sprite is external in this style; OK when internet is available.
-        for (const k of Object.keys(style.sources||{})) {
-          const s = style.sources[k];
-          if (s && s.url) s.url = fix(s.url);
-          if (s && s.tiles) s.tiles = (s.tiles||[]).map(fix);
-        }
-      } catch(e) {}
-
-      // Optional dark mode: ?theme=dark
-      const theme = (new URLSearchParams(location.search).get('theme') || '').toLowerCase();
-      const wantDark = theme === 'dark';
-
-      // (No hint UI in the minimal template.)
-
-      const parseHex = (hex) => {
-        const h = hex.replace('#','').trim();
-        if (h.length === 3) {
-          const r = parseInt(h[0]+h[0],16), g=parseInt(h[1]+h[1],16), b=parseInt(h[2]+h[2],16);
-          return [r,g,b,1];
-        }
-        if (h.length === 6) {
-          const r = parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
-          return [r,g,b,1];
-        }
-        return null;
-      };
-
-      const parseRgba = (s) => {
-        const m = String(s).match(/rgba?\(([^)]+)\)/i);
-        if (!m) return null;
-        const parts = m[1].split(',').map(x=>x.trim());
-        if (parts.length < 3) return null;
-        const r = Number(parts[0]), g = Number(parts[1]), b = Number(parts[2]);
-        const a = parts.length>=4 ? Number(parts[3]) : 1;
-        if (![r,g,b,a].every(x=>Number.isFinite(x))) return null;
-        return [r,g,b,a];
-      };
-
-      const toRgbaStr = (c) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${Math.max(0,Math.min(1,c[3]??1))})`;
-
-      const darkenColor = (s) => {
-        // Heuristic: invert lightness-ish and bias towards deep navy.
-        const hex = parseHex(s);
-        const rgba = hex || parseRgba(s);
-        if (!rgba) return s;
-        let [r,g,b,a] = rgba;
-        // Convert to luminance and remap
-        const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
-        const t = 1 - lum;
-        // Base dark palette anchor
-        const base = [7,10,18];
-        // Mix original inverted color with base
-        const rr = base[0] + (255 - r) * 0.55 * (0.35 + 0.65*t);
-        const gg = base[1] + (255 - g) * 0.55 * (0.35 + 0.65*t);
-        const bb = base[2] + (255 - b) * 0.65 * (0.35 + 0.65*t);
-        return toRgbaStr([rr,gg,bb,a]);
-      };
-
-      const mapPaint = (obj) => {
-        if (!obj || typeof obj !== 'object') return;
-        for (const k of Object.keys(obj)) {
-          const v = obj[k];
-          if (typeof v === 'string') {
-            if (v.startsWith('#') || v.toLowerCase().startsWith('rgb')) obj[k] = darkenColor(v);
-          } else if (Array.isArray(v)) {
-            // Expressions can contain colors as string literals.
-            obj[k] = v.map(x => (typeof x === 'string' && (x.startsWith('#') || x.toLowerCase().startsWith('rgb'))) ? darkenColor(x) : x);
-          } else if (v && typeof v === 'object') {
-            mapPaint(v);
-          }
-        }
-      };
-
-      if (wantDark) {
-        try {
-          style.sprite = 'https://protomaps.github.io/basemaps-assets/sprites/v4/dark';
-          // Darken background + most paints (heuristic)
-          for (const lyr of (style.layers || [])) {
-            if (lyr && lyr.paint) mapPaint(lyr.paint);
-            if (lyr && lyr.type === 'background') {
-              lyr.paint = lyr.paint || {};
-              lyr.paint['background-color'] = 'rgba(7,10,18,1)';
-            }
-          }
-        } catch(e) {}
-      }
-
-      // @ts-ignore
-      const map = new maplibregl.Map({
-        container: div,
-        style,
-        interactive: false,
-        attributionControl: false,
-        preserveDrawingBuffer: true,
-      });
-
-      map.once('load', () => {
-        // Add route layer
-        const coords = route.map(p => [Number(p.lon), Number(p.lat)]).filter(x => Number.isFinite(x[0]) && Number.isFinite(x[1]));
-        map.addSource('route', {type:'geojson', data:{type:'Feature', geometry:{type:'LineString', coordinates: coords}}});
-        map.addLayer({id:'route-glow', type:'line', source:'route', paint:{'line-color':'#6EE7FF','line-width':7,'line-opacity':0.35}});
-        map.addLayer({id:'route', type:'line', source:'route', paint:{'line-color':'#E6FDFF','line-width':3,'line-opacity':0.95}});
-        // Start/end dots
-        const start = coords[0];
-        const end = coords[coords.length-1];
-        map.addSource('se', {type:'geojson', data:{type:'FeatureCollection', features:[
-          {type:'Feature', properties:{c:'#34D399'}, geometry:{type:'Point', coordinates:start}},
-          {type:'Feature', properties:{c:'#FBBF24'}, geometry:{type:'Point', coordinates:end}},
-        ]}});
-        map.addLayer({id:'se', type:'circle', source:'se', paint:{'circle-radius':5,'circle-color':['get','c'],'circle-stroke-color':'#0B1020','circle-stroke-width':2}});
-        fitBounds(map, route);
-      });
-
-      map.once('idle', () => {
-        try {
-          const png = map.getCanvas().toDataURL('image/png');
-          map.remove();
-          div.remove();
-          mapimg.src = png;
-          mapimg.style.display = 'block';
-        } catch (e) {
-          try { map.remove(); } catch(e2) {}
-          try { div.remove(); } catch(e3) {}
-        }
-      });
-    };
-
-    // Run (best-effort) and never leave a blank rectangle.
-    (async () => {
-      try {
-        await renderStaticSnapshot();
-      } catch (e) {
-        hideMap();
-      }
-    })();
 
   </script>
 </body>
