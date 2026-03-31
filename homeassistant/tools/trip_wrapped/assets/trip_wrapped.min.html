@@ -7,54 +7,89 @@
   <style>
     :root{
       --bg:#070A12;
-      --card:#0B1020;
-      --card2:#0A0F1C;
-      --border:rgba(255,255,255,0.08);
+      --panel:#0A1020;
+      --panel2:#0B1328;
+      --border:rgba(255,255,255,0.10);
       --text:rgba(255,255,255,0.92);
       --muted:rgba(255,255,255,0.62);
       --muted2:rgba(255,255,255,0.44);
       --accent:#6EE7FF;
       --accent2:#A78BFA;
-      --good:#34D399;
-      --warn:#FBBF24;
+      --accent3:#FF7A45;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:radial-gradient(1200px 700px at 70% -10%, rgba(110,231,255,0.10), transparent 60%), radial-gradient(900px 600px at 10% 0%, rgba(167,139,250,0.10), transparent 55%), var(--bg); color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
-    .wrap{max-width:980px;margin:0 auto;padding:22px 16px 28px;}
-    .top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;}
-    .brand{display:flex;gap:10px;align-items:center;}
-    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg, rgba(110,231,255,0.28), rgba(167,139,250,0.22)); border:1px solid var(--border); position:relative; overflow:hidden;}
-    .logo:after{content:""; position:absolute; inset:-40%; background:radial-gradient(circle at 30% 30%, rgba(110,231,255,0.55), transparent 55%), radial-gradient(circle at 70% 70%, rgba(167,139,250,0.45), transparent 55%); transform:rotate(12deg);}
-    .brandText{line-height:1.1;}
-    .brandName{font-weight:900;letter-spacing:0.3px;font-size:14px;color:rgba(255,255,255,0.86)}
-    .brandSub{font-size:12px;color:var(--muted)}
+    body{margin:0;background:
+      radial-gradient(900px 600px at 80% 0%, rgba(110,231,255,0.10), transparent 55%),
+      radial-gradient(900px 600px at 10% 0%, rgba(167,139,250,0.10), transparent 55%),
+      radial-gradient(900px 800px at 50% 120%, rgba(255,122,69,0.06), transparent 55%),
+      var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
 
-    .title{font-weight:950;font-size:22px;letter-spacing:-0.3px;margin:10px 0 0;}
-    .subtitle{margin-top:6px;color:var(--muted); font-size:13px;}
+    /* Phone-like card */
+    .wrap{max-width:520px;margin:0 auto;padding:22px 14px 26px;}
+    .frame{
+      border-radius:22px;
+      padding:12px;
+      background: linear-gradient(135deg, rgba(110,231,255,0.35), rgba(167,139,250,0.22), rgba(255,122,69,0.18));
+      box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+    }
+    .card{
+      border-radius:18px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.10);
+      position:relative;
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(800px 520px at 50% -40%, rgba(110,231,255,0.10), transparent 60%),
+        radial-gradient(700px 520px at 0% 140%, rgba(167,139,250,0.10), transparent 58%),
+        radial-gradient(700px 520px at 100% 140%, rgba(255,122,69,0.08), transparent 58%);
+      pointer-events:none;
+      opacity:0.85;
+    }
+    .inner{position:relative; padding:18px 16px 16px;}
 
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px;color:var(--muted);}
-    .dot{width:7px;height:7px;border-radius:99px;background:var(--accent); box-shadow: 0 0 16px rgba(110,231,255,0.55);}
+    .top{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;}
+    .brandName{font-weight:900;letter-spacing:1px;font-size:14px;color:rgba(110,231,255,0.85)}
+    .title{font-weight:1000;font-size:32px;letter-spacing:-0.6px;margin:0; text-transform:uppercase;}
+    .subtitle{margin-top:2px;color:var(--muted); font-size:13px;}
 
-    .grid{display:grid;grid-template-columns: 1.6fr 1fr;gap:14px;margin-top:16px;}
-    @media (max-width: 900px){ .grid{grid-template-columns:1fr;}}
-
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.018)); border:1px solid var(--border); border-radius:16px; overflow:hidden;}
-    .cardPad{padding:14px;}
-
-    .mapBox{position:relative; height:420px; background: radial-gradient(900px 520px at 50% 20%, rgba(110,231,255,0.06), transparent 62%), radial-gradient(700px 450px at 15% 110%, rgba(167,139,250,0.08), transparent 55%), rgba(255,255,255,0.02);}
+    .mapBox{margin-top:14px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.02);
+      position:relative;
+      height:300px;
+    }
     .mapCanvas{position:absolute; inset:0; width:100%; height:100%;}
-    .mapOverlay{position:absolute; left:14px; top:14px; right:14px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; pointer-events:none;}
-    .mapTag{pointer-events:none; display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(7,10,18,0.55); backdrop-filter: blur(10px); color:rgba(255,255,255,0.78); font-size:12px;}
 
-    /* Wrapped-style story cards */
-    .storyScroll{margin-top:2px; max-height:420px; overflow:auto; padding-right:4px; scroll-snap-type:y mandatory;}
-    .story{display:grid; gap:10px; padding:0; margin:0;}
-    .storyCard{scroll-snap-align:start; padding:14px 14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.16);}
-    .storyKicker{font-size:12px; color:var(--muted); letter-spacing:0.2px;}
-    .storyValue{margin-top:6px; font-size:28px; font-weight:1000; letter-spacing:-0.8px;}
-    .storySub{margin-top:4px; color:var(--muted2); font-size:12px;}
-    .storyScroll::-webkit-scrollbar{width:8px}
-    .storyScroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:999px}
+    .stats{display:grid; gap:10px; margin-top:14px;}
+    .stat{
+      display:grid;
+      grid-template-columns: 48px 1fr;
+      gap:12px;
+      align-items:center;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,24,0.45);
+      backdrop-filter: blur(10px);
+    }
+    .icon{
+      width:48px;height:48px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(135deg, rgba(110,231,255,0.18), rgba(167,139,250,0.12));
+      color: rgba(255,255,255,0.90);
+      font-size:22px;
+    }
+    .k{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase;}
+    .v{margin-top:4px; font-size:28px; font-weight:1000; letter-spacing:-0.6px;}
+    .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:6px;}
 
     .foot{margin-top:14px; color:rgba(255,255,255,0.45); font-size:11px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
     a{color:inherit}
@@ -62,40 +97,52 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="top">
-      <div>
-        <div class="brand">
-          <div class="logo"></div>
-          <div class="brandText">
-            <div class="brandName">RoamCore</div>
-            <div class="brandSub">Trip Wrapped</div>
-          </div>
-        </div>
-        <div class="title" id="title">Your RoamCore Journey</div>
-        <div class="subtitle" id="subtitle">—</div>
-      </div>
-      <div class="pill"><span class="dot"></span><span id="generated">Generated —</span></div>
-    </div>
-
-    <div class="grid">
+    <div class="frame">
       <div class="card">
-        <div class="mapBox">
-          <img class="mapCanvas" id="mapimg" alt="Trip route map" />
-          <div class="mapOverlay">
-            <div class="mapTag">Route · <span id="routeInfo">—</span></div>
-            <div class="mapTag" id="mapHint">RoamCore Trip Wrapped</div>
+        <div class="inner">
+          <div class="top">
+            <div class="brandName" id="brand">ROAMCORE:</div>
+            <h1 class="title" id="title">TRIP WRAPPED</h1>
+            <div class="subtitle" id="subtitle">—</div>
           </div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="cardPad">
-          <div class="storyScroll">
-            <div class="story" id="story"></div>
+          <div class="mapBox">
+            <img class="mapCanvas" id="mapimg" alt="Trip route map" />
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="icon">🚐</div>
+              <div>
+                <div class="k">Total distance</div>
+                <div class="v" id="statDistance">—</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="icon">🔥</div>
+              <div>
+                <div class="k">Nights on the road</div>
+                <div class="v" id="statNights">—</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="icon">⛰️</div>
+              <div>
+                <div class="k">Elevation gain</div>
+                <div class="v" id="statElev">—</div>
+              </div>
+            </div>
+            <div class="stat">
+              <div class="icon">📍</div>
+              <div>
+                <div class="k">Places explored</div>
+                <div class="v" id="statPlaces">—</div>
+              </div>
+            </div>
           </div>
 
           <div class="foot">
-            <div>Shareable recap · inspired by Strava × Wrapped</div>
+            <div id="generated">Generated —</div>
             <div id="device">Device —</div>
           </div>
         </div>
@@ -113,6 +160,10 @@
     const fmtKm = (m) => {
       const km = (Number(m)||0) / 1000;
       return km >= 100 ? km.toFixed(0) : km.toFixed(1);
+    };
+    const fmtMi = (m) => {
+      const mi = (Number(m)||0) / 1609.344;
+      return mi >= 100 ? mi.toFixed(0) : mi.toFixed(1);
     };
     const fmtInt = (n) => (Number(n)||0).toLocaleString();
     const fmt1 = (n) => (Number(n)||0).toFixed(1);
@@ -133,9 +184,10 @@
     const to = meta.to ? new Date(meta.to) : null;
     const gen = meta.generatedAt ? new Date(meta.generatedAt) : null;
 
-    document.getElementById('title').textContent = title;
-    // Subtitle: Month Year (derived from start)
-    document.getElementById('subtitle').textContent = from ? from.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : '—';
+    document.getElementById('title').textContent = title.toUpperCase();
+    document.getElementById('subtitle').textContent = from && to
+      ? `${from.toLocaleDateString(undefined)} → ${to.toLocaleDateString(undefined)}`
+      : (from ? from.toLocaleString(undefined, { month: 'long', year: 'numeric' }) : '—');
     document.getElementById('generated').textContent = gen ? `Generated ${gen.toLocaleString()}` : 'Generated —';
     document.getElementById('device').textContent = meta.deviceId ? `Device ${meta.deviceId}` : 'Device —';
 
@@ -143,60 +195,27 @@
     const totalDays = Number(stats.totalDays || 0);
     const stops = Number(stats.numberOfStops || 0);
 
-    const story = document.getElementById('story');
-    const addCard = (kicker, value, sub) => {
-      const el = document.createElement('div');
-      el.className = 'storyCard';
-      el.innerHTML = `<div class="storyKicker">${kicker||''}</div><div class="storyValue">${value||''}</div><div class="storySub">${sub||''}</div>`;
-      story.appendChild(el);
-    };
+    // Stat tiles
+    const unit = (meta.units || '').toString().toLowerCase();
+    const useMiles = unit === 'imperial' || unit === 'us' || unit === 'mi' || unit === 'miles';
+    const distTxt = useMiles
+      ? `${fmtInt(Math.round(Number(totalM)/1609.344))} MILES`
+      : `${fmtInt(Math.round(Number(totalM)/1000))} KM`;
+    document.getElementById('statDistance').textContent = distTxt;
 
-    // Headline cards (3)
-    addCard('You covered', `${fmtInt(Math.round((Number(totalM)||0)/1000))} km`, 'Distance travelled');
-    addCard('You were out there for', `${fmtInt(totalDays)} days`, 'In the selected date range');
-    addCard('You made', `${fmtInt(stops)} stops`, 'Places you paused long enough to count');
+    const nights = Number(stats.nightsParked || 0) || (Number.isFinite(totalDays) ? Math.max(0, Math.round(totalDays)) : 0);
+    document.getElementById('statNights').textContent = nights ? `${fmtInt(nights)} NIGHTS` : '—';
 
-    // Behaviour + fun story cards
-    const avgDaysPerStop = Number(stats.avgDaysPerStop);
-    if (Number.isFinite(avgDaysPerStop) && avgDaysPerStop > 0) {
-      addCard('You moved every', `${fmt1(avgDaysPerStop)} days`, 'Movement frequency');
+    const elevM = Number(stats.totalElevationGainM || 0);
+    if (elevM > 0) {
+      const ft = elevM * 3.28084;
+      const elevTxt = useMiles ? `${fmtInt(Math.round(ft))} FT` : `${fmtInt(Math.round(elevM))} M`;
+      document.getElementById('statElev').textContent = elevTxt;
+    } else {
+      document.getElementById('statElev').textContent = '—';
     }
 
-    const longestDriveM = Number(stats.longestDriveM || 0);
-    const longestDriveH = Number(stats.longestDriveHours || 0);
-    if (longestDriveM > 0) {
-      addCard('Your longest drive was', `${fmtKm(longestDriveM)} km`, longestDriveH > 0.25 ? `…in about ${fmtHours(longestDriveH)}` : '');
-    }
-
-    const lsMs = Number(stats.longestStopDurationMs || 0);
-    const lsName = (stats.longestStopLocationName || '').toString().trim();
-    if (lsMs > 0) {
-      const d = Math.max(0.1, lsMs / (1000*60*60*24));
-      const dTxt = d >= 2 ? `${d.toFixed(0)} days` : `${d.toFixed(1)} days`;
-      addCard('Longest stop', lsName ? `${dTxt} in ${lsName}` : dTxt, '');
-    }
-
-    const pct = Number(stats.percentStationary);
-    const movingH = Number(stats.movingHours || 0);
-    const stationaryH = Number(stats.stationaryHours || 0);
-    if (Number.isFinite(pct) && pct >= 0) {
-      addCard('Trip rhythm', `${pct.toFixed(0)}% parked`, `${fmtHours(movingH)} driving · ${fmtHours(stationaryH)} parked`);
-    }
-
-    const avgDaily = Number(stats.avgDailyDistanceKm);
-    if (Number.isFinite(avgDaily) && avgDaily > 0) {
-      addCard('Average day', `${avgDaily.toFixed(0)} km/day`, '');
-    }
-
-    const avgSpd = Number(stats.avgSpeedKph);
-    if (Number.isFinite(avgSpd) && avgSpd > 0) {
-      addCard('Cruising pace', `${avgSpd.toFixed(0)} km/h`, 'Average while moving');
-    }
-
-    const nights = Number(stats.nightsParked);
-    if (Number.isFinite(nights) && nights >= 1) {
-      addCard('Nights parked', `${Math.round(nights)}`, '');
-    }
+    document.getElementById('statPlaces').textContent = stops ? `${fmtInt(stops)} PLACES` : '—';
 
     const avgStop = Number(stats.avgStopHours);
     if (Number.isFinite(avgStop) && avgStop > 0.1) {
