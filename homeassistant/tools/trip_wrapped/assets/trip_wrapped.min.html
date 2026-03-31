@@ -326,7 +326,6 @@
       const hiSub = document.getElementById('hiSub');
       const insights = Array.isArray(comps.insights) ? comps.insights : [];
       const histCount = Number(comps.historyCount || 0);
-      const vs = comps.vsAverage || {};
       if (hiBox && hiChips && (insights.length || histCount)) {
         hiBox.style.display = 'block';
         if (hiSub) hiSub.textContent = histCount ? `vs ${histCount} past trips` : 'First trip';
@@ -336,17 +335,22 @@
           el.textContent = txt;
           hiChips.appendChild(el);
         };
-        for (const s of insights) {
-          const st = String(s||'').trim();
-          if (st) add(st, st.toLowerCase().includes('record'));
+        for (const it of insights) {
+          if (!it) continue;
+          if (typeof it === 'string') {
+            const st = it.trim();
+            if (st) add(st, st.toLowerCase().includes('record'));
+            continue;
+          }
+          if (typeof it === 'object') {
+            const title = String(it.title || it.kind || '').trim();
+            if (title) add(title, String(it.kind||'') === 'record');
+          }
         }
-        if (typeof vs.distancePct === 'number' && Number.isFinite(vs.distancePct)) {
-          const v = Math.round(vs.distancePct);
-          add(v>=0 ? `Distance +${v}% vs avg` : `Distance ${v}% vs avg`);
-        }
-        if (typeof vs.avgStopHoursPct === 'number' && Number.isFinite(vs.avgStopHoursPct)) {
-          const v = Math.round(vs.avgStopHoursPct);
-          add(v>=0 ? `Avg stop +${v}%` : `Avg stop ${v}%`);
+
+        // Traveller type (short + story friendly)
+        if (comps.travellerType && comps.travellerType.label) {
+          add(String(comps.travellerType.label), false);
         }
       }
     } catch(e) {}
