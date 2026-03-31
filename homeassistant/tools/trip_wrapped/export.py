@@ -104,6 +104,7 @@ def parse_args():
     p.add_argument("--out-json", required=True)
     p.add_argument("--out-html", required=True)
     p.add_argument("--title", default="Trip Wrapped")
+    p.add_argument("--owner-name", help="Optional owner name used for auto-title (e.g. Emily)")
     return p.parse_args()
 
 
@@ -225,6 +226,7 @@ def main():
 
     wrapped = build_wrapped(
         title=a.title,
+        owner_name=_norm(a.owner_name),
         device_id=a.device_id,
         from_ts=a.from_ts,
         to_ts=a.to_ts,

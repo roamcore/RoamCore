@@ -8,6 +8,10 @@
 roamcore_traccar_proxy:
 
 input_text:
+  rc_owner_name:
+    name: "RC Owner Name"
+    initial: "You"
+
   rc_traccar_base_url:
     name: "RC Traccar Base URL"
     initial: "http://localhost:8082"  # adjust for your Traccar add-on/external URL
@@ -66,7 +70,8 @@ shell_command:
     --device-id {{ states('input_number.rc_traccar_device_id') | int }}
     --from {{ states('input_text.rc_trip_wrapped_from') }}
     --to {{ states('input_text.rc_trip_wrapped_to') }}
-    --title "RoamCore Trip Wrapped"
+    --title "Trip Wrapped"
+    --owner-name "{{ states('input_text.rc_owner_name') if states('input_text.rc_owner_name') not in ['unknown','unavailable','none',''] else 'You' }}"
     --out-json /config/www/roamcore/trip_wrapped/latest.json
     --out-html /config/www/roamcore/trip_wrapped/latest.html
 

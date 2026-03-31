@@ -49,6 +49,87 @@ def _m(v):
         return 0.0
 
 
+def _safe_str(v):
+    try:
+        s = ("" if v is None else str(v)).strip()
+        return s or None
+    except Exception:
+        return None
+
+
+def _elevation_gain_m(points):
+    """Compute elevation gain from a sequence of points with optional 'alt' in meters."""
+    try:
+        if not points or len(points) < 2:
+            return 0.0
+        gain = 0.0
+        prev = None
+        for p in points:
+            if not p:
+                continue
+            a = p.get("alt")
+            if a is None:
+                continue
+            try:
+                a = float(a)
+            except Exception:
+                continue
+            if prev is not None and a > prev:
+                gain += (a - prev)
+            prev = a
+        return float(gain)
+    except Exception:
+        return 0.0
+
+
+def _max_alt(points):
+    try:
+        best = None
+        best_p = None
+        for p in points or []:
+            if not p:
+                continue
+            a = p.get("alt")
+            if a is None:
+                continue
+            try:
+                a = float(a)
+            except Exception:
+                continue
+            if best is None or a > best:
+                best = a
+                best_p = p
+        return best, best_p
+    except Exception:
+        return None, None
+
+
+def _distance_equivalent_km(km: float) -> dict:
+    """Return a fun distance equivalent from a small local list."""
+    try:
+        km = float(km or 0)
+        if km <= 0:
+            return {}
+        # A tiny, hand-curated list (approx). Keep local + deterministic.
+        refs = [
+            (343.0, "London → Paris"),
+            (466.0, "LA → Vegas"),
+            (557.0, "San Francisco → LA"),
+            (787.0, "Paris → Berlin"),
+            (930.0, "London → Edinburgh (round trip)"),
+            (1250.0, "NYC → Chicago"),
+            (2450.0, "London → Istanbul"),
+            (3935.0, "NYC → LA"),
+        ]
+        best = min(refs, key=lambda r: abs(km - r[0]))
+        return {
+            "label": best[1],
+            "refKm": float(best[0]),
+        }
+    except Exception:
+        return {}
+
+
 def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     import math
 
@@ -76,6 +157,7 @@ def build_wrapped(
     top_trip_route=None,
     stops=None,
     map_image_url=None,
+    owner_name=None,
 ):
     trips = trips or []
     total_distance_m = sum(_m(t.get("distance")) for t in trips)
@@ -130,6 +212,24 @@ def build_wrapped(
     # --- Behaviour metrics ---
     longest_drive_m = max((_m(t.get("distance")) for t in trips), default=0.0)
     longest_drive_ms = max((_ms(t.get("duration")) for t in trips), default=0)
+
+    # Longest drive from/to (best-effort addresses)
+    longest_drive_from = None
+    longest_drive_to = None
+    if trips:
+        best = None
+        for t in trips:
+            if not t:
+                continue
+            d = _m(t.get("distance"))
+            dur = _ms(t.get("duration"))
+            key = (d, dur)
+            if best is None or key > best[0]:
+                best = (key, t)
+        if best and best[1]:
+            tt = best[1]
+            longest_drive_from = _safe_str(tt.get("startAddress"))
+            longest_drive_to = _safe_str(tt.get("endAddress"))
     total_days = 0
     if total_duration_ms:
         total_days = max(1, round(total_duration_ms / (1000 * 60 * 60 * 24)))
@@ -197,7 +297,13 @@ def build_wrapped(
     if journey_route:
         try:
             journey = [
-                {"lat": p.get("latitude"), "lon": p.get("longitude")}
+                {
+                    "lat": p.get("latitude"),
+                    "lon": p.get("longitude"),
+                    # Traccar uses altitude (meters) when available.
+                    "alt": p.get("altitude"),
+                    "t": p.get("deviceTime") or p.get("fixTime") or p.get("serverTime"),
+                }
                 for p in (journey_route or [])
                 if p and p.get("latitude") is not None and p.get("longitude") is not None
             ]
@@ -219,9 +325,83 @@ def build_wrapped(
             displacement_km = None
             loopiness = None
 
+    # Start/end location labels (privacy-first: use Traccar-provided addresses only)
+    start_name = None
+    end_name = None
+    try:
+        if trips:
+            ordered = sorted(trips, key=lambda t: (_parse_dt((t or {}).get("startTime") or "") or 0))
+            start_name = _safe_str((ordered[0] or {}).get("startAddress"))
+            end_name = _safe_str((ordered[-1] or {}).get("endAddress"))
+    except Exception:
+        start_name = None
+        end_name = None
+
+    # Elevation metrics (if altitude exists)
+    elevation_gain_m = _elevation_gain_m(journey)
+    max_alt_m, max_alt_p = _max_alt(journey)
+
+    # Furthest point from start (km)
+    furthest_km = None
+    furthest_p = None
+    if journey and len(journey) >= 2:
+        try:
+            s0 = journey[0]
+            best = 0.0
+            for p in journey:
+                dkm = _haversine_km(s0["lat"], s0["lon"], p["lat"], p["lon"])
+                if dkm > best:
+                    best = dkm
+                    furthest_p = p
+            furthest_km = best
+        except Exception:
+            furthest_km = None
+
+    # Longest streak of daily movement (based on trip start dates)
+    longest_streak_days = None
+    try:
+        if trips:
+            from datetime import timedelta
+
+            days = set()
+            for t in trips:
+                dt = _parse_dt((t or {}).get("startTime") or "")
+                if not dt:
+                    continue
+                days.add(dt.date())
+            if days:
+                ordered = sorted(days)
+                cur = 1
+                best = 1
+                for a, b in zip(ordered, ordered[1:]):
+                    if b == a + timedelta(days=1):
+                        cur += 1
+                    else:
+                        best = max(best, cur)
+                        cur = 1
+                best = max(best, cur)
+                longest_streak_days = int(best)
+    except Exception:
+        longest_streak_days = None
+
+    # Distance equivalent (fun)
+    dist_equiv = _distance_equivalent_km(total_distance_km)
+
+    # Title (best-effort): "Name's START → END Trip"
+    if owner_name:
+        o = _safe_str(owner_name)
+    else:
+        o = None
+    auto_title = None
+    if o and start_name and end_name:
+        auto_title = f"{o}'s {start_name} → {end_name} Trip"
+
     return {
         "meta": {
-            "title": title,
+            "title": auto_title or title,
+            "ownerName": owner_name,
+            "startLocationName": start_name,
+            "endLocationName": end_name,
             "deviceId": device_id,
             "from": from_ts,
             "to": to_ts,
@@ -232,13 +412,21 @@ def build_wrapped(
         "stats": {
             # Primary headline metrics
             "totalDistanceM": total_distance_m,
+            "totalDurationMs": total_duration_ms,
             "totalDays": total_days,
             "numberOfStops": number_of_stops,
+
+            "elevationGainM": elevation_gain_m,
+            "highestPointM": max_alt_m,
+            "furthestFromStartKm": furthest_km,
+            "longestMovementStreakDays": longest_streak_days,
 
             # Behaviour metrics
             "avgDaysPerStop": avg_days_per_stop,
             "longestDriveM": longest_drive_m,
             "longestDriveHours": (longest_drive_ms / (1000 * 60 * 60)) if longest_drive_ms else 0.0,
+            "longestDriveFrom": longest_drive_from,
+            "longestDriveTo": longest_drive_to,
             "longestStopDurationMs": longest_stop_ms,
             "longestStopLocationName": longest_stop_name,
 
@@ -256,6 +444,8 @@ def build_wrapped(
 
             "displacementKm": displacement_km,
             "loopiness": loopiness,
+
+            "distanceEquivalent": dist_equiv,
 
             # Route(s)
             "journeyRoute": journey,
