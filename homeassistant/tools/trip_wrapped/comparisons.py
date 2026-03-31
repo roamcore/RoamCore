@@ -13,7 +13,12 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from .history import TripSummary, summarize_wrapped
+try:
+    # When used as a package.
+    from .history import TripSummary, summarize_wrapped
+except Exception:  # pragma: no cover
+    # When executed in script mode (via /config/tools/trip_wrapped/export.py).
+    from history import TripSummary, summarize_wrapped
 
 
 def _mean(nums: list[float]) -> float | None:
