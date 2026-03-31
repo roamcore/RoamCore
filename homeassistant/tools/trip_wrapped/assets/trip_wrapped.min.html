@@ -28,7 +28,7 @@
     }
 
     /* Phone-like card */
-    .wrap{max-width:520px;margin:0 auto;padding:22px 14px 26px;}
+    .wrap{max-width:560px;margin:0 auto;padding:22px 14px 26px;}
     .frame{
       border-radius:22px;
       padding:12px;
@@ -60,27 +60,28 @@
     .title{font-weight:1000;font-size:32px;letter-spacing:-0.6px;margin:0; text-transform:uppercase;}
     .subtitle{margin-top:2px;color:var(--muted); font-size:13px;}
 
-    .mapBox{margin-top:14px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);
+    .mapBox{margin-top:14px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);
       background: rgba(255,255,255,0.02);
       position:relative;
-      height:300px;
+      height:280px;
     }
     .mapCanvas{position:absolute; inset:0; width:100%; height:100%;}
 
-    .stats{display:grid; gap:10px; margin-top:14px;}
+    .stats{display:grid; gap:10px; margin-top:14px; grid-template-columns:1fr 1fr;}
     .stat{
       display:grid;
-      grid-template-columns: 48px 1fr;
-      gap:12px;
+      grid-template-columns: 44px 1fr;
+      gap:10px;
       align-items:center;
       padding:12px 12px;
-      border-radius:14px;
+      border-radius:16px;
       border:1px solid rgba(255,255,255,0.12);
       background: rgba(8,12,24,0.45);
       backdrop-filter: blur(10px);
+      min-height:78px;
     }
     .icon{
-      width:48px;height:48px;border-radius:12px;
+      width:44px;height:44px;border-radius:12px;
       display:flex;align-items:center;justify-content:center;
       border:1px solid rgba(255,255,255,0.14);
       background: linear-gradient(135deg, rgba(110,231,255,0.18), rgba(167,139,250,0.12));
@@ -88,14 +89,30 @@
       font-size:22px;
     }
     .k{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase;}
-    .v{margin-top:4px; font-size:28px; font-weight:1000; letter-spacing:-0.6px;}
+    .v{margin-top:4px; font-size:24px; font-weight:1000; letter-spacing:-0.6px; line-height:1.02;}
     .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:6px;}
+
+    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+    .chip{font-size:12px; padding:7px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.03);
+      color: rgba(255,255,255,0.82);
+      letter-spacing:0.1px;
+    }
+    .chip.hot{border-color: rgba(110,231,255,0.35); background: rgba(110,231,255,0.07)}
 
     .elevBox{margin-top:14px; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.12);
       background: rgba(8,12,24,0.45); backdrop-filter: blur(10px);
     }
     .elevHead{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase; margin-bottom:8px;}
     #elevChart{width:100%; height:120px; display:block;}
+
+    .hiBox{margin-top:14px; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,24,0.45); backdrop-filter: blur(10px);
+    }
+    .hiHead{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+    .hiTitle{font-size:12px; color: rgba(255,255,255,0.72); letter-spacing:0.6px; text-transform:uppercase;}
+    .hiSub{font-size:11px; color: rgba(255,255,255,0.44);}
 
     .foot{margin-top:14px; color:rgba(255,255,255,0.45); font-size:11px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
     a{color:inherit}
@@ -147,6 +164,14 @@
             </div>
           </div>
 
+          <div class="hiBox" id="hiBox" style="display:none;">
+            <div class="hiHead">
+              <div class="hiTitle">Highlights</div>
+              <div class="hiSub" id="hiSub">—</div>
+            </div>
+            <div class="chips" id="hiChips"></div>
+          </div>
+
           <div class="elevBox" id="elevBox" style="display:none;">
             <div class="elevHead">Elevation profile</div>
             <canvas id="elevChart"></canvas>
@@ -167,6 +192,7 @@
     const d = window.TRIP_WRAPPED_DATA || {};
     const meta = d.meta || {};
     const stats = d.stats || {};
+    const comps = d.comparisons || {};
 
     const fmtKm = (m) => {
       const km = (Number(m)||0) / 1000;
@@ -293,20 +319,37 @@
 
     document.getElementById('statPlaces').textContent = stops ? `${fmtInt(stops)} PLACES` : '—';
 
-    const avgStop = Number(stats.avgStopHours);
-    if (Number.isFinite(avgStop) && avgStop > 0.1) {
-      addCard('Average stop lasted', fmtHours(avgStop), '');
-    }
-
-    const disp = Number(stats.displacementKm);
-    if (Number.isFinite(disp) && disp > 0) {
-      addCard('As the crow flies', `${disp.toFixed(0)} km`, 'Start → end displacement');
-    }
-
-    const loop = Number(stats.loopiness);
-    if (Number.isFinite(loop) && loop > 0) {
-      addCard('Detour factor', `${loop.toFixed(1)}×`, 'How much you wandered vs straight-line');
-    }
+    // Highlights (local history comparisons)
+    try {
+      const hiBox = document.getElementById('hiBox');
+      const hiChips = document.getElementById('hiChips');
+      const hiSub = document.getElementById('hiSub');
+      const insights = Array.isArray(comps.insights) ? comps.insights : [];
+      const histCount = Number(comps.historyCount || 0);
+      const vs = comps.vsAverage || {};
+      if (hiBox && hiChips && (insights.length || histCount)) {
+        hiBox.style.display = 'block';
+        if (hiSub) hiSub.textContent = histCount ? `vs ${histCount} past trips` : 'First trip';
+        const add = (txt, hot=false) => {
+          const el = document.createElement('div');
+          el.className = hot ? 'chip hot' : 'chip';
+          el.textContent = txt;
+          hiChips.appendChild(el);
+        };
+        for (const s of insights) {
+          const st = String(s||'').trim();
+          if (st) add(st, st.toLowerCase().includes('record'));
+        }
+        if (typeof vs.distancePct === 'number' && Number.isFinite(vs.distancePct)) {
+          const v = Math.round(vs.distancePct);
+          add(v>=0 ? `Distance +${v}% vs avg` : `Distance ${v}% vs avg`);
+        }
+        if (typeof vs.avgStopHoursPct === 'number' && Number.isFinite(vs.avgStopHoursPct)) {
+          const v = Math.round(vs.avgStopHoursPct);
+          add(v>=0 ? `Avg stop +${v}%` : `Avg stop ${v}%`);
+        }
+      }
+    } catch(e) {}
 
     // --- Static map snapshot (non-interactive) ---
     // We render a MapLibre map once (raster OSM w/ labels) then snapshot it to PNG
@@ -335,12 +378,16 @@
     };
 
     const renderStaticSnapshot = async () => {
-      if (!route || route.length < 2) {
-        mapimg.style.display = 'none';
-        document.getElementById('routeInfo').textContent = '—';
+      // Prefer a pre-rendered static PNG generated at export time.
+      if (meta.mapImageUrl) {
+        mapimg.src = meta.mapImageUrl;
+        mapimg.style.display = 'block';
         return;
       }
-      document.getElementById('routeInfo').textContent = `${Number(route.length||0)} pts`;
+      if (!route || route.length < 2) {
+        mapimg.style.display = 'none';
+        return;
+      }
 
       // Create a temporary div for MapLibre
       const div = document.createElement('div');
@@ -379,9 +426,7 @@
       const theme = (new URLSearchParams(location.search).get('theme') || '').toLowerCase();
       const wantDark = theme === 'dark';
 
-      try {
-        if (wantDark) document.getElementById('mapHint').textContent = 'RoamCore Trip Wrapped · Dark';
-      } catch(e) {}
+      // (No hint UI in the minimal template.)
 
       const parseHex = (hex) => {
         const h = hex.replace('#','').trim();
