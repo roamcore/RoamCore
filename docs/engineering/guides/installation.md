@@ -18,8 +18,10 @@ RoamCore installs as:
 ## One-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/scripts/install/ha/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
 ```
+
+See also: `docs/howto/homeassistant-installer.md`.
 
 ## Post-install steps
 
@@ -33,5 +35,5 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/scripts/inst
 ## Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/scripts/install/ha/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/uninstall.sh | sh
 ```

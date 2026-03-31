@@ -19,6 +19,7 @@ fail() { echo "ERROR: $*" >&2; exit 1; }
 req_pkgs=(
   "homeassistant/packages/roamcore_power.yaml"
   "homeassistant/packages/roamcore_victron_health.yaml"
+  "homeassistant/packages/roamcore_level.yaml"
 )
 for f in "${req_pkgs[@]}"; do
   [ -f "$f" ] || fail "missing $f"
@@ -35,12 +36,25 @@ MAP_JS="homeassistant/www/roamcore/roamcore-pages.js"
 
 echo "OK: map JS bundle present"
 
+# --- OpenClaw JSON API integration (optional but expected for beta) ---
+OPENCLAW_CC_DIR="homeassistant/custom_components/roamcore_openclaw_api"
+if [ -d "$OPENCLAW_CC_DIR" ]; then
+  [ -f "$OPENCLAW_CC_DIR/manifest.json" ] || fail "missing $OPENCLAW_CC_DIR/manifest.json"
+  [ -f "$OPENCLAW_CC_DIR/view.py" ] || fail "missing $OPENCLAW_CC_DIR/view.py"
+  echo "OK: OpenClaw API custom component present"
+else
+  echo "WARN: OpenClaw API custom component not found at $OPENCLAW_CC_DIR" >&2
+fi
+
 # --- Trip wrapped assets (HTML template should exist) ---
 TW_HTML_MIN="homeassistant/www/roamcore/trip_wrapped/trip_wrapped.min.html"
 if [ -f "$TW_HTML_MIN" ]; then
   echo "OK: trip wrapped HTML present"
 else
   echo "WARN: trip wrapped HTML not found at $TW_HTML_MIN (may be generated/deployed separately)" >&2
+  # Still require the exporter toolchain package to exist.
+  [ -d "homeassistant/tools/trip_wrapped" ] || fail "missing homeassistant/tools/trip_wrapped"
+  echo "OK: trip wrapped exporter toolchain present"
 fi
 
 # --- Victron add-on source should still compile ---
