@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-13
+Last updated: 2026-03-31
 
 This is an internal status page for the remaining MVP feature build-out.
 
@@ -12,9 +12,9 @@ This is an internal status page for the remaining MVP feature build-out.
 - Timezone override contract sensor (no HA restart required)
   - `sensor.rc_time_zone` via `input_text.rc_time_zone_override`
 
-- IMU levelling (HA-side)
-  - `homeassistant/packages/roamcore_system_level.yaml`
-  - calibration offsets + status + hint + calibrate button
+- Levelling contract (HA-only beta)
+  - `homeassistant/packages/roamcore_level.yaml`
+  - auto-maps common ESPHome pitch/roll sensors into stable `rc_level_*` entities
 
 - Map view wiring
   - `dashboard/lovelace/storage/lovelace.roamcore.json` includes `/lovelace/roamcore/map`
@@ -24,6 +24,10 @@ This is an internal status page for the remaining MVP feature build-out.
   - tool: `homeassistant/tools/trip_wrapped/`
   - HA wiring: `homeassistant/packages/roamcore_trip_wrapped.yaml`
   - output: `/local/roamcore/trip_wrapped/latest.html`
+
+- OpenClaw JSON API (HA-native)
+  - endpoint: `/api/roamcore/openclaw/summary`
+  - docs: `docs/reference/openclaw-json-api.md`
 
 - Traccar live map (embedded)
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
@@ -43,3 +47,7 @@ This is an internal status page for the remaining MVP feature build-out.
 3) **Trip stats (rc_trip_*) from real Traccar data**
    - MVP still uses mocks for distance/time/stops.
    - Implement: odometer-based + utility_meter or periodic report pulls.
+
+4) **HACS packaging (planned)**
+   - Publish a HACS integration to install RoamCore from the HA UI.
+   - Auto-create dashboard + resources.

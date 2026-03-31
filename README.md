@@ -49,6 +49,24 @@ If you already run Home Assistant in your van, you can install the RoamCore dash
 
 The `homeassistant/` directory contains everything you need.
 
+#### HA-only beta: one-line install (recommended)
+
+**Prerequisites:** you already have **Home Assistant** running (HAOS recommended) and can access the `/config` filesystem (e.g. via the **Terminal & SSH** add-on).
+
+Install:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
+```
+
+Uninstall:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/uninstall.sh | sh
+```
+
+Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
+
 ### RoamCore OS
 
 The full experience. A pre-configured Proxmox image running Home Assistant OS and OpenWrt as VMs on supported hardware (Protectli VP2430). Integrated cellular connectivity, WAN failover, modem GPS — all pre-configured.
@@ -64,6 +82,22 @@ See [`docs/`](docs/) for setup instructions.
 We're releasing early because we believe in building in the open. The long-term goal is a polished, novice-friendly product — but right now, this is best suited for technical users who are comfortable with Home Assistant and happy to provide feedback.
 
 See the [roadmap](ROADMAP.md) for what's being built and where the project is heading.
+
+## Design Philosophy (why follow this project)
+
+RoamCore is built around a few non-negotiables:
+
+- **Local-first:** core functionality works offline.
+- **No subscriptions for essentials:** your battery and dashboard should never be paywalled.
+- **Contract-first:** the UI is built on stable `rc_*` entities so we can swap vendors behind the scenes without breaking dashboards or automations.
+- **Extensible by default:** everything is just Home Assistant under the hood — templates, automations, ESPHome, and integrations all compose naturally.
+
+If you like software that’s pragmatic, inspectable, and built to last, you’ll like where RoamCore is going.
+
+## HACS (planned)
+
+For beta, install is via the one-line script above.
+Longer-term we intend to publish a **HACS** integration so users can install RoamCore from the HA UI and have the dashboard + resources created automatically.
 
 ---
 
