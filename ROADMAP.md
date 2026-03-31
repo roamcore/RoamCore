@@ -138,8 +138,6 @@ A community showcase for power user setups, custom dashboards, creative integrat
 ### Mobile App
 A dedicated mobile application (PWA initially, native later) for a streamlined on-the-go experience. Auto-discovery, adaptive layouts, and quick access to the most-used controls.
 
-### Pro Features
-Optional premium features for users who want enhanced capabilities. Details TBC, but the core platform will always be free, local, and open source. RoamCore will never gate essential monitoring and control features behind a subscription.
 
 ---
 
