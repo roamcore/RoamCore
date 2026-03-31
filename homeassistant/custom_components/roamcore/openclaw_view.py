@@ -144,3 +144,38 @@ class OpenClawSummaryView(HomeAssistantView):
 
         return self.json(payload)
 
+
+class OpenClawSkillView(HomeAssistantView):
+    """Convenience endpoint to help users configure an agent quickly."""
+
+    url = "/api/roamcore/openclaw/skill"
+    name = "api:roamcore_openclaw_skill"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def get(self, request):
+        base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
+        summary = f"{base}/api/roamcore/openclaw/summary"
+        payload: dict[str, Any] = {
+            "contract": {"name": "roamcore_openclaw_skill", "version": 1},
+            "generated_at": _iso_now(),
+            "roamcore": {
+                "openclaw_summary_url": summary,
+                "requires_auth": bool(self.requires_auth),
+                "summary_contract": {"name": "roamcore_openclaw_summary", "version": 1},
+            },
+            "user_instructions": [
+                "Copy the openclaw_summary_url into your agent skill/config.",
+                "If requires_auth=true, configure your agent to send a Home Assistant Long-Lived Access Token as a Bearer token.",
+            ],
+        }
+        return self.json(payload)

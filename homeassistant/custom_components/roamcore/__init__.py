@@ -10,7 +10,7 @@ from .const import (
     CONF_OPENCLAW_API_ENABLED,
     DEFAULT_OPENCLAW_API_ENABLED,
 )
-from .openclaw_view import OpenClawSummaryView
+from .openclaw_view import OpenClawSummaryView, OpenClawSkillView
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -34,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register HTTP endpoints (OpenClaw summary)
     if options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED):
         hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
+        hass.http.register_view(OpenClawSkillView(hass, entry.entry_id))
 
     return True
 
@@ -43,4 +44,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Home Assistant does not currently provide a stable public API to unregister
     # HTTP views. We leave the view registered for the life of the process.
     return True
-

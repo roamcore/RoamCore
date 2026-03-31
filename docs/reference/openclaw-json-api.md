@@ -9,6 +9,15 @@ This is a thin HA-native wrapper around the existing **`rc_*` contract entities*
 - **GET** `/api/roamcore/openclaw/summary`
 - Returned `Content-Type`: `application/json`
 
+## Convenience endpoint (agent setup)
+
+- **GET** `/api/roamcore/openclaw/skill`
+
+This returns a copy/paste-friendly payload that includes:
+- the full URL to the summary endpoint
+- whether auth is required
+- the summary contract name/version
+
 ### Auth
 
 Current MVP implementation sets `requires_auth = false` to keep OpenClaw simple on an isolated LAN.
@@ -87,11 +96,26 @@ Fields:
 
 Home Assistant custom integration:
 
-- `homeassistant/custom_components/roamcore_openclaw_api/`
+- Preferred (HACS): `homeassistant/custom_components/roamcore/`
+- Legacy (pre-HACS): `homeassistant/custom_components/roamcore_openclaw_api/`
 
 The integration registers a `HomeAssistantView` and reads `rc_*` entity states from HA.
 
 ## Setup steps
+
+### HACS path (recommended)
+
+1. Install RoamCore via HACS (custom repository beta path).
+2. Add the integration: Settings → Devices & services → Add integration → **RoamCore**.
+3. Restart Home Assistant.
+4. Confirm:
+
+```sh
+curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/summary
+curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/skill
+```
+
+### Manual / legacy path
 
 1. Copy `homeassistant/custom_components/roamcore_openclaw_api/` into your HA `/config/custom_components/`.
 2. Ensure RoamCore packages are included (see `homeassistant/configuration_addon.yaml`).
@@ -115,4 +139,3 @@ Recommended smoke tests:
 1. Verify the endpoint returns HTTP 200 and valid JSON.
 2. Force upstream entities to `unknown/unavailable` (or disable a source integration) and confirm the API returns `null` for those fields (no exceptions / stack traces).
 3. Confirm the output fields and types remain stable while vendor entities change (the entire point of the `rc_*` contract layer).
-
