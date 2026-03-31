@@ -54,7 +54,17 @@ repo_slug() {
 SLUG="$(repo_slug)"
 ARCHIVE_URL="https://github.com/${SLUG}/archive/${ROAMCORE_REF}.tar.gz"
 
-WORK="/tmp/roamcore-install.$$"
+# HAOS rootfs can be very small / full. Prefer a workdir on /mnt/data when present.
+WORK_BASE="${WORK_BASE:-}"
+if [ -z "${WORK_BASE}" ]; then
+  if [ -d /mnt/data ] && [ -w /mnt/data ]; then
+    WORK_BASE="/mnt/data/tmp"
+  else
+    WORK_BASE="/tmp"
+  fi
+fi
+
+WORK="$WORK_BASE/roamcore-install.$$"
 ARCHIVE="$WORK/src.tar.gz"
 SRC_ROOT="$WORK/src"
 
