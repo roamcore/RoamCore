@@ -59,12 +59,6 @@ Install:
 curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
 ```
 
-Uninstall:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/uninstall.sh | sh
-```
-
 Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
 
 ### HACS install (beta: Custom Repository)
