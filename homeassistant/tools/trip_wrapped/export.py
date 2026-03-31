@@ -3,11 +3,13 @@
 import argparse
 import json
 import os
+import sys
+import tempfile
 from datetime import datetime, timezone
 
 from build_wrapped import build_wrapped
 from render_html import render_html
-from traccar_client import TraccarClient
+from traccar_client import TraccarClient, TraccarError
 
 
 def _merc_x(lon: float) -> float:
@@ -87,6 +89,15 @@ def parse_args():
     # we will fall back to /config/secrets.yaml (keys: roamcore_traccar_admin_email/password)
     p.add_argument("--username")
     p.add_argument("--password")
+    p.add_argument(
+        "--user-token",
+        help="Traccar user token. If omitted, will try /config/secrets.yaml key roamcore_traccar_user_token.",
+    )
+    p.add_argument(
+        "--no-ha-proxy",
+        action="store_true",
+        help="Disable the Home Assistant supervisor proxy fallback (useful for local dev).",
+    )
     p.add_argument("--device-id", type=int, required=True)
     p.add_argument("--from", dest="from_ts", required=True)
     p.add_argument("--to", dest="to_ts", required=True)
@@ -134,13 +145,13 @@ def main():
     user = _norm(a.username)
     pw = _norm(a.password)
 
-    # Preferred (for RoamCore): use the Traccar user token (works even when the
-    # email/password session endpoint is broken) so we don't need to store creds.
+    # Preferred (for RoamCore): use a Traccar user token (works even when the
+    # email/password login endpoint is unavailable) so we don't need to store creds.
     trips = None
     pref_err = None
     try:
         sec = _load_secrets()
-        tok = sec.get("roamcore_traccar_user_token")
+        tok = _norm(a.user_token) or sec.get("roamcore_traccar_user_token")
         if tok:
             tok_client = TraccarClient.direct_user_token(base_url=a.base_url, user_token=tok)
             trips = tok_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
@@ -149,7 +160,7 @@ def main():
 
     # Secondary preference: HA proxy (no direct token required)
     ha_client = None
-    if trips is None:
+    if trips is None and not a.no_ha_proxy:
         try:
             ha_client = TraccarClient.ha_supervisor_proxy(base_url="http://supervisor/core")
             trips = ha_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
@@ -164,8 +175,8 @@ def main():
             pw = pw or sec.get("roamcore_traccar_admin_password")
         if not (user and pw):
             raise SystemExit(
-                "Trip Wrapped export failed. Preferred token/proxy methods were unavailable and Traccar credentials are missing. "
-                "Provide --username/--password or set roamcore_traccar_admin_email/password in /config/secrets.yaml. "
+                "Trip Wrapped export failed. Token/proxy methods were unavailable and Traccar credentials are missing. "
+                "Provide --user-token, or --username/--password, or set roamcore_traccar_user_token / roamcore_traccar_admin_email/password in /config/secrets.yaml. "
                 f"Last error: {pref_err}"
             )
         client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
@@ -253,13 +264,33 @@ def main():
         map_url = None
 
     os.makedirs(os.path.dirname(a.out_json), exist_ok=True)
-    with open(a.out_json, "w", encoding="utf-8") as f:
-        json.dump(wrapped, f, ensure_ascii=False, indent=2)
-
     os.makedirs(os.path.dirname(a.out_html), exist_ok=True)
-    with open(a.out_html, "w", encoding="utf-8") as f:
-        f.write(render_html(wrapped))
+
+    # Atomic writes so /local/latest.html doesn't intermittently serve partial files.
+    def _atomic_write_text(path: str, text: str):
+        d = os.path.dirname(path)
+        fd, tmp = tempfile.mkstemp(prefix=os.path.basename(path) + ".", dir=d)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.replace(tmp, path)
+        finally:
+            try:
+                if os.path.exists(tmp):
+                    os.unlink(tmp)
+            except Exception:
+                pass
+
+    def _atomic_write_json(path: str, obj):
+        _atomic_write_text(path, json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
+
+    _atomic_write_json(a.out_json, wrapped)
+    _atomic_write_text(a.out_html, render_html(wrapped))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except TraccarError as e:
+        print(f"Trip Wrapped export failed: {e}", file=sys.stderr)
+        raise SystemExit(2)

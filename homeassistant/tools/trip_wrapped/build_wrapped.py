@@ -5,7 +5,9 @@ def _downsample(points, max_points=350):
         n = len(points)
         if n <= max_points:
             return points
-        step = max(1, int(n / max_points))
+        # Use a ceiling-ish step so we actually reduce when n is only slightly
+        # above max_points (e.g. 1000 -> 900).
+        step = max(1, int((n + max_points - 1) / max_points))
         out = points[::step]
         # Ensure last point is included.
         if out and points[-1] is not out[-1]:

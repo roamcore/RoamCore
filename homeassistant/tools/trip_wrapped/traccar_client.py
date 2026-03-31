@@ -1,8 +1,15 @@
 import json
 import urllib.parse
 import urllib.request
+import urllib.error
 import os
 import base64
+from http.cookies import SimpleCookie
+
+
+class TraccarError(RuntimeError):
+    """Raised when Traccar API calls fail with actionable context."""
+
 
 
 class TraccarClient:
@@ -41,23 +48,50 @@ class TraccarClient:
 
         We then use the returned JSESSIONID cookie for subsequent API calls.
         """
+        if not (user_token and str(user_token).strip()):
+            raise TraccarError("Traccar user token was empty")
+
         u = (base_url or "").rstrip("/") + "/api/session?" + urllib.parse.urlencode({"token": user_token})
         req = urllib.request.Request(u, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            sc = resp.headers.get("Set-Cookie") or ""
-        js = None
         try:
-            # Example: JSESSIONID=...; Path=/
-            for part in sc.split(","):
-                p = part.strip()
-                if p.startswith("JSESSIONID="):
-                    js = p.split(";", 1)[0]
-                    break
-        except Exception:
-            js = None
-        if not js:
-            raise RuntimeError("Traccar token session did not return JSESSIONID")
-        return cls(base_url=base_url, auth_header=js, auth_header_name="Cookie")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                # Traccar sets JSESSIONID as a cookie.
+                # Prefer robust parsing via SimpleCookie, and handle multiple Set-Cookie headers.
+                set_cookies = []
+                try:
+                    set_cookies = resp.headers.get_all("Set-Cookie") or []
+                except Exception:
+                    sc = resp.headers.get("Set-Cookie")
+                    if sc:
+                        set_cookies = [sc]
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = (e.read() or b"").decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            raise TraccarError(f"Traccar token session failed ({e.code} {e.reason}). {body}".strip())
+
+        jsid = cls._extract_jsessionid(set_cookies)
+        if not jsid:
+            raise TraccarError("Traccar token session did not return JSESSIONID")
+        return cls(base_url=base_url, auth_header=f"JSESSIONID={jsid}", auth_header_name="Cookie")
+
+    @staticmethod
+    def _extract_jsessionid(set_cookie_headers: list[str]) -> str | None:
+        """Extract JSESSIONID from Set-Cookie headers."""
+        cookie = SimpleCookie()
+        for sc in set_cookie_headers or []:
+            try:
+                cookie.load(sc)
+            except Exception:
+                continue
+        if "JSESSIONID" in cookie:
+            try:
+                return cookie["JSESSIONID"].value
+            except Exception:
+                return None
+        return None
 
     @classmethod
     def ha_supervisor_proxy(cls, base_url: str = "http://supervisor/core"):
@@ -98,8 +132,23 @@ class TraccarClient:
                 "Content-Type": "application/json",
             },
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = (e.read() or b"").decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            raise TraccarError(f"Traccar API request failed: GET {url} -> {e.code} {e.reason}. {body}".strip())
+        except Exception as e:
+            raise TraccarError(f"Traccar API request failed: GET {url}. {e}")
+
+        try:
+            return json.loads(raw)
+        except Exception as e:
+            raise TraccarError(f"Traccar API returned invalid JSON for {url}. {e}")
 
     def get_trips(self, device_id: int, from_ts: str, to_ts: str):
         # Note: path differs between direct Traccar (/api/reports/...) vs HA proxy (/reports/...).
