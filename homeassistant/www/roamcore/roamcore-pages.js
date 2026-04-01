@@ -1018,6 +1018,9 @@ class RoamcoreBasePage extends HTMLElement {
       };
       try {
         m.on('load', ensureRasterFallback);
+        // Some style/source failures can happen before the user ever sees a tile.
+        // Ensure the fallback is applied even if the vector sources error.
+        m.on('error', ensureRasterFallback);
         setTimeout(ensureRasterFallback, 250);
       } catch (e) {}
 
