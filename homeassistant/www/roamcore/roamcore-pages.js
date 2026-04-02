@@ -156,9 +156,12 @@ class RoamcoreBasePage extends HTMLElement {
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    // Default: offline/local protomaps basemap (z0–8) served by Home Assistant.
-    // Style JSON is patched at runtime to replace __ORIGIN__ with window.location.origin.
-    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
+    // Default: keep MapLibre OFF for maximum reliability.
+    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
+    // if PMTiles assets are not present on the HA host.
+    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
+    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
+    return '';
   }
 
   _mapMode() {
