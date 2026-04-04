@@ -43,6 +43,18 @@ done <"$MANIFEST"
 # Best-effort cleanup of empty RoamCore dirs.
 rmdir "$CONFIG_DIR/www/roamcore" 2>/dev/null || true
 
+# Clean up other potentially-empty directories we populate.
+# We only remove directories if they are empty, so we won't delete user content.
+rmdir "$CONFIG_DIR/custom_components/roamcore" 2>/dev/null || true
+rmdir "$CONFIG_DIR/custom_components/roamcore_traccar_proxy" 2>/dev/null || true
+rmdir "$CONFIG_DIR/custom_components" 2>/dev/null || true
+
+rmdir "$CONFIG_DIR/packages" 2>/dev/null || true
+rmdir "$CONFIG_DIR/lovelace" 2>/dev/null || true
+rmdir "$CONFIG_DIR/tools/trip_wrapped" 2>/dev/null || true
+rmdir "$CONFIG_DIR/tools" 2>/dev/null || true
+rmdir "$CONFIG_DIR/www" 2>/dev/null || true
+
 echo
 echo "OK: removed $count files."
 if [ "$missing" -eq 1 ]; then
@@ -56,4 +68,3 @@ echo "- info:     $INFO"
 echo
 echo "If you want to fully remove state/backups:"
 echo "  rm -rf $STATE_DIR"
-
