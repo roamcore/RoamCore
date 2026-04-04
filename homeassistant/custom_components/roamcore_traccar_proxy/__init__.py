@@ -135,31 +135,47 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
         _load_traccar_admin_secrets()
 
-        try:
-            # Prefer token-based session creation (no password required).
-            if _cached_user_token:
-                req = session.get(
-                    f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session?token={_cached_user_token}",
-                    allow_redirects=False,
-                )
-            else:
-                if not (_cached_admin_email and _cached_admin_password):
-                    return None
-                req = session.post(
-                    f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session",
-                    data={"email": _cached_admin_email, "password": _cached_admin_password},
-                    allow_redirects=False,
-                )
-
+        async def _try_token() -> str | None:
+            if not _cached_user_token:
+                return None
+            req = session.get(
+                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session?token={_cached_user_token}",
+                allow_redirects=False,
+            )
             async with req as resp:
                 if resp.status != 200:
                     return None
-                sc = resp.headers.getall("Set-Cookie", [])
-                # Find JSESSIONID
-                for v in sc:
+                for v in resp.headers.getall("Set-Cookie", []):
                     if v.startswith("JSESSIONID="):
-                        _cached_session_cookie = v
-                        return _cached_session_cookie
+                        return v
+            return None
+
+        async def _try_admin_creds() -> str | None:
+            if not (_cached_admin_email and _cached_admin_password):
+                return None
+            req = session.post(
+                f"{DEFAULT_UPSTREAM.rstrip('/')}/api/session",
+                data={"email": _cached_admin_email, "password": _cached_admin_password},
+                allow_redirects=False,
+            )
+            async with req as resp:
+                if resp.status != 200:
+                    return None
+                for v in resp.headers.getall("Set-Cookie", []):
+                    if v.startswith("JSESSIONID="):
+                        return v
+            return None
+
+        try:
+            # Prefer token-based session creation (no password required).
+            # If the token is present but expired/invalid, fall back to admin creds
+            # (if available) so the proxy doesn't go hard-down.
+            js = await _try_token()
+            if not js:
+                js = await _try_admin_creds()
+            if js:
+                _cached_session_cookie = js
+                return _cached_session_cookie
         except Exception:
             return None
         return None
