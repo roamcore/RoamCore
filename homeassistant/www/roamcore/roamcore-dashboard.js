@@ -526,8 +526,12 @@ class RoamcoreDashboardCard extends HTMLElement {
   _mapStyleUrl() {
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
-    // Default: offline/local protomaps basemap style.
-    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
+    // Default: keep MapLibre OFF for maximum reliability.
+    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
+    // if MapLibre/PMTiles assets are not present on the HA host.
+    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
+    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
+    return '';
   }
 
   _mapMode() {
@@ -713,7 +717,10 @@ class RoamcoreDashboardCard extends HTMLElement {
         } catch (e) {}
       }
 
-      const mode = this._mapMode();
+      // Prefer MapLibre only when explicitly configured; otherwise use Leaflet raster.
+      // If MapLibre fails to load (missing assets, CSP, etc.), fall back to Leaflet.
+      let mode = this._mapMode();
+      let switchedToLeaflet = false;
       if (mode.mode === 'maplibre') {
         if (el._rcMapLibre) return;
         // If Leaflet map was mounted earlier (before style URL was set), remove it and switch.
@@ -722,7 +729,10 @@ class RoamcoreDashboardCard extends HTMLElement {
           try { delete el._rcMap; } catch (e) { el._rcMap = null; }
         }
         const ok = await this._ensureMapLibre();
-        if (!ok) return;
+        if (!ok) {
+          mode = { mode: 'leaflet', tileUrl: this._tileUrl() };
+          switchedToLeaflet = true;
+        }
       } else {
         if (el._rcMap) return;
         // If MapLibre map was mounted earlier, remove it and switch.
@@ -730,6 +740,12 @@ class RoamcoreDashboardCard extends HTMLElement {
           try { el._rcMapLibre.remove?.(); } catch (e) {}
           try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
         }
+        const ok = await this._ensureLeaflet();
+        if (!ok) return;
+      }
+
+      if (switchedToLeaflet) {
+        // Ensure Leaflet is present if we switched away from MapLibre.
         const ok = await this._ensureLeaflet();
         if (!ok) return;
       }
