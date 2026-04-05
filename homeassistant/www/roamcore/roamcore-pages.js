@@ -40,6 +40,57 @@ function rcLevelStatusFromPitchRoll(pitch, roll) {
   return { label: 'Not Level', status: 'bad' };
 }
 
+function rcIsMissingState(v) {
+  const s = (v === undefined || v === null) ? '' : String(v);
+  const t = s.toLowerCase();
+  return !s || t === 'unknown' || t === 'unavailable' || t === 'none';
+}
+
+// Demo values are only used when input_boolean.rc_demo_mode is ON and the real
+// entity state is missing/unknown/unavailable.
+const RC_DEMO_STATES = {
+  // Power
+  'sensor.rc_power_battery_soc': '83',
+  'sensor.rc_power_solar_power': '420',
+  'sensor.rc_power_load_power': '280',
+  'sensor.rc_power_battery_voltage': '12.7',
+  'sensor.rc_power_battery_current': '-22',
+  'sensor.rc_power_battery_temperature': '24.5',
+  'binary_sensor.rc_power_shore_connected': 'off',
+  'sensor.rc_power_inverter_status': 'on',
+
+  // Network
+  'sensor.rc_net_wan_status': 'good',
+  'sensor.rc_net_wan_source': 'cellular',
+  'sensor.rc_net_download': '47',
+  'sensor.rc_net_upload': '9',
+  'sensor.rc_net_ping': '43',
+  'sensor.rc_net_cellular_provider': 'DemoTel',
+  'sensor.rc_net_cellular_technology': '5G',
+  'sensor.rc_net_cellular_signal': '-85',
+  'sensor.rc_net_ssid': 'RoamCore-Demo',
+  'sensor.rc_net_channel': '36',
+
+  // Location
+  'sensor.rc_location_lat': '37.7749',
+  'sensor.rc_location_lon': '-122.4194',
+  'sensor.rc_location_accuracy_m': '12',
+  'sensor.rc_location_accuracy': '12',
+  'sensor.rc_location_speed': '0',
+  'sensor.rc_location_heading_deg': '0',
+  'sensor.rc_location_source': 'demo',
+
+  // Level
+  'sensor.rc_system_level_pitch_deg': '0.8',
+  'sensor.rc_system_level_roll_deg': '-1.2',
+  'sensor.rc_system_level_pitch': '0.8',
+  'sensor.rc_system_level_roll': '-1.2',
+
+  // Trip Wrapped (light preview)
+  'sensor.rc_trip_distance_today_mi': '54',
+  'sensor.rc_trip_time_today': '1h 42m',
+};
+
 function rcVanSideSvg() {
   return `
     <svg viewBox="0 0 80 40" class="rc-van">
@@ -109,6 +160,20 @@ class RoamcoreBasePage extends HTMLElement {
         const candidates = path.length ? path : [ev.target];
         for (const node of candidates) {
           if (node && node.getAttribute) {
+            // Service call helper (e.g. toggle demo mode)
+            const call = node.getAttribute('data-call');
+            if (call) {
+              try {
+                const parts = String(call).split('.');
+                const domain = parts[0] || '';
+                const service = parts[1] || '';
+                const entityId = node.getAttribute('data-entity') || '';
+                if (domain && service && entityId) {
+                  this._callService(domain, service, { entity_id: entityId });
+                  return;
+                }
+              } catch (e) {}
+            }
             const nav = node.getAttribute('data-nav');
             if (nav) {
               this._navigate(nav);
@@ -126,8 +191,83 @@ class RoamcoreBasePage extends HTMLElement {
     this._render();
   }
 
+  _callService(domain, service, data = {}) {
+    try {
+      if (!this._hass || typeof this._hass.callService !== 'function') return;
+      this._hass.callService(domain, service, data);
+    } catch (e) {}
+  }
+
+  _isDemoMode() {
+    try {
+      return this._hass?.states?.['input_boolean.rc_demo_mode']?.state === 'on';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _setupState() {
+    const owner = this._hass?.states?.['binary_sensor.rc_setup_owner_ready']?.state;
+    const map = this._hass?.states?.['binary_sensor.rc_setup_map_ready']?.state;
+    const trip = this._hass?.states?.['binary_sensor.rc_setup_trip_wrapped_ready']?.state;
+    const vic = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
+    const ok = (v) => String(v || '').toLowerCase() === 'on';
+    const complete = ok(owner) && ok(map) && ok(trip) && ok(vic);
+    return {
+      complete,
+      progress: this._hass?.states?.['sensor.rc_setup_progress']?.state,
+      ownerOk: ok(owner),
+      mapOk: ok(map),
+      tripOk: ok(trip),
+      vicOk: ok(vic),
+    };
+  }
+
+  _setupBanner() {
+    try {
+      const st = this._setupState();
+      if (st.complete) return '';
+
+      const prog = (!rcIsMissingState(st.progress)) ? String(st.progress) : '';
+      const bits = [
+        st.ownerOk ? null : 'Owner',
+        st.mapOk ? null : 'Map',
+        st.tripOk ? null : 'Trip Wrapped',
+        st.vicOk ? null : 'Victron',
+      ].filter(Boolean);
+      const missing = bits.length ? bits.join(', ') : '—';
+
+      const demo = this._isDemoMode();
+      const demoPill = demo
+        ? `<span class="rc-pill rc-pill-demo">Demo mode</span>`
+        : '';
+
+      return `
+        <div class="rc-setup-banner">
+          <div class="rc-setup-top">
+            <div>
+              <div class="rc-setup-title">Setup not complete</div>
+              <div class="rc-setup-sub">${prog ? `Progress: <b>${prog}</b> · ` : ''}Missing: <b>${missing}</b></div>
+            </div>
+            <div class="rc-setup-right">${demoPill}</div>
+          </div>
+          <div class="rc-setup-actions">
+            <button class="rc-btn rc-btn-small" data-nav="${this._basePath()}/setup">Open setup wizard</button>
+            <button class="rc-btn rc-btn-small" data-nav="${this._basePath()}/settings">Dashboard settings</button>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      return '';
+    }
+  }
+
   _getState(id) {
-    return this._hass?.states?.[id]?.state;
+    const raw = this._hass?.states?.[id]?.state;
+    if (this._isDemoMode() && rcIsMissingState(raw) && RC_DEMO_STATES[id] !== undefined) {
+      return RC_DEMO_STATES[id];
+    }
+    return raw;
   }
 
   _num(id, fallback = null) {
@@ -204,6 +344,9 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
+  // Legacy hook (some pages still call this even though navigation is delegated).
+  _wireNav() {}
+
   _basePath() {
     // The RoamCore dashboard can be mounted at different base paths depending on
     // whether it's a YAML dashboard or a storage dashboard.
@@ -232,6 +375,7 @@ class RoamcoreBasePage extends HTMLElement {
         <div class="rc-subspacer"></div>
         <button class="rc-gear" title="Settings" data-nav="${this._basePath()}/settings">⚙</button>
       </div>
+      ${this._setupBanner()}
     `;
   }
 
@@ -362,6 +506,23 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-mapbox { width: 100%; height: 220px; border-radius: 14px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); }
       .rc-btn { display:inline-flex; align-items:center; justify-content:center; width:100%; padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: var(--rc-text); font-weight: 800; cursor:pointer; }
       .rc-btn:hover { filter: brightness(1.05); }
+
+      /* Setup banner */
+      .rc-setup-banner {
+        margin: 0 0 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: linear-gradient(180deg, rgba(244,197,66,0.14), rgba(32,32,32,0.55));
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      }
+      .rc-setup-top { display:flex; align-items:flex-start; justify-content:space-between; gap: 10px; }
+      .rc-setup-title { font-weight: 900; letter-spacing: 0.2px; }
+      .rc-setup-sub { margin-top: 4px; color: var(--rc-muted); font-size: 13px; line-height: 1.35; }
+      .rc-setup-actions { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      .rc-btn-small { width: auto; padding: 10px 12px; border-radius: 12px; }
+      .rc-pill { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; font-weight: 900; font-size: 12px; border: 1px solid rgba(255,255,255,0.10); }
+      .rc-pill-demo { color: rgba(255,255,255,0.92); background: rgba(67,209,122,0.10); border-color: rgba(67,209,122,0.30); }
 
       /* Modal (Trip Wrapped options) */
       .rc-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding: 14px; z-index: 9999; }
@@ -2142,6 +2303,8 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const tripReady = this._getState('binary_sensor.rc_setup_trip_wrapped_ready');
     const victronReady = this._getState('binary_sensor.rc_setup_victron_ready');
 
+    const demoMode = this._getState('input_boolean.rc_demo_mode');
+
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
 
@@ -2167,6 +2330,17 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
             `
           })}
           ${this._tile({
+            title: 'Demo Mode',
+            icon: '🎭',
+            content: `
+              <div class="rc-label" style="margin-bottom:8px;">Show demo values in RoamCore tiles when critical sensors are missing.</div>
+              ${this._row('Demo mode', isOn(demoMode) ? 'On' : 'Off')}
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button class="rc-btn" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle demo mode</button>
+              </div>
+            `
+          })}
+          ${this._tile({
             title: 'RoamCore Helpers',
             icon: '⚙',
             content: `
@@ -2181,12 +2355,318 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
             icon: '🧰',
             content: `
               <div class="rc-label">Open HA configuration for deeper setup.</div>
-              <button class="rc-btn" data-nav="/config" style="margin-top:10px;">Open HA Settings</button>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <button class="rc-btn" data-nav="${this._basePath()}/diagnostics" style="flex:1; min-width: 220px;">Diagnostics</button>
+                <button class="rc-btn" data-nav="/config" style="flex:1; min-width: 220px;">Open HA Settings</button>
+              </div>
             `
           })}
         </div>
       </div>
     `;
+  }
+}
+
+class RoamcoreDiagnosticsPage extends RoamcoreBasePage {
+  constructor() {
+    super();
+    this._diag = null;
+    this._diagErr = null;
+    this._diagLoading = false;
+    this._diagFetchedAt = 0;
+    this._copyStatus = '';
+  }
+
+  _css() {
+    return super._css() + `
+      .rc-pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.35;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(0,0,0,0.25);
+        color: rgba(255,255,255,0.88);
+      }
+      .rc-kv { display:flex; flex-direction:column; gap:8px; }
+      .rc-pillrow2 { display:flex; flex-wrap:wrap; gap:8px; margin-top: 8px; }
+      .rc-mini { font-size: 12px; color: var(--rc-muted); font-weight: 650; }
+      .rc-linkrow { display:flex; justify-content:space-between; align-items:center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .rc-linkrow:last-child { border-bottom: 0; }
+      .rc-linkname { font-weight: 800; font-size: 13px; }
+      .rc-link { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; color: rgba(255,255,255,0.72); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 62vw; }
+      .rc-btn2 { display:inline-flex; align-items:center; justify-content:center; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: var(--rc-text); font-weight: 900; cursor:pointer; }
+      .rc-btn2:hover { filter: brightness(1.06); }
+      .rc-btn2:disabled { opacity: 0.6; cursor: not-allowed; }
+    `;
+  }
+
+  _esc(s) {
+    const v = (s === null || s === undefined) ? '' : String(s);
+    return v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  _stateObj(entityId) {
+    try { return this._hass?.states?.[entityId] || null; } catch (e) { return null; }
+  }
+
+  _presenceBadge(label, entityId) {
+    const st = this._stateObj(entityId);
+    if (!st) return this._badge(label, 'inactive');
+    const v = String(st.state || '').toLowerCase();
+    if (v === 'on' || v === 'true' || v === '1') return this._badge(label, 'good');
+    if (v === 'off' || v === 'false' || v === '0') return this._badge(label, 'bad');
+    if (v === 'unknown' || v === 'unavailable' || v === '') return this._badge(label, 'inactive');
+    return this._badge(label, 'ok');
+  }
+
+  async _fetchDiagnostics({ includeRcDump = false, force = false } = {}) {
+    try {
+      if (!this._hass) return;
+      if (this._diagLoading) return;
+
+      const age = Date.now() - (this._diagFetchedAt || 0);
+      if (!force && this._diag && age < 15000 && !includeRcDump) return;
+
+      this._diagLoading = true;
+      this._diagErr = null;
+      this._render();
+
+      const qs = includeRcDump ? '?include_rc_dump=1' : '';
+      const data = await this._hass.callApi('get', `roamcore/diagnostics${qs}`);
+      this._diag = data;
+      this._diagFetchedAt = Date.now();
+    } catch (e) {
+      this._diagErr = String(e?.message || e || 'Diagnostics fetch failed');
+    } finally {
+      this._diagLoading = false;
+      this._render();
+    }
+  }
+
+  async _copyText(text) {
+    try {
+      const s = String(text || '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(s);
+        return true;
+      }
+      // Fallback for older WebViews
+      const ta = document.createElement('textarea');
+      ta.value = s;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async _copyBundle() {
+    this._copyStatus = '';
+    this._render();
+    try {
+      await this._fetchDiagnostics({ includeRcDump: true, force: true });
+      const bundle = this._diag;
+      const text = JSON.stringify(bundle || { error: 'no_bundle' }, null, 2);
+      const ok = await this._copyText(text);
+      this._copyStatus = ok ? 'Copied to clipboard.' : 'Copy failed (clipboard blocked).';
+    } catch (e) {
+      this._copyStatus = `Copy failed: ${String(e?.message || e)}`;
+    }
+    this._render();
+  }
+
+  _render() {
+    if (!this._root || !this._hass) return;
+
+    // Kick off an initial fetch once per mount.
+    if (!this._diag && !this._diagLoading && !this._diagErr) {
+      this._fetchDiagnostics({ includeRcDump: false, force: false });
+    }
+
+    const diag = this._diag || {};
+    const install = diag.install || {};
+    const ii = install.install_info || {};
+    const pm = install.provisioned_marker || {};
+    const opts = diag?.roamcore?.config_entry?.options || {};
+
+    const keyEntities = Array.isArray(diag?.entities?.key) ? diag.entities.key : [];
+
+    const openLink = (url, label) => `<a href="${this._esc(url)}" target="_blank" rel="noreferrer" style="color:rgba(255,255,255,0.92); text-decoration: none; font-weight:800;">${this._esc(label)}</a>`;
+
+    const endpoints = diag.endpoints || {};
+    const links = [
+      { name: 'Diagnostics (this)', url: endpoints.diagnostics || '/api/roamcore/diagnostics' },
+      { name: 'OpenClaw summary', url: endpoints.openclaw_summary || '/api/roamcore/openclaw/summary' },
+      { name: 'OpenClaw skill', url: endpoints.openclaw_skill || '/api/roamcore/openclaw/skill' },
+      { name: 'OpenClaw rc_dump', url: endpoints.openclaw_rc_dump || '/api/roamcore/openclaw/rc_dump' },
+      { name: 'OpenClaw timeseries catalog', url: endpoints.openclaw_timeseries_catalog || '/api/roamcore/openclaw/timeseries/catalog' },
+      { name: 'OpenClaw timeseries', url: endpoints.openclaw_timeseries || '/api/roamcore/openclaw/timeseries' },
+    ];
+
+    const roamcoreVer = diag?.roamcore?.component_version || '—';
+    const hassVer = diag?.hass?.version || '—';
+
+    const provisioned = pm.exists === true;
+    const installInfoExists = ii.exists === true;
+
+    const installParsed = ii.parsed || {};
+    const pmParsed = pm.parsed || {};
+
+    const installLines = Object.keys(installParsed).length
+      ? Object.keys(installParsed).sort().map(k => this._row(k, this._esc(installParsed[k]))).join('')
+      : '<div class="rc-mini">No install-info keys found.</div>';
+
+    const pmLines = Object.keys(pmParsed).length
+      ? Object.keys(pmParsed).sort().map(k => this._row(k, this._esc(pmParsed[k]))).join('')
+      : '<div class="rc-mini">No provision marker keys found.</div>';
+
+    const readyBadges = `
+      <div class="rc-pillrow2">
+        ${this._presenceBadge('Owner', 'binary_sensor.rc_setup_owner_ready')}
+        ${this._presenceBadge('Map', 'binary_sensor.rc_setup_map_ready')}
+        ${this._presenceBadge('Trip Wrapped', 'binary_sensor.rc_setup_trip_wrapped_ready')}
+        ${this._presenceBadge('Victron', 'binary_sensor.rc_setup_victron_ready')}
+        ${this._presenceBadge('Power backend', 'binary_sensor.rc_system_power_backend_connected')}
+      </div>
+    `;
+
+    const entityRows = (keyEntities && keyEntities.length)
+      ? keyEntities.slice(0, 40).map(e => {
+          const ok = e?.exists === true;
+          const st = e?.state;
+          const status = !ok ? 'inactive' : (st === 'unknown' || st === 'unavailable') ? 'inactive' : 'ok';
+          const label = ok ? 'Present' : 'Missing';
+          return `
+            <div class="rc-row" style="gap:12px; align-items:flex-start;">
+              <div style="min-width: 0; flex:1;">
+                <div style="font-weight:900; font-size:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this._esc(e.entity_id)}</div>
+                <div class="rc-mini" style="margin-top:4px;">state: ${this._esc(st)}</div>
+              </div>
+              <div>${this._badge(label, status)}</div>
+            </div>
+          `;
+        }).join('')
+      : '<div class="rc-mini">Key entity list unavailable (still loading or endpoint failed).</div>';
+
+    const copyBtnLabel = this._diagLoading ? 'Loading…' : 'Copy JSON support bundle';
+
+    this._root.innerHTML = `
+      <div class="rc-page">
+        ${this._header('Diagnostics')}
+
+        <div class="rc-grid">
+          ${this._tile({
+            title: 'Install & Provisioning',
+            icon: '🧩',
+            content: `
+              ${this._row('RoamCore component', roamcoreVer)}
+              ${this._row('Home Assistant', hassVer)}
+              ${this._row('Auto-provision enabled', String(opts.auto_provision_assets ?? '—'))}
+              ${this._row('Provision ref', String(opts.provision_ref ?? '—'))}
+              <div style="margin-top:10px;" class="rc-mini">install-info.txt: ${installInfoExists ? '<span style=\"color:var(--rc-good);font-weight:900\">found</span>' : '<span style=\"color:var(--rc-bad);font-weight:900\">missing</span>'}</div>
+              <div style="margin-top:6px;" class="rc-kv">${installLines}</div>
+              <div style="margin-top:10px;" class="rc-mini">provisioned.marker: ${provisioned ? '<span style=\"color:var(--rc-good);font-weight:900\">found</span>' : '<span style=\"color:var(--rc-bad);font-weight:900\">missing</span>'}</div>
+              <div style="margin-top:6px;" class="rc-kv">${pmLines}</div>
+            `
+          })}
+
+          ${this._tile({
+            title: 'Readiness',
+            icon: '✅',
+            content: `
+              <div class="rc-label">These indicate whether the setup wizard / core backends are ready.</div>
+              ${this._row('Setup progress', this._getState('sensor.rc_setup_progress'))}
+              ${readyBadges}
+              <div style="display:flex; gap:10px; margin-top: 12px;">
+                <button class="rc-btn2" id="rcDiagRefresh" ${this._diagLoading ? 'disabled' : ''}>Refresh</button>
+                <button class="rc-btn2" data-nav="${this._basePath()}/status">Open status view</button>
+              </div>
+              ${this._diagErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._diagErr)}</div>` : ''}
+            `
+          })}
+
+          ${this._tile({
+            title: 'Key entities (presence + state)',
+            icon: '🧾',
+            className: 'span-2',
+            content: `
+              <div class="rc-label">If something is missing, verify packages are loaded and entity IDs match the RoamCore contract.</div>
+              ${entityRows}
+            `
+          })}
+
+          ${this._tile({
+            title: 'OpenClaw API',
+            icon: '🤖',
+            content: `
+              <div class="rc-label">Quick links (same-origin). Open in a new tab to view raw JSON.</div>
+              <div style="margin-top:10px;">
+                ${links.map(l => `
+                  <div class="rc-linkrow">
+                    <div style="min-width:0; flex:1;">
+                      <div class="rc-linkname">${openLink(l.url, l.name)}</div>
+                      <div class="rc-link">${this._esc(l.url)}</div>
+                    </div>
+                    <button class="rc-btn2" data-copy-url="${this._esc(l.url)}">Copy</button>
+                  </div>
+                `).join('')}
+              </div>
+            `
+          })}
+
+          ${this._tile({
+            title: 'Support bundle',
+            icon: '📋',
+            content: `
+              <div class="rc-label">Copy a JSON bundle (includes install/provision info and rc_* state dump) and paste into a support ticket.</div>
+              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <button class="rc-btn2" id="rcCopyBundle" ${this._diagLoading ? 'disabled' : ''}>${this._esc(copyBtnLabel)}</button>
+                <button class="rc-btn2" data-nav="https://github.com/roamcore/RoamCore/issues" title="Open GitHub issues" style="opacity:0.85;">Support</button>
+              </div>
+              ${this._copyStatus ? `<div style="margin-top:10px; font-weight:800;">${this._esc(this._copyStatus)}</div>` : ''}
+              <div style="margin-top:10px;" class="rc-mini">Tip: if clipboard is blocked (some WebViews), open the dashboard in a normal browser and try again.</div>
+            `,
+            className: 'span-2'
+          })}
+        </div>
+      </div>
+    `;
+
+    // Wire buttons
+    const refresh = this._root.querySelector('#rcDiagRefresh');
+    if (refresh) refresh.addEventListener('click', () => this._fetchDiagnostics({ force: true }));
+
+    const copyBtn = this._root.querySelector('#rcCopyBundle');
+    if (copyBtn) copyBtn.addEventListener('click', () => this._copyBundle());
+
+    // Copy link buttons
+    const copyEls = this._root.querySelectorAll('[data-copy-url]');
+    copyEls.forEach((el) => {
+      el.addEventListener('click', async (ev) => {
+        try {
+          const url = el.getAttribute('data-copy-url');
+          const ok = await this._copyText(url);
+          this._copyStatus = ok ? 'Copied link to clipboard.' : 'Copy failed.';
+          this._render();
+        } catch (e) {}
+      });
+    });
   }
 }
 
@@ -2198,6 +2678,7 @@ customElements.define('roamcore-level-page', RoamcoreLevelPage);
 customElements.define('roamcore-map-page', RoamcoreMapPage);
 customElements.define('roamcore-location-page', RoamcoreLocationPage);
 customElements.define('roamcore-settings-page', RoamcoreSettingsPage);
+customElements.define('roamcore-diagnostics-page', RoamcoreDiagnosticsPage);
 
 // --- Victron connect card (bundled for reliability) ---
 // The dashboard references `custom:roamcore-victron-connect`. If the user forgets
