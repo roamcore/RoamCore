@@ -2105,10 +2105,36 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const weather = this._getState('input_text.rc_weather_entity_id');
     const tz = this._getState('input_text.rc_time_zone_override');
 
+    const prog = this._getState('sensor.rc_setup_progress');
+    const ownerReady = this._getState('binary_sensor.rc_setup_owner_ready');
+    const mapReady = this._getState('binary_sensor.rc_setup_map_ready');
+    const tripReady = this._getState('binary_sensor.rc_setup_trip_wrapped_ready');
+    const victronReady = this._getState('binary_sensor.rc_setup_victron_ready');
+
+    const isOn = (v) => String(v || '').toLowerCase() === 'on';
+    const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Settings')}
         <div class="rc-grid" style="grid-template-columns: 1fr;">
+          ${this._tile({
+            title: 'Setup',
+            icon: '✨',
+            content: `
+              <div class="rc-label" style="margin-bottom:8px;">Complete setup to unlock the full RoamCore experience.</div>
+              ${this._row('Progress', (prog && prog !== 'unknown' && prog !== 'unavailable') ? prog : '—')}
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+                ${badge('Owner', isOn(ownerReady))}
+                ${badge('Map', isOn(mapReady))}
+                ${badge('Trip Wrapped', isOn(tripReady))}
+                ${badge('Victron', isOn(victronReady))}
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button class="rc-btn" data-nav="${this._basePath()}/setup">Open setup wizard</button>
+              </div>
+            `
+          })}
           ${this._tile({
             title: 'RoamCore Helpers',
             icon: '⚙',
