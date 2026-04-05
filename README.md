@@ -14,6 +14,24 @@ We're building the operating system that van conversions have been missing — o
 
 ---
 
+## Table of Contents
+
+- [What You Get](#what-you-get)
+- [Why Open Source](#why-open-source)
+- [Getting Started](#getting-started)
+  - [RoamCore Dashboard](#roamcore-dashboard)
+  - [HACS install (beta: Custom Repository)](#hacs-install-beta-custom-repository)
+  - [RoamCore OS](#roamcore-os)
+- [Current Status](#current-status)
+- [Design Philosophy (why follow this project)](#design-philosophy-why-follow-this-project)
+- [OpenClaw API (conversational interface)](#openclaw-api-conversational-interface)
+  - [5 surprisingly useful things to ask your van](#5-surprisingly-useful-things-to-ask-your-van)
+- [HACS (planned)](#hacs-planned)
+- [Repo Structure](#repo-structure)
+- [Extensible By Design](#extensible-by-design)
+- [Who It's For](#who-its-for)
+- [Contributing](#contributing)
+
 ## What You Get
 
 RoamCore gives you a clean, mobile-first dashboard that makes your van's systems feel as polished as the build itself:
@@ -124,6 +142,25 @@ RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, 
 That unlocks a new interface: once you connect it to a local agent, you can *ask your van questions* in natural language and get context-heavy answers (power, location, levelling, trip context) without hunting through multiple apps.
 
 Docs: [`docs/reference/openclaw-json-api.md`](docs/reference/openclaw-json-api.md)
+
+### 5 surprisingly useful things to ask your van
+
+These are examples of the kind of questions that become possible once an agent can see your van’s full state (snapshot + time series):
+
+1) **“What changed in the last 2 hours that explains why the battery is dropping faster?”**
+   - The agent can compare recent load/solar/charging patterns and point to the most likely cause.
+
+2) **“If I keep doing exactly what I’m doing, what will my battery % look like by bedtime?”**
+   - Using recent net power trend (solar vs load), it can project a simple best-effort estimate.
+
+3) **“Am I actually charging, or just *connected* to shore?”**
+   - Many setups lie by omission. The agent can look at shore_connected plus AC in/out power and tell the truth.
+
+4) **“How level have we been overnight, and did anything shift?”**
+   - Great for explaining bad sleep: it can look at pitch/roll stability over time, not just “right now”.
+
+5) **“Give me a one-paragraph ‘systems report’ like a co-pilot would before we drive.”**
+   - A tight pre-departure summary: power status, connectivity/location sanity, anything missing/unhealthy.
 
 ## HACS (planned)
 
