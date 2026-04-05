@@ -26,6 +26,36 @@ It makes RoamCore discoverable *inside your Home Assistant UI* via HACS, without
 4) Add the integration:
    - Settings → Devices & services → Add integration → **RoamCore**
 
+## Provision RoamCore assets (packages, dashboards, tools)
+
+HACS installs the RoamCore **integration** (`custom_components/roamcore`).
+
+RoamCore also includes additional assets (packages, Lovelace YAML, `/www/roamcore/*`, tools). To install those automatically, run the RoamCore provisioning service once:
+
+Developer Tools → Services → call:
+
+```yaml
+service: roamcore.provision_assets
+data:
+  repo: https://github.com/roamcore/RoamCore
+  ref: main
+```
+
+This downloads the repo archive and installs:
+
+- `homeassistant/packages/*` → `/config/packages/*`
+- `homeassistant/custom_components/*` → `/config/custom_components/*`
+- `homeassistant/www/*` → `/config/www/*`
+- `homeassistant/lovelace/*` → `/config/lovelace/*`
+- `homeassistant/tools/*` → `/config/tools/*`
+
+It also writes state/backups under:
+
+- `/config/.roamcore/manifest.txt`
+- `/config/.roamcore/backups/<timestamp>/...`
+
+After provisioning, restart HA again so packages/components are loaded.
+
 ## Verify
 
 - OpenClaw summary endpoint (optional):
@@ -38,4 +68,3 @@ It makes RoamCore discoverable *inside your Home Assistant UI* via HACS, without
 
 - This repo also supports a one-line installer if you prefer not to use HACS:
   - `docs/howto/homeassistant-installer.md`
-

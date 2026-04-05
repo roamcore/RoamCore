@@ -11,6 +11,9 @@ from .const import (
     DEFAULT_OPENCLAW_API_ENABLED,
 )
 from .openclaw_view import OpenClawSummaryView, OpenClawSkillView
+import aiohttp
+
+from .provision import provision_from_github
 
 
 def _secrets_path(hass: HomeAssistant) -> str:
@@ -149,6 +152,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "secrets_delete",
         _svc_secrets_delete,
+        schema=None,
+    )
+
+    async def _svc_provision_assets(call):
+        # Download the repo archive and copy homeassistant/* assets into /config.
+        # Intended for HACS installs where only custom_components are installed.
+        repo = str(call.data.get("repo") or "https://github.com/roamcore/RoamCore").strip()
+        ref = str(call.data.get("ref") or "main").strip()
+        config_dir = hass.config.path("")
+        state_dir = ".roamcore"
+
+        async with aiohttp.ClientSession() as session:
+            await provision_from_github(
+                session=session,
+                repo=repo,
+                ref=ref,
+                config_dir=config_dir,
+                state_dir=state_dir,
+            )
+
+    hass.services.async_register(
+        DOMAIN,
+        "provision_assets",
+        _svc_provision_assets,
         schema=None,
     )
 
