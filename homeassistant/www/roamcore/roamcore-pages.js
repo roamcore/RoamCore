@@ -2160,6 +2160,7 @@ try {
         this._connecting = false;
         this._error = null;
         this._success = null;
+        this._status = null;
       }
 
       setConfig(config) {
@@ -2186,6 +2187,20 @@ try {
           }
         } catch (e) {}
         return '/api/hassio_ingress/roamcore_victron_auto_dev';
+      }
+
+      async _fetchStatus() {
+        try {
+          const base = this._getApiBase();
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 1500);
+          const resp = await fetch(`${base}/api/v1/victron/status`, { credentials: 'same-origin', signal: ctl.signal })
+            .finally(() => clearTimeout(t));
+          if (!resp.ok) throw new Error(`status ${resp.status}`);
+          const data = await resp.json().catch(() => ({}));
+          this._status = (data && data.status) ? data.status : data;
+          this._render();
+        } catch (e) {}
       }
 
       async _discover() {
@@ -2253,6 +2268,11 @@ try {
           const data = await resp.json().catch(() => ({}));
           this._success = data.message || 'Connected! The add-on is restarting to apply the configuration.';
           this._candidates = [];
+          try {
+            this._status = null;
+            setTimeout(() => this._fetchStatus(), 800);
+            setTimeout(() => this._fetchStatus(), 2500);
+          } catch (e) {}
         } catch (err) {
           this._error = `Connection error: ${err?.message || err}`;
         } finally {
@@ -2297,6 +2317,22 @@ try {
 
       _render() {
         const title = this._config.title || 'Connect Victron Device';
+        const st = this._status || null;
+        const stConfigValid = st && st.config ? st.config.valid === true : null;
+        const stVic = st && st.victron ? st.victron : null;
+        const stInv = st && st.inventory ? st.inventory : null;
+        const statusLine = (stConfigValid == null && !stVic && !stInv)
+          ? ''
+          : `
+            <div style="margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 10px; background: rgba(255,255,255,0.02);">
+              <div style="font-weight: 800; margin-bottom: 6px;">Status</div>
+              <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; opacity: 0.9;">
+                ${stConfigValid == null ? '' : `config.valid=${stConfigValid}<br/>`}
+                ${stVic ? `victron.connected=${stVic.connected === true}<br/>did_full_publish=${stVic.did_full_publish === true}<br/>` : ''}
+                ${stInv ? `devices=${stInv.devices_count || 0} topics=${stInv.topics_count || 0}` : ''}
+              </div>
+            </div>
+          `;
         this.shadowRoot.innerHTML = `
           <style>
             :host { display:block; }
@@ -2340,8 +2376,11 @@ try {
             </div>
 
             <div class="btn-row">
+              <button class="btn" id="statusBtn" ${this._loading || this._connecting ? 'disabled' : ''}>Status</button>
               <button class="btn btn-danger" id="clearBtn" ${this._loading || this._connecting ? 'disabled' : ''}>Clear</button>
             </div>
+
+            ${statusLine}
 
             ${this._error ? `<div class="error">${this._escapeHtml(this._error)}</div>` : ''}
             ${this._success ? `<div class="success">${this._escapeHtml(this._success)}</div>` : ''}
@@ -2371,6 +2410,8 @@ try {
 
         const refreshBtn = this.shadowRoot.querySelector('.refresh-btn');
         if (refreshBtn) refreshBtn.addEventListener('click', () => this._discover());
+        const statusBtn = this.shadowRoot.querySelector('#statusBtn');
+        if (statusBtn) statusBtn.addEventListener('click', () => this._fetchStatus());
         const clearBtn = this.shadowRoot.querySelector('#clearBtn');
         if (clearBtn) clearBtn.addEventListener('click', () => {
           const ok = window.confirm('Clear Victron configuration? This will disconnect and may restart the add-on.');
