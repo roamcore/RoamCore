@@ -1671,12 +1671,27 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     const mode = this._mapMode();
 
     // Below-map data tiles (do not touch the map itself when iterating on this section).
+    const twStatus = this._getState('sensor.rc_trip_wrapped_latest_status');
+    const twGenAt = this._getState('sensor.rc_trip_wrapped_latest_generated_at');
+    const twStatusNorm = (twStatus && twStatus !== 'unknown' && twStatus !== 'unavailable') ? String(twStatus).toLowerCase() : 'unknown';
+    const twGenTxt = (twGenAt && twGenAt !== 'unknown' && twGenAt !== 'unavailable')
+      ? (() => { try { return new Date(twGenAt).toLocaleString(); } catch (e) { return String(twGenAt); } })()
+      : '—';
+
+    const twBadge = (() => {
+      if (twStatusNorm === 'ok') return `<span style="font-weight:900; color: var(--rc-good)">✓ Ready</span>`;
+      if (twStatusNorm === 'needs_setup') return `<span style="font-weight:900; color: rgba(255,255,255,0.75)">Setup required</span>`;
+      if (twStatusNorm === 'missing') return `<span style="font-weight:900; color: rgba(255,255,255,0.55)">Not generated yet</span>`;
+      return `<span style="font-weight:900; color: rgba(255,255,255,0.55)">Unknown</span>`;
+    })();
+
     const tripWrappedTile = `
       <div style="margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
           <div>
             <div style="font-weight: 900; font-size: 14px;">Trip Wrapped</div>
           <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, top trip, etc.). Source-of-truth comes from Traccar reports.</div>
+          <div class="rc-label" style="margin-top:8px;">Status: ${twBadge} · Last generated: <b>${twGenTxt}</b></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
