@@ -835,6 +835,39 @@ class RoamcoreBasePage extends HTMLElement {
       });
       localLayer.addTo(m);
 
+      // If the local tile endpoint is missing/misconfigured, Leaflet will quietly render grey.
+      // Detect repeated tile errors and fall back to online tiles (if configured) to avoid a
+      // permanently blank map during bring-up.
+      let localTileErrors = 0;
+      let localTileFirstErrorAt = 0;
+      let onlineFallbackLayer = null;
+      const maybeEnableOnlineFallback = () => {
+        try {
+          if (!onlineUrl) return;
+          if (onlineFallbackLayer) return;
+          // If we see many errors quickly, assume local tiles are unavailable.
+          const now = Date.now();
+          if (localTileErrors < 6) return;
+          if (localTileFirstErrorAt && (now - localTileFirstErrorAt) > 10_000) return;
+          onlineFallbackLayer = L.tileLayer(onlineUrl, {
+            minZoom: 0,
+            maxZoom: 19,
+            crossOrigin: true,
+            updateWhenIdle: true,
+            keepBuffer: 2,
+          });
+          onlineFallbackLayer.addTo(m);
+          try { localLayer.setOpacity(0); } catch (e) {}
+        } catch (e) {}
+      };
+      try {
+        localLayer.on('tileerror', () => {
+          localTileErrors++;
+          if (!localTileFirstErrorAt) localTileFirstErrorAt = Date.now();
+          maybeEnableOnlineFallback();
+        });
+      } catch (e) {}
+
       // Detail layer: online tiles for higher zoom levels (only loads when zoomed past offline coverage)
       if (onlineUrl) {
         const onlineLayer = L.tileLayer(onlineUrl, {
