@@ -71,6 +71,9 @@ Recommended add-ons/integrations (reuse-first):
 - Timezone-from-GPS: [`docs/howto/geolocator-timezone.md`](docs/howto/geolocator-timezone.md)
 - Run OpenClaw in HAOS: [`docs/howto/openclaw-techartdev.md`](docs/howto/openclaw-techartdev.md)
 
+OpenClaw + RoamCore overview:
+- [`openclaw/README.md`](openclaw/README.md)
+
 ### HACS install (beta: Custom Repository)
 
 If you want installs/updates through the Home Assistant UI, you can add RoamCore as a **HACS Custom Repository** (beta path):
