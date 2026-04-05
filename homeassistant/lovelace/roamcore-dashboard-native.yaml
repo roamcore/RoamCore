@@ -1,0 +1,198 @@
+# RoamCore Dashboard (native YAML)
+#
+# Goal:
+# - Provide a "zero custom JS" dashboard option that is easy to edit in the HA UI.
+# - Mimic the structure of the RoamCore custom dashboard (home/power/network/map/etc)
+#   using only built-in Lovelace cards.
+#
+# IMPORTANT:
+# - Do NOT delete or modify the existing custom dashboard (roamcore-dashboard.yaml).
+# - This file is additive; users can choose which dashboard to use.
+
+title: RoamCore (Native)
+views:
+  - path: home
+    title: Dashboard
+    icon: mdi:home
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              # RoamCore (Native)
+              This dashboard uses **only built-in Home Assistant cards**.
+
+              - If you want the full RoamCore UI, use the custom dashboard.
+              - If you want something easy to tweak in the HA UI, use this.
+
+          - type: glance
+            title: System
+            columns: 3
+            show_state: true
+            entities:
+              - entity: binary_sensor.rc_system_power_backend_connected
+                name: Power backend
+              - entity: sensor.rc_system_power_backend_status
+                name: Backend status
+              - entity: sensor.rc_system_power_backend_snapshot_state
+                name: Snapshot
+              - entity: sensor.rc_system_power_backend_devices
+                name: Devices
+              - entity: sensor.rc_system_power_backend_topics
+                name: Topics
+              - entity: sensor.rc_weather_status
+                name: Weather
+              - entity: sensor.rc_time_status
+                name: Time
+
+          - type: entities
+            title: Quick stats
+            entities:
+              - entity: sensor.rc_power_soc
+                name: Battery SOC
+              - entity: sensor.rc_power_solar_w
+                name: Solar (W)
+              - entity: sensor.rc_power_load_w
+                name: Load (W)
+              - entity: sensor.rc_location_lat
+                name: Latitude
+              - entity: sensor.rc_location_lon
+                name: Longitude
+
+  - path: map
+    title: Map
+    icon: mdi:map
+    cards:
+      - type: markdown
+        content: |
+          # Map
+          Native HA map card (no custom JS). If you don't see your tracker, set:
+          `input_text.rc_location_tracker_entity`.
+
+      - type: map
+        hours_to_show: 6
+        default_zoom: 12
+        entities:
+          # Users should set this helper to their tracker id.
+          - entity: device_tracker.rc_location_tracker
+        geo_location_sources: []
+
+      - type: entities
+        title: Trip summary
+        entities:
+          - entity: sensor.rc_trip_distance_today_mi
+            name: Distance today (mi)
+          - entity: sensor.rc_trip_time_today
+            name: Drive time today
+          - entity: sensor.rc_trip_stops
+            name: Stops today
+          - entity: sensor.rc_trip_distance_total_mi
+            name: Total distance (mi)
+          - entity: sensor.rc_trip_time_total
+            name: Total drive time
+
+      - type: markdown
+        content: |
+          ## Trip Wrapped
+          Open the latest generated report:
+          - [/local/roamcore/trip_wrapped/latest.html](/local/roamcore/trip_wrapped/latest.html)
+          - [/local/roamcore/trip_wrapped/latest.html?theme=dark](/local/roamcore/trip_wrapped/latest.html?theme=dark)
+
+  - path: power
+    title: Power
+    icon: mdi:lightning-bolt
+    cards:
+      - type: entities
+        title: Battery
+        entities:
+          - entity: sensor.rc_power_soc
+            name: SOC
+          - entity: sensor.rc_power_voltage_v
+            name: Voltage
+          - entity: sensor.rc_power_current_a
+            name: Current
+
+      - type: entities
+        title: Solar / Load
+        entities:
+          - entity: sensor.rc_power_solar_w
+            name: Solar (W)
+          - entity: sensor.rc_power_load_w
+            name: Load (W)
+          - entity: sensor.rc_power_charge_w
+            name: Charge (W)
+
+      - type: entities
+        title: Victron backend
+        entities:
+          - entity: binary_sensor.rc_system_power_backend_connected
+          - entity: sensor.rc_system_power_backend_status
+          - entity: sensor.rc_system_power_backend_snapshot_state
+
+  - path: network
+    title: Network
+    icon: mdi:wifi
+    cards:
+      - type: markdown
+        content: |
+          # Network
+          Native cards can show connectivity status once `rc_*` entities are present.
+
+      - type: entities
+        title: Status
+        entities:
+          - entity: sensor.rc_network_status
+            name: Network status
+          - entity: sensor.rc_network_wan
+            name: Active WAN
+
+  - path: automations
+    title: Weather & Time
+    icon: mdi:weather-partly-cloudy
+    cards:
+      - type: markdown
+        content: |
+          # Weather & Time
+          These are the “automation helper” primitives: stable, local, and reliable.
+
+      - type: entities
+        title: Weather
+        entities:
+          - entity: sensor.rc_weather_status
+          - entity: sensor.rc_weather_condition
+          - entity: sensor.rc_weather_temperature_c
+          - entity: sensor.rc_weather_wind_kph
+
+      - type: entities
+        title: Time
+        entities:
+          - entity: sensor.rc_time_status
+          - entity: sensor.rc_time_timezone
+          - entity: sensor.rc_time_local
+
+  - path: openclaw
+    title: OpenClaw API
+    icon: mdi:robot
+    cards:
+      - type: markdown
+        content: |
+          # OpenClaw API
+          RoamCore exposes a JSON summary endpoint for agent integrations.
+
+          - Summary: `/api/roamcore/openclaw/summary`
+          - Skill: `/api/roamcore/openclaw/skill`
+
+          See: `docs/reference/openclaw-json-api.md`
+
+  - path: status
+    title: Status
+    icon: mdi:heart-pulse
+    cards:
+      - type: entities
+        title: RoamCore
+        entities:
+          - entity: sensor.rc_system_status
+            name: System status
+          - entity: sensor.rc_system_version
+            name: Version
+

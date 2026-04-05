@@ -59,3 +59,16 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh
    - Settings → Devices & services: confirm any RoamCore custom integrations appear/initialize.
 4. Optional API probe (from a machine with an HA token) using the repo helper:
    - `scripts/ha/check-rc-entities.sh`
+
+## Optional: Native dashboard (no custom JS)
+
+RoamCore ships two dashboards:
+
+- **Custom dashboard** (recommended): `homeassistant/lovelace/roamcore-dashboard.yaml` (uses RoamCore JS cards)
+- **Native dashboard** (easy to edit): `homeassistant/lovelace/roamcore-dashboard-native.yaml` (built-in cards only)
+
+To use the native dashboard, create a new Lovelace dashboard in HA and point it at:
+
+- `/config/lovelace/roamcore-dashboard-native.yaml`
+
+This is additive; keep the custom dashboard too.
