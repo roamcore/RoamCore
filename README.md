@@ -56,7 +56,13 @@ The `homeassistant/` directory contains everything you need.
 Install:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh
+```
+
+Uninstall:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh | sh
 ```
 
 Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)

@@ -9,14 +9,14 @@ It is intended for HAOS users with the **SSH add-on** enabled.
 Run on the HA host (eg via *Terminal & SSH* add-on):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh
 ```
 
 Install a specific tag/commit:
 
 ```sh
 ROAMCORE_REF=v0.1.0 \
-  curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/install.sh | sh
+  curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh
 ```
 
 ### What it copies
@@ -40,7 +40,7 @@ The installer writes state to:
 ## Uninstall (one line)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/homeassistant/uninstall.sh | sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh | sh
 ```
 
 ## Verification steps
