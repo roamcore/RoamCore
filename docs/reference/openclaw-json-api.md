@@ -58,6 +58,36 @@ Notes:
 - This is **not** meant to be a stable automation contract.
 - Fields include `state` (string|null) plus best-effort parsed `num` (float|null) and `bool` (bool|null).
 
+## Time series (compact, agent-requested)
+
+Time series data is extremely useful for good “wow moment” insights, but raw Home Assistant history is too large.
+
+RoamCore provides a **bounded**, **downsampled** time-series endpoint where the agent requests only the keys it needs.
+
+### Catalog (discover what’s available)
+
+- **GET** `/api/roamcore/openclaw/timeseries/catalog`
+
+Returns a dictionary of supported time-series keys, each mapped to a Home Assistant `entity_id` and some metadata (unit/device_class when available).
+
+### Time series fetch
+
+- **GET** `/api/roamcore/openclaw/timeseries`
+
+Query params:
+- `keys` (required): comma-separated catalog keys
+  - example: `keys=power.battery_soc_pct,power.load_power_w,power.solar_power_w`
+- `window_sec` (optional): lookback window (default 21600 = 6h, max 172800 = 48h)
+- `resolution_sec` (optional): bucket size (default 60, min 15, max 900)
+
+Response:
+- `series`: numeric series as `[[t_epoch, value|null], ...]` at the chosen resolution
+- `events`: boolean series as transitions `[[t_epoch, 0|1], ...]`
+
+Notes:
+- This endpoint is designed for **agent-side analysis**.
+- Keep requests small: fetch only the keys you need.
+
 ## Contract
 
 Top-level fields:

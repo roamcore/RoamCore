@@ -21,7 +21,7 @@ The `roamcore` OpenClaw skill teaches the agent to:
 
 In this repo, the skill lives at:
 
-`openclaw/skills/roamcore/SKILL.md`
+`skills/roamcore/SKILL.md`
 
 Copy the entire `roamcore` folder into your OpenClaw workspace `skills/` directory.
 
@@ -29,7 +29,7 @@ Example:
 
 ```bash
 # From a machine where you have this RoamCore repo checked out
-cp -R openclaw/skills/roamcore /path/to/your/openclaw/workspace/skills/
+cp -R skills/roamcore /path/to/your/openclaw/workspace/skills/
 ```
 
 Then restart OpenClaw (or start a new session) so it reloads skills.
@@ -60,4 +60,3 @@ curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/rc_dump
 ```
 
 You should get JSON.
-
