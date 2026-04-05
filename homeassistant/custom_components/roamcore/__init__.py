@@ -14,7 +14,7 @@ from .const import (
     CONF_PROVISION_REF,
     DEFAULT_PROVISION_REF,
 )
-from .openclaw_view import OpenClawSummaryView, OpenClawSkillView
+from .openclaw_view import OpenClawSummaryView, OpenClawSkillView, OpenClawRcDumpView
 import aiohttp
 
 from .provision import provision_from_github
@@ -146,6 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED):
         hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
         hass.http.register_view(OpenClawSkillView(hass, entry.entry_id))
+        hass.http.register_view(OpenClawRcDumpView(hass, entry.entry_id))
 
     # Register services used by the setup wizard.
     async def _svc_secrets_set(call):

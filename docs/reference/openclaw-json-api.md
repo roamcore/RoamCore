@@ -43,6 +43,21 @@ If you expose Home Assistant beyond a trusted network, you should:
 1. Put HA behind a VPN / reverse proxy with auth, and/or
 2. Change the view to `requires_auth = True` and use a Long-Lived Access Token.
 
+## Diagnostic endpoint (rc dump)
+
+- **GET** `/api/roamcore/openclaw/rc_dump`
+
+This returns a dump of all current Home Assistant entity states whose entity id contains `.rc_` (for example: `sensor.rc_power_battery_soc`, `binary_sensor.rc_level`, etc.).
+
+Intended use:
+- debugging installs
+- quickly seeing “what rc_* entities exist right now?”
+- giving an agent a broad snapshot of available contract entities
+
+Notes:
+- This is **not** meant to be a stable automation contract.
+- Fields include `state` (string|null) plus best-effort parsed `num` (float|null) and `bool` (bool|null).
+
 ## Contract
 
 Top-level fields:

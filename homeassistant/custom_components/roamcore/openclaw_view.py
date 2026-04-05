@@ -179,3 +179,79 @@ class OpenClawSkillView(HomeAssistantView):
             ],
         }
         return self.json(payload)
+
+
+class OpenClawRcDumpView(HomeAssistantView):
+    """Diagnostic endpoint: dump all rc_* entity states.
+
+    This is intentionally *not* a stable contract for downstream automation.
+    It's meant for debugging and to help agent skills introspect what's available.
+    """
+
+    url = "/api/roamcore/openclaw/rc_dump"
+    name = "api:roamcore_openclaw_rc_dump"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def get(self, request):
+        hass = self._hass
+        reg = async_get_entity_registry(hass)
+
+        def parse_num(v: Optional[str]) -> Optional[float]:
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except Exception:
+                return None
+
+        def parse_bool(v: Optional[str]) -> Optional[bool]:
+            if v is None:
+                return None
+            if v in ("on", "true", "True", "1"):
+                return True
+            if v in ("off", "false", "False", "0"):
+                return False
+            return None
+
+        out: dict[str, Any] = {}
+        for st in hass.states.async_all():
+            try:
+                eid = str(getattr(st, "entity_id", ""))
+                if not eid:
+                    continue
+                # include all domains, but only rc_ object_id
+                if ".rc_" not in eid:
+                    continue
+
+                raw = st.state
+                v = None if raw in ("unknown", "unavailable", "none", "") else raw
+
+                out[eid] = {
+                    "state": v,
+                    "num": parse_num(v),
+                    "bool": parse_bool(v),
+                    "attributes": dict(getattr(st, "attributes", {}) or {}),
+                    "last_changed": getattr(st, "last_changed", None).isoformat() if getattr(st, "last_changed", None) else None,
+                    "last_updated": getattr(st, "last_updated", None).isoformat() if getattr(st, "last_updated", None) else None,
+                    "registry": eid in reg.entities,
+                }
+            except Exception:
+                continue
+
+        payload: dict[str, Any] = {
+            "contract": {"name": "roamcore_openclaw_rc_dump", "version": 1},
+            "generated_at": _iso_now(),
+            "count": len(out),
+            "entities": out,
+        }
+        return self.json(payload)
