@@ -8,6 +8,11 @@ If you join any of these communities, feel free to mention you came from **RoamC
 
 ---
 
+## Support / troubleshooting
+
+- `docs/resources/support.md` (support entry point)
+- `docs/howto/support-bundle.md` (export a RoamCore support bundle)
+
 ## Core platforms
 
 - https://www.home-assistant.io/ (Home Assistant — the foundation RoamCore builds on)
@@ -37,4 +42,3 @@ If you join any of these communities, feel free to mention you came from **RoamC
 ## Video / learning
 
 - https://www.youtube.com/@homeassistant (Home Assistant YouTube — official updates + tutorials)
-

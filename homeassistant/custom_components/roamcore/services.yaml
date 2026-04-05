@@ -1,0 +1,63 @@
+secrets_set:
+  name: Set secret in /config/secrets.yaml
+  description: Best-effort atomic update to set a key/value pair in secrets.yaml.
+  fields:
+    key:
+      name: Key
+      description: The secrets.yaml key to set.
+      required: true
+      example: roamcore_traccar_user_token
+      selector:
+        text: {}
+    value:
+      name: Value
+      description: The value to store.
+      required: true
+      selector:
+        text: {}
+
+secrets_delete:
+  name: Delete secret from /config/secrets.yaml
+  description: Best-effort atomic update to remove a key from secrets.yaml.
+  fields:
+    key:
+      name: Key
+      description: The secrets.yaml key to delete.
+      required: true
+      selector:
+        text: {}
+
+provision_assets:
+  name: Provision RoamCore assets into /config
+  description: >-
+    Downloads the RoamCore repo archive and installs homeassistant/* assets into
+    your Home Assistant /config directory (packages, www, dashboards, tools).
+  fields:
+    repo:
+      name: Repo URL
+      description: GitHub repo to download.
+      required: false
+      example: https://github.com/roamcore/RoamCore
+      selector:
+        text: {}
+    ref:
+      name: Ref
+      description: Git ref (branch/tag/commit) to provision.
+      required: false
+      example: main
+      selector:
+        text: {}
+
+export_support_bundle:
+  name: Export RoamCore support bundle
+  description: >-
+    Writes a diagnostic support bundle to /config/.roamcore/support/<timestamp>/
+    and optionally creates a zip archive.
+  fields:
+    zip:
+      name: Create zip
+      description: If true, also create /config/.roamcore/support/<timestamp>.zip.
+      required: false
+      default: true
+      selector:
+        boolean: {}

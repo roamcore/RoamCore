@@ -8,6 +8,7 @@ This documentation is split into two audiences:
 - **Levelling (ESPHome reference + calibration):** `docs/guides/leveling-ha-esphome.md`
 - **Trip tracking (Traccar):** `docs/setup/traccar.md`
 - **Victron background / MQTT semantics:** `docs/runbooks/victron-integration.md`
+- **Support bundle (for debugging):** `docs/howto/support-bundle.md`
 
 ## 2) Builders (how it works)
 
@@ -16,4 +17,3 @@ This documentation is split into two audiences:
 - **Victron rc_* mapping plan:** `docs/reference/victron-rc-mapping-plan.md`
 
 If you're new: start with the installer doc, then open the dashboard and iterate.
-

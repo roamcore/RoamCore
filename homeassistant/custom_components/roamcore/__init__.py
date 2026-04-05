@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+import os
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -24,6 +27,7 @@ from .openclaw_view import (
 import aiohttp
 
 from .provision import provision_from_github
+from .support_bundle import export_support_bundle
 
 
 def _secrets_path(hass: HomeAssistant) -> str:
@@ -120,17 +124,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ref = str(options.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF) or DEFAULT_PROVISION_REF)
         marker = hass.config.path(".roamcore", "provisioned.marker")
         if auto and not os.path.exists(marker):
-            async with aiohttp.ClientSession() as session:
-                await provision_from_github(
-                    session=session,
-                    repo="https://github.com/roamcore/RoamCore",
-                    ref=ref,
-                    config_dir=hass.config.path(""),
-                    state_dir=".roamcore",
-                )
-            await hass.async_add_executor_job(lambda: _atomic_write(marker, f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n"))
-            # Notify user to restart to pick up packages/components.
             try:
+                async with aiohttp.ClientSession() as session:
+                    await provision_from_github(
+                        session=session,
+                        repo="https://github.com/roamcore/RoamCore",
+                        ref=ref,
+                        config_dir=hass.config.path(""),
+                        state_dir=".roamcore",
+                    )
+                await hass.async_add_executor_job(lambda: _atomic_write(marker, f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n"))
+
+                # Notify user to restart to pick up packages/components.
                 hass.async_create_task(
                     hass.services.async_call(
                         "persistent_notification",
@@ -142,8 +147,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         blocking=False,
                     )
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                # If auto-provisioning fails, surface a persistent notification with recovery steps.
+                try:
+                    service_link = "https://my.home-assistant.io/redirect/developer_services/?service=roamcore.provision_assets"
+                    err = f"{type(e).__name__}: {e}"
+                    msg = "\n".join(
+                        [
+                            "RoamCore tried to auto-provision assets into /config but failed.",
+                            f"Error: {err}",
+                            "",
+                            "To retry: Settings → Developer Tools → Services → call roamcore.provision_assets.",
+                            f"Quick link: {service_link}",
+                            "",
+                            "Service data (optional):",
+                            "  repo: https://github.com/roamcore/RoamCore",
+                            f"  ref: {ref}",
+                            "",
+                            "Common causes: no internet/DNS, GitHub blocked, or storage permissions.",
+                        ]
+                    )
+                    hass.async_create_task(
+                        hass.services.async_call(
+                            "persistent_notification",
+                            "create",
+                            {
+                                "title": "RoamCore provisioning failed",
+                                "message": msg,
+                                "notification_id": "roamcore_provisioning_failed",
+                            },
+                            blocking=False,
+                        )
+                    )
+                except Exception:
+                    pass
     except Exception:
         # Provisioning is best-effort; never break HA startup.
         pass
@@ -227,6 +264,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=None,
     )
 
+    async def _svc_export_support_bundle(call):
+        # Export a diagnostic bundle under /config/.roamcore/support/<timestamp>/
+        # and optionally create a zip archive.
+        include_zip = bool(call.data.get("zip", True))
+        out = await export_support_bundle(hass, include_zip=include_zip)
+
+        # Best-effort UX: tell the user where it went.
+        try:
+            msg = f"Support bundle exported:\n- dir: {out.get('dir')}"
+            if out.get("zip"):
+                msg += f"\n- zip: {out.get('zip')}"
+            hass.async_create_task(
+                hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {"title": "RoamCore support bundle exported", "message": msg},
+                    blocking=False,
+                )
+            )
+        except Exception:
+            pass
+
+        return out
+
+    hass.services.async_register(
+        DOMAIN,
+        "export_support_bundle",
+        _svc_export_support_bundle,
+        schema=None,
+    )
+
     return True
 
 
@@ -235,5 +303,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Home Assistant does not currently provide a stable public API to unregister
     # HTTP views. We leave the view registered for the life of the process.
     return True
-import os
-from datetime import datetime
