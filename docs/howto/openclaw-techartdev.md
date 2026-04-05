@@ -70,6 +70,12 @@ Recommended pattern:
 Docs:
 - `docs/reference/openclaw-json-api.md`
 
+## 3.1) Install the RoamCore OpenClaw Skill (recommended)
+
+RoamCore ships an OpenClaw skill that teaches the agent how to use RoamCore’s endpoints and compute insights agent-side:
+
+- `docs/howto/openclaw-roamcore-skill.md`
+
 ---
 
 ## 4) Action-taking (later, safety-first)
@@ -85,4 +91,3 @@ RoamCore’s recommendation for safety:
   - optional confirmation flows
 
 This is planned for a later RoamCore version.
-
