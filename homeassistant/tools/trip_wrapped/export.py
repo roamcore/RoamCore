@@ -184,20 +184,26 @@ def main():
         except Exception as e:
             pref_err = e
 
+    export_notice = None
+
     if trips is None:
         # Fallback: direct Traccar Basic Auth using args or secrets.yaml
         if not (user and pw):
             sec = _load_secrets()
             user = user or sec.get("roamcore_traccar_admin_email")
             pw = pw or sec.get("roamcore_traccar_admin_password")
-        if not (user and pw):
-            raise SystemExit(
-                "Trip Wrapped export failed. Token/proxy methods were unavailable and Traccar credentials are missing. "
-                "Provide --user-token, or --username/--password, or set roamcore_traccar_user_token / roamcore_traccar_admin_email/password in /config/secrets.yaml. "
-                f"Last error: {pref_err}"
+        if user and pw:
+            client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
+            trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
+        else:
+            # IMPORTANT (beta UX): do not hard-fail the export.
+            # We still generate a valid Trip Wrapped HTML/JSON with a clear call-to-action.
+            trips = []
+            export_notice = (
+                "Trip Wrapped couldn't connect to Traccar yet. "
+                "To unlock seamless trip summaries, set roamcore_traccar_user_token in /config/secrets.yaml "
+                "(recommended), or set input_text.rc_traccar_username/password (basic auth)."
             )
-        client = TraccarClient.direct_basic(base_url=a.base_url, username=user, password=pw)
-        trips = client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
 
     # Best-effort: pull a full-journey route polyline (hero map) + stops report
     # for story metrics, plus a top-trip route (optional secondary).
@@ -254,6 +260,14 @@ def main():
         map_image_url=None,
         comparisons={},
     )
+
+    if export_notice:
+        try:
+            wrapped.setdefault("meta", {})
+            wrapped["meta"]["notice"] = export_notice
+            wrapped["meta"]["dataStatus"] = "needs_setup"
+        except Exception:
+            pass
 
     # Local, privacy-first comparisons vs past trips.
     try:
@@ -318,5 +332,7 @@ if __name__ == "__main__":
     try:
         main()
     except TraccarError as e:
-        print(f"Trip Wrapped export failed: {e}", file=sys.stderr)
-        raise SystemExit(2)
+        # Best-effort safety net: if a Traccar call raises late in the process,
+        # surface the error but don't crash the whole export command.
+        print(f"Trip Wrapped export warning: {e}", file=sys.stderr)
+        raise SystemExit(0)

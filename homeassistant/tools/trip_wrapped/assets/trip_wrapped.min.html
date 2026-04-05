@@ -230,6 +230,26 @@
     const stats = d.stats || {};
     const comps = d.comparisons || {};
 
+    // Optional notice banner (used for graceful degraded mode when data sources
+    // like Traccar are not configured yet).
+    try {
+      const notice = meta.notice || '';
+      if (notice && String(notice).trim()) {
+        const el = document.createElement('div');
+        el.style.position = 'sticky';
+        el.style.top = '0';
+        el.style.zIndex = '9999';
+        el.style.padding = '12px 14px';
+        el.style.background = 'rgba(255, 196, 0, 0.14)';
+        el.style.borderBottom = '1px solid rgba(255, 196, 0, 0.25)';
+        el.style.color = '#fff';
+        el.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        el.style.fontSize = '14px';
+        el.innerHTML = `<b>Setup needed:</b> ${String(notice)}`;
+        document.body.prepend(el);
+      }
+    } catch(e) {}
+
     const fmtKm = (m) => {
       const km = (Number(m)||0) / 1000;
       return km >= 100 ? km.toFixed(0) : km.toFixed(1);
