@@ -1808,6 +1808,18 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         return;
       }
 
+      // If Trip Wrapped is in a degraded "needs setup" mode, surface a clear CTA.
+      try {
+        const meta = obj.meta || {};
+        const notice = meta.notice || '';
+        const status = String(meta.dataStatus || '').toLowerCase();
+        if (status === 'needs_setup' || (notice && String(notice).trim())) {
+          const msg = notice ? String(notice) : 'Trip Wrapped needs setup.';
+          el.innerHTML = `${msg} <a href="${this._basePath()}/settings" target="_self" rel="noreferrer">Open setup</a>`;
+          return;
+        }
+      } catch (e) {}
+
       const stats = obj.stats || {};
       const meta = obj.meta || {};
       const distM = Number(stats.totalDistanceM || 0);
