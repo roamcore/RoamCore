@@ -211,11 +211,14 @@ class RoamcoreBasePage extends HTMLElement {
     const map = this._hass?.states?.['binary_sensor.rc_setup_map_ready']?.state;
     const trip = this._hass?.states?.['binary_sensor.rc_setup_trip_wrapped_ready']?.state;
     const vic = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
+    const progress = this._hass?.states?.['sensor.rc_setup_progress']?.state;
     const ok = (v) => String(v || '').toLowerCase() === 'on';
     const complete = ok(owner) && ok(map) && ok(trip) && ok(vic);
+    const enabled = (!rcIsMissingState(owner) || !rcIsMissingState(map) || !rcIsMissingState(trip) || !rcIsMissingState(vic) || !rcIsMissingState(progress));
     return {
+      enabled,
       complete,
-      progress: this._hass?.states?.['sensor.rc_setup_progress']?.state,
+      progress,
       ownerOk: ok(owner),
       mapOk: ok(map),
       tripOk: ok(trip),
@@ -226,6 +229,7 @@ class RoamcoreBasePage extends HTMLElement {
   _setupBanner() {
     try {
       const st = this._setupState();
+      if (!st.enabled) return '';
       if (st.complete) return '';
 
       const prog = (!rcIsMissingState(st.progress)) ? String(st.progress) : '';
@@ -2637,7 +2641,7 @@ class RoamcoreDiagnosticsPage extends RoamcoreBasePage {
               <div class="rc-label">Copy a JSON bundle (includes install/provision info and rc_* state dump) and paste into a support ticket.</div>
               <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
                 <button class="rc-btn2" id="rcCopyBundle" ${this._diagLoading ? 'disabled' : ''}>${this._esc(copyBtnLabel)}</button>
-                <button class="rc-btn2" data-nav="https://github.com/roamcore/RoamCore/issues" title="Open GitHub issues" style="opacity:0.85;">Support</button>
+                <a class="rc-btn2" href="https://github.com/roamcore/RoamCore/issues" target="_blank" rel="noreferrer" title="Open GitHub issues" style="opacity:0.85; text-decoration:none;">Support</a>
               </div>
               ${this._copyStatus ? `<div style="margin-top:10px; font-weight:800;">${this._esc(this._copyStatus)}</div>` : ''}
               <div style="margin-top:10px;" class="rc-mini">Tip: if clipboard is blocked (some WebViews), open the dashboard in a normal browser and try again.</div>
