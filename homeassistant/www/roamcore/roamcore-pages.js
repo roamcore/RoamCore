@@ -1695,7 +1695,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
       <div class="rc-label" style="margin-top: 6px;">RoamCore map (${mode.mode === 'maplibre' ? 'MapLibre GL (vector)' : 'Leaflet (raster)'})${mode.mode === 'leaflet' ? ' with Traccar route overlay (last 6h)' : ''}.</div>
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="rc-btn" href="http://192.168.1.66:8082/" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
+        <a class="rc-btn" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
       ${mapDataTiles}
       ${tripWrappedTile}
