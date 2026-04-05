@@ -1694,6 +1694,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           <div class="rc-label" style="margin-top:8px;">Status: ${twBadge} · Last generated: <b>${twGenTxt}</b></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="rc-btn" id="rc-tripwrapped-generate-quick">Generate</button>
             <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
             <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
           </div>
@@ -1796,6 +1797,21 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     try {
       const btn = this._root.querySelector('#rc-tripwrapped-open');
       if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
+      const quick = this._root.querySelector('#rc-tripwrapped-generate-quick');
+      if (quick) quick.addEventListener('click', async () => {
+        try {
+          quick.disabled = true;
+          // Generate using current helper values (From/To). Users can fine-tune in Options.
+          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
+          // Refresh preview
+          const prev = this._root.querySelector('#rc-tripwrapped-preview');
+          if (prev) this._loadTripWrappedPreview(prev);
+        } catch (e) {
+          console.warn('quick trip wrapped generate failed', e);
+        } finally {
+          try { quick.disabled = false; } catch (e) {}
+        }
+      });
       const prev = this._root.querySelector('#rc-tripwrapped-preview');
       if (prev) this._loadTripWrappedPreview(prev);
     } catch (e) {}
