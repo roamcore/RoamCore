@@ -374,7 +374,7 @@ class RoamcoreBasePage extends HTMLElement {
   _header(title) {
     return `
       <div class="rc-subheader">
-        <button class="rc-back" data-nav="${this._basePath()}/overview">←</button>
+        <button class="rc-back" data-nav="${this._basePath()}/home">←</button>
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
         <button class="rc-gear" title="Settings" data-nav="${this._basePath()}/settings">⚙</button>

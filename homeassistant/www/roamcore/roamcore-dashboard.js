@@ -4,6 +4,36 @@
 //
 // This is intentionally self-contained (no external deps) for HAOS reliability.
 
+function rcIsMissingState(v) {
+  const s = (v === undefined || v === null) ? '' : String(v);
+  const t = s.toLowerCase();
+  return !s || t === 'unknown' || t === 'unavailable' || t === 'none';
+}
+
+// Demo values are only used when input_boolean.rc_demo_mode is ON and the real
+// entity state is missing/unknown/unavailable.
+const RC_DEMO_STATES = {
+  // Power
+  'sensor.rc_power_battery_soc': '83',
+  'sensor.rc_power_solar_power': '420',
+  'sensor.rc_power_load_power': '280',
+  'binary_sensor.rc_power_shore_connected': 'off',
+  'sensor.rc_power_inverter_status': 'on',
+
+  // Network
+  'sensor.rc_net_wan_status': 'good',
+  'sensor.rc_net_wan_source': 'cellular',
+  'sensor.rc_net_download': '47',
+  'sensor.rc_net_upload': '9',
+  'sensor.rc_net_ping': '43',
+
+  // Level
+  'sensor.rc_system_level_pitch_deg': '0.8',
+  'sensor.rc_system_level_roll_deg': '-1.2',
+  'sensor.rc_system_level_pitch': '0.8',
+  'sensor.rc_system_level_roll': '-1.2',
+};
+
 class RoamcoreDashboardCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
@@ -14,6 +44,21 @@ class RoamcoreDashboardCard extends HTMLElement {
       const style = document.createElement('style');
       style.textContent = this._css();
       this.shadowRoot.appendChild(style);
+
+      // delegated navigation handler (covers dynamically injected elements like the setup banner)
+      this._root.addEventListener('click', (ev) => {
+        const path = ev.composedPath ? ev.composedPath() : [];
+        const candidates = path.length ? path : [ev.target];
+        for (const node of candidates) {
+          if (node && node.getAttribute) {
+            const nav = node.getAttribute('data-nav');
+            if (nav) {
+              this._navigate(nav);
+              return;
+            }
+          }
+        }
+      });
     }
     this._render();
   }
@@ -57,7 +102,19 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _getState(entityId) {
-    return this._hass?.states?.[entityId]?.state;
+    const raw = this._hass?.states?.[entityId]?.state;
+    if (this._isDemoMode() && rcIsMissingState(raw) && RC_DEMO_STATES[entityId] !== undefined) {
+      return RC_DEMO_STATES[entityId];
+    }
+    return raw;
+  }
+
+  _isDemoMode() {
+    try {
+      return this._hass?.states?.['input_boolean.rc_demo_mode']?.state === 'on';
+    } catch (e) {
+      return false;
+    }
   }
 
   _traccarEmbedUrl() {
@@ -81,6 +138,63 @@ class RoamcoreDashboardCard extends HTMLElement {
     const s = this._getState(entityId);
     const n = Number(s);
     return Number.isFinite(n) ? n : fallback;
+  }
+
+  _setupState() {
+    const owner = this._hass?.states?.['binary_sensor.rc_setup_owner_ready']?.state;
+    const map = this._hass?.states?.['binary_sensor.rc_setup_map_ready']?.state;
+    const trip = this._hass?.states?.['binary_sensor.rc_setup_trip_wrapped_ready']?.state;
+    const vic = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
+    const progress = this._hass?.states?.['sensor.rc_setup_progress']?.state;
+
+    const ok = (v) => String(v || '').toLowerCase() === 'on';
+    const complete = ok(owner) && ok(map) && ok(trip) && ok(vic);
+    const enabled = (!rcIsMissingState(owner) || !rcIsMissingState(map) || !rcIsMissingState(trip) || !rcIsMissingState(vic) || !rcIsMissingState(progress));
+
+    return {
+      enabled,
+      complete,
+      progress,
+      ownerOk: ok(owner),
+      mapOk: ok(map),
+      tripOk: ok(trip),
+      vicOk: ok(vic),
+    };
+  }
+
+  _setupBannerHtml() {
+    try {
+      const st = this._setupState();
+      if (!st.enabled || st.complete) return '';
+
+      const prog = (!rcIsMissingState(st.progress)) ? String(st.progress) : '';
+      const missing = [
+        st.ownerOk ? null : 'Owner',
+        st.mapOk ? null : 'Map',
+        st.tripOk ? null : 'Trip Wrapped',
+        st.vicOk ? null : 'Victron',
+      ].filter(Boolean).join(', ') || '—';
+
+      const demoPill = this._isDemoMode() ? `<span class="rc-pill-demo">Demo mode</span>` : '';
+
+      return `
+        <div class="rc-setup-banner">
+          <div class="rc-setup-top">
+            <div>
+              <div class="rc-setup-title">Setup not complete</div>
+              <div class="rc-setup-sub">${prog ? `Progress: <b>${prog}</b> · ` : ''}Missing: <b>${missing}</b></div>
+            </div>
+            <div class="rc-setup-right">${demoPill}</div>
+          </div>
+          <div class="rc-setup-actions">
+            <button class="rc-btn2" data-nav="${this._basePath()}/setup">Open setup wizard</button>
+            <button class="rc-btn2" data-nav="${this._basePath()}/settings">Dashboard settings</button>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      return '';
+    }
   }
 
   async _getTraccarRoutePositions({ deviceId = null, hours = 6 } = {}) {
@@ -304,6 +418,8 @@ class RoamcoreDashboardCard extends HTMLElement {
             </div>
           </div>
 
+          <div id="rc-setup-banner"></div>
+
           <div class="rc-grid">
             ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
             ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
@@ -312,11 +428,6 @@ class RoamcoreDashboardCard extends HTMLElement {
           </div>
         </div>
       `;
-
-      // bind navigation clicks (once)
-      this._root.querySelectorAll('.rc-click').forEach((el) => {
-        el.addEventListener('click', () => this._navigate(el.getAttribute('data-nav')));
-      });
 
       const gear = this._root.querySelector('.rc-gear');
       if (gear) gear.addEventListener('click', (e) => { e.stopPropagation(); this._goSettings(); });
@@ -327,6 +438,12 @@ class RoamcoreDashboardCard extends HTMLElement {
     if (t) t.textContent = timeStr;
     const d = this._root.querySelector('[data-bind="date"]');
     if (d) d.textContent = dateStr;
+
+    // Setup banner (refresh every render)
+    try {
+      const b = this._root.querySelector('#rc-setup-banner');
+      if (b) b.innerHTML = this._setupBannerHtml();
+    } catch (e) {}
   }
 
   _levelStatus(pitch, roll) {
@@ -1047,6 +1164,24 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-header-right { display:flex; gap:10px; align-items:center; }
       .rc-gear { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-muted); font-size: 16px; cursor:pointer; }
       .rc-gear:hover { filter: brightness(1.08); }
+
+      /* Setup banner */
+      .rc-setup-banner {
+        margin: 6px 2px 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: linear-gradient(180deg, rgba(244,197,66,0.14), rgba(32,32,32,0.55));
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      }
+      .rc-setup-top { display:flex; align-items:flex-start; justify-content:space-between; gap: 10px; }
+      .rc-setup-right { display:flex; align-items:center; }
+      .rc-setup-title { font-weight: 900; letter-spacing: 0.2px; }
+      .rc-setup-sub { margin-top: 4px; color: var(--rc-muted); font-size: 13px; line-height: 1.35; }
+      .rc-setup-actions { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      .rc-btn2 { cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.92); font-weight: 900; }
+      .rc-btn2:hover { filter: brightness(1.05); }
+      .rc-pill-demo { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; font-weight: 900; font-size: 12px; color: rgba(255,255,255,0.92); background: rgba(67,209,122,0.10); border: 1px solid rgba(67,209,122,0.30); }
 
       .rc-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 

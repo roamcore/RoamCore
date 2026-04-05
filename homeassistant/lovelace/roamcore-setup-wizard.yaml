@@ -108,4 +108,4 @@ views:
         content: |
           ## Finish
           When the checks are green, you’re ready.
-          - Open dashboard: `/roam-core/home`
+          - Open dashboard: `/roamcore/home`

@@ -60,6 +60,11 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh
 4. Optional API probe (from a machine with an HA token) using the repo helper:
    - `scripts/ha/check-rc-entities.sh`
 
+5. Open the RoamCore dashboard and complete first-run setup:
+   - Dashboard: `/roamcore/home`
+   - Setup wizard: `/roamcore/setup`
+   - Optional: enable **RC Demo Mode** (`input_boolean.rc_demo_mode`) to preview the UI even if critical sensors are still missing.
+
 ## Optional: Native dashboard (no custom JS)
 
 RoamCore ships two dashboards:

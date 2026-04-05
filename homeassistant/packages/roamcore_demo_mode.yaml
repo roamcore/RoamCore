@@ -1,0 +1,13 @@
+# RoamCore Demo Mode (MVP)
+#
+# Purpose:
+# - Give users a simple toggle to preview the RoamCore dashboard without all
+#   sensors/hardware online.
+# - The RoamCore custom UI shows demo values ONLY when this toggle is ON and a
+#   critical rc_* entity is missing/unknown/unavailable.
+
+input_boolean:
+  rc_demo_mode:
+    name: "RC Demo Mode"
+    icon: mdi:theater
+

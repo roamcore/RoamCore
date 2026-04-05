@@ -85,6 +85,11 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh
 
 Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
 
+#### First-run setup + Demo Mode
+
+- **Setup wizard:** open `/roamcore/setup` (or click **Open setup wizard** from the banner / Settings page). A persistent **“Setup not complete”** banner will stay visible on the RoamCore dashboard until the `rc_setup_*` readiness checks are green.
+- **Demo Mode (optional):** toggle `input_boolean.rc_demo_mode` (**RC Demo Mode**) to preview the dashboard even if critical sensors are missing. When enabled, demo values appear **only** for missing/unknown/unavailable entities.
+
 Recommended add-ons/integrations (reuse-first):
 - Timezone-from-GPS: [`docs/howto/geolocator-timezone.md`](docs/howto/geolocator-timezone.md)
 - Run OpenClaw in HAOS: [`docs/howto/openclaw-techartdev.md`](docs/howto/openclaw-techartdev.md)
