@@ -58,3 +58,29 @@ To ensure we can ingest the full Victron dataset:
    - `N/<portal_id>/+/+/ProductId`
 2) Capture a topic inventory from `N/<portal_id>/#` and compare against the RoamCore “minimum telemetry set”.
 3) Expand `vt_*` mappings incrementally and keep `rc_*` stable.
+
+---
+
+## Pairing / Setup Wizard (Beta)
+
+RoamCore’s beta UX goal is that a user can:
+- install the RoamCore Victron Auto add-on,
+- open the RoamCore dashboard,
+- and connect to their GX device via the embedded pairing card.
+
+Implementation notes:
+- The pairing UI lives in the Lovelace card `custom:roamcore-victron-connect`.
+- That card calls the add-on ingress API:
+  - `GET /api/v1/victron/discover`
+  - `POST /api/v1/victron/connect`
+  - `GET /api/v1/victron/status`
+- Health for the wizard is derived from retained MQTT status topics published by the add-on:
+  - `roamcore/victron/<device_id>/availability` (online/offline)
+  - `roamcore/victron/<device_id>/status` (connected/searching)
+  - `roamcore/victron/<device_id>/snapshot_state` (ready/pending)
+
+The contract-level readiness bit used by the setup wizard is:
+- `binary_sensor.rc_system_power_backend_connected`
+
+Which then feeds:
+- `binary_sensor.rc_setup_victron_ready`
