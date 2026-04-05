@@ -1,149 +1,73 @@
 # RoamCore Setup Wizard (MVP scaffolding)
 #
-# Provides a small set of helpers + scripts used by a Lovelace-based setup flow.
-# Dashboard wiring can be added separately; this package is safe to load anytime.
-
-input_boolean:
-  roamcore_setup_complete:
-    name: "RoamCore Setup Complete"
-    icon: mdi:check-decagram
-
-  roamcore_wifi_enable:
-    name: "RoamCore Wi-Fi Enable"
-    icon: mdi:wifi
-
-  roamcore_victron_enable:
-    name: "RoamCore Victron Enable"
-    icon: mdi:solar-power
-
-input_text:
-  roamcore_wifi_ssid:
-    name: "RoamCore Wi-Fi SSID"
-    max: 64
-
-  roamcore_wifi_password:
-    name: "RoamCore Wi-Fi Password"
-    max: 128
-    mode: password
-
-  roamcore_wan_notes:
-    name: "RoamCore WAN Notes"
-    max: 255
-
-  roamcore_victron_host:
-    name: "RoamCore Victron Host"
-    max: 255
-
-input_number:
-  roamcore_victron_port:
-    name: "RoamCore Victron Port"
-    min: 1
-    max: 65535
-    step: 1
-    mode: box
-    initial: 1883
+# Purpose:
+# - Provide a minimal, reliable set of helpers + readiness sensors so a guided
+#   setup flow can be implemented purely as a Lovelace page.
+# - Keep this deterministic and resumable: the UI reads/writes HA state only.
+#
+# Note: Sensitive values should not be stored in helpers long-term.
+# For beta, we start with guidance-only fields and add a safe secret-write service later.
 
 input_select:
-  roamcore_wan_mode:
-    name: "RoamCore WAN Mode"
+  rc_setup_stage:
+    name: "RC Setup Stage"
     options:
-      - offline
-      - dhcp
-      - starlink
-      - cellular
-      - both
-    icon: mdi:wan
+      - welcome
+      - owner
+      - map
+      - trip_wrapped
+      - victron
+      - optional
+      - done
+    initial: welcome
 
-  roamcore_victron_method:
-    name: "RoamCore Victron Method"
-    options:
-      - disabled
-      - mqtt
-      - modbus_tcp
-    icon: mdi:connection
+input_text:
+  # Optional: store as a convenience so the wizard can link users to the right place.
+  # For true secrets, prefer /config/secrets.yaml.
+  rc_traccar_user_token_hint:
+    name: "RC Traccar User Token (hint)"
+    initial: ""
 
-  roamcore_timezone:
-    name: "RoamCore Timezone"
-    # Keep short for MVP; can be expanded later.
-    options:
-      - UTC
-      - America/Los_Angeles
-      - America/Denver
-      - America/Chicago
-      - America/New_York
-      - Europe/London
-      - Europe/Paris
-    icon: mdi:map-clock
+template:
+  - binary_sensor:
+      - name: "RC Setup Owner Ready"
+        unique_id: rc_setup_owner_ready
+        state: >-
+          {{ states('input_text.rc_owner_name') not in ['unknown','unavailable','none',''] }}
 
-script:
-  roamcore_setup_save_wifi:
-    alias: "RoamCore Setup: Save Wi-Fi"
-    mode: single
-    sequence:
-      - service: logbook.log
-        data:
-          name: "RoamCore Setup"
-          message: "Wi‑Fi settings stored (SSID + enable)."
+      - name: "RC Setup Map Ready"
+        unique_id: rc_setup_map_ready
+        state: >-
+          {{
+            states('sensor.rc_location_lat') not in ['unknown','unavailable']
+            and states('sensor.rc_location_lon') not in ['unknown','unavailable']
+          }}
 
-  roamcore_setup_save_wan:
-    alias: "RoamCore Setup: Save WAN"
-    mode: single
-    sequence:
-      - service: logbook.log
-        data:
-          name: "RoamCore Setup"
-          message: "WAN mode stored: {{ states('input_select.roamcore_wan_mode') }}"
+      - name: "RC Setup Trip Wrapped Ready"
+        unique_id: rc_setup_trip_wrapped_ready
+        state: >-
+          {{
+            states('input_text.rc_traccar_base_url') not in ['unknown','unavailable','none','']
+            and (states('input_number.rc_traccar_device_id') | int(0)) > 0
+          }}
 
-  roamcore_setup_test_internet:
-    alias: "RoamCore Setup: Test Internet"
-    mode: single
-    sequence:
-      - service: persistent_notification.create
-        data:
-          title: "RoamCore WAN Test"
-          message: "MVP stub: implement connectivity test (ping/DNS/HTTP)."
+      - name: "RC Setup Victron Ready"
+        unique_id: rc_setup_victron_ready
+        state: >-
+          {{ is_state('binary_sensor.rc_system_power_backend_connected', 'on') }}
+        availability: >-
+          {{ states('binary_sensor.rc_system_power_backend_connected') not in ['unknown','unavailable'] }}
 
-  roamcore_setup_save_victron:
-    alias: "RoamCore Setup: Save Victron"
-    mode: single
-    sequence:
-      - service: logbook.log
-        data:
-          name: "RoamCore Setup"
-          message: "Victron settings stored (method/host/port)."
-
-  roamcore_setup_check_victron:
-    alias: "RoamCore Setup: Check Victron"
-    mode: single
-    sequence:
-      - service: persistent_notification.create
-        data:
-          title: "RoamCore Victron Check"
-          message: "MVP stub: wire to roamcore-victron-auto status endpoint."
-
-  roamcore_setup_apply_timezone:
-    alias: "RoamCore Setup: Apply Timezone"
-    mode: single
-    sequence:
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.rc_time_zone_override
-        data:
-          value: "{{ states('input_select.roamcore_timezone') }}"
-      - service: persistent_notification.create
-        data:
-          title: "RoamCore Timezone"
-          message: "RoamCore timezone override set to: {{ states('input_select.roamcore_timezone') }}"
-
-  roamcore_setup_complete:
-    alias: "RoamCore Setup: Complete"
-    mode: single
-    sequence:
-      - service: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.roamcore_setup_complete
-      - service: persistent_notification.create
-        data:
-          title: "RoamCore Setup"
-          message: "Setup marked complete. Switch to the main RoamCore dashboard."
+  - sensor:
+      - name: "RC Setup Progress"
+        unique_id: rc_setup_progress
+        icon: mdi:progress-check
+        state: >-
+          {% set total = 4 %}
+          {% set done = 0 %}
+          {% if is_state('binary_sensor.rc_setup_owner_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {% if is_state('binary_sensor.rc_setup_map_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {% if is_state('binary_sensor.rc_setup_trip_wrapped_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {% if is_state('binary_sensor.rc_setup_victron_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {{ done }}/{{ total }}
 
