@@ -109,6 +109,8 @@ If you like software that’s pragmatic, inspectable, and built to last, you’l
 
 More detail: [`docs/philosophy.md`](docs/philosophy.md)
 
+Project status at a glance: [`docs/feature-checklist.md`](docs/feature-checklist.md)
+
 ## OpenClaw API (conversational interface)
 
 RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van’s state.
