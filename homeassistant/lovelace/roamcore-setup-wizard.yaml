@@ -89,6 +89,8 @@ views:
           ## 4) Victron
           Use the connect card to discover and connect.
 
+          Tip: you can also do pairing from the main RoamCore dashboard.
+
       - type: vertical-stack
         cards:
           - type: custom:roamcore-victron-connect
