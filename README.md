@@ -67,6 +67,10 @@ curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh
 
 Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
 
+Recommended add-ons/integrations (reuse-first):
+- Timezone-from-GPS: [`docs/howto/geolocator-timezone.md`](docs/howto/geolocator-timezone.md)
+- Run OpenClaw in HAOS: [`docs/howto/openclaw-techartdev.md`](docs/howto/openclaw-techartdev.md)
+
 ### HACS install (beta: Custom Repository)
 
 If you want installs/updates through the Home Assistant UI, you can add RoamCore as a **HACS Custom Repository** (beta path):
