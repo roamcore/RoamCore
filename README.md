@@ -136,6 +136,12 @@ More detail: [`docs/philosophy.md`](docs/philosophy.md)
 
 Project status at a glance: [`docs/feature-checklist.md`](docs/feature-checklist.md)
 
+## Resources (inspiration + community)
+
+A growing list of useful projects and communities for upgrading your van/off-grid system:
+
+- [`docs/resources.md`](docs/resources.md)
+
 ## OpenClaw API (conversational interface)
 
 RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van’s state.
