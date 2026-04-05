@@ -52,6 +52,16 @@ binary_sensor:
     payload_on: "ON"
     payload_off: "OFF"
 
+template:
+  - binary_sensor:
+      - name: "RC Trip Wrapped Latest Ready"
+        unique_id: rc_trip_wrapped_latest_ready
+        icon: mdi:share-variant
+        state: >-
+          {{ states('sensor.rc_trip_wrapped_latest_status') == 'ok' }}
+        availability: >-
+          {{ states('sensor.rc_trip_wrapped_latest_status') not in ['unknown','unavailable'] }}
+
 input_number:
   rc_traccar_device_id:
     name: "RC Traccar Device ID"
@@ -118,6 +128,43 @@ automation:
       - service: script.rc_trip_wrapped_run_today
 
 sensor:
+  # Latest export status sensors (read from generated JSON).
+  # These are used to make the UI deterministic: show “ready / needs setup / missing”
+  # rather than silently failing.
+  - platform: command_line
+    name: "RC Trip Wrapped Latest Status"
+    unique_id: rc_trip_wrapped_latest_status
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_wrapped/latest.json"
+      try:
+        o=json.load(open(p,"r"))
+        meta=o.get("meta",{}) or {}
+        st=str(meta.get("dataStatus") or "ok")
+        print(st)
+      except Exception:
+        print("missing")
+      PY'
+    scan_interval: 30
+
+  - platform: command_line
+    name: "RC Trip Wrapped Latest Generated At"
+    unique_id: rc_trip_wrapped_latest_generated_at
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_wrapped/latest.json"
+      try:
+        o=json.load(open(p,"r"))
+        meta=o.get("meta",{}) or {}
+        ga=str(meta.get("generatedAt") or "")
+        print(ga if ga else "unknown")
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 30
+
   # Today summary sensors used by dashboard tiles.
   # These read the generated /local JSON so we don't recompute in the frontend.
   - platform: command_line
