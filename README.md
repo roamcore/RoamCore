@@ -145,22 +145,22 @@ Docs: [`docs/reference/openclaw-json-api.md`](docs/reference/openclaw-json-api.m
 
 ### 5 surprisingly useful things to ask your van
 
-These are examples of the kind of questions that become possible once an agent can see your van’s full state (snapshot + time series):
+These are examples of the kind of questions that become possible once an agent can see your van’s full state (snapshot + time series). They’re written for the “tired vanlifer” reality: you want answers without crawling under the bed or juggling six apps.
 
-1) **“What changed in the last 2 hours that explains why the battery is dropping faster?”**
-   - The agent can compare recent load/solar/charging patterns and point to the most likely cause.
+1) **“Can I make it through tonight on power if I work for 4 hours, cook once, and run the heater fan?”**
+   - The agent uses recent power drain trends + current battery SOC to give a practical forecast (and what to turn down first).
 
-2) **“If I keep doing exactly what I’m doing, what will my battery % look like by bedtime?”**
-   - Using recent net power trend (solar vs load), it can project a simple best-effort estimate.
+2) **“Do I have enough water to last until tomorrow afternoon? And how urgent is it?”**
+   - When tank sensors exist, the agent turns a confusing level into “~X days left at your current use”. If sensors don’t exist yet, it tells you exactly what’s missing.
 
-3) **“Am I actually charging, or just *connected* to shore?”**
-   - Many setups lie by omission. The agent can look at shore_connected plus AC in/out power and tell the truth.
+3) **“Find me a legal-ish place to sleep within 30 minutes that won’t kill my internet.”**
+   - Combines location context + connectivity status (and later, campsite/amenity overlays) to suggest where to aim *tonight*.
 
-4) **“How level have we been overnight, and did anything shift?”**
-   - Great for explaining bad sleep: it can look at pitch/roll stability over time, not just “right now”.
+4) **“What’s my internet situation right now—Starlink/LTE/Wi‑Fi—and is it getting worse?”**
+   - Instead of a tiny icon, you get a plain-English diagnosis: current link, stability, and whether your recent signal/usage trend suggests trouble.
 
-5) **“Give me a one-paragraph ‘systems report’ like a co-pilot would before we drive.”**
-   - A tight pre-departure summary: power status, connectivity/location sanity, anything missing/unhealthy.
+5) **“I’m in bed—show me what’s going on outside and tell me if anything looks wrong.”**
+   - Pulls together cameras/sensors into one calm “night watch” summary (so you don’t get up to check screens).
 
 ## HACS (planned)
 
