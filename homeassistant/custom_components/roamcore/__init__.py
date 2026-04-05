@@ -13,6 +13,75 @@ from .const import (
 from .openclaw_view import OpenClawSummaryView, OpenClawSkillView
 
 
+def _secrets_path(hass: HomeAssistant) -> str:
+    # HA config dir secrets.yaml
+    return hass.config.path("secrets.yaml")
+
+
+def _secrets_set_text(text: str, key: str, value: str) -> str:
+    """Set or add a single key in secrets.yaml (best-effort, preserves other lines).
+
+    We intentionally do line-based replacement to avoid rewriting the whole file
+    (which would destroy comments/formatting).
+    """
+    import re
+
+    key = str(key).strip()
+    if not key:
+        raise ValueError("key is required")
+    # Quote value to be safe with special chars.
+    v = str(value)
+    v = v.replace('\\', '\\\\').replace('"', '\\"')
+    new_line = f'{key}: "{v}"'
+
+    lines = (text or "").splitlines()
+    out = []
+    found = False
+    pat = re.compile(rf"^\s*{re.escape(key)}\s*:\s*(.*)$")
+    for ln in lines:
+        if pat.match(ln):
+            out.append(new_line)
+            found = True
+        else:
+            out.append(ln)
+    if not found:
+        if out and out[-1].strip() != "":
+            out.append("")
+        out.append(new_line)
+    return "\n".join(out).rstrip("\n") + "\n"
+
+
+def _secrets_delete_text(text: str, key: str) -> str:
+    import re
+
+    key = str(key).strip()
+    if not key:
+        raise ValueError("key is required")
+    lines = (text or "").splitlines()
+    pat = re.compile(rf"^\s*{re.escape(key)}\s*:\s*(.*)$")
+    out = [ln for ln in lines if not pat.match(ln)]
+    return "\n".join(out).rstrip("\n") + "\n"
+
+
+async def _async_write_text_atomic(path: str, text: str) -> None:
+    import os
+    import tempfile
+
+    d = os.path.dirname(path)
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=os.path.basename(path) + ".", dir=d)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        except Exception:
+            pass
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up RoamCore from YAML (deprecated; prefer config entry)."""
     return True
@@ -35,6 +104,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED):
         hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
         hass.http.register_view(OpenClawSkillView(hass, entry.entry_id))
+
+    # Register services used by the setup wizard.
+    async def _svc_secrets_set(call):
+        key = str(call.data.get("key") or "").strip()
+        value = str(call.data.get("value") or "")
+        p = _secrets_path(hass)
+
+        def _read():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except FileNotFoundError:
+                return ""
+
+        old = await hass.async_add_executor_job(_read)
+        new = _secrets_set_text(old, key=key, value=value)
+        await hass.async_add_executor_job(lambda: __import__("os").path.exists(p))
+        await _async_write_text_atomic(p, new)
+
+    async def _svc_secrets_delete(call):
+        key = str(call.data.get("key") or "").strip()
+        p = _secrets_path(hass)
+
+        def _read():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except FileNotFoundError:
+                return ""
+
+        old = await hass.async_add_executor_job(_read)
+        new = _secrets_delete_text(old, key=key)
+        await _async_write_text_atomic(p, new)
+
+    # Safe to call repeatedly (HA will overwrite handler with same name).
+    hass.services.async_register(
+        DOMAIN,
+        "secrets_set",
+        _svc_secrets_set,
+        schema=None,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "secrets_delete",
+        _svc_secrets_delete,
+        schema=None,
+    )
 
     return True
 

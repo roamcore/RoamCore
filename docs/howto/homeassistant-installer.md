@@ -72,3 +72,32 @@ To use the native dashboard, create a new Lovelace dashboard in HA and point it 
 - `/config/lovelace/roamcore-dashboard-native.yaml`
 
 This is additive; keep the custom dashboard too.
+
+## Securely storing API keys / tokens (beta)
+
+RoamCore avoids storing real secrets in Lovelace YAML.
+
+For beta, RoamCore provides a Home Assistant service that can safely write a key/value into `/config/secrets.yaml` using an atomic update (so you don't need to SSH in and edit files manually).
+
+### Save a Traccar user token
+
+1) Open the RoamCore Setup Wizard view.
+2) Paste the token.
+3) Tap **Save token securely**.
+
+Under the hood this calls:
+
+```yaml
+service: roamcore.secrets_set
+data:
+  key: roamcore_traccar_user_token
+  value: "<TOKEN>"
+```
+
+This writes to:
+
+```yaml
+roamcore_traccar_user_token: "..."
+```
+
+Note: tokens are still stored as plaintext in `secrets.yaml` (like all HA secrets), but they are not committed to git, not embedded in dashboards, and RoamCore avoids logging them.

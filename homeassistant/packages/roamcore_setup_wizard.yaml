@@ -28,6 +28,26 @@ input_text:
     name: "RC Traccar User Token (hint)"
     initial: ""
 
+  rc_setup_traccar_user_token:
+    name: "RC Setup: Traccar User Token"
+    initial: ""
+    mode: password
+
+script:
+  rc_setup_save_traccar_user_token:
+    alias: "RC: Save Traccar token to secrets.yaml"
+    mode: single
+    sequence:
+      - service: roamcore.secrets_set
+        data:
+          key: roamcore_traccar_user_token
+          value: "{{ states('input_text.rc_setup_traccar_user_token') }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_setup_traccar_user_token
+        data:
+          value: ""
+
 template:
   - binary_sensor:
       - name: "RC Setup Owner Ready"
@@ -70,4 +90,3 @@ template:
           {% if is_state('binary_sensor.rc_setup_trip_wrapped_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {% if is_state('binary_sensor.rc_setup_victron_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {{ done }}/{{ total }}
-

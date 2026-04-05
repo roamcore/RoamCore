@@ -9,6 +9,8 @@ from .const import (
     DOMAIN,
     CONF_OPENCLAW_API_ENABLED,
     CONF_OPENCLAW_API_REQUIRES_AUTH,
+    CONF_TRACCAR_USER_TOKEN,
+    CONF_IOVERLANDER_API_KEY,
     DEFAULT_OPENCLAW_API_ENABLED,
     DEFAULT_OPENCLAW_API_REQUIRES_AUTH,
 )
@@ -68,9 +70,20 @@ class RoamCoreOptionsFlowHandler(config_entries.OptionsFlow):
                                 DEFAULT_OPENCLAW_API_REQUIRES_AUTH,
                             ),
                         ): bool,
+
+                        # Optional integrations / API keys
+                        # NOTE: stored in the config entry options, not in YAML.
+                        # Prefer this over putting secrets in Lovelace helpers.
+                        vol.Optional(
+                            CONF_TRACCAR_USER_TOKEN,
+                            default=opts.get(CONF_TRACCAR_USER_TOKEN, ""),
+                        ): str,
+                        vol.Optional(
+                            CONF_IOVERLANDER_API_KEY,
+                            default=opts.get(CONF_IOVERLANDER_API_KEY, ""),
+                        ): str,
                     }
                 ),
             )
 
         return self.async_create_entry(title="", data=user_input)
-

@@ -72,8 +72,10 @@ views:
             name: Device ID
           - entity: input_text.rc_traccar_ui_url
             name: Traccar UI (proxy)
-          - entity: input_text.rc_traccar_user_token_hint
-            name: Token (hint only)
+          - entity: input_text.rc_setup_traccar_user_token
+            name: Paste Traccar user token
+          - entity: script.rc_setup_save_traccar_user_token
+            name: Save token securely
           - entity: script.rc_trip_wrapped_run_today
             name: Generate (Today)
 
@@ -105,4 +107,3 @@ views:
           ## Finish
           When the checks are green, you’re ready.
           - Open dashboard: `/roam-core/home`
-

@@ -11,3 +11,7 @@ DEFAULT_OPENCLAW_API_ENABLED = True
 # MVP: default unauthenticated for isolated LAN use. Users can harden via options.
 DEFAULT_OPENCLAW_API_REQUIRES_AUTH = False
 
+# Setup wizard / optional integrations (stored in config entry options)
+CONF_TRACCAR_USER_TOKEN = "traccar_user_token"
+CONF_IOVERLANDER_API_KEY = "ioverlander_api_key"
+
