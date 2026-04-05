@@ -74,6 +74,14 @@ views:
     cards:
       - type: custom:roamcore-settings-page
 
+  # Diagnostics (support / bring-up)
+  - path: diagnostics
+    title: Diagnostics
+    icon: mdi:stethoscope
+    panel: true
+    cards:
+      - type: custom:roamcore-diagnostics-page
+
   # Debug / health view (MVP observability)
   - path: status
     title: Status
