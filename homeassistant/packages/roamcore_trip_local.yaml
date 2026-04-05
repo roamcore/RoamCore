@@ -1,0 +1,78 @@
+# RoamCore local-first trip metrics (no Traccar)
+#
+# Computes simple daily distance/time/stops from HA recorder DB.
+#
+# Requires:
+# - recorder enabled (default)
+# - a valid device_tracker entity configured via input_text.rc_location_tracker_entity
+
+shell_command:
+  rc_trip_local_today_export: >-
+    python3 /config/tools/trip_local/trip_today.py
+    --entity-id {{ states('input_text.rc_location_tracker_entity') }}
+    --day today
+    --out-json /config/www/roamcore/trip_local/today.json
+
+automation:
+  - id: rc_trip_local_today_exporter
+    alias: "RC: Export local trip metrics (today)"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    action:
+      - service: shell_command.rc_trip_local_today_export
+
+sensor:
+  - platform: command_line
+    name: "RC Trip Local Today Distance"
+    unique_id: rc_trip_local_today_distance_mi
+    unit_of_measurement: "mi"
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_local/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        m=float(o.get("stats",{}).get("distance_m") or 0)
+        mi=m/1609.344
+        print(round(mi,2))
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Local Today Drive Time"
+    unique_id: rc_trip_local_today_drive_time
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_local/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        s=int(float(o.get("stats",{}).get("drive_time_s") or 0))
+        h=s//3600
+        m=(s%3600)//60
+        print(f"{h}:{m:02d}")
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Local Today Stops"
+    unique_id: rc_trip_local_today_stops
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json
+      p="/config/www/roamcore/trip_local/today.json"
+      try:
+        o=json.load(open(p,"r"))
+        n=int(float(o.get("stats",{}).get("stops") or 0))
+        print(n)
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+

@@ -86,7 +86,11 @@ template:
         unit_of_measurement: "mi"
         state: >-
           {% set v = states('sensor.rc_trip_wrapped_today_distance') %}
-          {{ v if v not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_distance_today_mi') }}
+          {% set v2 = states('sensor.rc_trip_local_today_distance') %}
+          {{
+            v if v not in ['unknown','unavailable','']
+            else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_distance_today_mi'))
+          }}
 
       - name: "RC Trip Distance Total"
         unique_id: rc_trip_distance_total_mi
@@ -97,7 +101,8 @@ template:
         unique_id: rc_trip_time_today
         state: >-
           {% set v = states('sensor.rc_trip_wrapped_today_duration') %}
-          {{ v if v not in ['unknown','unavailable',''] else states('input_text.rc_mock_trip_time_today') }}
+          {% set v2 = states('sensor.rc_trip_local_today_drive_time') %}
+          {{ v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_text.rc_mock_trip_time_today')) }}
 
       - name: "RC Trip Time Total"
         unique_id: rc_trip_time_total
@@ -111,7 +116,8 @@ template:
         unique_id: rc_trip_stops
         state: >-
           {% set v = states('sensor.rc_trip_wrapped_today_stops') %}
-          {{ v if v not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_stops') }}
+          {% set v2 = states('sensor.rc_trip_local_today_stops') %}
+          {{ v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_stops')) }}
 
 # NOTE: This file is a Home Assistant package.
 # Keep template entity names/unique_ids stable to preserve entity_id continuity.
