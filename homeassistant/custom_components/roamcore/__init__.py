@@ -9,6 +9,10 @@ from .const import (
     DEFAULT_CONTRACT_VERSION,
     CONF_OPENCLAW_API_ENABLED,
     DEFAULT_OPENCLAW_API_ENABLED,
+    CONF_AUTO_PROVISION_ASSETS,
+    DEFAULT_AUTO_PROVISION_ASSETS,
+    CONF_PROVISION_REF,
+    DEFAULT_PROVISION_REF,
 )
 from .openclaw_view import OpenClawSummaryView, OpenClawSkillView
 import aiohttp
@@ -103,6 +107,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if options != dict(entry.options):
         hass.config_entries.async_update_entry(entry, options=options)
 
+    # HACS-first: auto-provision RoamCore assets into /config on first setup.
+    # We guard with a marker file so this is idempotent and never loops.
+    try:
+        auto = bool(options.get(CONF_AUTO_PROVISION_ASSETS, DEFAULT_AUTO_PROVISION_ASSETS))
+        ref = str(options.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF) or DEFAULT_PROVISION_REF)
+        marker = hass.config.path(".roamcore", "provisioned.marker")
+        if auto and not os.path.exists(marker):
+            async with aiohttp.ClientSession() as session:
+                await provision_from_github(
+                    session=session,
+                    repo="https://github.com/roamcore/RoamCore",
+                    ref=ref,
+                    config_dir=hass.config.path(""),
+                    state_dir=".roamcore",
+                )
+            await hass.async_add_executor_job(lambda: _atomic_write(marker, f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n"))
+            # Notify user to restart to pick up packages/components.
+            try:
+                hass.async_create_task(
+                    hass.services.async_call(
+                        "persistent_notification",
+                        "create",
+                        {
+                            "title": "RoamCore installed",
+                            "message": "RoamCore provisioned dashboard/packages/tools into /config. Restart Home Assistant to load everything.",
+                        },
+                        blocking=False,
+                    )
+                )
+            except Exception:
+                pass
+    except Exception:
+        # Provisioning is best-effort; never break HA startup.
+        pass
+
     # Register HTTP endpoints (OpenClaw summary)
     if options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED):
         hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
@@ -187,3 +226,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Home Assistant does not currently provide a stable public API to unregister
     # HTTP views. We leave the view registered for the life of the process.
     return True
+import os
+from datetime import datetime

@@ -11,6 +11,10 @@ from .const import (
     CONF_OPENCLAW_API_REQUIRES_AUTH,
     CONF_TRACCAR_USER_TOKEN,
     CONF_IOVERLANDER_API_KEY,
+    CONF_AUTO_PROVISION_ASSETS,
+    DEFAULT_AUTO_PROVISION_ASSETS,
+    CONF_PROVISION_REF,
+    DEFAULT_PROVISION_REF,
     DEFAULT_OPENCLAW_API_ENABLED,
     DEFAULT_OPENCLAW_API_REQUIRES_AUTH,
 )
@@ -81,6 +85,16 @@ class RoamCoreOptionsFlowHandler(config_entries.OptionsFlow):
                         vol.Optional(
                             CONF_IOVERLANDER_API_KEY,
                             default=opts.get(CONF_IOVERLANDER_API_KEY, ""),
+                        ): str,
+
+                        # HACS-first provisioning
+                        vol.Optional(
+                            CONF_AUTO_PROVISION_ASSETS,
+                            default=opts.get(CONF_AUTO_PROVISION_ASSETS, DEFAULT_AUTO_PROVISION_ASSETS),
+                        ): bool,
+                        vol.Optional(
+                            CONF_PROVISION_REF,
+                            default=opts.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF),
                         ): str,
                     }
                 ),

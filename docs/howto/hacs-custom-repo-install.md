@@ -30,6 +30,18 @@ It makes RoamCore discoverable *inside your Home Assistant UI* via HACS, without
 
 HACS installs the RoamCore **integration** (`custom_components/roamcore`).
 
+### Automatic provisioning (recommended)
+
+By default, when you add the RoamCore integration, it will **auto-provision** the rest of the RoamCore assets into `/config` on first run.
+
+After it completes, RoamCore will show a persistent notification asking you to restart Home Assistant.
+
+This is controlled by the integration option:
+
+- `auto_provision_assets` (default: true)
+
+### Manual provisioning (fallback)
+
 RoamCore also includes additional assets (packages, Lovelace YAML, `/www/roamcore/*`, tools). To install those automatically, run the RoamCore provisioning service once:
 
 Developer Tools → Services → call:
