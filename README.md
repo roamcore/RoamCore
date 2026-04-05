@@ -107,6 +107,8 @@ RoamCore is built around a few non-negotiables:
 
 If you like software that’s pragmatic, inspectable, and built to last, you’ll like where RoamCore is going.
 
+More detail: [`docs/philosophy.md`](docs/philosophy.md)
+
 ## OpenClaw API (conversational interface)
 
 RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van’s state.
