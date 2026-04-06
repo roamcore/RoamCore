@@ -2735,7 +2735,8 @@ try {
         try {
           const base = this._getApiBase();
           const ctl = new AbortController();
-          const t = setTimeout(() => ctl.abort(), 1500);
+          // Status is best-effort, but can be slow on loaded HA boxes.
+          const t = setTimeout(() => ctl.abort(), 4000);
           const resp = await fetch(`${base}/api/v1/victron/status`, { credentials: 'same-origin', signal: ctl.signal })
             .finally(() => clearTimeout(t));
           if (!resp.ok) throw new Error(`status ${resp.status}`);
@@ -2752,7 +2753,8 @@ try {
         try {
           const base = this._getApiBase();
           const ctl = new AbortController();
-          const t = setTimeout(() => ctl.abort(), 2500);
+          // Discovery may involve mDNS/DNS probes inside the add-on; keep this lenient.
+          const t = setTimeout(() => ctl.abort(), 8000);
           const resp = await fetch(`${base}/api/v1/victron/discover`, { credentials: 'same-origin', signal: ctl.signal })
             .finally(() => clearTimeout(t));
           if (!resp.ok) throw new Error(`Discovery failed: ${resp.status} ${resp.statusText}`);
@@ -2792,9 +2794,12 @@ try {
         this._render();
         try {
           const base = this._getApiBase();
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 8000);
           const resp = await fetch(`${base}/api/v1/victron/connect`, {
             method: 'POST',
             credentials: 'same-origin',
+            signal: ctl.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               host: candidate.host || candidate.ip,
@@ -2802,7 +2807,7 @@ try {
               use_tls: candidate.use_tls || false,
               portal_id: candidate.portal_id || null,
             }),
-          });
+          }).finally(() => clearTimeout(t));
           if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
             throw new Error(errData.error || `Connect failed: ${resp.status}`);
@@ -2816,7 +2821,11 @@ try {
             setTimeout(() => this._fetchStatus(), 2500);
           } catch (e) {}
         } catch (err) {
-          this._error = `Connection error: ${err?.message || err}`;
+          if (err && (err.name === 'AbortError' || String(err.message || '').includes('aborted'))) {
+            this._error = 'Connection timed out. Check the GX is reachable on the LAN (MQTT port 1883/8883) and try again.';
+          } else {
+            this._error = `Connection error: ${err?.message || err}`;
+          }
         } finally {
           this._connecting = false;
           this._render();
@@ -2830,12 +2839,15 @@ try {
         this._render();
         try {
           const base = this._getApiBase();
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 8000);
           const resp = await fetch(`${base}/api/v1/victron/clear`, {
             method: 'POST',
             credentials: 'same-origin',
+            signal: ctl.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
-          });
+          }).finally(() => clearTimeout(t));
           if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
             throw new Error(errData.error || `Clear failed: ${resp.status}`);
@@ -2844,7 +2856,11 @@ try {
           this._success = data.message || 'Cleared configuration. The add-on may restart.';
           this._candidates = [];
         } catch (err) {
-          this._error = `Clear error: ${err?.message || err}`;
+          if (err && (err.name === 'AbortError' || String(err.message || '').includes('aborted'))) {
+            this._error = 'Clear timed out. Try again; the add-on may be restarting.';
+          } else {
+            this._error = `Clear error: ${err?.message || err}`;
+          }
         } finally {
           this._connecting = false;
           this._render();
