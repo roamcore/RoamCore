@@ -160,6 +160,16 @@ class RoamcoreBasePage extends HTMLElement {
         const candidates = path.length ? path : [ev.target];
         for (const node of candidates) {
           if (node && node.getAttribute) {
+            // Universal “more info” popup (native HA dialog w/ history + settings)
+            const more = node.getAttribute('data-more');
+            if (more) {
+              try {
+                ev.preventDefault();
+                ev.stopPropagation();
+              } catch (e) {}
+              this._openMoreInfo(more);
+              return;
+            }
             // Service call helper (e.g. toggle demo mode)
             const call = node.getAttribute('data-call');
             if (call) {
@@ -189,6 +199,15 @@ class RoamcoreBasePage extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._render();
+  }
+
+  _openMoreInfo(entityId) {
+    try {
+      if (!entityId) return;
+      const ev = new Event('hass-more-info', { bubbles: true, composed: true });
+      ev.detail = { entityId: String(entityId) };
+      this.dispatchEvent(ev);
+    } catch (e) {}
   }
 
   _callService(domain, service, data = {}) {
