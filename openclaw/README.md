@@ -48,7 +48,7 @@ RoamCore ships an OpenClaw skill folder that teaches an agent how to:
 - compute insights locally (agent-side)
 
 Skill folder:
-- `skills/roamcore/SKILL.md`
+- `openclaw/skills/roamcore/SKILL.md`
 
 Install/how-to:
 - `docs/howto/openclaw-roamcore-skill.md`
@@ -74,4 +74,3 @@ Beta is intentionally **read-only**.
 The roadmap approach for safe writes is a RoamCore-controlled **default-deny allowlist** + audit log:
 
 - `docs/design/agent-actions-allowlist.md`
-

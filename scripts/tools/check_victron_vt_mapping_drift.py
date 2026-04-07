@@ -6,7 +6,7 @@ Goal: keep the mapping plan as the human-readable source of truth, and fail fast
 if code changes add/remove vt_* keys without updating docs.
 
 Usage:
-  python3 tools/check_victron_vt_mapping_drift.py
+  python3 scripts/tools/check_victron_vt_mapping_drift.py
 
 Exit codes:
   0: OK
