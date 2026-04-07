@@ -1195,54 +1195,23 @@ class RoamcoreBasePage extends HTMLElement {
       }
 
       // If a remote style URL is configured and fails later, MapLibre will emit an error.
-      // We still always add a raster base layer so the user never sees a flat grey background.
+      // RoamCore prefers a single, consistent vector basemap (PMTiles). Only fall back to
+      // raster/Leaflet as an absolute last resort.
 
       const m = new maplibregl.Map({
         container,
         style,
         center: [centerLon, centerLat],
         zoom,
-        // Prevent zooming into empty PMTiles ranges (avoids grey gaps).
-        maxZoom: 11,
+        // Clamp to our shipped PMTiles max zoom (avoids blank/grey when users zoom beyond coverage).
+        maxZoom: 12,
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
 
-      // Raster basemap fallback: ensures we never show a flat grey background if the vector
-      // style fails to load tiles (offline / missing sources). Always available via /rc-tiles.
-      const ensureRasterFallback = () => {
-        try {
-          if (m.getSource('rc_raster_fallback')) return;
-          const maxZ = Number(this._getState('input_number.rc_map_offline_max_zoom'));
-          const offlineMaxZ = Number.isFinite(maxZ) ? maxZ : 6;
-          m.addSource('rc_raster_fallback', {
-            type: 'raster',
-            tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            // Allow zooming beyond offline coverage; the tile endpoint can decide what to return.
-            // Keeping this high avoids MapLibre clamping/blanking.
-            maxzoom: Math.max(offlineMaxZ, 18),
-          });
-          // Insert just above the style background (background is often opaque grey).
-          const style = m.getStyle?.();
-          const beforeId = (style?.layers || []).find(l => l && l.type !== 'background')?.id;
-          m.addLayer({
-            id: 'rc_raster_fallback',
-            type: 'raster',
-            source: 'rc_raster_fallback',
-            paint: { 'raster-opacity': 1.0 },
-            minzoom: 0,
-          }, beforeId);
-        } catch (e) {}
-      };
-      try {
-        m.on('load', ensureRasterFallback);
-        // Some style/source failures can happen before the user ever sees a tile.
-        // Ensure the fallback is applied even if the vector sources error.
-        m.on('error', ensureRasterFallback);
-        setTimeout(ensureRasterFallback, 250);
-      } catch (e) {}
+      // Intentionally NO always-on raster fallback layer.
+      // If PMTiles fail to load, we'll handle it by switching to Leaflet only when needed.
 
       // Ensure marker exists and is updated on every render tick.
       const ensureMarker = () => {
