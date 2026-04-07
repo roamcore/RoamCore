@@ -18,8 +18,10 @@
 </p>
 
 <p align="center">
-  <strong>The open-source operating system for life on the road.</strong>
+  <strong>The open-source operating system for life on the road.</strong><br>
+  Built on Home Assistant, OpenWrt, and Proxmox.
 </p>
+
 
 You chose vanlife for the freedom. The freedom to go anywhere, live on your own terms, and not answer to anyone. The software that runs your van should reflect that — not tie you to a subscription, a cloud service, or a vendor that decides what you can and can't do with your own vehicle.
 
