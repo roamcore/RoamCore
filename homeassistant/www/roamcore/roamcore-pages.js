@@ -995,9 +995,11 @@ class RoamcoreBasePage extends HTMLElement {
           }
         } catch (e) {}
       }
+      // Deterministic fallback: if we still don't have a fix, center on a
+      // reasonable default (UK-ish) so the map never goes blank.
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        el.innerHTML = '<div class="rc-label">No GPS fix yet.</div>';
-        return;
+        lat = 54.5;
+        lon = -3.0;
       }
 
       const L = window.L;
@@ -1125,9 +1127,11 @@ class RoamcoreBasePage extends HTMLElement {
           }
         } catch (e) {}
       }
+      // Deterministic fallback: if we still don't have a fix, center on a
+      // reasonable default so the map never goes blank.
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        el.innerHTML = '<div class="rc-label">No GPS fix yet.</div>';
-        return;
+        lat = 54.5;
+        lon = -3.0;
       }
 
       const styleUrl = this._mapStyleUrl();
