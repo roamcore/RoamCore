@@ -1023,6 +1023,42 @@ class RoamcoreBasePage extends HTMLElement {
       const m = L.map(el, { zoomControl: false, attributionControl: false });
       el._rcMap = m;
 
+      // If we don't have a live HA tracker fix, poll Traccar periodically and
+      // update the view + marker. This makes live GPS work even when the HA
+      // device_tracker isn't configured yet.
+      try {
+        if (!el._rcTraccarPoll) {
+          el._rcTraccarPoll = setInterval(async () => {
+            try {
+              const fix = await this._getTraccarLastFix();
+              if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon)) return;
+              const ll = [Number(fix.lat), Number(fix.lon)];
+              // Update marker.
+              try {
+                if (el._rcTraccarMarker) {
+                  el._rcTraccarMarker.setLatLng(ll);
+                } else {
+                  el._rcTraccarMarker = L.circleMarker(ll, {
+                    radius: 6,
+                    color: '#0ea5e9',
+                    weight: 2,
+                    fillColor: '#0ea5e9',
+                    fillOpacity: 0.7,
+                  }).addTo(m);
+                }
+              } catch (e) {}
+              // If we were on fallback center, gently follow once.
+              try {
+                if (!el._rcTraccarDidCenter) {
+                  el._rcTraccarDidCenter = true;
+                  m.setView(ll, Math.min(m.getZoom() || 8, 10), { animate: false });
+                }
+              } catch (e) {}
+            } catch (e) {}
+          }, 10_000);
+        }
+      } catch (e) {}
+
       // Hybrid tile setup: local offline tiles + online fallback for higher zooms.
       // Local tiles serve z0–offlineMaxZoom (default 6); online tiles fill in above that.
       const offlineMaxZ = this._offlineMaxZoom();
@@ -1230,6 +1266,34 @@ class RoamcoreBasePage extends HTMLElement {
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
+
+      // If we don't have live HA GPS yet, poll Traccar periodically and update the marker.
+      try {
+        if (!el._rcTraccarPoll) {
+          el._rcTraccarPoll = setInterval(async () => {
+            try {
+              const fix = await this._getTraccarLastFix();
+              if (!fix || !Number.isFinite(fix.lat) || !Number.isFinite(fix.lon)) return;
+              const lngLat = [Number(fix.lon), Number(fix.lat)];
+              try {
+                if (!el._rcMapLibreMarker) {
+                  el._rcMapLibreMarker = new maplibregl.Marker({ color: '#0ea5e9' })
+                    .setLngLat(lngLat)
+                    .addTo(m);
+                } else {
+                  el._rcMapLibreMarker.setLngLat(lngLat);
+                }
+              } catch (e) {}
+              try {
+                if (!el._rcTraccarDidCenter) {
+                  el._rcTraccarDidCenter = true;
+                  m.setCenter(lngLat);
+                }
+              } catch (e) {}
+            } catch (e) {}
+          }, 10_000);
+        }
+      } catch (e) {}
 
       // Intentionally NO always-on raster fallback layer.
       // If PMTiles fail to load, we'll handle it by switching to Leaflet only when needed.
