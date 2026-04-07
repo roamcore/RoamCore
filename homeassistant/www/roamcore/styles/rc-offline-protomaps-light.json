@@ -6,9 +6,9 @@
     "protomaps_low": {
       "type": "vector",
       "minzoom": 0,
-      "maxzoom": 8,
+      "maxzoom": 24,
       "url": "pmtiles://__ORIGIN__/local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles",
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     },
     "protomaps_hi": {
       "type": "vector",
@@ -21,7 +21,7 @@
         3.5,
         61.5
       ],
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     },
     "protomaps_uk": {
       "type": "vector",
@@ -34,7 +34,7 @@
         3.5,
         61.5
       ],
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     }
   },
   "layers": [
@@ -58,7 +58,7 @@
       "paint": {
         "fill-color": "#e2dfda"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "earth__hi",
@@ -116,7 +116,7 @@
           0
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landcover__hi",
@@ -284,7 +284,7 @@
           "#e2dfda"
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_park__hi",
@@ -428,7 +428,7 @@
         "fill-color": "#9cd3b4",
         "fill-opacity": 0.7
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_urban_green__hi",
@@ -462,7 +462,7 @@
       "paint": {
         "fill-color": "#e4dad9"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_hospital__hi",
@@ -493,7 +493,7 @@
       "paint": {
         "fill-color": "#d1dde1"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_industrial__hi",
@@ -526,7 +526,7 @@
       "paint": {
         "fill-color": "#e4ded7"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_school__hi",
@@ -559,7 +559,7 @@
       "paint": {
         "fill-color": "#e8e4d0"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_beach__hi",
@@ -590,7 +590,7 @@
       "paint": {
         "fill-color": "#c6dcdc"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_zoo__hi",
@@ -621,7 +621,7 @@
       "paint": {
         "fill-color": "#dadbdf"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_aerodrome__hi",
@@ -668,7 +668,7 @@
           30
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_runway__hi",
@@ -731,7 +731,7 @@
           6
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_taxiway__hi",
@@ -782,7 +782,7 @@
       "paint": {
         "fill-color": "#e9e9ed"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_runway__hi",
@@ -817,7 +817,7 @@
       "paint": {
         "fill-color": "#80deea"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water__hi",
@@ -849,7 +849,7 @@
         "line-color": "#80deea",
         "line-width": 0.5
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water_stream__hi",
@@ -897,7 +897,7 @@
           12
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water_river__hi",
@@ -945,7 +945,7 @@
       "paint": {
         "fill-color": "#e3e0d4"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_pedestrian__hi",
@@ -977,7 +977,7 @@
       "paint": {
         "fill-color": "#e0e0e0"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "landuse_pier__hi",
@@ -1030,7 +1030,7 @@
           7
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_other_casing__hi",
@@ -1126,7 +1126,7 @@
           1
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_minor_casing__hi",
@@ -1240,7 +1240,7 @@
           1
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_link_casing__hi",
@@ -1356,7 +1356,7 @@
           1
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_major_casing__hi",
@@ -1483,7 +1483,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_highway_casing__hi",
@@ -1591,7 +1591,7 @@
           7
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_other__hi",
@@ -1673,7 +1673,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_minor__hi",
@@ -1751,7 +1751,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_link__hi",
@@ -1829,7 +1829,7 @@
           13
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_major__hi",
@@ -1922,7 +1922,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_tunnels_highway__hi",
@@ -1992,7 +1992,7 @@
         "fill-color": "#cccccc",
         "fill-opacity": 0.5
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "buildings__hi",
@@ -2041,7 +2041,7 @@
           16
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_pier__hi",
@@ -2132,7 +2132,7 @@
           0.8
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_minor_service_casing__hi",
@@ -2255,7 +2255,7 @@
           1
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_minor_casing__hi",
@@ -2363,7 +2363,7 @@
           1.5
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_link_casing__hi",
@@ -2466,7 +2466,7 @@
           1
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_major_casing_late__hi",
@@ -2587,7 +2587,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_highway_casing_late__hi",
@@ -2696,7 +2696,7 @@
           12
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_other__hi",
@@ -2773,7 +2773,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_link__hi",
@@ -2849,7 +2849,7 @@
           8
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_minor_service__hi",
@@ -2957,7 +2957,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_minor__hi",
@@ -3027,7 +3027,7 @@
       "type": "line",
       "source": "protomaps_low",
       "source-layer": "roads",
-      "maxzoom": 8,
+      "maxzoom": 24,
       "filter": [
         "all",
         [
@@ -3177,7 +3177,7 @@
           13
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_major__hi",
@@ -3229,7 +3229,7 @@
       "type": "line",
       "source": "protomaps_low",
       "source-layer": "roads",
-      "maxzoom": 8,
+      "maxzoom": 24,
       "filter": [
         "all",
         [
@@ -3393,7 +3393,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_highway__hi",
@@ -3480,7 +3480,7 @@
           9
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_rail__hi",
@@ -3554,7 +3554,7 @@
           ]
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "boundaries_country__hi",
@@ -3629,7 +3629,7 @@
           ]
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "boundaries__hi",
@@ -3704,7 +3704,7 @@
           7
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_other_casing__hi",
@@ -3793,7 +3793,7 @@
           1.5
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_link_casing__hi",
@@ -3899,7 +3899,7 @@
           0.8
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_minor_casing__hi",
@@ -4006,7 +4006,7 @@
           1.5
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_major_casing__hi",
@@ -4100,7 +4100,7 @@
           7
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_other__hi",
@@ -4182,7 +4182,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_minor__hi",
@@ -4260,7 +4260,7 @@
           11
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_link__hi",
@@ -4338,7 +4338,7 @@
           13
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_major__hi",
@@ -4437,7 +4437,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_highway_casing__hi",
@@ -4542,7 +4542,7 @@
           15
         ]
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_bridges_highway__hi",
@@ -4617,7 +4617,7 @@
         "text-halo-color": "#ffffff",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "address_label__hi",
@@ -5542,7 +5542,7 @@
         "text-halo-color": "#80deea",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water_waterway_label__hi",
@@ -6460,7 +6460,7 @@
         "icon-rotate": 90,
         "symbol-spacing": 100
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_oneway__hi",
@@ -7382,7 +7382,7 @@
         "text-halo-color": "#ffffff",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_labels_minor__hi",
@@ -9195,7 +9195,7 @@
         "text-halo-width": 1,
         "text-halo-color": "#80deea"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water_label_ocean__hi",
@@ -11003,7 +11003,7 @@
         "text-halo-color": "#e0e0e0",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "earth_label_islands__hi",
@@ -12809,7 +12809,7 @@
         "text-halo-color": "#80deea",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "water_label_lakes__hi",
@@ -13821,7 +13821,7 @@
       "paint": {
         "text-color": "#938a8d"
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_shields__hi",
@@ -14822,7 +14822,7 @@
         "text-halo-color": "#ffffff",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "roads_labels_major__hi",
@@ -16827,7 +16827,7 @@
         "text-halo-color": "#e2dfda",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "pois__hi",
@@ -18877,7 +18877,7 @@
         "text-halo-color": "#e0e0e0",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "places_subplace__hi",
@@ -20752,7 +20752,7 @@
         "text-halo-color": "#e0e0e0",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "places_region__hi",
@@ -22837,7 +22837,7 @@
         "text-halo-color": "#e0e0e0",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "places_locality__hi",
@@ -24142,7 +24142,7 @@
         "text-halo-color": "#e2dfda",
         "text-halo-width": 1
       },
-      "maxzoom": 8
+      "maxzoom": 24
     },
     {
       "id": "places_country__hi",
