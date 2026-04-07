@@ -51,15 +51,6 @@ class RoamcoreDashboardCard extends HTMLElement {
         const candidates = path.length ? path : [ev.target];
         for (const node of candidates) {
           if (node && node.getAttribute) {
-            const more = node.getAttribute('data-more');
-            if (more) {
-              try {
-                ev.preventDefault();
-                ev.stopPropagation();
-              } catch (e) {}
-              this._openMoreInfo(more);
-              return;
-            }
             const nav = node.getAttribute('data-nav');
             if (nav) {
               this._navigate(nav);
@@ -96,17 +87,6 @@ class RoamcoreDashboardCard extends HTMLElement {
       window.dispatchEvent(new Event('location-changed'));
     } catch (e) {
       console.warn('roamcore navigate failed', e);
-    }
-  }
-
-  _openMoreInfo(entityId) {
-    try {
-      if (!entityId) return;
-      const ev = new Event('hass-more-info', { bubbles: true, composed: true });
-      ev.detail = { entityId: String(entityId) };
-      this.dispatchEvent(ev);
-    } catch (e) {
-      console.warn('roamcore more-info failed', e);
     }
   }
 
@@ -488,14 +468,14 @@ class RoamcoreDashboardCard extends HTMLElement {
 
         <div class="rc-power-main">
           <div class="rc-batt">${this._batterySvg(soc ?? 0, pColor)}</div>
-          <div class="rc-power-soc" data-more="sensor.rc_power_battery_soc" style="color:${pColor}">${socTxt}</div>
+          <div class="rc-power-soc" style="color:${pColor}">${socTxt}</div>
         </div>
 
         <div class="rc-power-time"><span class="rc-muted">Time to full:</span> <span class="rc-strong">${timeRemaining}</span></div>
 
         <div class="rc-pillrow">
-          <div class="rc-pill"><span class="rc-muted">Inverter</span><span class="rc-strong" data-more="sensor.rc_power_inverter_status">${invTxt}</span></div>
-          <div class="rc-pill"><span class="rc-muted">Shore</span><span class="rc-strong" data-more="binary_sensor.rc_power_shore_connected">${shoreTxt}</span></div>
+          <div class="rc-pill"><span class="rc-muted">Inverter</span><span class="rc-strong">${invTxt}</span></div>
+          <div class="rc-pill"><span class="rc-muted">Shore</span><span class="rc-strong">${shoreTxt}</span></div>
         </div>
       </div>
     `;
@@ -518,9 +498,9 @@ class RoamcoreDashboardCard extends HTMLElement {
         </div>
 
         <div class="rc-net-stats">
-          <div class="rc-stat"><div class="rc-stat-val" data-more="sensor.rc_net_download">${downTxt}</div><div class="rc-muted">Mbps ↓</div></div>
-          <div class="rc-stat"><div class="rc-stat-val" data-more="sensor.rc_net_upload">${upTxt}</div><div class="rc-muted">Mbps ↑</div></div>
-          <div class="rc-stat"><div class="rc-stat-val" data-more="sensor.rc_net_ping">${pingTxt}</div><div class="rc-muted">ms</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${downTxt}</div><div class="rc-muted">Mbps ↓</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${upTxt}</div><div class="rc-muted">Mbps ↑</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${pingTxt}</div><div class="rc-muted">ms</div></div>
         </div>
       </div>
     `;
@@ -534,13 +514,13 @@ class RoamcoreDashboardCard extends HTMLElement {
         <div class="rc-level-main">
           <div class="rc-level-col">
             <div class="rc-van">${this._vanSideSvg()}</div>
-            <div class="rc-deg" data-more="sensor.rc_system_level_pitch_deg">${pitchAbs}°</div>
+            <div class="rc-deg">${pitchAbs}°</div>
             <div class="rc-muted">Pitch</div>
           </div>
           <div class="rc-divider"></div>
           <div class="rc-level-col">
             <div class="rc-van">${this._vanBackSvg()}</div>
-            <div class="rc-deg" data-more="sensor.rc_system_level_roll_deg">${rollAbs}°</div>
+            <div class="rc-deg">${rollAbs}°</div>
             <div class="rc-muted">Roll</div>
           </div>
         </div>
@@ -569,8 +549,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         </div>
 
         <div class="rc-map-stats">
-          <div class="rc-stat"><div class="rc-stat-val" data-more="sensor.rc_trip_distance_today_mi">${today} mi</div><div class="rc-muted">Today</div></div>
-          <div class="rc-stat"><div class="rc-stat-val" data-more="sensor.rc_trip_distance_total_mi">${total} mi</div><div class="rc-muted">Total</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${today} mi</div><div class="rc-muted">Today</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${total} mi</div><div class="rc-muted">Total</div></div>
         </div>
       </div>
     `;
