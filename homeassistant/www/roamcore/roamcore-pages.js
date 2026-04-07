@@ -3031,11 +3031,19 @@ try {
           this._manualTls = !!manualTlsEl.checked;
           if (!this._manualPortTouched) {
             this._manualPort = this._manualTls ? 8883 : 1883;
-            this._render();
+            // Avoid a full re-render (can steal focus); just update the input.
+            try {
+              const portEl = this.shadowRoot.querySelector('#manualPort');
+              if (portEl) portEl.value = String(this._manualPort);
+            } catch (e) {}
           }
         });
         const manualConnectBtn = this.shadowRoot.querySelector('#manualConnectBtn');
         if (manualConnectBtn) manualConnectBtn.addEventListener('click', () => this._connectManual());
+
+        // Keyboard UX
+        if (manualHostEl) manualHostEl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') this._connectManual(); });
+        if (manualPortEl) manualPortEl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') this._connectManual(); });
       }
 
       getCardSize() { return 3; }
