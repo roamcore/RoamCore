@@ -2703,6 +2703,9 @@ try {
         this._error = null;
         this._success = null;
         this._status = null;
+        this._manualHost = '';
+        this._manualPort = 1883;
+        this._manualTls = false;
       }
 
       setConfig(config) {
@@ -2832,6 +2835,19 @@ try {
         }
       }
 
+      async _connectManual() {
+        const host = String(this._manualHost || '').trim();
+        const port = parseInt(String(this._manualPort || '1883'), 10) || 1883;
+        const use_tls = !!this._manualTls;
+        if (!host) {
+          this._error = 'Enter a host (IP or hostname) to connect.';
+          this._success = null;
+          this._render();
+          return;
+        }
+        return this._connect({ host, port, use_tls, source: 'manual' });
+      }
+
       async _clear() {
         this._connecting = true;
         this._error = null;
@@ -2923,6 +2939,15 @@ try {
             .candidate-source{ font-size: 0.8em; color: var(--secondary-text-color); margin-top: 2px; }
             .empty{ text-align:center; padding: 24px; color: var(--secondary-text-color); }
             .empty-icon{ font-size: 48px; margin-bottom: 8px; }
+
+            .manual{ margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--divider-color); }
+            .manual-title{ font-weight: 800; margin-bottom: 8px; }
+            .manual-row{ display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+            .manual-row input{ padding: 8px 10px; border-radius: 10px; border: 1px solid var(--divider-color);
+                               background: var(--secondary-background-color); color: var(--primary-text-color); }
+            .manual-row input.host{ flex: 1; min-width: 200px; }
+            .manual-row input.port{ width: 96px; }
+            .manual-row label{ display:inline-flex; gap: 8px; align-items:center; font-weight: 700; opacity: 0.9; }
           </style>
 
           <ha-card>
@@ -2963,6 +2988,17 @@ try {
             ` : (!this._success ? `
               <div class="empty"><div class="empty-icon">🔍</div><p>No devices found</p><p>Tap refresh to scan again.</p></div>
             ` : '')}
+
+            <div class="manual">
+              <div class="manual-title">Manual connect</div>
+              <div class="manual-row">
+                <input class="host" id="manualHost" placeholder="GX host (e.g. 192.168.1.50 or venus.local)" value="${this._escapeHtml(this._manualHost || '')}" />
+                <input class="port" id="manualPort" type="number" min="1" max="65535" value="${Number(this._manualPort || 1883)}" />
+                <label><input id="manualTls" type="checkbox" ${this._manualTls ? 'checked' : ''}/> TLS</label>
+                <button class="btn" id="manualConnectBtn" ${this._loading || this._connecting ? 'disabled' : ''}>Connect</button>
+              </div>
+              <div style="margin-top:8px; font-size:12px; opacity:0.8;">Default MQTT ports: 1883 (no TLS) / 8883 (TLS).</div>
+            </div>
           </ha-card>
         `;
 
@@ -2981,6 +3017,15 @@ try {
           const c = this._candidates[idx];
           if (c && !c.bad) this._connect(c);
         }));
+
+        const manualHostEl = this.shadowRoot.querySelector('#manualHost');
+        if (manualHostEl) manualHostEl.addEventListener('input', () => { this._manualHost = manualHostEl.value; });
+        const manualPortEl = this.shadowRoot.querySelector('#manualPort');
+        if (manualPortEl) manualPortEl.addEventListener('input', () => { this._manualPort = manualPortEl.value; });
+        const manualTlsEl = this.shadowRoot.querySelector('#manualTls');
+        if (manualTlsEl) manualTlsEl.addEventListener('change', () => { this._manualTls = !!manualTlsEl.checked; });
+        const manualConnectBtn = this.shadowRoot.querySelector('#manualConnectBtn');
+        if (manualConnectBtn) manualConnectBtn.addEventListener('click', () => this._connectManual());
       }
 
       getCardSize() { return 3; }
