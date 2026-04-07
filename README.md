@@ -3,13 +3,13 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/YOUR_LINK](https://discord.gg/V689zUs4">
+  <a href="https://discord.gg/V689zUs4">
     <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white"/>
   </a>
   <a href="https://buymeacoffee.com/bernardc">
     <img src="https://img.shields.io/badge/Donate-Support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black"/>
   </a>
-  <a href="https://youtube.com/roamcore">
+  <a href="https://www.youtube.com/@RoamCore">
     <img src="https://img.shields.io/badge/YouTube-Watch-FF0000?style=for-the-badge&logo=youtube&logoColor=white"/>
   </a>
   <a href="https://instagram.com/YOUR_LINK">
