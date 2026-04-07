@@ -312,26 +312,42 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _mapStyleUrl() {
-    // Optional MapLibre style URL (vector). If set, we use MapLibre GL instead of Leaflet raster.
+    // MapLibre style URL (vector).
     // Set via HA Helper: input_text.rc_map_style_url
-    // Example (LocationIQ streets): https://tiles.locationiq.com/v3/streets/vector.json?key=YOUR_KEY
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    // Default: keep MapLibre OFF for maximum reliability.
-    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
-    // if PMTiles assets are not present on the HA host.
-    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
-    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
-    return '';
+    // Default: RoamCore offline PMTiles vector style.
+    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
   }
 
   _mapMode() {
-    // Prefer MapLibre if a style URL is provided; otherwise fall back to Leaflet raster tiles.
+    // RoamCore Map page should be PMTiles vector-first.
+    // Leaflet is reserved for absolute last-resort failure.
     const styleUrl = this._mapStyleUrl();
-    if (styleUrl) return { mode: 'maplibre', styleUrl };
-    return { mode: 'leaflet', tileUrl: this._tileUrl() };
+    return { mode: 'maplibre', styleUrl };
+  }
+
+  _vectorMaxZoomFor(lat, lon) {
+    // Global offline base is z0-8.
+    // Regional overlays extend higher; clamp zoom so we never show grey/blank tiles.
+    // These bounds match the shipped PMTiles files in /local/roamcore/pmtiles.
+    const inBounds = (b) => {
+      const [w, s, e, n] = b;
+      return lon >= w && lon <= e && lat >= s && lat <= n;
+    };
+
+    // UK overlay (protomaps_uk_z0-12.pmtiles)
+    const UK = [-12.5, 49.5, 3.5, 61.5];
+    // Europe overlay (protomaps_europe_z9-11.pmtiles) (same bounds as currently in style JSON)
+    const EU = [-12.5, 49.5, 3.5, 61.5];
+
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      if (inBounds(UK)) return 12;
+      if (inBounds(EU)) return 11;
+    }
+    return 8;
   }
 
   _onlineTileUrl() {
@@ -1207,8 +1223,8 @@ class RoamcoreBasePage extends HTMLElement {
         style,
         center: [centerLon, centerLat],
         zoom,
-        // Clamp to our shipped PMTiles max zoom (avoids blank/grey when users zoom beyond coverage).
-        maxZoom: 12,
+        // Clamp to shipped PMTiles max zoom for current location (prevents blanks/grey).
+        maxZoom: this._vectorMaxZoomFor(centerLat, centerLon),
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
@@ -1899,7 +1915,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">RoamCore map (${mode.mode === 'maplibre' ? 'MapLibre GL (vector)' : 'Leaflet (raster)'})${mode.mode === 'leaflet' ? ' with Traccar route overlay (last 6h)' : ''}.</div>
+      <div class="rc-label" style="margin-top: 6px;">RoamCore map (PMTiles vector) with route overlay.</div>
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
@@ -1929,24 +1945,24 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         }
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
-        if (mode.mode === 'maplibre') {
-          // NOTE: _render is not async; keep this promise-based.
-          this._mountMapLibreMap(el, { lat, lon })
-            .then((m) => {
-              try {
-                // Update marker to current location without moving the camera.
-                const marker = el?._rcMapLibreMarker;
-                if (marker && Number.isFinite(lon) && Number.isFinite(lat)) {
-                  marker.setLngLat([Number(lon), Number(lat)]);
-                }
-              } catch (e) {}
-            })
-            .catch(() => {});
-        } else {
-          const mapP = this._mountLeafletMap(el, { lat, lon, trackerId });
-          // Best-effort: overlay last 6h track from Traccar (if available).
-          Promise.resolve(mapP).then((map) => this._overlayTraccarTrack(map)).catch(() => {});
-        }
+        // NOTE: _render is not async; keep this promise-based.
+        this._mountMapLibreMap(el, { lat, lon })
+          .then((m) => {
+            try {
+              // Update marker to current location without moving the camera.
+              const marker = el?._rcMapLibreMarker;
+              if (marker && Number.isFinite(lon) && Number.isFinite(lat)) {
+                marker.setLngLat([Number(lon), Number(lat)]);
+              }
+            } catch (e) {}
+            // Route overlay (best-effort)
+            try { Promise.resolve(this._overlayTraccarTrack(m)).catch(() => {}); } catch (e) {}
+          })
+          .catch(() => {
+            // Absolute last resort: Leaflet fallback.
+            const mapP = this._mountLeafletMap(el, { lat, lon, trackerId });
+            Promise.resolve(mapP).then((map) => this._overlayTraccarTrack(map)).catch(() => {});
+          });
       }
     } catch (e) {}
 
