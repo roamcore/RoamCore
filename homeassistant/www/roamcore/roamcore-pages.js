@@ -451,14 +451,15 @@ class RoamcoreBasePage extends HTMLElement {
     `;
   }
 
-  _row(label, value, unit = '', color = '') {
+  _row(label, value, unit = '', color = '', moreEntityId = '') {
     const v = (value === null || value === undefined || value === '' || value === 'unknown' || value === 'unavailable') ? '—' : value;
     const style = color ? ` style="color:${color}"` : '';
+    const more = (moreEntityId && String(moreEntityId).trim()) ? ` data-more="${String(moreEntityId).trim()}"` : '';
     const unitHtml = unit ? `<span class="rc-unit">${unit}</span>` : '';
     return `
       <div class="rc-row">
         <div class="rc-label">${label}</div>
-        <div class="rc-val"${style}>${v}${unitHtml}</div>
+        <div class="rc-val"${style}${more}>${v}${unitHtml}</div>
       </div>
     `;
   }
@@ -1490,56 +1491,56 @@ class RoamcorePowerPage extends RoamcoreBasePage {
     `;
 
     const batteryRows = `
-      ${this._row('Voltage', battV == null ? '—' : round1(battV), 'V')}
-      ${this._row('Current', battA == null ? '—' : round1(battA), 'A')}
-      ${this._row('Temperature', battT == null ? '—' : round1(battT), '°C')}
-      ${this._row('Capacity', battCap == null ? '—' : round1(battCap), 'Ah')}
-      ${this._row('Cycles', battCycles == null ? '—' : Math.round(battCycles))}
-      ${this._row('Health', battHealth == null ? '—' : Math.round(battHealth), '%')}
+      ${this._row('Voltage', battV == null ? '—' : round1(battV), 'V', '', 'sensor.rc_power_battery_voltage')}
+      ${this._row('Current', battA == null ? '—' : round1(battA), 'A', '', 'sensor.rc_power_battery_current')}
+      ${this._row('Temperature', battT == null ? '—' : round1(battT), '°C', '', battT == null ? '' : 'sensor.rc_power_battery_temperature')}
+      ${this._row('Capacity', battCap == null ? '—' : round1(battCap), 'Ah', '', 'sensor.rc_power_battery_capacity')}
+      ${this._row('Cycles', battCycles == null ? '—' : Math.round(battCycles), '', '', 'sensor.rc_power_battery_cycle_count')}
+      ${this._row('Health', battHealth == null ? '—' : Math.round(battHealth), '%', '', 'sensor.rc_power_battery_health')}
     `;
 
     const solar = `
       <div class="rc-value" style="margin-bottom:10px;">
-        <div class="rc-value-num rc-value-lg" style="color:${rcStatusToColor('good')}">${solarW == null ? '—' : Math.round(solarW)}</div>
+        <div class="rc-value-num rc-value-lg" data-more="sensor.rc_power_solar_power" style="color:${rcStatusToColor('good')}">${solarW == null ? '—' : Math.round(solarW)}</div>
         <div class="rc-value-unit">W</div>
       </div>
-      ${this._row('Today', solarToday == null ? '—' : round1(solarToday), 'kWh')}
-      ${this._row('Total', solarTotal == null ? '—' : round1(solarTotal), 'kWh')}
-      ${this._row('Panel V', solarPV == null ? '—' : round1(solarPV), 'V')}
-      ${this._row('Panel A', solarPA == null ? '—' : round1(solarPA), 'A')}
-      ${this._row('Efficiency', solarEff == null ? '—' : Math.round(solarEff), '%')}
+      ${this._row('Today', solarToday == null ? '—' : round1(solarToday), 'kWh', '', 'sensor.rc_power_solar_energy_today')}
+      ${this._row('Total', solarTotal == null ? '—' : round1(solarTotal), 'kWh', '', 'sensor.rc_power_solar_energy_total')}
+      ${this._row('Panel V', solarPV == null ? '—' : round1(solarPV), 'V', '', 'sensor.rc_power_solar_panel_voltage')}
+      ${this._row('Panel A', solarPA == null ? '—' : round1(solarPA), 'A', '', 'sensor.rc_power_solar_panel_current')}
+      ${this._row('Efficiency', solarEff == null ? '—' : Math.round(solarEff), '%', '', 'sensor.rc_power_solar_efficiency')}
     `;
 
     const loads = `
       <div class="rc-value" style="margin-bottom:10px;">
-        <div class="rc-value-num rc-value-lg">${loadW == null ? '—' : Math.round(loadW)}</div>
+        <div class="rc-value-num rc-value-lg" data-more="sensor.rc_power_load_power">${loadW == null ? '—' : Math.round(loadW)}</div>
         <div class="rc-value-unit">W</div>
       </div>
-      ${this._row('Fridge', loadFridge == null ? '—' : Math.round(loadFridge), 'W')}
-      ${this._row('Lights', loadLights == null ? '—' : Math.round(loadLights), 'W')}
-      ${this._row('Heater', loadHeater == null ? '—' : Math.round(loadHeater), 'W', (loadHeater == null || loadHeater == 0) ? rcStatusToColor('inactive') : '')}
-      ${this._row('Water Pump', loadPump == null ? '—' : Math.round(loadPump), 'W')}
-      ${this._row('Other', loadOther == null ? '—' : Math.round(loadOther), 'W')}
+      ${this._row('Fridge', loadFridge == null ? '—' : Math.round(loadFridge), 'W', '', 'sensor.rc_power_load_fridge')}
+      ${this._row('Lights', loadLights == null ? '—' : Math.round(loadLights), 'W', '', 'sensor.rc_power_load_lights')}
+      ${this._row('Heater', loadHeater == null ? '—' : Math.round(loadHeater), 'W', (loadHeater == null || loadHeater == 0) ? rcStatusToColor('inactive') : '', 'sensor.rc_power_load_heater')}
+      ${this._row('Water Pump', loadPump == null ? '—' : Math.round(loadPump), 'W', '', 'sensor.rc_power_load_water_pump')}
+      ${this._row('Other', loadOther == null ? '—' : Math.round(loadOther), 'W', '', 'sensor.rc_power_load_other')}
     `;
 
     const inverter = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-        ${this._badge((inv && inv !== 'unknown' && inv !== 'unavailable') ? rcCap(inv) : '—', (inv && inv !== 'off') ? 'good' : 'inactive')}
+        <div data-more="sensor.rc_power_inverter_status">${this._badge((inv && inv !== 'unknown' && inv !== 'unavailable') ? rcCap(inv) : '—', (inv && inv !== 'off') ? 'good' : 'inactive')}</div>
         <div class="rc-label" style="text-transform:uppercase; font-weight:700;">eco</div>
       </div>
-      ${this._row('Output', invOutW == null ? '—' : Math.round(invOutW), 'W')}
-      ${this._row('Voltage', invOutV == null ? '—' : round1(invOutV), 'V')}
-      ${this._row('Frequency', invHz == null ? '—' : round1(invHz), 'Hz')}
-      ${this._row('Temperature', invTemp == null ? '—' : round1(invTemp), '°C')}
+      ${this._row('Output', invOutW == null ? '—' : Math.round(invOutW), 'W', '', 'sensor.rc_power_inverter_output_power')}
+      ${this._row('Voltage', invOutV == null ? '—' : round1(invOutV), 'V', '', 'sensor.rc_power_inverter_output_voltage')}
+      ${this._row('Frequency', invHz == null ? '—' : round1(invHz), 'Hz', '', 'sensor.rc_power_inverter_frequency')}
+      ${this._row('Temperature', invTemp == null ? '—' : round1(invTemp), '°C', '', 'sensor.rc_power_inverter_temperature')}
     `;
 
     const shoreTile = `
       <div style="margin-bottom: 10px;">
-        ${this._badge(shore === 'on' ? 'Connected' : 'Disconnected', shore === 'on' ? 'good' : 'inactive')}
+        <div data-more="binary_sensor.rc_power_shore_connected">${this._badge(shore === 'on' ? 'Connected' : 'Disconnected', shore === 'on' ? 'good' : 'inactive')}</div>
       </div>
-      ${this._row('Voltage', shoreV == null ? '—' : round1(shoreV), shoreV == null ? '' : 'V')}
-      ${this._row('Current', shoreA == null ? '—' : round1(shoreA), shoreA == null ? '' : 'A')}
-      ${this._row('Power', shoreW == null ? '—' : Math.round(shoreW), shoreW == null ? '' : 'W')}
+      ${this._row('Voltage', shoreV == null ? '—' : round1(shoreV), shoreV == null ? '' : 'V', '', 'sensor.rc_power_shore_voltage')}
+      ${this._row('Current', shoreA == null ? '—' : round1(shoreA), shoreA == null ? '' : 'A', '', 'sensor.rc_power_shore_current')}
+      ${this._row('Power', shoreW == null ? '—' : Math.round(shoreW), shoreW == null ? '' : 'W', '', 'sensor.rc_power_shore_power')}
     `;
 
     const alternatorTile = `
@@ -1652,16 +1653,16 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
       <div class="rc-grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
         <div>
           <div class="rc-label">Download</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md" style="color:${c}">${down == null ? '—' : Math.round(down)}</div><div class="rc-value-unit">Mbps</div></div>
+          <div class="rc-value"><div class="rc-value-num rc-value-md" data-more="sensor.rc_net_download" style="color:${c}">${down == null ? '—' : Math.round(down)}</div><div class="rc-value-unit">Mbps</div></div>
         </div>
         <div>
           <div class="rc-label">Upload</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md">${up == null ? '—' : Math.round(up)}</div><div class="rc-value-unit">Mbps</div></div>
+          <div class="rc-value"><div class="rc-value-num rc-value-md" data-more="sensor.rc_net_upload">${up == null ? '—' : Math.round(up)}</div><div class="rc-value-unit">Mbps</div></div>
         </div>
       </div>
-      ${this._row('Ping', ping == null ? '—' : Math.round(ping), 'ms')}
-      ${this._row('Jitter', jitter == null ? '—' : Math.round(jitter), 'ms')}
-      ${this._row('Packet Loss', ploss == null ? '—' : round1(ploss), '%')}
+      ${this._row('Ping', ping == null ? '—' : Math.round(ping), 'ms', '', 'sensor.rc_net_ping')}
+      ${this._row('Jitter', jitter == null ? '—' : Math.round(jitter), 'ms', '', 'sensor.rc_net_jitter')}
+      ${this._row('Packet Loss', ploss == null ? '—' : round1(ploss), '%', '', 'sensor.rc_net_packet_loss')}
     `;
 
     const usagePct = (dataMonthDown != null && dataMonthLimit != null && dataMonthLimit > 0)
@@ -1768,7 +1769,7 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
     const pitchTile = `
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 10px; height: 160px;">
         <div class="rc-vanwrap" style="transform: rotate(${(-pitchRot).toFixed(1)}deg)">${rcVanSideSvg()}</div>
-        <div class="rc-value"><div class="rc-value-num rc-value-xl" style="color:${c}">${pitch == null ? '—' : Math.abs(pitch).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
+        <div class="rc-value"><div class="rc-value-num rc-value-xl" data-more="sensor.rc_system_level_pitch_deg" style="color:${c}">${pitch == null ? '—' : Math.abs(pitch).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
         <div class="rc-label">Pitch</div>
       </div>
     `;
@@ -1776,7 +1777,7 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
     const rollTile = `
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 10px; height: 160px;">
         <div class="rc-vanwrap" style="transform: rotate(${(-rollRot).toFixed(1)}deg)">${rcVanBackSvg()}</div>
-        <div class="rc-value"><div class="rc-value-num rc-value-xl" style="color:${c}">${roll == null ? '—' : Math.abs(roll).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
+        <div class="rc-value"><div class="rc-value-num rc-value-xl" data-more="sensor.rc_system_level_roll_deg" style="color:${c}">${roll == null ? '—' : Math.abs(roll).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
         <div class="rc-label">Roll</div>
       </div>
     `;
