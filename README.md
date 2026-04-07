@@ -2,6 +2,8 @@
 
 **The open-source operating system for life on the road.**
 
+<a href="https://www.buymeacoffee.com/bernardc" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
 You chose vanlife for the freedom. The freedom to go anywhere, live on your own terms, and not answer to anyone. The software that runs your van should reflect that — not tie you to a subscription, a cloud service, or a vendor that decides what you can and can't do with your own vehicle.
 
 You spent months building the van. The electrics are dialled. The plumbing works. The insulation is perfect. But when it comes to actually *managing* all of it — checking your batteries, staying connected, tracking where you've been — you're juggling five apps, three dashboards, and a spreadsheet. Each one owned by a different company, each one another dependency.
