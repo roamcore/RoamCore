@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/banner.png" alt="RoamCore Banner" width="100%">
+  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/banner.png" alt="RoamCore Banner" width="70%">
 </p>
 
 <p align="center">
