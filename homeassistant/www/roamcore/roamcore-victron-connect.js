@@ -24,6 +24,7 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     this._manualHost = '';
     this._manualPort = 1883;
     this._manualTls = false;
+    this._manualPortTouched = false;
   }
 
   setConfig(config) {
@@ -564,12 +565,20 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     if (manualPortEl) {
       manualPortEl.addEventListener('input', () => {
         this._manualPort = manualPortEl.value;
+        this._manualPortTouched = true;
       });
     }
     const manualTlsEl = this.shadowRoot.querySelector('#manualTls');
     if (manualTlsEl) {
       manualTlsEl.addEventListener('change', () => {
         this._manualTls = !!manualTlsEl.checked;
+
+        // UX: if the user hasn't manually edited the port, switch to the
+        // conventional default for TLS/non-TLS.
+        if (!this._manualPortTouched) {
+          this._manualPort = this._manualTls ? 8883 : 1883;
+          this._render();
+        }
       });
     }
     const manualConnectBtn = this.shadowRoot.querySelector('#manualConnectBtn');

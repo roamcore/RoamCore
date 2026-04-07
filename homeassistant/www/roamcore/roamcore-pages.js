@@ -2706,6 +2706,7 @@ try {
         this._manualHost = '';
         this._manualPort = 1883;
         this._manualTls = false;
+        this._manualPortTouched = false;
       }
 
       setConfig(config) {
@@ -3021,9 +3022,18 @@ try {
         const manualHostEl = this.shadowRoot.querySelector('#manualHost');
         if (manualHostEl) manualHostEl.addEventListener('input', () => { this._manualHost = manualHostEl.value; });
         const manualPortEl = this.shadowRoot.querySelector('#manualPort');
-        if (manualPortEl) manualPortEl.addEventListener('input', () => { this._manualPort = manualPortEl.value; });
+        if (manualPortEl) manualPortEl.addEventListener('input', () => {
+          this._manualPort = manualPortEl.value;
+          this._manualPortTouched = true;
+        });
         const manualTlsEl = this.shadowRoot.querySelector('#manualTls');
-        if (manualTlsEl) manualTlsEl.addEventListener('change', () => { this._manualTls = !!manualTlsEl.checked; });
+        if (manualTlsEl) manualTlsEl.addEventListener('change', () => {
+          this._manualTls = !!manualTlsEl.checked;
+          if (!this._manualPortTouched) {
+            this._manualPort = this._manualTls ? 8883 : 1883;
+            this._render();
+          }
+        });
         const manualConnectBtn = this.shadowRoot.querySelector('#manualConnectBtn');
         if (manualConnectBtn) manualConnectBtn.addEventListener('click', () => this._connectManual());
       }
