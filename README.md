@@ -1,8 +1,24 @@
-# RoamCore
+<p align="center">
+  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/banner.png" alt="RoamCore Banner" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://discord.gg/YOUR_LINK">
+    <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white"/>
+  </a>
+  <a href="https://buymeacoffee.com/bernardc">
+    <img src="https://img.shields.io/badge/Donate-Support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black"/>
+  </a>
+  <a href="https://youtube.com/roamcore">
+    <img src="https://img.shields.io/badge/YouTube-Watch-FF0000?style=for-the-badge&logo=youtube&logoColor=white"/>
+  </a>
+  <a href="https://instagram.com/YOUR_LINK">
+    <img src="https://img.shields.io/badge/Instagram-Follow-E4405F?style=for-the-badge&logo=instagram&logoColor=white"/>
+  </a>
+</p>
+
 
 **The open-source operating system for life on the road.**
-
-<a href="https://www.buymeacoffee.com/bernardc" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
 You chose vanlife for the freedom. The freedom to go anywhere, live on your own terms, and not answer to anyone. The software that runs your van should reflect that — not tie you to a subscription, a cloud service, or a vendor that decides what you can and can't do with your own vehicle.
 
