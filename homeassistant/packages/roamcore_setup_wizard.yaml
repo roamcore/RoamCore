@@ -14,12 +14,37 @@ input_select:
     options:
       - welcome
       - owner
+      - networking
       - map
       - trip_wrapped
+      - levelling
       - victron
       - optional
       - done
     initial: welcome
+
+input_boolean:
+  # Setup wizard tiles can be disabled for installs that don't have the relevant
+  # hardware/integration yet. Disabled tiles are treated as complete.
+  rc_tile_power_enabled:
+    name: "RC Tile: Power enabled"
+    icon: mdi:flash
+    initial: true
+
+  rc_tile_network_enabled:
+    name: "RC Tile: Network enabled"
+    icon: mdi:wifi
+    initial: true
+
+  rc_tile_level_enabled:
+    name: "RC Tile: Level enabled"
+    icon: mdi:spirit-level
+    initial: true
+
+  rc_tile_map_enabled:
+    name: "RC Tile: Map enabled"
+    icon: mdi:map
+    initial: true
 
 input_text:
   # Optional: store as a convenience so the wizard can link users to the right place.
@@ -59,6 +84,11 @@ template:
         unique_id: rc_setup_map_ready
         state: >-
           {{
+            states('sensor.rc_location_lat') not in ['unknown','unavailable','none','']
+            and states('sensor.rc_location_lon') not in ['unknown','unavailable','none','']
+          }}
+        availability: >-
+          {{
             states('sensor.rc_location_lat') not in ['unknown','unavailable']
             and states('sensor.rc_location_lon') not in ['unknown','unavailable']
           }}
@@ -66,27 +96,127 @@ template:
       - name: "RC Setup Trip Wrapped Ready"
         unique_id: rc_setup_trip_wrapped_ready
         state: >-
+          {% set base_ok = states('input_text.rc_traccar_base_url') not in ['unknown','unavailable','none',''] %}
+          {% set dev_ok = (states('input_number.rc_traccar_device_id') | int(0)) > 0 %}
+          {% set user_ok = states('input_text.rc_traccar_username') not in ['unknown','unavailable','none',''] %}
+          {% set pw_ok = states('input_text.rc_traccar_password') not in ['unknown','unavailable','none',''] %}
+          {% set token_ok = is_state('binary_sensor.rc_setup_traccar_user_token_present', 'on') %}
+          {{ base_ok and dev_ok and (token_ok or (user_ok and pw_ok)) }}
+        availability: >-
           {{
-            states('input_text.rc_traccar_base_url') not in ['unknown','unavailable','none','']
-            and (states('input_number.rc_traccar_device_id') | int(0)) > 0
+            states('input_text.rc_traccar_base_url') not in ['unknown','unavailable']
+            and states('input_number.rc_traccar_device_id') not in ['unknown','unavailable']
+          }}
+
+      - name: "RC Setup Networking Ready"
+        unique_id: rc_setup_networking_ready
+        icon: mdi:router-wireless
+        state: >-
+          {# Deterministic: require the OpenWrt API sensors to be alive (not mocks). #}
+          {% set internet = states('sensor.rc_openwrt_internet') %}
+          {% set wan = states('sensor.rc_openwrt_active_wan') %}
+          {{ internet in ['online','offline'] and wan not in ['unknown','unavailable','none',''] }}
+        availability: >-
+          {{
+            states('sensor.rc_openwrt_internet') not in ['unknown','unavailable']
+            and states('sensor.rc_openwrt_active_wan') not in ['unknown','unavailable']
+          }}
+
+      - name: "RC Setup Levelling Ready"
+        unique_id: rc_setup_levelling_ready
+        icon: mdi:spirit-level
+        state: >-
+          {% set ps = states('sensor.rc_level_pitch_source') %}
+          {% set rs = states('sensor.rc_level_roll_source') %}
+          {{
+            ps not in ['none','unknown','unavailable','']
+            and rs not in ['none','unknown','unavailable','']
+            and states('sensor.rc_level_pitch_deg') not in ['unknown','unavailable','none','']
+            and states('sensor.rc_level_roll_deg') not in ['unknown','unavailable','none','']
+          }}
+        availability: >-
+          {{
+            states('sensor.rc_level_pitch_source') not in ['unknown','unavailable']
+            and states('sensor.rc_level_roll_source') not in ['unknown','unavailable']
           }}
 
       - name: "RC Setup Victron Ready"
         unique_id: rc_setup_victron_ready
         state: >-
-          {{ is_state('binary_sensor.rc_system_power_backend_connected', 'on') }}
+          {% set connected = is_state('binary_sensor.rc_system_power_backend_connected', 'on') %}
+          {% set snap = states('sensor.rc_system_power_backend_snapshot_state') %}
+          {% set topics = states('sensor.rc_system_power_backend_topics') | int(0) %}
+          {# Require the backend to be connected AND have completed an initial snapshot (or at least seen topics). #}
+          {{ connected and (snap == 'ready' or topics > 0) }}
         availability: >-
-          {{ states('binary_sensor.rc_system_power_backend_connected') not in ['unknown','unavailable'] }}
+          {{
+            states('binary_sensor.rc_system_power_backend_connected') not in ['unknown','unavailable']
+            and states('sensor.rc_system_power_backend_snapshot_state') not in ['unknown','unavailable']
+            and states('sensor.rc_system_power_backend_topics') not in ['unknown','unavailable']
+          }}
+
+      - name: "RC Setup Tiles Complete"
+        unique_id: rc_setup_tiles_complete
+        icon: mdi:check-decagram
+        state: >-
+          {% set p_en = is_state('input_boolean.rc_tile_power_enabled','on') %}
+          {% set n_en = is_state('input_boolean.rc_tile_network_enabled','on') %}
+          {% set l_en = is_state('input_boolean.rc_tile_level_enabled','on') %}
+          {% set m_en = is_state('input_boolean.rc_tile_map_enabled','on') %}
+          {% set p_ok = is_state('binary_sensor.rc_setup_victron_ready','on') %}
+          {% set n_ok = is_state('binary_sensor.rc_setup_networking_ready','on') %}
+          {% set l_ok = is_state('binary_sensor.rc_setup_levelling_ready','on') %}
+          {% set m_ok = is_state('binary_sensor.rc_setup_map_ready','on') %}
+          {{ (not p_en or p_ok) and (not n_en or n_ok) and (not l_en or l_ok) and (not m_en or m_ok) }}
 
   - sensor:
+      - name: "RC Setup Tiles Progress"
+        unique_id: rc_setup_tiles_progress
+        icon: mdi:view-dashboard-outline
+        state: >-
+          {% set total = 0 %}
+          {% set done = 0 %}
+
+          {% set p_en = is_state('input_boolean.rc_tile_power_enabled','on') %}
+          {% set n_en = is_state('input_boolean.rc_tile_network_enabled','on') %}
+          {% set l_en = is_state('input_boolean.rc_tile_level_enabled','on') %}
+          {% set m_en = is_state('input_boolean.rc_tile_map_enabled','on') %}
+
+          {% if p_en %}{% set total = total + 1 %}{% endif %}
+          {% if n_en %}{% set total = total + 1 %}{% endif %}
+          {% if l_en %}{% set total = total + 1 %}{% endif %}
+          {% if m_en %}{% set total = total + 1 %}{% endif %}
+
+          {% if p_en and is_state('binary_sensor.rc_setup_victron_ready','on') %}{% set done = done + 1 %}{% endif %}
+          {% if n_en and is_state('binary_sensor.rc_setup_networking_ready','on') %}{% set done = done + 1 %}{% endif %}
+          {% if l_en and is_state('binary_sensor.rc_setup_levelling_ready','on') %}{% set done = done + 1 %}{% endif %}
+          {% if m_en and is_state('binary_sensor.rc_setup_map_ready','on') %}{% set done = done + 1 %}{% endif %}
+
+          {{ done }}/{{ total }}
+
       - name: "RC Setup Progress"
         unique_id: rc_setup_progress
         icon: mdi:progress-check
         state: >-
-          {% set total = 4 %}
+          {% set total = 6 %}
           {% set done = 0 %}
           {% if is_state('binary_sensor.rc_setup_owner_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {% if is_state('binary_sensor.rc_setup_networking_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {% if is_state('binary_sensor.rc_setup_map_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {% if is_state('binary_sensor.rc_setup_trip_wrapped_ready', 'on') %}{% set done = done + 1 %}{% endif %}
+          {% if is_state('binary_sensor.rc_setup_levelling_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {% if is_state('binary_sensor.rc_setup_victron_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {{ done }}/{{ total }}
+
+# Token presence check for Trip Wrapped (read-only).
+# We only expose whether a token exists in secrets.yaml, never the value.
+binary_sensor:
+  - platform: command_line
+    name: "RC Setup Traccar User Token Present"
+    unique_id: rc_setup_traccar_user_token_present
+    icon: mdi:key
+    command: >-
+      sh -lc 'test -f /config/secrets.yaml && grep -Eq "^[[:space:]]*roamcore_traccar_user_token[[:space:]]*:" /config/secrets.yaml && echo ON || echo OFF'
+    scan_interval: 30
+    payload_on: "ON"
+    payload_off: "OFF"
