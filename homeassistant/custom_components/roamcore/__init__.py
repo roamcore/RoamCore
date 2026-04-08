@@ -30,6 +30,16 @@ import aiohttp
 from .provision import provision_from_github
 from .support_bundle import export_support_bundle
 
+from .actions import (
+    _utc_now_iso,
+    allowlist_path,
+    auditlog_path,
+    load_allowlist_yaml,
+    find_action,
+    validate_constraints,
+    append_audit_record,
+)
+
 
 def _secrets_path(hass: HomeAssistant) -> str:
     # HA config dir secrets.yaml
@@ -241,6 +251,137 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "secrets_delete",
         _svc_secrets_delete,
+        schema=None,
+    )
+
+    # --- Agent Actions Gateway (Roadmap) ---
+    # Default-deny, user-owned allowlist + audit log. This is intentionally
+    # conservative: we only support setting input_* helpers and running scripts.
+    # If the global kill switch is off, nothing executes.
+    async def _svc_action_execute(call):
+        action_id = str(call.data.get("action_id") or "").strip()
+        args = call.data.get("args") or {}
+        reason = str(call.data.get("reason") or "").strip()
+
+        cfg_dir = hass.config.path("")
+        allow_path = allowlist_path(cfg_dir)
+        log_path = auditlog_path(cfg_dir)
+
+        record: dict = {
+            "ts": _utc_now_iso(),
+            "action_id": action_id,
+            "reason": reason,
+            "args": args,
+            "result": {"ok": False},
+        }
+
+        try:
+            if not action_id:
+                record["result"] = {"ok": False, "error": "action_id is required"}
+                return
+
+            # Kill switch must exist and be ON.
+            enabled = hass.states.get("input_boolean.rc_agent_actions_enabled")
+            if not enabled or enabled.state != "on":
+                record["result"] = {"ok": False, "error": "agent actions disabled"}
+                return
+
+            policy = load_allowlist_yaml(allow_path)
+            act = find_action(policy, action_id=action_id)
+            if not act:
+                record["result"] = {"ok": False, "error": "action not allowlisted"}
+                return
+
+            kind = str(act.get("kind") or "").strip()
+            target = act.get("target") or {}
+            constraints = act.get("constraints") or {}
+
+            # MVP supported kinds
+            if kind == "set_helper":
+                entity_ids = target.get("entity_id")
+                if isinstance(entity_ids, str):
+                    entity_ids = [entity_ids]
+                if not isinstance(entity_ids, list) or not entity_ids:
+                    record["result"] = {"ok": False, "error": "invalid target.entity_id"}
+                    return
+
+                value = args.get("value")
+                ok, err = validate_constraints(constraints, value)
+                if not ok:
+                    record["result"] = {"ok": False, "error": f"constraints: {err}"}
+                    return
+
+                # Enforce input_* only.
+                bad = [e for e in entity_ids if not str(e).startswith("input_")]
+                if bad:
+                    record["result"] = {"ok": False, "error": "set_helper only supports input_* entities"}
+                    return
+
+                for eid in entity_ids:
+                    domain = str(eid).split(".", 1)[0]
+                    if domain == "input_text":
+                        await hass.services.async_call(
+                            "input_text",
+                            "set_value",
+                            {"entity_id": eid, "value": str(value if value is not None else "")},
+                            blocking=True,
+                        )
+                    elif domain == "input_number":
+                        await hass.services.async_call(
+                            "input_number",
+                            "set_value",
+                            {"entity_id": eid, "value": float(value)},
+                            blocking=True,
+                        )
+                    elif domain == "input_select":
+                        await hass.services.async_call(
+                            "input_select",
+                            "select_option",
+                            {"entity_id": eid, "option": str(value)},
+                            blocking=True,
+                        )
+                    elif domain == "input_boolean":
+                        svc = "turn_on" if bool(value) else "turn_off"
+                        await hass.services.async_call(
+                            "input_boolean",
+                            svc,
+                            {"entity_id": eid},
+                            blocking=True,
+                        )
+                    else:
+                        record["result"] = {"ok": False, "error": f"unsupported helper domain: {domain}"}
+                        return
+
+                record["result"] = {"ok": True}
+
+            elif kind == "run_script":
+                entity_id = target.get("entity_id")
+                if not isinstance(entity_id, str) or not entity_id:
+                    record["result"] = {"ok": False, "error": "invalid target.entity_id"}
+                    return
+                if not entity_id.startswith("script.rc_"):
+                    record["result"] = {"ok": False, "error": "run_script only supports script.rc_*"}
+                    return
+                await hass.services.async_call(
+                    "script",
+                    entity_id.split(".", 1)[1],
+                    {},
+                    blocking=True,
+                )
+                record["result"] = {"ok": True}
+            else:
+                record["result"] = {"ok": False, "error": "unsupported action kind"}
+                return
+        finally:
+            try:
+                append_audit_record(log_path, record)
+            except Exception:
+                pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "action_execute",
+        _svc_action_execute,
         schema=None,
     )
 
