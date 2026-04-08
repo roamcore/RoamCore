@@ -116,46 +116,46 @@ write_manifest_line() {
 
 cp_preserve() {
   # Try to preserve mode/mtime if supported.
-  src="$1"
-  dst="$2"
-  if cp -p "$src" "$dst" 2>/dev/null; then
+  _cp_src="$1"
+  _cp_dst="$2"
+  if cp -p "$_cp_src" "$_cp_dst" 2>/dev/null; then
     return 0
   fi
-  cp -f "$src" "$dst"
+  cp -f "$_cp_src" "$_cp_dst"
 }
 
 same_file() {
   # Best-effort equality check; if cmp isn't available, return false.
-  a="$1"
-  b="$2"
+  _sf_a="$1"
+  _sf_b="$2"
   if command -v cmp >/dev/null 2>&1; then
-    cmp -s "$a" "$b"
+    cmp -s "$_sf_a" "$_sf_b"
     return $?
   fi
   return 1
 }
 
 backup_if_exists() {
-  dest="$1"
-  if [ -e "$dest" ]; then
-    rel="${dest#"$CONFIG_DIR"/}"
-    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
-    cp_preserve "$dest" "$BACKUP_DIR/$rel"
+  _bi_dest="$1"
+  if [ -e "$_bi_dest" ]; then
+    _bi_rel="${_bi_dest#"$CONFIG_DIR"/}"
+    mkdir -p "$BACKUP_DIR/$(dirname "$_bi_rel")"
+    cp_preserve "$_bi_dest" "$BACKUP_DIR/$_bi_rel"
   fi
 }
 
 install_file() {
-  src="$1"
-  dest="$2"
-  mkdir -p "$(dirname "$dest")"
-  if [ -e "$dest" ] && same_file "$src" "$dest"; then
+  _if_src="$1"
+  _if_dest="$2"
+  mkdir -p "$(dirname "$_if_dest")"
+  if [ -e "$_if_dest" ] && same_file "$_if_src" "$_if_dest"; then
     # Idempotent re-run: avoid churn + backup spam if file is unchanged.
-    write_manifest_line "$dest"
+    write_manifest_line "$_if_dest"
     return 0
   fi
-  backup_if_exists "$dest"
-  cp_preserve "$src" "$dest"
-  write_manifest_line "$dest"
+  backup_if_exists "$_if_dest"
+  cp_preserve "$_if_src" "$_if_dest"
+  write_manifest_line "$_if_dest"
 }
 
 install_dir_children() {
