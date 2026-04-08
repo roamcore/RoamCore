@@ -563,7 +563,28 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-van { width: 140px; height: 64px; }
       .rc-vanwrap { display:inline-block; transition: transform 0.3s ease; }
       .rc-map { width: 100%; height: 100%; }
-      .rc-mapbox { width: 100%; height: 220px; border-radius: 14px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); }
+      .rc-mapbox { width: 100%; height: 220px; border-radius: 14px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); position: relative; }
+
+      /* Map overlays (used to avoid permanent grey/blank states and provide guidance). */
+      .rc-map-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px;
+        text-align: center;
+        background: rgba(0,0,0,0.45);
+        z-index: 20;
+      }
+      .rc-map-overlay-loading {
+        background: rgba(0,0,0,0.20);
+        pointer-events: none;
+      }
+      .rc-map-ol-title { font-weight: 950; font-size: 14px; }
+      .rc-map-ol-sub { font-size: 12px; color: rgba(255,255,255,0.78); line-height: 1.35; }
       .rc-btn { display:inline-flex; align-items:center; justify-content:center; width:100%; padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: var(--rc-text); font-weight: 800; cursor:pointer; }
       .rc-btn:hover { filter: brightness(1.05); }
 
@@ -1014,6 +1035,7 @@ class RoamcoreBasePage extends HTMLElement {
   async _mountLeafletMap(el, { lat, lon, trackerId } = {}) {
     try {
       if (!el) return;
+      try { el.style.position = 'relative'; } catch (e) {}
       const ok = await this._ensureLeaflet();
       if (!ok) {
         el.innerHTML = '<div class="rc-label">Map failed to load (Leaflet missing).</div>';
@@ -1100,6 +1122,23 @@ class RoamcoreBasePage extends HTMLElement {
       let localTileErrors = 0;
       let localTileFirstErrorAt = 0;
       let onlineFallbackLayer = null;
+
+      const showLocalTileErrorOverlay = () => {
+        try {
+          // Only show this when we have no online fallback configured.
+          if (onlineUrl) return;
+          if (el.querySelector('.rc-map-overlay')) return;
+          const o = document.createElement('div');
+          o.className = 'rc-map-overlay';
+          o.innerHTML = `
+            <div class="rc-map-ol-title">Offline tiles not available</div>
+            <div class="rc-map-ol-sub">Check <b>/rc-tiles</b> or configure <b>input_text.rc_map_tile_url_online</b> for an internet fallback.</div>
+            <button class="rc-btn" data-nav="${this._basePath()}/settings" style="max-width: 260px;">Open settings</button>
+          `;
+          el.appendChild(o);
+        } catch (e) {}
+      };
+
       const maybeEnableOnlineFallback = () => {
         try {
           if (!onlineUrl) return;
@@ -1124,6 +1163,13 @@ class RoamcoreBasePage extends HTMLElement {
           localTileErrors++;
           if (!localTileFirstErrorAt) localTileFirstErrorAt = Date.now();
           maybeEnableOnlineFallback();
+          // If we don't have online fallback configured, show a clear hint instead of grey.
+          try {
+            const now = Date.now();
+            if (!onlineUrl && localTileErrors >= 6 && (now - localTileFirstErrorAt) < 10_000) {
+              showLocalTileErrorOverlay();
+            }
+          } catch (e) {}
         });
       } catch (e) {}
 
@@ -1176,9 +1222,14 @@ class RoamcoreBasePage extends HTMLElement {
     }
   }
 
-  async _mountMapLibreMap(el, { lat, lon } = {}) {
+  async _mountMapLibreMap(el, { lat, lon, trackerId = null } = {}) {
     try {
       if (!el) return;
+      try { el.style.position = 'relative'; } catch (e) {}
+      try {
+        // Stash trackerId on the element so late error handlers can fall back to Leaflet.
+        if (trackerId) el._rcTrackerId = trackerId;
+      } catch (e) {}
       const ok = await this._ensureMapLibre();
       if (!ok) {
         el.innerHTML = '<div class="rc-label">Map failed to load (MapLibre missing).</div>';
@@ -1222,6 +1273,15 @@ class RoamcoreBasePage extends HTMLElement {
       container.style.width = '100%';
       container.style.height = '100%';
       el.appendChild(container);
+
+      // Overlay a lightweight loading state so we never show a dead-grey box.
+      let loadingOverlay = null;
+      try {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'rc-map-overlay rc-map-overlay-loading';
+        loadingOverlay.innerHTML = `<div class="rc-map-ol-title">Loading map…</div><div class="rc-map-ol-sub">PMTiles vector basemap</div>`;
+        el.appendChild(loadingOverlay);
+      } catch (e) {}
 
       const saved = this._loadSavedMapViewMapLibre();
       const centerLon = saved ? Number(saved.lon) : Number(lon);
@@ -1286,6 +1346,98 @@ class RoamcoreBasePage extends HTMLElement {
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
+
+      // Clear loading overlay once the map reports loaded.
+      try {
+        m.on('load', () => {
+          try { loadingOverlay?.remove?.(); } catch (e) {}
+          loadingOverlay = null;
+        });
+      } catch (e) {}
+
+      // Production reliability: if MapLibre/PMTiles repeatedly error (missing assets, 404s,
+      // CSP, etc.), automatically fall back to Leaflet so users don't get a permanent blank map.
+      try {
+        if (!el._rcMapLibreErrWatch) {
+          el._rcMapLibreErrWatch = true;
+          let errs = 0;
+          let firstAt = 0;
+          const threshold = 8;
+          const windowMs = 10_000;
+
+          const showOverlay = (title, sub) => {
+            try {
+              const existing = el.querySelector('.rc-map-overlay');
+              if (existing && !existing.classList.contains('rc-map-overlay-loading')) return;
+              if (existing) existing.remove();
+              const o = document.createElement('div');
+              o.className = 'rc-map-overlay';
+              o.innerHTML = `
+                <div class="rc-map-ol-title">${title}</div>
+                <div class="rc-map-ol-sub">${sub}</div>
+                <button class="rc-btn" data-nav="${this._basePath()}/settings" style="max-width: 260px;">Open settings</button>
+              `;
+              el.appendChild(o);
+            } catch (e) {}
+          };
+
+          const fallbackToLeaflet = async () => {
+            try {
+              if (el._rcMapLibreDidFallback) return;
+              el._rcMapLibreDidFallback = true;
+
+              showOverlay('Map degraded', 'Vector tiles failed to load. Switching to a simpler map renderer.');
+
+              // Stop any MapLibre-only polling interval so Leaflet can install its own.
+              try { if (el._rcTraccarPoll) clearInterval(el._rcTraccarPoll); } catch (e) {}
+              try { delete el._rcTraccarPoll; } catch (e) { el._rcTraccarPoll = null; }
+
+              try { el._rcMapLibreMarker = null; } catch (e) {}
+              try { el._rcMapLibre?.remove?.(); } catch (e) {}
+              try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
+
+              // Hard reset DOM so Leaflet gets a clean container.
+              try { el.innerHTML = ''; } catch (e) {}
+
+              await this._mountLeafletMap(el, { lat, lon, trackerId: el._rcTrackerId || null });
+            } catch (e) {
+              // If fallback fails, keep the overlay.
+              showOverlay('Map unavailable', 'Unable to load MapLibre or Leaflet. Check RoamCore map assets.');
+            }
+          };
+
+          // Listen for MapLibre error events.
+          m.on('error', (ev) => {
+            try {
+              // Ignore errors after fallback.
+              if (el._rcMapLibreDidFallback) return;
+              errs++;
+              if (!firstAt) firstAt = Date.now();
+              const now = Date.now();
+              // Reset window if errors are spread out.
+              if (firstAt && (now - firstAt) > windowMs) {
+                errs = 1;
+                firstAt = now;
+              }
+              if (errs >= threshold) {
+                fallbackToLeaflet();
+              }
+            } catch (e2) {}
+          });
+
+          // If we never reach a loaded state quickly, show a hint (but don't block).
+          setTimeout(() => {
+            try {
+              if (el._rcMapLibreDidFallback) return;
+              if (!el._rcMapLibre) return;
+              // If loading overlay is still visible after 6s, provide guidance.
+              if (loadingOverlay && el.contains(loadingOverlay)) {
+                showOverlay('Still loading…', 'If this persists, RoamCore PMTiles assets may be missing.');
+              }
+            } catch (e) {}
+          }, 6000);
+        }
+      } catch (e) {}
 
       // If we don't have live HA GPS yet, poll Traccar periodically and update the marker.
       try {
@@ -1521,6 +1673,11 @@ class RoamcoreBasePage extends HTMLElement {
 class RoamcorePowerPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
+
+    // Kick off an OpenClaw skill fetch once per mount.
+    if (!this._openclawSkill && !this._openclawSkillLoading && !this._openclawSkillErr) {
+      this._fetchOpenClawSkill({ force: false });
+    }
 
     // Contract entities currently available (MVP)
     const soc = this._num('sensor.rc_power_battery_soc', null);
@@ -2031,7 +2188,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
         // NOTE: _render is not async; keep this promise-based.
-        this._mountMapLibreMap(el, { lat, lon })
+        this._mountMapLibreMap(el, { lat, lon, trackerId })
           .then((m) => {
             try {
               // Update marker to current location without moving the camera.
@@ -2399,6 +2556,13 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
   constructor() {
     super();
     this._victronConnectEl = null;
+
+    // OpenClaw onboarding helpers
+    this._openclawSkill = null;
+    this._openclawSkillErr = null;
+    this._openclawSkillLoading = false;
+    this._openclawSkillFetchedAt = 0;
+    this._openclawCopyStatus = '';
   }
 
   _css() {
@@ -2427,11 +2591,38 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
       details.rc-details > summary::-webkit-details-marker { display:none; }
       .rc-details-body { padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
 
+      .rc-codebox { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.22); }
+      .rc-code { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; line-height: 1.35; color: rgba(255,255,255,0.90); }
+
       /* Better mobile layout: single column */
       @media (max-width: 680px) {
         .rc-grid { grid-template-columns: 1fr; }
       }
     `;
+  }
+
+  async _fetchOpenClawSkill({ force = false } = {}) {
+    try {
+      if (!this._hass) return;
+      if (this._openclawSkillLoading) return;
+
+      const age = Date.now() - (this._openclawSkillFetchedAt || 0);
+      if (!force && this._openclawSkill && age < 15000) return;
+
+      this._openclawSkillLoading = true;
+      this._openclawSkillErr = null;
+      this._render();
+
+      const data = await this._hass.callApi('get', 'roamcore/openclaw/skill');
+      this._openclawSkill = data;
+      this._openclawSkillFetchedAt = Date.now();
+    } catch (e) {
+      this._openclawSkill = null;
+      this._openclawSkillErr = String(e?.message || e || 'OpenClaw skill fetch failed');
+    } finally {
+      this._openclawSkillLoading = false;
+      this._render();
+    }
   }
 
   _isOn(entityId) {
@@ -2559,6 +2750,109 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
             <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_network_enabled">Network: ${netEn ? 'On' : 'Off'}</button>
             <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_level_enabled">Level: ${lvlEn ? 'On' : 'Off'}</button>
             <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_map_enabled">Map: ${mapEn ? 'On' : 'Off'}</button>
+          </div>
+        </div>
+      </details>
+    `;
+
+    // --------
+    // OpenClaw onboarding (agent-side)
+    // --------
+    const esc = (s) => {
+      const v = (s === null || s === undefined) ? '' : String(s);
+      return v
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    };
+
+    const origin = (() => {
+      try { return String(window.location?.origin || ''); } catch (e) { return ''; }
+    })();
+    const defaultSummaryUrl = `${origin}/api/roamcore/openclaw/summary`;
+    const defaultSkillUrl = `${origin}/api/roamcore/openclaw/skill`;
+
+    const oc = (this._openclawSkill && this._openclawSkill.roamcore) ? this._openclawSkill.roamcore : {};
+    const ocEnabled = !!(oc && oc.openclaw_summary_url);
+    const ocRequiresAuth = !!(oc && oc.requires_auth);
+    const ocSummaryUrl = String(oc.openclaw_summary_url || defaultSummaryUrl);
+
+    const ocLastSeenRaw = this._getState('sensor.rc_openclaw_last_seen');
+    const ocLastSeenEndpoint = this._hass?.states?.['sensor.rc_openclaw_last_seen']?.attributes?.endpoint;
+    const ocLastSeenOk = !rcIsMissingState(ocLastSeenRaw);
+
+    const ocSnippet = [
+      '# RoamCore (OpenClaw)',
+      '# Paste into your agent config / skill settings:',
+      `openclaw_summary_url: "${ocSummaryUrl}"`,
+      ocRequiresAuth
+        ? '# requires_auth=true → send: Authorization: Bearer <HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN>'
+        : '# requires_auth=false → no token needed from LAN',
+    ].join('\n');
+
+    const ocEnableOk = ocEnabled ? true : (this._openclawSkillLoading ? null : false);
+    const ocDetailsOpen = (!ocEnabled || !ocLastSeenOk) ? 'open' : '';
+    const ocRefreshLabel = this._openclawSkillLoading ? 'Loading…' : 'Refresh';
+
+    const openclawBlock = `
+      <details class="rc-details" ${ocDetailsOpen}>
+        <summary>OpenClaw agent integration (optional)</summary>
+        <div class="rc-details-body">
+          <div class="rc-steps">
+            ${this._step({
+              label: 'Enable RoamCore OpenClaw API',
+              ok: ocEnableOk,
+              sub: ocEnabled
+                ? `Enabled. Requires auth: <b>${ocRequiresAuth ? 'true' : 'false'}</b>.`
+                : 'If this endpoint 404s, open RoamCore integration options and enable the OpenClaw API.',
+              actionsHtml: `
+                <button class="rc-btn rc-btn-mini" data-nav="/config/integrations/integration/roamcore">Open HA integration</button>
+                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/diagnostics">Diagnostics</button>
+                <button class="rc-btn rc-btn-mini rc-btn-ghost" id="rcOcRefresh">${esc(ocRefreshLabel)}</button>
+              `
+            })}
+
+            ${this._step({
+              label: 'Copy openclaw_summary_url',
+              ok: ocEnabled ? true : null,
+              sub: `Use this exact URL in your agent: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${esc(ocSummaryUrl)}</span>`,
+              actionsHtml: `
+                <button class="rc-btn rc-btn-mini" id="rcOcCopySummary">Copy summary URL</button>
+                <a class="rc-btn rc-btn-mini rc-btn-ghost" href="${esc(ocSummaryUrl)}" target="_blank" rel="noreferrer">Open /summary</a>
+              `
+            })}
+
+            ${this._step({
+              label: 'Copy agent snippet',
+              ok: ocEnabled ? true : null,
+              sub: 'This is a convenience snippet with your URL pre-filled.',
+              actionsHtml: `
+                <button class="rc-btn rc-btn-mini" id="rcOcCopySnippet">Copy snippet</button>
+                <a class="rc-btn rc-btn-mini rc-btn-ghost" href="${esc(defaultSkillUrl)}" target="_blank" rel="noreferrer">Open /skill</a>
+              `
+            })}
+
+            ${this._step({
+              label: 'Verify agent connected (last seen)',
+              ok: ocLastSeenOk ? true : false,
+              sub: ocLastSeenOk
+                ? `Last seen: <b>${esc(ocLastSeenRaw)}</b>${ocLastSeenEndpoint ? ` · endpoint: <b>${esc(ocLastSeenEndpoint)}</b>` : ''}`
+                : 'Not seen yet. Trigger your agent to fetch /summary, then refresh this page.',
+              actionsHtml: `
+                <a class="rc-btn rc-btn-mini rc-btn-ghost" href="${esc(ocSummaryUrl)}" target="_blank" rel="noreferrer">Open /summary</a>
+                <a class="rc-btn rc-btn-mini rc-btn-ghost" href="${esc(defaultSkillUrl)}" target="_blank" rel="noreferrer">Open /skill</a>
+              `
+            })}
+          </div>
+
+          ${this._openclawCopyStatus ? `<div class="rc-label" style="margin-top:10px; font-weight:900; color: rgba(255,255,255,0.86);">${esc(this._openclawCopyStatus)}</div>` : ''}
+          ${this._openclawSkillErr ? `<div class="rc-label" style="margin-top:10px; font-weight:900; color: var(--rc-bad);">${esc(this._openclawSkillErr)}</div>` : ''}
+
+          <div class="rc-codebox">
+            <div class="rc-label" style="margin-bottom:6px;">Snippet preview</div>
+            <div class="rc-code">${esc(ocSnippet)}</div>
           </div>
         </div>
       </details>
@@ -2739,6 +3033,7 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
           </div>
           ${this._setupBanner()}
           ${generalBlock}
+          ${openclawBlock}
         </div>
 
         <div class="rc-grid">
@@ -2774,12 +3069,76 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
         }
       }
     } catch (e) {}
+
+    // OpenClaw buttons
+    try {
+      const bRefresh = this._root.querySelector('#rcOcRefresh');
+      if (bRefresh) bRefresh.addEventListener('click', () => this._fetchOpenClawSkill({ force: true }));
+
+      const bCopySummary = this._root.querySelector('#rcOcCopySummary');
+      if (bCopySummary) bCopySummary.addEventListener('click', async () => {
+        const ok = await this._copyText(ocSummaryUrl);
+        this._openclawCopyStatus = ok ? 'Copied summary URL to clipboard.' : 'Copy failed (clipboard blocked).';
+        this._render();
+      });
+
+      const bCopySnippet = this._root.querySelector('#rcOcCopySnippet');
+      if (bCopySnippet) bCopySnippet.addEventListener('click', async () => {
+        const ok = await this._copyText(ocSnippet);
+        this._openclawCopyStatus = ok ? 'Copied snippet to clipboard.' : 'Copy failed (clipboard blocked).';
+        this._render();
+      });
+    } catch (e) {}
   }
 }
 
 class RoamcoreSettingsPage extends RoamcoreBasePage {
+  constructor() {
+    super();
+    this._upd = null;
+    this._updErr = null;
+    this._updLoading = false;
+    this._updFetchedAt = 0;
+    this._updStatus = '';
+  }
+
+  async _fetchUpdateInfo({ force = false } = {}) {
+    try {
+      if (!this._hass) return;
+      if (this._updLoading) return;
+      const age = Date.now() - (this._updFetchedAt || 0);
+      if (!force && this._upd && age < 15000) return;
+      this._updLoading = true;
+      this._updErr = null;
+      this._render();
+      const data = await this._hass.callApi('get', 'roamcore/update');
+      this._upd = data;
+      this._updFetchedAt = Date.now();
+    } catch (e) {
+      this._updErr = String(e?.message || e || 'Update info fetch failed');
+    } finally {
+      this._updLoading = false;
+      this._render();
+    }
+  }
+
+  _esc(s) {
+    const v = (s === null || s === undefined) ? '' : String(s);
+    return v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
   _render() {
     if (!this._root || !this._hass) return;
+
+    // Kick off fetch once per mount (best-effort).
+    if (!this._upd && !this._updLoading && !this._updErr) {
+      this._fetchUpdateInfo({ force: false });
+    }
 
     const tracker = this._getState('input_text.rc_location_tracker_entity');
     const weather = this._getState('input_text.rc_weather_entity_id');
@@ -2796,10 +3155,49 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
 
+    const upd = this._upd || {};
+    const installed = upd.installed || {};
+    const latest = (upd.latest && upd.latest.release) ? upd.latest.release : {};
+    const latestTag = latest?.tag || null;
+    const latestManifest = upd.latest?.manifest || {};
+    const latestVer = latestManifest?.ok ? latestManifest?.version : null;
+    const cfgRef = upd.configured?.provision_ref || 'main';
+    const backupSupport = upd.backup_support || {};
+    const canSupervisorBackup = !!(backupSupport.backup_create || backupSupport.hassio_backup_full);
+
+    const updateTile = this._tile({
+      title: 'Backup + Update',
+      icon: '⬆️',
+      content: `
+        <div class="rc-label" style="margin-bottom:8px;">Safely refresh RoamCore assets in /config. RoamCore will attempt a full HA backup first (when supported), then provision a deterministic ref.</div>
+        ${this._row('Installed component', installed.component_version || '—')}
+        ${this._row('Installed ref', installed.ref || '—')}
+        ${this._row('Installed at', installed.installed_at || '—')}
+        ${this._row('Configured provision ref', cfgRef || '—')}
+        ${this._row('Latest release', latest?.ok ? (latestTag || '—') : '—')}
+        ${this._row('Latest component version', latestVer || '—')}
+        ${this._row('Full backup support', canSupervisorBackup ? 'Available' : 'Not available')}
+
+        ${this._updErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._updErr)}</div>` : ''}
+        ${this._updStatus ? `<div style="margin-top:10px; font-weight:800;">${this._esc(this._updStatus)}</div>` : ''}
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+          <button class="rc-btn" id="rcUpdateLatest" ${(!latestTag || this._updLoading) ? 'disabled' : ''} style="flex:1; min-width: 220px;">${this._updLoading ? 'Loading…' : (latestTag ? `Backup + Update to ${this._esc(latestTag)}` : 'Backup + Update (latest unavailable)')}</button>
+          <button class="rc-btn" id="rcUpdateCfg" ${this._updLoading ? 'disabled' : ''} style="flex:1; min-width: 220px;">Backup + Update to configured ref</button>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+          <button class="rc-btn" id="rcUpdateCustom" ${this._updLoading ? 'disabled' : ''} style="flex:1; min-width: 220px;">Update to custom ref…</button>
+          <button class="rc-btn" id="rcUpdateRefresh" ${this._updLoading ? 'disabled' : ''} style="flex:1; min-width: 220px;">Refresh</button>
+        </div>
+        <div class="rc-mini" style="margin-top:10px;">After updating, restart Home Assistant to load new packages/components. Rollback: restore a Supervisor backup (preferred), or use /config/.roamcore/backups/ for per-file rollback.</div>
+      `
+    });
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Settings')}
         <div class="rc-grid" style="grid-template-columns: 1fr;">
+          ${updateTile}
           ${this._tile({
             title: 'Setup',
             icon: '✨',
@@ -2852,6 +3250,67 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
+
+    // Wire update buttons (best-effort; service emits persistent notifications).
+    const mkConfirm = (refLabel) => {
+      const lines = [
+        'This will:',
+        '1) Create a full Home Assistant backup (if supported)',
+        '2) Provision RoamCore assets into /config',
+        '3) Require a Home Assistant restart',
+        '',
+        `Target ref: ${refLabel}`,
+        '',
+        'Continue?'
+      ];
+      return window.confirm(lines.join('\n'));
+    };
+
+    const latestBtn = this._root.querySelector('#rcUpdateLatest');
+    if (latestBtn) {
+      latestBtn.addEventListener('click', async () => {
+        try {
+          if (!latestTag) return;
+          if (!mkConfirm(latestTag)) return;
+          this._updStatus = 'Starting update… (watch notifications)';
+          this._render();
+          this._callService('roamcore', 'backup_update', { target: 'latest_release', backup: true });
+        } catch (e) {}
+      });
+    }
+
+    const cfgBtn = this._root.querySelector('#rcUpdateCfg');
+    if (cfgBtn) {
+      cfgBtn.addEventListener('click', async () => {
+        try {
+          const ref = String(cfgRef || '').trim() || 'main';
+          if (!mkConfirm(ref)) return;
+          this._updStatus = 'Starting update… (watch notifications)';
+          this._render();
+          this._callService('roamcore', 'backup_update', { ref, backup: true });
+        } catch (e) {}
+      });
+    }
+
+    const customBtn = this._root.querySelector('#rcUpdateCustom');
+    if (customBtn) {
+      customBtn.addEventListener('click', async () => {
+        try {
+          const def = String(latestTag || cfgRef || 'main');
+          const ref = window.prompt('Enter a git ref (tag/commit/branch):', def);
+          if (ref === null) return;
+          const r = String(ref || '').trim();
+          if (!r) return;
+          if (!mkConfirm(r)) return;
+          this._updStatus = 'Starting update… (watch notifications)';
+          this._render();
+          this._callService('roamcore', 'backup_update', { ref: r, backup: true });
+        } catch (e) {}
+      });
+    }
+
+    const refreshBtn = this._root.querySelector('#rcUpdateRefresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', () => this._fetchUpdateInfo({ force: true }));
   }
 }
 
