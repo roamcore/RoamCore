@@ -366,8 +366,7 @@ class RoamcoreDashboardCard extends HTMLElement {
   _render() {
     if (!this._root || !this._hass) return;
 
-    // Build a stable DOM skeleton once, then update tile contents/values.
-    // This prevents the embedded map from flashing/re-mounting on every HA state update.
+    // Avoid iframe flashing: do a full DOM build only once, then update text/values.
     const alreadyBuilt = !!this._root.querySelector('.rc-wrap');
 
     const soc = this._num('sensor.rc_power_battery_soc', null);
@@ -422,10 +421,10 @@ class RoamcoreDashboardCard extends HTMLElement {
           <div id="rc-setup-banner"></div>
 
           <div class="rc-grid">
-            <div id="rc-slot-power"></div>
-            <div id="rc-slot-network"></div>
-            <div id="rc-slot-level"></div>
-            <div id="rc-slot-map">${this._tileMap()}</div>
+            ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
+            ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
+            ${this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) })}
+            ${this._tileMap()}
           </div>
         </div>
       `;
@@ -433,20 +432,6 @@ class RoamcoreDashboardCard extends HTMLElement {
       const gear = this._root.querySelector('.rc-gear');
       if (gear) gear.addEventListener('click', (e) => { e.stopPropagation(); this._goSettings(); });
     }
-
-    // Update tile HTML (except the map tile, which is a stable skeleton).
-    try {
-      const p = this._root.querySelector('#rc-slot-power');
-      if (p) p.innerHTML = this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt });
-    } catch (e) {}
-    try {
-      const n = this._root.querySelector('#rc-slot-network');
-      if (n) n.innerHTML = this._tileNetwork({ netLabel, netColor, netSource, down, up, ping });
-    } catch (e) {}
-    try {
-      const l = this._root.querySelector('#rc-slot-level');
-      if (l) l.innerHTML = this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) });
-    } catch (e) {}
 
     // Update header time/date every render.
     const t = this._root.querySelector('[data-bind="time"]');
@@ -458,23 +443,6 @@ class RoamcoreDashboardCard extends HTMLElement {
     try {
       const b = this._root.querySelector('#rc-setup-banner');
       if (b) b.innerHTML = this._setupBannerHtml();
-    } catch (e) {}
-
-    // Map tile (bind-only updates; do NOT rebuild the map container).
-    try {
-      const locRaw = this._getState('sensor.rc_map_location');
-      const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
-      const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
-      const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
-      const today = todayN == null ? '—' : `${Math.round(todayN)} mi`;
-      const total = totalN == null ? '—' : `${Math.round(totalN)} mi`;
-
-      const locEl = this._root.querySelector('[data-bind="map-loc"]');
-      if (locEl) locEl.textContent = loc;
-      const todayEl = this._root.querySelector('[data-bind="map-today"]');
-      if (todayEl) todayEl.textContent = today;
-      const totalEl = this._root.querySelector('[data-bind="map-total"]');
-      if (totalEl) totalEl.textContent = total;
     } catch (e) {}
   }
 
@@ -561,6 +529,14 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _tileMap() {
+    const locRaw = this._getState('sensor.rc_map_location');
+    const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
+
+    const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
+    const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
+    const today = todayN == null ? '—' : `${Math.round(todayN)}`;
+    const total = totalN == null ? '—' : `${Math.round(totalN)}`;
+
     return `
       <div class="rc-tile rc-click" data-nav="${this._basePath()}/map">
         <div class="rc-tile-head"><div class="rc-tile-title">Map</div><div class="rc-tile-sub">↗</div></div>
@@ -569,12 +545,12 @@ class RoamcoreDashboardCard extends HTMLElement {
           <div class="rc-map-box">
             <div class="rc-map-leaflet" id="rc-overview-leaflet"></div>
           </div>
-          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc" data-bind="map-loc">—</span></div>
+          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
         </div>
 
         <div class="rc-map-stats">
-          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-today">—</div><div class="rc-muted">Today</div></div>
-          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-total">—</div><div class="rc-muted">Total</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${today} mi</div><div class="rc-muted">Today</div></div>
+          <div class="rc-stat"><div class="rc-stat-val">${total} mi</div><div class="rc-muted">Total</div></div>
         </div>
       </div>
     `;
@@ -693,48 +669,20 @@ class RoamcoreDashboardCard extends HTMLElement {
       const cssId = 'rc-leaflet-css';
       const jsId = 'rc-leaflet-js';
 
-      // IMPORTANT: this card uses shadow DOM; Leaflet CSS must be loaded inside
-      // the shadow root or the map can render as an unstyled grey/blank box.
-      try {
-        const haveCss = !!this.shadowRoot?.querySelector?.(`#${cssId}`);
-        if (!haveCss) {
-          const link = document.createElement('link');
-          link.id = cssId;
-          link.rel = 'stylesheet';
-          link.href = '/local/roamcore/vendor/leaflet/leaflet.css?v=' + Date.now();
-          const p = new Promise((resolve) => {
-            link.onload = () => resolve(true);
-            link.onerror = () => resolve(false);
-          });
-          (this.shadowRoot || document.head).appendChild(link);
-          // Best-effort: wait briefly so CSS applies before Leaflet initializes.
-          try { await Promise.race([p, new Promise(r => setTimeout(r, 800))]); } catch (e) {}
-        } else {
-          try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
-        }
-      } catch (e) {}
+      if (!document.getElementById(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/local/roamcore/vendor/leaflet/leaflet.css?v=' + Date.now();
+        document.head.appendChild(link);
+      }
 
       if (!document.getElementById(jsId)) {
-        const src = '/local/roamcore/vendor/leaflet/leaflet.js';
-        let lastErr = null;
-        for (let i = 0; i < 4; i++) {
-          try {
-            await new Promise((resolve, reject) => {
-              const s = document.createElement('script');
-              s.id = jsId;
-              s.src = src + (i ? `?v=${Date.now()}` : '');
-              s.async = true;
-              s.onload = resolve;
-              s.onerror = reject;
-              document.head.appendChild(s);
-            });
-            break;
-          } catch (e) {
-            lastErr = e;
-            try { await new Promise(r => setTimeout(r, 400)); } catch (e2) {}
-          }
-        }
-        if (lastErr && !(window.L && window.L.map)) throw lastErr;
+        const s = document.createElement('script');
+        s.id = jsId;
+        s.src = '/local/roamcore/vendor/leaflet/leaflet.js';
+        s.async = true;
+        document.head.appendChild(s);
       }
 
       const start = Date.now();
@@ -910,39 +858,13 @@ class RoamcoreDashboardCard extends HTMLElement {
           try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
         }
         const ok = await this._ensureLeaflet();
-        if (!ok) {
-          try {
-            el.innerHTML = `
-              <div class="rc-map-fallback">
-                ${this._mapSvg()}
-                <div class="rc-map-fallback-msg">
-                  <div class="rc-map-fallback-title">Map preview unavailable</div>
-                  <div class="rc-map-fallback-sub">Missing Leaflet assets. Verify <b>/local/roamcore/vendor/leaflet/</b> is installed, then reload.</div>
-                </div>
-              </div>
-            `;
-          } catch (e) {}
-          return;
-        }
+        if (!ok) return;
       }
 
       if (switchedToLeaflet) {
         // Ensure Leaflet is present if we switched away from MapLibre.
         const ok = await this._ensureLeaflet();
-        if (!ok) {
-          try {
-            el.innerHTML = `
-              <div class="rc-map-fallback">
-                ${this._mapSvg()}
-                <div class="rc-map-fallback-msg">
-                  <div class="rc-map-fallback-title">Map preview unavailable</div>
-                  <div class="rc-map-fallback-sub">Leaflet failed to load after MapLibre fallback. Check <b>/local/roamcore/vendor/</b> assets.</div>
-                </div>
-              </div>
-            `;
-          } catch (e) {}
-          return;
-        }
+        if (!ok) return;
       }
 
       const trackerId = this._pickTrackerEntity();
@@ -1136,7 +1058,6 @@ class RoamcoreDashboardCard extends HTMLElement {
         } catch (e) {}
       } else {
         const L = window.L;
-        try { el.innerHTML = ''; } catch (e) {}
         const m = L.map(el, {
           zoomControl: false,
           attributionControl: false,
@@ -1150,39 +1071,12 @@ class RoamcoreDashboardCard extends HTMLElement {
         el._rcMap = m;
 
         const offlineMaxZ = this._offlineMaxZoom();
-        const localLayer = L.tileLayer(this._tileUrl(), {
+        L.tileLayer(this._tileUrl(), {
           maxZoom: offlineMaxZ,
           crossOrigin: true,
           updateWhenIdle: true,
           keepBuffer: 2,
-        });
-        localLayer.addTo(m);
-
-        // If local tiles are missing/misconfigured, Leaflet will quietly render grey.
-        // Detect repeated tile errors and overlay a clear hint.
-        try {
-          let errs = 0;
-          let firstAt = 0;
-          localLayer.on('tileerror', () => {
-            errs++;
-            if (!firstAt) firstAt = Date.now();
-            const now = Date.now();
-            if (errs >= 6 && (now - firstAt) < 10_000) {
-              try {
-                if (!el.querySelector('.rc-map-overlay')) {
-                  const o = document.createElement('div');
-                  o.className = 'rc-map-overlay';
-                  o.innerHTML = `
-                    <div class="rc-map-ol-title">Map tiles unavailable</div>
-                    <div class="rc-map-ol-sub">Check <b>/rc-tiles</b> or set <b>input_text.rc_map_tile_url</b>.</div>
-                    <button class="rc-btn2" data-nav="${this._basePath()}/settings">Open settings</button>
-                  `;
-                  el.appendChild(o);
-                }
-              } catch (e) {}
-            }
-          });
-        } catch (e) {}
+        }).addTo(m);
 
         // Prefer Traccar route preview when available; fallback to device_tracker history.
         let didFit = false;
@@ -1315,7 +1209,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
       .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
-      .rc-map-leaflet { width: 100%; height: 100%; position: relative; }
+      .rc-map-leaflet { width: 100%; height: 100%; }
       /* MapLibre sometimes sets an explicit canvas width that can force grid columns to grow. */
       .rc-map-box canvas { max-width: 100% !important; }
       .rc-map-box .maplibregl-canvas { max-width: 100% !important; }
@@ -1323,15 +1217,6 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
       .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .rc-map-stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-
-      .rc-map-fallback { position: relative; width:100%; height:100%; }
-      .rc-map-fallback-msg { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 10px; text-align:center; background: rgba(0,0,0,0.22); }
-      .rc-map-fallback-title { font-weight: 900; font-size: 13px; }
-      .rc-map-fallback-sub { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.3; }
-
-      .rc-map-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 8px; padding: 12px; text-align:center; background: rgba(0,0,0,0.40); z-index: 10; }
-      .rc-map-ol-title { font-weight: 950; font-size: 13px; }
-      .rc-map-ol-sub { font-size: 12px; color: rgba(255,255,255,0.78); line-height: 1.3; }
 
       @media (min-width: 1280px) {
         .rc-grid { grid-template-columns: repeat(4, 1fr); }
