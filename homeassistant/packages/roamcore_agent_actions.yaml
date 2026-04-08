@@ -1,0 +1,12 @@
+# RoamCore — Agent Actions (Roadmap)
+#
+# This is intentionally conservative. It provides only a global kill-switch
+# helper that the RoamCore integration checks before executing any agent
+# action requests.
+
+input_boolean:
+  rc_agent_actions_enabled:
+    name: "RoamCore Agent Actions Enabled"
+    icon: mdi:shield-lock
+    initial: false
+
