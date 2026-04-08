@@ -205,7 +205,6 @@ class OpenClawSkillView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
-        _mark_openclaw_last_seen(self._hass, self._entry_id, "skill")
         base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
         summary = f"{base}/api/roamcore/openclaw/summary"
         payload: dict[str, Any] = {
