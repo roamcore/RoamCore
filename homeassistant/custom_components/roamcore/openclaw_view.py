@@ -17,6 +17,23 @@ from .const import (
 )
 
 
+def _mark_openclaw_last_seen(hass: HomeAssistant, entry_id: str, endpoint: str) -> None:
+    """Best-effort onboarding signal: record when an OpenClaw endpoint was hit."""
+
+    try:
+        per_entry = hass.data.setdefault(DOMAIN, {}).setdefault(entry_id, {})
+        per_entry["openclaw_last_seen"] = {
+            "ts": dt_util.utcnow(),
+            "endpoint": str(endpoint or ""),
+        }
+        ent = per_entry.get("openclaw_last_seen_entity")
+        if ent is not None and hasattr(ent, "async_mark_seen"):
+            ent.async_mark_seen(endpoint)
+    except Exception:
+        # Never break API responses.
+        return
+
+
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -88,6 +105,7 @@ class OpenClawSummaryView(HomeAssistantView):
 
     async def get(self, request):
         hass = self._hass
+        _mark_openclaw_last_seen(hass, self._entry_id, "summary")
 
         # Contract sources (rc_* only)
         src = {
@@ -187,6 +205,7 @@ class OpenClawSkillView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "skill")
         base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
         summary = f"{base}/api/roamcore/openclaw/summary"
         payload: dict[str, Any] = {
@@ -227,6 +246,7 @@ class OpenClawRcDumpView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "rc_dump")
         hass = self._hass
         reg = async_get_entity_registry(hass)
 
@@ -306,6 +326,7 @@ class OpenClawTimeSeriesCatalogView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "timeseries_catalog")
         hass = self._hass
         items: dict[str, Any] = {}
         for key, meta in TIMESERIES_CATALOG.items():
@@ -357,6 +378,7 @@ class OpenClawTimeSeriesView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "timeseries")
         hass = self._hass
         q = request.query
         raw_keys = str(q.get("keys") or "").strip()

@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -39,6 +40,9 @@ from .actions import (
     validate_constraints,
     append_audit_record,
 )
+
+
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 RESTART_NOTIFICATION_ID = "roamcore_restart_required"
@@ -253,6 +257,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))
+
+    # Entities used for onboarding/verification (e.g. OpenClaw last-seen sensor).
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Register services used by the setup wizard.
     async def _svc_secrets_set(call):
@@ -539,4 +546,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # Home Assistant does not currently provide a stable public API to unregister
     # HTTP views. We leave the view registered for the life of the process.
+    try:
+        await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    except Exception:
+        pass
     return True
