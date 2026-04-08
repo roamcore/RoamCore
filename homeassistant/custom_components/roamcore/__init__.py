@@ -41,6 +41,11 @@ from .actions import (
 )
 
 
+RESTART_NOTIFICATION_ID = "roamcore_restart_required"
+PROVISIONED_MARKER_NAME = "provisioned.marker"
+RESTART_MARKER_NAME = "restart_required.marker"
+
+
 def _secrets_path(hass: HomeAssistant) -> str:
     # HA config dir secrets.yaml
     return hass.config.path("secrets.yaml")
@@ -118,6 +123,28 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up RoamCore from a config entry."""
 
+    # If we previously asked for a restart after provisioning, clear that
+    # notification on the next HA start (i.e., after the restart happened).
+    try:
+        restart_marker = hass.config.path(".roamcore", RESTART_MARKER_NAME)
+        if os.path.exists(restart_marker):
+            try:
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "dismiss",
+                    {"notification_id": RESTART_NOTIFICATION_ID},
+                    blocking=True,
+                )
+            except Exception:
+                pass
+
+            try:
+                await hass.async_add_executor_job(lambda: os.remove(restart_marker))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     # Ensure options defaults exist
     options = dict(entry.options)
     if CONF_CONTRACT_VERSION not in options:
@@ -133,18 +160,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         auto = bool(options.get(CONF_AUTO_PROVISION_ASSETS, DEFAULT_AUTO_PROVISION_ASSETS))
         ref = str(options.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF) or DEFAULT_PROVISION_REF)
-        marker = hass.config.path(".roamcore", "provisioned.marker")
+        marker = hass.config.path(".roamcore", PROVISIONED_MARKER_NAME)
+        restart_marker = hass.config.path(".roamcore", RESTART_MARKER_NAME)
         if auto and not os.path.exists(marker):
             try:
                 async with aiohttp.ClientSession() as session:
-                    await provision_from_github(
+                    result = await provision_from_github(
                         session=session,
                         repo="https://github.com/roamcore/RoamCore",
                         ref=ref,
                         config_dir=hass.config.path(""),
                         state_dir=".roamcore",
                     )
-                await hass.async_add_executor_job(lambda: _atomic_write(marker, f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n"))
+
+                await _async_write_text_atomic(
+                    marker,
+                    f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n",
+                )
+                await _async_write_text_atomic(
+                    restart_marker,
+                    f"created_at={datetime.now().isoformat()}\nreason=assets_provisioned\nbackup_dir={result.backup_dir}\n",
+                )
+
+                # Clear any previous provisioning failure notification.
+                hass.async_create_task(
+                    hass.services.async_call(
+                        "persistent_notification",
+                        "dismiss",
+                        {"notification_id": "roamcore_provisioning_failed"},
+                        blocking=False,
+                    )
+                )
 
                 # Notify user to restart to pick up packages/components.
                 hass.async_create_task(
@@ -152,8 +198,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         "persistent_notification",
                         "create",
                         {
-                            "title": "RoamCore installed",
+                            "title": "RoamCore: restart required",
                             "message": "RoamCore provisioned dashboard/packages/tools into /config. Restart Home Assistant to load everything.",
+                            "notification_id": RESTART_NOTIFICATION_ID,
                         },
                         blocking=False,
                     )
@@ -393,14 +440,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config_dir = hass.config.path("")
         state_dir = ".roamcore"
 
+        marker = hass.config.path(".roamcore", PROVISIONED_MARKER_NAME)
+        restart_marker = hass.config.path(".roamcore", RESTART_MARKER_NAME)
+
         async with aiohttp.ClientSession() as session:
-            await provision_from_github(
+            result = await provision_from_github(
                 session=session,
                 repo=repo,
                 ref=ref,
                 config_dir=config_dir,
                 state_dir=state_dir,
             )
+
+        # Mark as provisioned so auto-provision won't re-run on next start.
+        try:
+            await _async_write_text_atomic(
+                marker,
+                f"provisioned_at={datetime.now().isoformat()}\nrepo={repo}\nref={ref}\n",
+            )
+        except Exception:
+            pass
+
+        # Ask user to restart, and make it self-clearing on next HA start.
+        try:
+            await _async_write_text_atomic(
+                restart_marker,
+                f"created_at={datetime.now().isoformat()}\nreason=assets_provisioned\nbackup_dir={result.backup_dir}\n",
+            )
+        except Exception:
+            pass
+
+        try:
+            hass.async_create_task(
+                hass.services.async_call(
+                    "persistent_notification",
+                    "dismiss",
+                    {"notification_id": "roamcore_provisioning_failed"},
+                    blocking=False,
+                )
+            )
+            hass.async_create_task(
+                hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "RoamCore: restart required",
+                        "message": "RoamCore provisioned dashboard/packages/tools into /config. Restart Home Assistant to load everything.",
+                        "notification_id": RESTART_NOTIFICATION_ID,
+                    },
+                    blocking=False,
+                )
+            )
+        except Exception:
+            pass
 
     hass.services.async_register(
         DOMAIN,

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
 import tarfile
 import tempfile
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable
@@ -20,7 +22,9 @@ class ProvisionResult:
 
 
 def _ts() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Seconds resolution is not enough for back-to-back provisioning calls.
+    # Include a short random suffix to avoid collisions.
+    return datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8]
 
 
 def _ensure_dir(p: str) -> None:
@@ -43,8 +47,49 @@ def _atomic_write(path: str, text: str) -> None:
             pass
 
 
+def _safe_extract(tf: tarfile.TarFile, dest_dir: str) -> None:
+    """Extract tarball defensively (avoid path traversal / special members)."""
+
+    dest_real = os.path.realpath(dest_dir)
+    members: list[tarfile.TarInfo] = []
+    for m in tf.getmembers():
+        # Only allow regular files and directories.
+        if not (m.isreg() or m.isdir()):
+            continue
+        target = os.path.realpath(os.path.join(dest_dir, m.name))
+        if not (target == dest_real or target.startswith(dest_real + os.sep)):
+            raise RuntimeError(f"unsafe tar member path: {m.name}")
+        members.append(m)
+    tf.extractall(dest_dir, members=members)
+
+
+def _files_equal(a: str, b: str) -> bool:
+    try:
+        sa = os.stat(a)
+        sb = os.stat(b)
+        if sa.st_size != sb.st_size:
+            return False
+        # Chunked compare
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            while True:
+                ca = fa.read(1024 * 256)
+                cb = fb.read(1024 * 256)
+                if ca != cb:
+                    return False
+                if not ca:
+                    return True
+    except FileNotFoundError:
+        return False
+    except Exception:
+        return False
+
+
 def _copy_file(src: str, dest: str, backup_root: str, config_dir: str, installed: list[str]) -> None:
     _ensure_dir(os.path.dirname(dest))
+    # Idempotent re-run: avoid rewriting/backup churn if unchanged.
+    if os.path.exists(dest) and _files_equal(src, dest):
+        installed.append(os.path.relpath(dest, config_dir))
+        return
     # backup if exists
     if os.path.exists(dest):
         rel = os.path.relpath(dest, config_dir)
@@ -55,8 +100,11 @@ def _copy_file(src: str, dest: str, backup_root: str, config_dir: str, installed
                 wf.write(rf.read())
         except Exception:
             pass
-    with open(src, "rb") as rf, open(dest, "wb") as wf:
-        wf.write(rf.read())
+    try:
+        shutil.copy2(src, dest)
+    except Exception:
+        with open(src, "rb") as rf, open(dest, "wb") as wf:
+            wf.write(rf.read())
     installed.append(os.path.relpath(dest, config_dir))
 
 
@@ -98,7 +146,7 @@ async def provision_from_github(
         src_root = os.path.join(work, "src")
         _ensure_dir(src_root)
         with tarfile.open(tgz_path, "r:gz") as tf:
-            tf.extractall(src_root)
+            _safe_extract(tf, src_root)
 
         # locate top dir
         top_dirs = [d for d in os.listdir(src_root) if os.path.isdir(os.path.join(src_root, d))]
@@ -131,7 +179,8 @@ async def provision_from_github(
         install_dir_children(os.path.join(ha_src, "lovelace"), os.path.join(config_dir, "lovelace"))
         install_dir_children(os.path.join(ha_src, "tools"), os.path.join(config_dir, "tools"))
 
-        _atomic_write(manifest_path, "\n".join(installed) + "\n")
+        installed_sorted = sorted(set(installed))
+        _atomic_write(manifest_path, "\n".join(installed_sorted) + "\n")
         _atomic_write(
             info_path,
             "\n".join(
@@ -147,7 +196,7 @@ async def provision_from_github(
         )
 
         return ProvisionResult(
-            installed=installed,
+            installed=installed_sorted,
             backup_dir=backup_dir,
             manifest_path=manifest_path,
             info_path=info_path,
@@ -169,4 +218,3 @@ async def provision_from_github(
             os.rmdir(work)
         except Exception:
             pass
-

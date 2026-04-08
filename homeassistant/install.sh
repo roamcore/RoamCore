@@ -72,7 +72,7 @@ STATE_DIR="$CONFIG_DIR/.roamcore"
 MANIFEST="$STATE_DIR/manifest.txt"
 INFO="$STATE_DIR/install-info.txt"
 
-BACKUP_DIR="$STATE_DIR/backups/$(ts)"
+BACKUP_DIR="$STATE_DIR/backups/$(ts)-$$"
 BACKUP_INFO="$BACKUP_DIR/backup-info.txt"
 
 mkdir -p "$WORK" "$SRC_ROOT" "$STATE_DIR" "$BACKUP_DIR"
@@ -114,12 +114,33 @@ write_manifest_line() {
   echo "$rel" >>"$MANIFEST.tmp"
 }
 
+cp_preserve() {
+  # Try to preserve mode/mtime if supported.
+  src="$1"
+  dst="$2"
+  if cp -p "$src" "$dst" 2>/dev/null; then
+    return 0
+  fi
+  cp -f "$src" "$dst"
+}
+
+same_file() {
+  # Best-effort equality check; if cmp isn't available, return false.
+  a="$1"
+  b="$2"
+  if command -v cmp >/dev/null 2>&1; then
+    cmp -s "$a" "$b"
+    return $?
+  fi
+  return 1
+}
+
 backup_if_exists() {
   dest="$1"
   if [ -e "$dest" ]; then
     rel="${dest#"$CONFIG_DIR"/}"
     mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
-    cp -f "$dest" "$BACKUP_DIR/$rel"
+    cp_preserve "$dest" "$BACKUP_DIR/$rel"
   fi
 }
 
@@ -127,8 +148,13 @@ install_file() {
   src="$1"
   dest="$2"
   mkdir -p "$(dirname "$dest")"
+  if [ -e "$dest" ] && same_file "$src" "$dest"; then
+    # Idempotent re-run: avoid churn + backup spam if file is unchanged.
+    write_manifest_line "$dest"
+    return 0
+  fi
   backup_if_exists "$dest"
-  cp -f "$src" "$dest"
+  cp_preserve "$src" "$dest"
   write_manifest_line "$dest"
 }
 
@@ -140,10 +166,17 @@ install_dir_children() {
   [ -d "$sdir" ] || return 0
   mkdir -p "$ddir"
   # Find regular files only (ignore .gitkeep).
-  find "$sdir" -type f ! -name '.gitkeep' | while IFS= read -r f; do
+  if command -v sort >/dev/null 2>&1; then
+    find "$sdir" -type f ! -name '.gitkeep' | sort | while IFS= read -r f; do
+      rel="${f#"$sdir"/}"
+      install_file "$f" "$ddir/$rel"
+    done
+  else
+    find "$sdir" -type f ! -name '.gitkeep' | while IFS= read -r f; do
     rel="${f#"$sdir"/}"
     install_file "$f" "$ddir/$rel"
-  done
+    done
+  fi
 }
 
 echo "Staging manifest…"

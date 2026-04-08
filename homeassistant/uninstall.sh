@@ -15,6 +15,19 @@ STATE_DIR="$CONFIG_DIR/.roamcore"
 MANIFEST="$STATE_DIR/manifest.txt"
 INFO="$STATE_DIR/install-info.txt"
 
+ts() {
+  date "+%Y%m%d-%H%M%S"
+}
+
+cp_preserve() {
+  src="$1"
+  dst="$2"
+  if cp -p "$src" "$dst" 2>/dev/null; then
+    return 0
+  fi
+  cp -f "$src" "$dst"
+}
+
 echo "== RoamCore HA uninstall =="
 echo "Dest: $CONFIG_DIR"
 
@@ -25,6 +38,10 @@ fi
 
 echo "Reading manifest…"
 
+# Always back up files before removal to preserve any user modifications.
+BACKUP_DIR="$STATE_DIR/backups/$(ts)-uninstall-$$"
+mkdir -p "$BACKUP_DIR"
+
 # Remove installed files.
 missing=0
 count=0
@@ -33,6 +50,8 @@ while IFS= read -r rel; do
   [ -n "$rel" ] || continue
   path="$CONFIG_DIR/$rel"
   if [ -e "$path" ]; then
+    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
+    cp_preserve "$path" "$BACKUP_DIR/$rel" 2>/dev/null || true
     rm -f "$path"
     count=$((count + 1))
   else
@@ -60,6 +79,9 @@ echo "OK: removed $count files."
 if [ "$missing" -eq 1 ]; then
   echo "Note: some files listed in the manifest were already missing." >&2
 fi
+
+echo
+echo "Backup of removed files: $BACKUP_DIR"
 
 echo
 echo "State kept at: $STATE_DIR"
