@@ -2370,6 +2370,326 @@ class RoamcoreLocationPage extends RoamcoreBasePage {
   }
 }
 
+// -----------------
+// Setup Wizard (revamp)
+// -----------------
+// Design goals:
+// - 4 tiles (Owner, Map, Trip Wrapped, Victron)
+// - Each tile shows: status + stepper + CTAs
+// - Readiness is driven by rc_setup_* sensors so the wizard is deterministic
+// - Incremental: this is additive; the legacy YAML setup view can remain as fallback
+
+class RoamcoreSetupPage extends RoamcoreBasePage {
+  constructor() {
+    super();
+    this._victronConnectEl = null;
+  }
+
+  _css() {
+    return super._css() + `
+      .rc-setup-hero { margin: 2px 0 12px; }
+      .rc-setup-h1 { font-size: 22px; font-weight: 950; letter-spacing: 0.2px; }
+      .rc-setup-h2 { margin-top: 6px; color: var(--rc-muted); font-size: 13px; line-height: 1.35; }
+      .rc-setup-toprow { display:flex; align-items:center; justify-content:space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+      .rc-pill2 { display:inline-flex; align-items:center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); font-weight: 900; font-size: 12px; }
+      .rc-pill2 b { font-weight: 950; }
+
+      .rc-steps { display:flex; flex-direction:column; gap: 10px; margin-top: 10px; }
+      .rc-step { display:flex; gap: 10px; align-items:flex-start; }
+      .rc-step-dot { width: 18px; height: 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); display:inline-flex; align-items:center; justify-content:center; font-size: 12px; flex: 0 0 auto; margin-top: 1px; }
+      .rc-step-main { display:flex; flex-direction:column; gap: 2px; }
+      .rc-step-title { font-weight: 900; font-size: 13px; }
+      .rc-step-sub { color: var(--rc-muted); font-size: 12px; line-height: 1.35; }
+      .rc-step-actions { margin-top: 6px; display:flex; flex-wrap:wrap; gap: 8px; }
+
+      .rc-btn-row { display:flex; gap: 10px; flex-wrap:wrap; margin-top: 12px; }
+      .rc-btn-mini { width: auto; padding: 10px 12px; border-radius: 12px; font-weight: 900; }
+      .rc-btn-ghost { background: rgba(255,255,255,0.03); }
+
+      details.rc-details { margin-top: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.18); overflow:hidden; }
+      details.rc-details > summary { cursor:pointer; list-style:none; padding: 10px 12px; font-weight: 900; color: rgba(255,255,255,0.86); }
+      details.rc-details > summary::-webkit-details-marker { display:none; }
+      .rc-details-body { padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+
+      /* Better mobile layout: single column */
+      @media (max-width: 680px) {
+        .rc-grid { grid-template-columns: 1fr; }
+      }
+    `;
+  }
+
+  _isOn(entityId) {
+    const v = this._getState(entityId);
+    return String(v || '').toLowerCase() === 'on';
+  }
+
+  _hasValue(entityId) {
+    const v = this._getState(entityId);
+    const s = (v === null || v === undefined) ? '' : String(v);
+    const t = s.trim().toLowerCase();
+    return !!(t && t !== 'unknown' && t !== 'unavailable' && t !== 'none');
+  }
+
+  _step({ label, ok, sub = '', actionsHtml = '' }) {
+    const status = ok === true ? 'good' : (ok === false ? 'bad' : 'inactive');
+    const c = rcStatusToColor(status);
+    const dot = ok === true ? '✓' : (ok === false ? '•' : '–');
+    const subHtml = sub ? `<div class="rc-step-sub">${sub}</div>` : '';
+    const actHtml = actionsHtml ? `<div class="rc-step-actions">${actionsHtml}</div>` : '';
+    return `
+      <div class="rc-step">
+        <div class="rc-step-dot" style="border-color:${c}; color:${c}; background: color-mix(in srgb, ${c} 14%, transparent)">${dot}</div>
+        <div class="rc-step-main">
+          <div class="rc-step-title">${label}</div>
+          ${subHtml}
+          ${actHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  _tileStatusPill({ ok, okLabel = 'Ready', badLabel = 'Needs setup' }) {
+    const status = ok ? 'good' : 'ok';
+    return this._badge(ok ? okLabel : badLabel, status);
+  }
+
+  _render() {
+    if (!this._root || !this._hass) return;
+
+    // Overall readiness (contract layer)
+    const st = this._setupState();
+    const stage = this._getState('input_select.rc_setup_stage');
+
+    // Owner
+    const ownerName = this._getState('input_text.rc_owner_name');
+    const ownerOk = this._isOn('binary_sensor.rc_setup_owner_ready');
+    const demoMode = this._getState('input_boolean.rc_demo_mode');
+    const demoOn = String(demoMode || '').toLowerCase() === 'on';
+
+    // Map
+    const trackerOk = this._hasValue('input_text.rc_location_tracker_entity');
+    const mapOk = this._isOn('binary_sensor.rc_setup_map_ready');
+    const latOk = this._hasValue('sensor.rc_location_lat');
+    const lonOk = this._hasValue('sensor.rc_location_lon');
+
+    // Trip Wrapped (Traccar)
+    const traccarBaseOk = this._hasValue('input_text.rc_traccar_base_url');
+    const devId = Number(this._getState('input_number.rc_traccar_device_id'));
+    const devIdOk = Number.isFinite(devId) && devId > 0;
+    const traccarUiOk = this._isOn('binary_sensor.rc_traccar_ui_reachable');
+    const latestReady = this._isOn('binary_sensor.rc_trip_wrapped_latest_ready');
+    const tripOk = this._isOn('binary_sensor.rc_setup_trip_wrapped_ready');
+
+    // Victron
+    const vicOk = this._isOn('binary_sensor.rc_setup_victron_ready');
+    const vicConnected = this._isOn('binary_sensor.rc_system_power_backend_connected');
+    const vicDevices = Number(this._getState('sensor.rc_system_power_backend_devices'));
+    const vicTopics = Number(this._getState('sensor.rc_system_power_backend_topics'));
+    const vicDevicesOk = Number.isFinite(vicDevices) ? (vicDevices > 0) : null;
+    const vicTopicsOk = Number.isFinite(vicTopics) ? (vicTopics > 0) : null;
+
+    const progress = this._getState('sensor.rc_setup_progress');
+    const progressStr = (!rcIsMissingState(progress)) ? String(progress) : '';
+    const stageStr = (!rcIsMissingState(stage)) ? String(stage) : '';
+
+    const ownerTile = this._tile({
+      title: 'Owner',
+      icon: '👤',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: ownerOk, okLabel: 'Ready', badLabel: 'Required' })}
+          <div class="rc-label" style="text-align:right;">${ownerName && !rcIsMissingState(ownerName) ? `Hi, <b>${String(ownerName)}</b>` : '—'}</div>
+        </div>
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Set owner name',
+            ok: ownerOk,
+            sub: 'Used for Trip Wrapped reports and personalisation.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_owner_name">Edit</button>`
+          })}
+          ${this._step({
+            label: 'Optional: turn off Demo Mode',
+            ok: demoOn ? false : true,
+            sub: 'Demo values can hide missing sensors during bring-up.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
+          })}
+        </div>
+      `
+    });
+
+    const mapTile = this._tile({
+      title: 'Map / Location',
+      icon: '🗺',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: mapOk, okLabel: 'Ready', badLabel: 'Needs GPS' })}
+          <div class="rc-label" style="text-align:right;">${(latOk && lonOk) ? 'GPS fix OK' : (trackerOk ? 'Waiting for GPS' : 'Tracker not set')}</div>
+        </div>
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Choose tracker entity',
+            ok: trackerOk,
+            sub: 'Set the device_tracker used as your location source.',
+            actionsHtml: `
+              <button class="rc-btn rc-btn-mini" data-more="input_text.rc_location_tracker_entity">Edit</button>
+              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/location">Open Location</button>
+            `
+          })}
+          ${this._step({
+            label: 'Confirm coordinates (lat/lon)',
+            ok: mapOk,
+            sub: `Current: ${(latOk && lonOk) ? `<b>${this._getState('sensor.rc_location_lat')}, ${this._getState('sensor.rc_location_lon')}</b>` : '—'}`,
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/map">Open Map</button>`
+          })}
+        </div>
+      `
+    });
+
+    const traccarTopLabel = traccarUiOk ? 'Traccar reachable' : 'Open Traccar to verify';
+    const tripTile = this._tile({
+      title: 'Trip Wrapped (Traccar)',
+      icon: '🧭',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: tripOk, okLabel: 'Ready', badLabel: 'Configure Traccar' })}
+          <div class="rc-label" style="text-align:right;">${traccarTopLabel}</div>
+        </div>
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Set Traccar base URL',
+            ok: traccarBaseOk,
+            sub: 'Where the Traccar server is reachable from Home Assistant.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_traccar_base_url">Edit</button>`
+          })}
+          ${this._step({
+            label: 'Set device ID',
+            ok: devIdOk,
+            sub: devIdOk ? `Using device ID: <b>${devId}</b>` : 'Must be a positive number.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_number.rc_traccar_device_id">Edit</button>`
+          })}
+          ${this._step({
+            label: 'Optional: open Traccar UI',
+            ok: traccarUiOk ? true : null,
+            sub: 'If the embedded UI loads, you’re good. If not, verify the proxy/ingress path.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/traccar">Open Traccar</button>`
+          })}
+          ${this._step({
+            label: 'Generate a Trip Wrapped report',
+            ok: latestReady,
+            sub: latestReady ? 'Latest report looks OK.' : 'Run once to generate /local/roamcore/trip_wrapped/latest.html',
+            actionsHtml: `
+              <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_trip_wrapped_run_today">Generate (Today)</button>
+              <a class="rc-btn rc-btn-mini rc-btn-ghost" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noopener">Open latest</a>
+            `
+          })}
+        </div>
+
+        <details class="rc-details">
+          <summary>Optional: store Traccar user token (recommended)</summary>
+          <div class="rc-details-body">
+            <div class="rc-label" style="margin-bottom: 8px;">Paste a Traccar <b>user token</b>, then tap “Save token securely”. This writes to /config/secrets.yaml via RoamCore.</div>
+            <div class="rc-btn-row">
+              <button class="rc-btn rc-btn-mini" data-more="input_text.rc_setup_traccar_user_token">Paste token</button>
+              <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_setup_save_traccar_user_token">Save token securely</button>
+            </div>
+          </div>
+        </details>
+      `
+    });
+
+    const victronTile = this._tile({
+      title: 'Victron',
+      icon: '⚡',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: vicOk, okLabel: 'Connected', badLabel: 'Not connected' })}
+          <div class="rc-label" style="text-align:right;">${vicConnected ? `Devices: <b>${Number.isFinite(vicDevices) ? vicDevices : '—'}</b>` : 'Backend offline'}</div>
+        </div>
+
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Power backend is online',
+            ok: vicConnected,
+            sub: 'RoamCore Victron add-on is running and reachable.',
+            actionsHtml: `
+              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-more="binary_sensor.rc_system_power_backend_connected">Details</button>
+              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/power">Open Power page</button>
+            `
+          })}
+          ${this._step({
+            label: 'Devices discovered',
+            ok: vicDevicesOk,
+            sub: Number.isFinite(vicDevices) ? `Devices count: <b>${vicDevices}</b>` : '—',
+          })}
+          ${this._step({
+            label: 'Topics subscribed',
+            ok: vicTopicsOk,
+            sub: Number.isFinite(vicTopics) ? `Topics count: <b>${vicTopics}</b>` : '—',
+          })}
+        </div>
+
+        <details class="rc-details" ${vicConnected ? '' : 'open'}>
+          <summary>Connect a Victron GX device</summary>
+          <div class="rc-details-body">
+            <div class="rc-label" style="margin-bottom: 10px;">Use the connect card to discover and pair with your Victron device on the local network.</div>
+            <div class="rc-victron-mount"></div>
+          </div>
+        </details>
+      `,
+      className: 'span-2'
+    });
+
+    this._root.innerHTML = `
+      <div class="rc-page">
+        ${this._header('Setup')}
+
+        <div class="rc-setup-hero">
+          <div class="rc-setup-h1">RoamCore Setup</div>
+          <div class="rc-setup-h2">Complete the tiles below. Each tile turns green when ready.</div>
+          <div class="rc-setup-toprow">
+            ${progressStr ? `<span class="rc-pill2">Progress: <b>${progressStr}</b></span>` : ''}
+            ${stageStr ? `<span class="rc-pill2">Stage: <b>${stageStr}</b></span>` : ''}
+            ${st.complete ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All checks green</span>` : ''}
+          </div>
+          ${this._setupBanner()}
+        </div>
+
+        <div class="rc-grid">
+          ${ownerTile}
+          ${mapTile}
+          ${tripTile}
+          ${victronTile}
+        </div>
+
+        <div style="margin-top: 12px;">
+          <div class="rc-btn-row">
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/home">Back to dashboard</button>
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/settings">Dashboard settings</button>
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/diagnostics">Diagnostics</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Mount (and preserve) the Victron connect card into its placeholder.
+    // We keep a single element instance so user input isn't wiped on every HA state update.
+    try {
+      const mount = this._root.querySelector('.rc-victron-mount');
+      if (mount) {
+        if (!this._victronConnectEl) {
+          const el = document.createElement('roamcore-victron-connect');
+          if (typeof el.setConfig === 'function') el.setConfig({ title: 'Victron (Connect)' });
+          this._victronConnectEl = el;
+        }
+        this._victronConnectEl.hass = this._hass;
+        if (this._victronConnectEl.parentElement !== mount) {
+          mount.appendChild(this._victronConnectEl);
+        }
+      }
+    } catch (e) {}
+  }
+}
+
 class RoamcoreSettingsPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
@@ -2758,6 +3078,7 @@ customElements.define('roamcore-network-page', RoamcoreNetworkPage);
 customElements.define('roamcore-level-page', RoamcoreLevelPage);
 customElements.define('roamcore-map-page', RoamcoreMapPage);
 customElements.define('roamcore-location-page', RoamcoreLocationPage);
+customElements.define('roamcore-setup-page', RoamcoreSetupPage);
 customElements.define('roamcore-settings-page', RoamcoreSettingsPage);
 customElements.define('roamcore-diagnostics-page', RoamcoreDiagnosticsPage);
 
