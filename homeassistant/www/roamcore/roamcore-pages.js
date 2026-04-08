@@ -204,8 +204,12 @@ class RoamcoreBasePage extends HTMLElement {
   _openMoreInfo(entityId) {
     try {
       if (!entityId) return;
-      const ev = new Event('hass-more-info', { bubbles: true, composed: true });
-      ev.detail = { entityId: String(entityId) };
+      // Home Assistant expects a CustomEvent with `detail.entityId`.
+      const ev = new CustomEvent('hass-more-info', {
+        bubbles: true,
+        composed: true,
+        detail: { entityId: String(entityId) },
+      });
       this.dispatchEvent(ev);
     } catch (e) {}
   }
@@ -1833,7 +1837,7 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
     const pitchTile = `
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 10px; height: 160px;">
         <div class="rc-vanwrap" style="transform: rotate(${(-pitchRot).toFixed(1)}deg)">${rcVanSideSvg()}</div>
-        <div class="rc-value"><div class="rc-value-num rc-value-xl" data-more="sensor.rc_system_level_pitch_deg" style="color:${c}">${pitch == null ? '—' : Math.abs(pitch).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
+        <div class="rc-value"><div class="rc-value-num rc-value-xl" style="color:${c}">${pitch == null ? '—' : Math.abs(pitch).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
         <div class="rc-label">Pitch</div>
       </div>
     `;
@@ -1841,7 +1845,7 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
     const rollTile = `
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 10px; height: 160px;">
         <div class="rc-vanwrap" style="transform: rotate(${(-rollRot).toFixed(1)}deg)">${rcVanBackSvg()}</div>
-        <div class="rc-value"><div class="rc-value-num rc-value-xl" data-more="sensor.rc_system_level_roll_deg" style="color:${c}">${roll == null ? '—' : Math.abs(roll).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
+        <div class="rc-value"><div class="rc-value-num rc-value-xl" style="color:${c}">${roll == null ? '—' : Math.abs(roll).toFixed(1)}</div><div class="rc-value-unit">°</div></div>
         <div class="rc-label">Roll</div>
       </div>
     `;
