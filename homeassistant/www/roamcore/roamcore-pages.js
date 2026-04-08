@@ -2651,7 +2651,6 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
             ${stageStr ? `<span class="rc-pill2">Stage: <b>${stageStr}</b></span>` : ''}
             ${st.complete ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All checks green</span>` : ''}
           </div>
-          ${this._setupBanner()}
         </div>
 
         <div class="rc-grid">
