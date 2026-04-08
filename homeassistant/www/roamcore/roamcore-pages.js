@@ -2472,12 +2472,24 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
-    // Wizard tiles
+    // Wizard tiles (+ enable/disable toggles)
+    const powerEn = this._isOn('input_boolean.rc_tile_power_enabled');
+    const netEn = this._isOn('input_boolean.rc_tile_network_enabled');
+    const lvlEn = this._isOn('input_boolean.rc_tile_level_enabled');
+    const mapEn = this._isOn('input_boolean.rc_tile_map_enabled');
+
     const powerOk = this._isOn('binary_sensor.rc_setup_victron_ready');
     const netOk = this._isOn('binary_sensor.rc_setup_networking_ready');
     const lvlOk = this._isOn('binary_sensor.rc_setup_levelling_ready');
     const mapOk = this._isOn('binary_sensor.rc_setup_map_ready');
-    const done = (powerOk ? 1 : 0) + (netOk ? 1 : 0) + (lvlOk ? 1 : 0) + (mapOk ? 1 : 0);
+
+    // Prefer contract sensor for tile progress if present.
+    const tilesProg = this._getState('sensor.rc_setup_tiles_progress');
+    const tilesProgStr = (!rcIsMissingState(tilesProg)) ? String(tilesProg) : '';
+
+    const tileTotal = (powerEn ? 1 : 0) + (netEn ? 1 : 0) + (lvlEn ? 1 : 0) + (mapEn ? 1 : 0);
+    const tileDone = (powerEn && powerOk ? 1 : 0) + (netEn && netOk ? 1 : 0) + (lvlEn && lvlOk ? 1 : 0) + (mapEn && mapOk ? 1 : 0);
+    const done = tileDone;
 
     // General items (not tiles)
     const ownerName = this._getState('input_text.rc_owner_name');
@@ -2539,6 +2551,14 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
               sub: demoOn ? 'Demo mode is ON (some tiles may show demo values).' : 'Demo mode is OFF.',
               actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
             })}
+          </div>
+
+          <div class="rc-label" style="margin-top: 12px; font-weight: 900;">Optional: disable tiles you don't use yet</div>
+          <div class="rc-btn-row" style="margin-top: 10px;">
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_power_enabled">Power: ${powerEn ? 'On' : 'Off'}</button>
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_network_enabled">Network: ${netEn ? 'On' : 'Off'}</button>
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_level_enabled">Level: ${lvlEn ? 'On' : 'Off'}</button>
+            <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_tile_map_enabled">Map: ${mapEn ? 'On' : 'Off'}</button>
           </div>
         </div>
       </details>
@@ -2704,6 +2724,8 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
       `
     });
 
+    const configuredLabel = tilesProgStr || `${done}/${tileTotal}`;
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Setup')}
@@ -2712,18 +2734,18 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
           <div class="rc-setup-h1">RoamCore Setup</div>
           <div class="rc-setup-h2">Complete the four tiles below. Each tile turns green when ready.</div>
           <div class="rc-setup-toprow">
-            <span class="rc-pill2">Configured: <b>${done}/4</b></span>
-            ${done === 4 ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All tiles ready</span>` : ''}
+            <span class="rc-pill2">Configured: <b>${configuredLabel}</b></span>
+            ${(tileTotal > 0 && done === tileTotal) ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All tiles ready</span>` : ''}
           </div>
           ${this._setupBanner()}
           ${generalBlock}
         </div>
 
         <div class="rc-grid">
-          ${powerTile}
-          ${networkTile}
-          ${levelTile}
-          ${mapTile}
+          ${powerEn ? powerTile : ''}
+          ${netEn ? networkTile : ''}
+          ${lvlEn ? levelTile : ''}
+          ${mapEn ? mapTile : ''}
         </div>
 
         <div style="margin-top: 12px;">
