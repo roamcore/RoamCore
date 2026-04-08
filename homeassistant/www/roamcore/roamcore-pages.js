@@ -2776,10 +2776,30 @@ try {
         this._error = null;
         this._success = null;
         this._status = null;
+        this._statusPollTimer = null;
+        this._statusPollInFlight = false;
         this._manualHost = '';
         this._manualPort = 1883;
         this._manualTls = false;
         this._manualPortTouched = false;
+      }
+
+      connectedCallback() {
+        // Keep status reasonably fresh without requiring manual clicks.
+        // Best-effort + low frequency to avoid hammering HA/Supervisor.
+        if (!this._statusPollTimer) {
+          try { this._fetchStatus(); } catch (e) {}
+          this._statusPollTimer = setInterval(() => {
+            try { this._fetchStatus(); } catch (e) {}
+          }, 10000);
+        }
+      }
+
+      disconnectedCallback() {
+        if (this._statusPollTimer) {
+          clearInterval(this._statusPollTimer);
+          this._statusPollTimer = null;
+        }
       }
 
       setConfig(config) {
@@ -2809,7 +2829,9 @@ try {
       }
 
       async _fetchStatus() {
+        if (this._statusPollInFlight) return;
         try {
+          this._statusPollInFlight = true;
           const base = this._getApiBase();
           const ctl = new AbortController();
           // Status is best-effort, but can be slow on loaded HA boxes.
@@ -2820,7 +2842,11 @@ try {
           const data = await resp.json().catch(() => ({}));
           this._status = (data && data.status) ? data.status : data;
           this._render();
-        } catch (e) {}
+        } catch (e) {
+          // ignore (status is best-effort)
+        } finally {
+          this._statusPollInFlight = false;
+        }
       }
 
       async _discover() {
