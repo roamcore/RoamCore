@@ -31,6 +31,17 @@ input_number:
     mode: box
     initial: 0
 
+input_text:
+  # Optional manual mapping for pitch/roll source sensors.
+  # If set and the referenced entity has a valid state, it takes precedence over auto-detection.
+  rc_level_pitch_entity:
+    name: "RC Level Pitch Entity"
+    initial: ""
+
+  rc_level_roll_entity:
+    name: "RC Level Roll Entity"
+    initial: ""
+
 template:
   # Calibration button: capture current raw pitch/roll as offsets.
   - button:
@@ -58,6 +69,10 @@ template:
         unique_id: rc_level_pitch_source
         icon: mdi:source-branch
         state: >-
+          {% set override = states('input_text.rc_level_pitch_entity') %}
+          {% if override not in ['unknown','unavailable','none',''] and states(override) not in ['unknown','unavailable','none',''] %}
+            {{ override }}
+          {% else %}
           {% set candidates = [
             'sensor.rc_esphome_level_pitch_deg',
             'sensor.esphome_level_pitch_deg',
@@ -82,11 +97,16 @@ template:
             {% endif %}
           {% endfor %}
           {{ found if found is not none else 'none' }}
+          {% endif %}
 
       - name: "RC Level Roll Source"
         unique_id: rc_level_roll_source
         icon: mdi:source-branch
         state: >-
+          {% set override = states('input_text.rc_level_roll_entity') %}
+          {% if override not in ['unknown','unavailable','none',''] and states(override) not in ['unknown','unavailable','none',''] %}
+            {{ override }}
+          {% else %}
           {% set candidates = [
             'sensor.rc_esphome_level_roll_deg',
             'sensor.esphome_level_roll_deg',
@@ -111,6 +131,7 @@ template:
             {% endif %}
           {% endfor %}
           {{ found if found is not none else 'none' }}
+          {% endif %}
 
       # --- Raw pitch/roll (degrees) ---
       - name: "RC Level Pitch Raw"
