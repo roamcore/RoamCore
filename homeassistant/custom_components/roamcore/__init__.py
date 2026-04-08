@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import os
+import asyncio
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -26,6 +27,7 @@ from .openclaw_view import (
     OpenClawTimeSeriesView,
 )
 from .diagnostics_view import RoamcoreDiagnosticsView
+from .update_view import RoamcoreUpdateView, fetch_latest_release_tag
 import aiohttp
 
 from .provision import provision_from_github
@@ -257,6 +259,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))
+
+    # Always-on, authenticated update endpoint for the Settings UI.
+    hass.http.register_view(RoamcoreUpdateView(hass, entry.entry_id))
 
     # Entities used for onboarding/verification (e.g. OpenClaw last-seen sensor).
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -536,6 +541,177 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "export_support_bundle",
         _svc_export_support_bundle,
+        schema=None,
+    )
+
+    # --- Backup + Update ---
+    # Settings UI calls this service.
+    # Safe + reversible: take a Supervisor backup when available, then provision.
+    hass.data.setdefault(DOMAIN, {})
+    backup_update_lock: asyncio.Lock = hass.data[DOMAIN].setdefault("backup_update_lock", asyncio.Lock())
+
+    async def _try_supervisor_backup(name: str) -> dict:
+        """Attempt a full Home Assistant backup via built-in services (best-effort)."""
+
+        try:
+            if hass.services.has_service("backup", "create"):
+                await hass.services.async_call("backup", "create", {"name": name}, blocking=True)
+                return {"ok": True, "service": "backup.create"}
+            if hass.services.has_service("hassio", "backup_full"):
+                await hass.services.async_call("hassio", "backup_full", {"name": name}, blocking=True)
+                return {"ok": True, "service": "hassio.backup_full"}
+            return {"ok": False, "error": "no_backup_service"}
+        except Exception as e:
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+    async def _svc_backup_update(call):
+        repo = str(call.data.get("repo") or "https://github.com/roamcore/RoamCore").strip()
+        ref = str(call.data.get("ref") or "").strip()
+        target = str(call.data.get("target") or "").strip().lower()
+        do_backup = bool(call.data.get("backup", True))
+
+        if backup_update_lock.locked():
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "title": "RoamCore update already running",
+                    "message": "A RoamCore Backup + Update is already in progress. Please wait for it to finish.",
+                    "notification_id": "roamcore_backup_update_in_progress",
+                },
+                blocking=False,
+            )
+            return
+
+        async with backup_update_lock:
+            # Resolve latest release tag server-side for determinism.
+            if not ref and target in ("latest", "latest_release", "release"):
+                try:
+                    ref = await fetch_latest_release_tag(repo)
+                except Exception:
+                    ref = ""
+
+            # Default ref: configured option (fallback to main).
+            if not ref:
+                try:
+                    cur_entry = hass.config_entries.async_get_entry(entry.entry_id)
+                    cur_opts = dict(cur_entry.options) if cur_entry else {}
+                    ref = str(cur_opts.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF) or DEFAULT_PROVISION_REF)
+                except Exception:
+                    ref = DEFAULT_PROVISION_REF
+
+            started_at = datetime.now().isoformat()
+            status_notif_id = "roamcore_backup_update"
+            try:
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "RoamCore Backup + Update",
+                        "message": f"Starting…\n- repo: {repo}\n- ref: {ref}\n- at: {started_at}",
+                        "notification_id": status_notif_id,
+                    },
+                    blocking=False,
+                )
+            except Exception:
+                pass
+
+            backup_result: dict = {"ok": False, "error": None}
+            if do_backup:
+                backup_name = str(call.data.get("backup_name") or f"RoamCore pre-update ({ref}) {started_at}")
+                backup_result = await _try_supervisor_backup(backup_name)
+
+            # Provision assets (also creates per-file backups under /config/.roamcore/backups/).
+            config_dir = hass.config.path("")
+            marker = hass.config.path(".roamcore", PROVISIONED_MARKER_NAME)
+            restart_marker = hass.config.path(".roamcore", RESTART_MARKER_NAME)
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    result = await provision_from_github(
+                        session=session,
+                        repo=repo,
+                        ref=ref,
+                        config_dir=config_dir,
+                        state_dir=".roamcore",
+                    )
+            except Exception as e:
+                msg = "\n".join(
+                    [
+                        "Update failed.",
+                        f"- repo: {repo}",
+                        f"- ref: {ref}",
+                        f"- backup: {backup_result}",
+                        f"- error: {type(e).__name__}: {e}",
+                        "",
+                        "You can retry from RoamCore → Settings → Backup + Update.",
+                    ]
+                )
+                try:
+                    await hass.services.async_call(
+                        "persistent_notification",
+                        "create",
+                        {"title": "RoamCore update failed", "message": msg, "notification_id": status_notif_id},
+                        blocking=False,
+                    )
+                except Exception:
+                    pass
+                return
+
+            # Mark as provisioned so auto-provision won't re-run on next start.
+            try:
+                await _async_write_text_atomic(
+                    marker,
+                    f"provisioned_at={datetime.now().isoformat()}\nrepo={repo}\nref={ref}\n",
+                )
+            except Exception:
+                pass
+
+            # Ask user to restart, and make it self-clearing on next HA start.
+            try:
+                await _async_write_text_atomic(
+                    restart_marker,
+                    "\n".join(
+                        [
+                            f"created_at={datetime.now().isoformat()}",
+                            "reason=backup_update",
+                            f"backup_dir={result.backup_dir}",
+                            f"backup_result={backup_result}",
+                            "",
+                        ]
+                    ),
+                )
+            except Exception:
+                pass
+
+            msg = "\n".join(
+                [
+                    "Update complete.",
+                    f"- repo: {repo}",
+                    f"- ref: {ref}",
+                    f"- backup: {backup_result}",
+                    f"- per-file backup dir: {result.backup_dir}",
+                    "",
+                    "Next step: Restart Home Assistant.",
+                    "Rollback:",
+                    "- Restore a Supervisor backup (preferred), OR",
+                    "- Restore files from /config/.roamcore/backups/<timestamp>/",
+                ]
+            )
+            try:
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {"title": "RoamCore: restart required", "message": msg, "notification_id": RESTART_NOTIFICATION_ID},
+                    blocking=False,
+                )
+            except Exception:
+                pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "backup_update",
+        _svc_backup_update,
         schema=None,
     )
 

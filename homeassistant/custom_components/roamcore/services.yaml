@@ -61,3 +61,52 @@ export_support_bundle:
       default: true
       selector:
         boolean: {}
+
+backup_update:
+  name: Backup + Update RoamCore assets
+  description: >-
+    Creates a full Home Assistant backup when Supervisor backup services are
+    available (best-effort), then provisions RoamCore homeassistant/* assets
+    into /config for the given git ref.
+
+    Notes:
+    - Home Assistant is NOT restarted automatically.
+    - Provisioning creates per-file backups under /config/.roamcore/backups/.
+  fields:
+    repo:
+      name: Repo URL
+      description: GitHub repo to download.
+      required: false
+      example: https://github.com/roamcore/RoamCore
+      selector:
+        text: {}
+    ref:
+      name: Ref
+      description: Git ref (tag/commit/branch) to provision. If omitted, uses the configured provision_ref option.
+      required: false
+      example: v0.3.0
+      selector:
+        text: {}
+    target:
+      name: Target
+      description: Optional shortcut. Use latest_release to resolve the latest GitHub release tag.
+      required: false
+      example: latest_release
+      selector:
+        select:
+          options:
+            - latest_release
+            - latest
+    backup:
+      name: Create full backup
+      description: If true, attempt a full backup via Supervisor services (best-effort).
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    backup_name:
+      name: Backup name
+      description: Optional name for the created backup.
+      required: false
+      selector:
+        text: {}
