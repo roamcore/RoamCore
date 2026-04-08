@@ -230,22 +230,38 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _setupState() {
-    const owner = this._hass?.states?.['binary_sensor.rc_setup_owner_ready']?.state;
+    // Wizard tiles (Bernard): Power / Network / Level / Map.
+    const power = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
+    const net = this._hass?.states?.['binary_sensor.rc_setup_networking_ready']?.state;
+    const lvl = this._hass?.states?.['binary_sensor.rc_setup_levelling_ready']?.state;
     const map = this._hass?.states?.['binary_sensor.rc_setup_map_ready']?.state;
+
+    // Extra readiness bits (not tiles but still useful to surface).
+    const owner = this._hass?.states?.['binary_sensor.rc_setup_owner_ready']?.state;
     const trip = this._hass?.states?.['binary_sensor.rc_setup_trip_wrapped_ready']?.state;
-    const vic = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
     const progress = this._hass?.states?.['sensor.rc_setup_progress']?.state;
     const ok = (v) => String(v || '').toLowerCase() === 'on';
-    const complete = ok(owner) && ok(map) && ok(trip) && ok(vic);
-    const enabled = (!rcIsMissingState(owner) || !rcIsMissingState(map) || !rcIsMissingState(trip) || !rcIsMissingState(vic) || !rcIsMissingState(progress));
+
+    const tileDone = (ok(power) ? 1 : 0) + (ok(net) ? 1 : 0) + (ok(lvl) ? 1 : 0) + (ok(map) ? 1 : 0);
+    const tileTotal = 4;
+    const complete = tileDone === tileTotal;
+    const enabled = (
+      !rcIsMissingState(power) || !rcIsMissingState(net) || !rcIsMissingState(lvl) || !rcIsMissingState(map) ||
+      !rcIsMissingState(owner) || !rcIsMissingState(trip) || !rcIsMissingState(progress)
+    );
     return {
       enabled,
       complete,
       progress,
-      ownerOk: ok(owner),
+      tileDone,
+      tileTotal,
+      powerOk: ok(power),
+      netOk: ok(net),
+      levelOk: ok(lvl),
       mapOk: ok(map),
+      // extra
+      ownerOk: ok(owner),
       tripOk: ok(trip),
-      vicOk: ok(vic),
     };
   }
 
@@ -257,10 +273,10 @@ class RoamcoreBasePage extends HTMLElement {
 
       const prog = (!rcIsMissingState(st.progress)) ? String(st.progress) : '';
       const bits = [
-        st.ownerOk ? null : 'Owner',
+        st.powerOk ? null : 'Power',
+        st.netOk ? null : 'Network',
+        st.levelOk ? null : 'Level',
         st.mapOk ? null : 'Map',
-        st.tripOk ? null : 'Trip Wrapped',
-        st.vicOk ? null : 'Victron',
       ].filter(Boolean);
       const missing = bits.length ? bits.join(', ') : '—';
 
@@ -274,7 +290,7 @@ class RoamcoreBasePage extends HTMLElement {
           <div class="rc-setup-top">
             <div>
               <div class="rc-setup-title">Setup not complete</div>
-              <div class="rc-setup-sub">${prog ? `Progress: <b>${prog}</b> · ` : ''}Missing: <b>${missing}</b></div>
+              <div class="rc-setup-sub">Tiles: <b>${st.tileDone}/${st.tileTotal}</b>${prog ? ` · Overall: <b>${prog}</b>` : ''} · Missing: <b>${missing}</b></div>
             </div>
             <div class="rc-setup-right">${demoPill}</div>
           </div>
@@ -2456,69 +2472,174 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
-    // Overall readiness (contract layer)
-    const st = this._setupState();
-    const stage = this._getState('input_select.rc_setup_stage');
+    // Wizard tiles
+    const powerOk = this._isOn('binary_sensor.rc_setup_victron_ready');
+    const netOk = this._isOn('binary_sensor.rc_setup_networking_ready');
+    const lvlOk = this._isOn('binary_sensor.rc_setup_levelling_ready');
+    const mapOk = this._isOn('binary_sensor.rc_setup_map_ready');
+    const done = (powerOk ? 1 : 0) + (netOk ? 1 : 0) + (lvlOk ? 1 : 0) + (mapOk ? 1 : 0);
 
-    // Owner
+    // General items (not tiles)
     const ownerName = this._getState('input_text.rc_owner_name');
     const ownerOk = this._isOn('binary_sensor.rc_setup_owner_ready');
     const demoMode = this._getState('input_boolean.rc_demo_mode');
     const demoOn = String(demoMode || '').toLowerCase() === 'on';
 
-    // Map
+    // Power details
+    const backendOnline = this._isOn('binary_sensor.rc_system_power_backend_connected');
+    const backendStatus = this._getState('sensor.rc_system_power_backend_status');
+    const snapshotState = this._getState('sensor.rc_system_power_backend_snapshot_state');
+    const devices = this._getState('sensor.rc_system_power_backend_devices');
+    const topics = this._getState('sensor.rc_system_power_backend_topics');
+    const soc = this._getState('sensor.rc_power_battery_soc');
+    const solar = this._getState('sensor.rc_power_solar_power');
+
+    // Network details
+    const wan = this._getState('sensor.rc_openwrt_active_wan');
+    const internet = this._getState('sensor.rc_openwrt_internet');
+    const wanStatus = this._getState('sensor.rc_net_wan_status');
+    const ping = this._getState('sensor.rc_net_ping');
+
+    // Level details
+    const pitchSrc = this._getState('sensor.rc_level_pitch_source');
+    const rollSrc = this._getState('sensor.rc_level_roll_source');
+    const pitch = this._getState('sensor.rc_level_pitch_deg');
+    const roll = this._getState('sensor.rc_level_roll_deg');
+
+    // Map details
     const trackerOk = this._hasValue('input_text.rc_location_tracker_entity');
-    const mapOk = this._isOn('binary_sensor.rc_setup_map_ready');
     const latOk = this._hasValue('sensor.rc_location_lat');
     const lonOk = this._hasValue('sensor.rc_location_lon');
+    const lat = this._getState('sensor.rc_location_lat');
+    const lon = this._getState('sensor.rc_location_lon');
 
-    // Trip Wrapped (Traccar)
+    // Trip Wrapped under Map
+    const tripOk = this._isOn('binary_sensor.rc_setup_trip_wrapped_ready');
     const traccarBaseOk = this._hasValue('input_text.rc_traccar_base_url');
     const devId = Number(this._getState('input_number.rc_traccar_device_id'));
     const devIdOk = Number.isFinite(devId) && devId > 0;
-    const traccarUiOk = this._isOn('binary_sensor.rc_traccar_ui_reachable');
+    const tokenPresent = this._isOn('binary_sensor.rc_setup_traccar_user_token_present');
     const latestReady = this._isOn('binary_sensor.rc_trip_wrapped_latest_ready');
-    const tripOk = this._isOn('binary_sensor.rc_setup_trip_wrapped_ready');
+    const latestStatus = this._getState('sensor.rc_trip_wrapped_latest_status');
 
-    // Victron
-    const vicOk = this._isOn('binary_sensor.rc_setup_victron_ready');
-    const vicConnected = this._isOn('binary_sensor.rc_system_power_backend_connected');
-    const vicDevices = Number(this._getState('sensor.rc_system_power_backend_devices'));
-    const vicTopics = Number(this._getState('sensor.rc_system_power_backend_topics'));
-    const vicDevicesOk = Number.isFinite(vicDevices) ? (vicDevices > 0) : null;
-    const vicTopicsOk = Number.isFinite(vicTopics) ? (vicTopics > 0) : null;
+    const generalBlock = `
+      <details class="rc-details" ${(!ownerOk || demoOn) ? 'open' : ''}>
+        <summary>General setup</summary>
+        <div class="rc-details-body">
+          <div class="rc-steps">
+            ${this._step({
+              label: 'Owner name (used in Trip Wrapped)',
+              ok: ownerOk,
+              sub: ownerName && !rcIsMissingState(ownerName) ? `Current: <b>${String(ownerName)}</b>` : 'Set a name for reports.',
+              actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_owner_name">Edit</button>`
+            })}
+            ${this._step({
+              label: 'Demo mode',
+              ok: demoOn ? false : true,
+              sub: demoOn ? 'Demo mode is ON (some tiles may show demo values).' : 'Demo mode is OFF.',
+              actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
+            })}
+          </div>
+        </div>
+      </details>
+    `;
 
-    const progress = this._getState('sensor.rc_setup_progress');
-    const progressStr = (!rcIsMissingState(progress)) ? String(progress) : '';
-    const stageStr = (!rcIsMissingState(stage)) ? String(stage) : '';
-
-    const ownerTile = this._tile({
-      title: 'Owner',
-      icon: '👤',
+    const powerTile = this._tile({
+      title: 'Power',
+      icon: '⚡',
       content: `
         <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-          ${this._tileStatusPill({ ok: ownerOk, okLabel: 'Ready', badLabel: 'Required' })}
-          <div class="rc-label" style="text-align:right;">${ownerName && !rcIsMissingState(ownerName) ? `Hi, <b>${String(ownerName)}</b>` : '—'}</div>
+          ${this._tileStatusPill({ ok: powerOk, okLabel: 'Ready', badLabel: 'Connect Victron' })}
+          <div class="rc-label" style="text-align:right;">${backendOnline ? 'Backend online' : 'Backend offline'}</div>
         </div>
         <div class="rc-steps">
           ${this._step({
-            label: 'Set owner name',
-            ok: ownerOk,
-            sub: 'Used for Trip Wrapped reports and personalisation.',
-            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_owner_name">Edit</button>`
+            label: 'Connect a Victron GX device',
+            ok: backendOnline ? true : null,
+            sub: 'Use auto-discovery or manual host/IP if discovery fails.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/power">Open Power page</button>`
           })}
           ${this._step({
-            label: 'Optional: turn off Demo Mode',
-            ok: demoOn ? false : true,
-            sub: 'Demo values can hide missing sensors during bring-up.',
-            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
+            label: 'Verify snapshot/telemetry is flowing',
+            ok: powerOk,
+            sub: `status: <b>${rcIsMissingState(backendStatus) ? '—' : backendStatus}</b> · snapshot: <b>${rcIsMissingState(snapshotState) ? '—' : snapshotState}</b> · devices: <b>${rcIsMissingState(devices) ? '—' : devices}</b> · topics: <b>${rcIsMissingState(topics) ? '—' : topics}</b>`,
+          })}
+          ${this._step({
+            label: 'Quick sanity check',
+            ok: !['unknown', 'unavailable', 'none', ''].includes(String(soc || '').toLowerCase()),
+            sub: `SOC: <b>${rcIsMissingState(soc) ? '—' : soc}%</b> · Solar: <b>${rcIsMissingState(solar) ? '—' : solar} W</b>`,
+          })}
+        </div>
+
+        <details class="rc-details" ${backendOnline ? '' : 'open'}>
+          <summary>Victron connect</summary>
+          <div class="rc-details-body">
+            <div class="rc-victron-mount"></div>
+          </div>
+        </details>
+      `,
+      className: 'span-2'
+    });
+
+    const networkTile = this._tile({
+      title: 'Network',
+      icon: '📶',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: netOk, okLabel: 'Ready', badLabel: 'Needs setup' })}
+          <div class="rc-label" style="text-align:right;">WAN: <b>${rcIsMissingState(wan) ? '—' : wan}</b> · Internet: <b>${rcIsMissingState(internet) ? '—' : internet}</b></div>
+        </div>
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Ensure router backend is connected',
+            ok: netOk,
+            sub: 'This tile only goes green when the OpenWrt sensors are alive.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/network">Open Network page</button>`
+          })}
+          ${this._step({
+            label: 'Connectivity sanity check',
+            ok: (String(wanStatus || '').toLowerCase() === 'online') ? true : null,
+            sub: `WAN status: <b>${rcIsMissingState(wanStatus) ? '—' : wanStatus}</b> · Ping: <b>${rcIsMissingState(ping) ? '—' : ping} ms</b>`,
+          })}
+        </div>
+      `
+    });
+
+    const levelTile = this._tile({
+      title: 'Level',
+      icon: '🧭',
+      content: `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+          ${this._tileStatusPill({ ok: lvlOk, okLabel: 'Ready', badLabel: 'Needs sensors' })}
+          <div class="rc-label" style="text-align:right;">Pitch: <b>${rcIsMissingState(pitch) ? '—' : pitch}°</b> · Roll: <b>${rcIsMissingState(roll) ? '—' : roll}°</b></div>
+        </div>
+        <div class="rc-steps">
+          ${this._step({
+            label: 'Auto-detect sensors',
+            ok: (String(pitchSrc || '') !== 'none' && String(rollSrc || '') !== 'none') ? true : false,
+            sub: `Pitch source: <b>${rcIsMissingState(pitchSrc) ? '—' : pitchSrc}</b> · Roll source: <b>${rcIsMissingState(rollSrc) ? '—' : rollSrc}</b>`
+          })}
+          ${this._step({
+            label: 'If needed: map pitch/roll entities',
+            ok: lvlOk,
+            sub: 'Paste entity ids. These override auto-detection when valid.',
+            actionsHtml: `
+              <button class="rc-btn rc-btn-mini" data-more="input_text.rc_level_pitch_entity">Set pitch entity</button>
+              <button class="rc-btn rc-btn-mini" data-more="input_text.rc_level_roll_entity">Set roll entity</button>
+            `
+          })}
+          ${this._step({
+            label: 'Calibrate (optional)',
+            ok: null,
+            sub: 'Press calibrate when the vehicle is on level ground to set offsets.',
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-more="button.rc_level_calibrate">Calibrate</button>`
           })}
         </div>
       `
     });
 
     const mapTile = this._tile({
-      title: 'Map / Location',
+      title: 'Map',
       icon: '🗺',
       content: `
         <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
@@ -2538,105 +2659,49 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
           ${this._step({
             label: 'Confirm coordinates (lat/lon)',
             ok: mapOk,
-            sub: `Current: ${(latOk && lonOk) ? `<b>${this._getState('sensor.rc_location_lat')}, ${this._getState('sensor.rc_location_lon')}</b>` : '—'}`,
-            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/map">Open Map</button>`
-          })}
-        </div>
-      `
-    });
-
-    const traccarTopLabel = traccarUiOk ? 'Traccar reachable' : 'Open Traccar to verify';
-    const tripTile = this._tile({
-      title: 'Trip Wrapped (Traccar)',
-      icon: '🧭',
-      content: `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-          ${this._tileStatusPill({ ok: tripOk, okLabel: 'Ready', badLabel: 'Configure Traccar' })}
-          <div class="rc-label" style="text-align:right;">${traccarTopLabel}</div>
-        </div>
-        <div class="rc-steps">
-          ${this._step({
-            label: 'Set Traccar base URL',
-            ok: traccarBaseOk,
-            sub: 'Where the Traccar server is reachable from Home Assistant.',
-            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_traccar_base_url">Edit</button>`
-          })}
-          ${this._step({
-            label: 'Set device ID',
-            ok: devIdOk,
-            sub: devIdOk ? `Using device ID: <b>${devId}</b>` : 'Must be a positive number.',
-            actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_number.rc_traccar_device_id">Edit</button>`
-          })}
-          ${this._step({
-            label: 'Optional: open Traccar UI',
-            ok: traccarUiOk ? true : null,
-            sub: 'If the embedded UI loads, you’re good. If not, verify the proxy/ingress path.',
-            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/traccar">Open Traccar</button>`
-          })}
-          ${this._step({
-            label: 'Generate a Trip Wrapped report',
-            ok: latestReady,
-            sub: latestReady ? 'Latest report looks OK.' : 'Run once to generate /local/roamcore/trip_wrapped/latest.html',
-            actionsHtml: `
-              <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_trip_wrapped_run_today">Generate (Today)</button>
-              <a class="rc-btn rc-btn-mini rc-btn-ghost" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noopener">Open latest</a>
-            `
+            sub: `Current: ${(latOk && lonOk) ? `<b>${lat}, ${lon}</b>` : '—'}`,
+            actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/map">Open Map page</button>`
           })}
         </div>
 
-        <details class="rc-details">
-          <summary>Optional: store Traccar user token (recommended)</summary>
+        <details class="rc-details" ${(!tripOk || String(latestStatus || '') === 'needs_setup') ? 'open' : ''}>
+          <summary>Trip Wrapped (optional, inside Map)</summary>
           <div class="rc-details-body">
-            <div class="rc-label" style="margin-bottom: 8px;">Paste a Traccar <b>user token</b>, then tap “Save token securely”. This writes to /config/secrets.yaml via RoamCore.</div>
-            <div class="rc-btn-row">
-              <button class="rc-btn rc-btn-mini" data-more="input_text.rc_setup_traccar_user_token">Paste token</button>
-              <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_setup_save_traccar_user_token">Save token securely</button>
+            <div class="rc-steps">
+              ${this._step({
+                label: 'Set Traccar base URL',
+                ok: traccarBaseOk,
+                sub: 'Where the Traccar server is reachable from Home Assistant.',
+                actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_text.rc_traccar_base_url">Edit</button>`
+              })}
+              ${this._step({
+                label: 'Set device ID',
+                ok: devIdOk,
+                sub: devIdOk ? `Using device ID: <b>${devId}</b>` : 'Must be a positive number.',
+                actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_number.rc_traccar_device_id">Edit</button>`
+              })}
+              ${this._step({
+                label: 'Save a Traccar user token (recommended)',
+                ok: tokenPresent,
+                sub: tokenPresent ? 'Token present in secrets.yaml.' : 'Paste token then save securely.',
+                actionsHtml: `
+                  <button class="rc-btn rc-btn-mini" data-more="input_text.rc_setup_traccar_user_token">Paste token</button>
+                  <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_setup_save_traccar_user_token">Save token securely</button>
+                `
+              })}
+              ${this._step({
+                label: 'Generate a test report',
+                ok: latestReady,
+                sub: `Latest status: <b>${rcIsMissingState(latestStatus) ? '—' : latestStatus}</b>`,
+                actionsHtml: `
+                  <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_trip_wrapped_run_today">Generate (Today)</button>
+                  <a class="rc-btn rc-btn-mini rc-btn-ghost" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noopener">Open latest</a>
+                `
+              })}
             </div>
           </div>
         </details>
       `
-    });
-
-    const victronTile = this._tile({
-      title: 'Victron',
-      icon: '⚡',
-      content: `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-          ${this._tileStatusPill({ ok: vicOk, okLabel: 'Connected', badLabel: 'Not connected' })}
-          <div class="rc-label" style="text-align:right;">${vicConnected ? `Devices: <b>${Number.isFinite(vicDevices) ? vicDevices : '—'}</b>` : 'Backend offline'}</div>
-        </div>
-
-        <div class="rc-steps">
-          ${this._step({
-            label: 'Power backend is online',
-            ok: vicConnected,
-            sub: 'RoamCore Victron add-on is running and reachable.',
-            actionsHtml: `
-              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-more="binary_sensor.rc_system_power_backend_connected">Details</button>
-              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-nav="${this._basePath()}/power">Open Power page</button>
-            `
-          })}
-          ${this._step({
-            label: 'Devices discovered',
-            ok: vicDevicesOk,
-            sub: Number.isFinite(vicDevices) ? `Devices count: <b>${vicDevices}</b>` : '—',
-          })}
-          ${this._step({
-            label: 'Topics subscribed',
-            ok: vicTopicsOk,
-            sub: Number.isFinite(vicTopics) ? `Topics count: <b>${vicTopics}</b>` : '—',
-          })}
-        </div>
-
-        <details class="rc-details" ${vicConnected ? '' : 'open'}>
-          <summary>Connect a Victron GX device</summary>
-          <div class="rc-details-body">
-            <div class="rc-label" style="margin-bottom: 10px;">Use the connect card to discover and pair with your Victron device on the local network.</div>
-            <div class="rc-victron-mount"></div>
-          </div>
-        </details>
-      `,
-      className: 'span-2'
     });
 
     this._root.innerHTML = `
@@ -2645,19 +2710,20 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
 
         <div class="rc-setup-hero">
           <div class="rc-setup-h1">RoamCore Setup</div>
-          <div class="rc-setup-h2">Complete the tiles below. Each tile turns green when ready.</div>
+          <div class="rc-setup-h2">Complete the four tiles below. Each tile turns green when ready.</div>
           <div class="rc-setup-toprow">
-            ${progressStr ? `<span class="rc-pill2">Progress: <b>${progressStr}</b></span>` : ''}
-            ${stageStr ? `<span class="rc-pill2">Stage: <b>${stageStr}</b></span>` : ''}
-            ${st.complete ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All checks green</span>` : ''}
+            <span class="rc-pill2">Configured: <b>${done}/4</b></span>
+            ${done === 4 ? `<span class="rc-pill2" style="border-color: rgba(67,209,122,0.35); background: rgba(67,209,122,0.10)">All tiles ready</span>` : ''}
           </div>
+          ${this._setupBanner()}
+          ${generalBlock}
         </div>
 
         <div class="rc-grid">
-          ${ownerTile}
+          ${powerTile}
+          ${networkTile}
+          ${levelTile}
           ${mapTile}
-          ${tripTile}
-          ${victronTile}
         </div>
 
         <div style="margin-top: 12px;">
