@@ -4,6 +4,36 @@
 //
 // This is intentionally self-contained (no external deps) for HAOS reliability.
 
+function rcIsMissingState(v) {
+  const s = (v === undefined || v === null) ? '' : String(v);
+  const t = s.toLowerCase();
+  return !s || t === 'unknown' || t === 'unavailable' || t === 'none';
+}
+
+// Demo values are only used when input_boolean.rc_demo_mode is ON and the real
+// entity state is missing/unknown/unavailable.
+const RC_DEMO_STATES = {
+  // Power
+  'sensor.rc_power_battery_soc': '83',
+  'sensor.rc_power_solar_power': '420',
+  'sensor.rc_power_load_power': '280',
+  'binary_sensor.rc_power_shore_connected': 'off',
+  'sensor.rc_power_inverter_status': 'on',
+
+  // Network
+  'sensor.rc_net_wan_status': 'good',
+  'sensor.rc_net_wan_source': 'cellular',
+  'sensor.rc_net_download': '47',
+  'sensor.rc_net_upload': '9',
+  'sensor.rc_net_ping': '43',
+
+  // Level
+  'sensor.rc_system_level_pitch_deg': '0.8',
+  'sensor.rc_system_level_roll_deg': '-1.2',
+  'sensor.rc_system_level_pitch': '0.8',
+  'sensor.rc_system_level_roll': '-1.2',
+};
+
 class RoamcoreDashboardCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
@@ -14,6 +44,21 @@ class RoamcoreDashboardCard extends HTMLElement {
       const style = document.createElement('style');
       style.textContent = this._css();
       this.shadowRoot.appendChild(style);
+
+      // delegated navigation handler (covers dynamically injected elements like the setup banner)
+      this._root.addEventListener('click', (ev) => {
+        const path = ev.composedPath ? ev.composedPath() : [];
+        const candidates = path.length ? path : [ev.target];
+        for (const node of candidates) {
+          if (node && node.getAttribute) {
+            const nav = node.getAttribute('data-nav');
+            if (nav) {
+              this._navigate(nav);
+              return;
+            }
+          }
+        }
+      });
     }
     this._render();
   }
@@ -21,20 +66,287 @@ class RoamcoreDashboardCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._render();
+    // Mount the embedded Leaflet overview map (idempotent).
+    try { this._mountOverviewMap(); } catch (e) {}
   }
 
   getCardSize() {
     return 6;
   }
 
+  _navigate(path) {
+    try {
+      if (!path) return;
+      // Preferred: use Home Assistant navigation helper when available
+      if (this._hass && typeof this._hass.navigate === 'function') {
+        this._hass.navigate(path);
+        return;
+      }
+      // Fallback: pushState + HA router event
+      history.pushState(null, '', path);
+      window.dispatchEvent(new Event('location-changed'));
+    } catch (e) {
+      console.warn('roamcore navigate failed', e);
+    }
+  }
+
+  _goSettings() {
+    this._navigate(`${this._basePath()}/settings`);
+  }
+
+  _basePath() {
+    // Force canonical RoamCore dashboard path.
+    // HA storage dashboards are typically accessible at /<url_path>/...
+    // We standardize on /roamcore to avoid drift across devices.
+    return '/roamcore';
+  }
+
   _getState(entityId) {
-    return this._hass?.states?.[entityId]?.state;
+    const raw = this._hass?.states?.[entityId]?.state;
+    if (this._isDemoMode() && rcIsMissingState(raw) && RC_DEMO_STATES[entityId] !== undefined) {
+      return RC_DEMO_STATES[entityId];
+    }
+    return raw;
+  }
+
+  _isDemoMode() {
+    try {
+      return this._hass?.states?.['input_boolean.rc_demo_mode']?.state === 'on';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _traccarEmbedUrl() {
+    // Prefer Supervisor ingress panel so it works on mobile/remote.
+    try {
+      const panels = this._hass?.panels || {};
+      for (const key of Object.keys(panels)) {
+        const p = panels[key];
+        const title = String(p?.title || p?.config?.title || '').toLowerCase();
+        const urlPath = p?.url_path || '';
+        if (title.includes('traccar') || urlPath.includes('traccar')) {
+          return `/${urlPath}`;
+        }
+      }
+    } catch (e) {}
+    // Fallback: same-origin HA proxy (frontend route; works in iframes)
+    return '/api/roamcore/traccar_public/';
   }
 
   _num(entityId, fallback = null) {
     const s = this._getState(entityId);
     const n = Number(s);
     return Number.isFinite(n) ? n : fallback;
+  }
+
+  _setupState() {
+    const owner = this._hass?.states?.['binary_sensor.rc_setup_owner_ready']?.state;
+    const map = this._hass?.states?.['binary_sensor.rc_setup_map_ready']?.state;
+    const trip = this._hass?.states?.['binary_sensor.rc_setup_trip_wrapped_ready']?.state;
+    const vic = this._hass?.states?.['binary_sensor.rc_setup_victron_ready']?.state;
+    const progress = this._hass?.states?.['sensor.rc_setup_progress']?.state;
+
+    const ok = (v) => String(v || '').toLowerCase() === 'on';
+    const complete = ok(owner) && ok(map) && ok(trip) && ok(vic);
+    const enabled = (!rcIsMissingState(owner) || !rcIsMissingState(map) || !rcIsMissingState(trip) || !rcIsMissingState(vic) || !rcIsMissingState(progress));
+
+    return {
+      enabled,
+      complete,
+      progress,
+      ownerOk: ok(owner),
+      mapOk: ok(map),
+      tripOk: ok(trip),
+      vicOk: ok(vic),
+    };
+  }
+
+  _setupBannerHtml() {
+    try {
+      const st = this._setupState();
+      if (!st.enabled || st.complete) return '';
+
+      const prog = (!rcIsMissingState(st.progress)) ? String(st.progress) : '';
+      const missing = [
+        st.ownerOk ? null : 'Owner',
+        st.mapOk ? null : 'Map',
+        st.tripOk ? null : 'Trip Wrapped',
+        st.vicOk ? null : 'Victron',
+      ].filter(Boolean).join(', ') || '—';
+
+      const demoPill = this._isDemoMode() ? `<span class="rc-pill-demo">Demo mode</span>` : '';
+
+      return `
+        <div class="rc-setup-banner">
+          <div class="rc-setup-top">
+            <div>
+              <div class="rc-setup-title">Setup not complete</div>
+              <div class="rc-setup-sub">${prog ? `Progress: <b>${prog}</b> · ` : ''}Missing: <b>${missing}</b></div>
+            </div>
+            <div class="rc-setup-right">${demoPill}</div>
+          </div>
+          <div class="rc-setup-actions">
+            <button class="rc-btn2" data-nav="${this._basePath()}/setup">Open setup wizard</button>
+            <button class="rc-btn2" data-nav="${this._basePath()}/settings">Dashboard settings</button>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  async _getTraccarRoutePositions({ deviceId = null, hours = 6 } = {}) {
+    try {
+      if (!this._hass) return [];
+      let did = deviceId;
+      if (!did) {
+        const routeDid = Number(this._getState('input_number.rc_map_route_device_id'));
+        if (Number.isFinite(routeDid) && routeDid > 0) did = routeDid;
+      }
+      if (!did) {
+        const configured = Number(this._getState('input_number.rc_traccar_device_id'));
+        if (Number.isFinite(configured) && configured > 0) did = configured;
+      }
+      if (!did) return [];
+
+      const to = new Date();
+      const from = new Date(Date.now() - (Number(hours) || 6) * 3600_000);
+      const qs = new URLSearchParams({
+        deviceId: String(did),
+        from: from.toISOString(),
+        to: to.toISOString(),
+      });
+      const path = `roamcore/traccar_api/reports/route?${qs.toString()}`;
+      const rows = await this._hass.callApi('GET', path).catch(() => []);
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  _positionsToGeojsonLine(positions) {
+    try {
+      const sorted = [...(positions || [])].sort((a, b) => {
+        const ta = new Date(a?.fixTime || a?.deviceTime || a?.serverTime || 0).getTime();
+        const tb = new Date(b?.fixTime || b?.deviceTime || b?.serverTime || 0).getTime();
+        return ta - tb;
+      });
+      const raw = sorted
+        .map(p => {
+          const lat = Number(p?.latitude);
+          const lon = Number(p?.longitude);
+          return (Number.isFinite(lat) && Number.isFinite(lon)) ? [lon, lat] : null;
+        })
+        .filter(Boolean);
+      if (raw.length < 2) return null;
+
+      // Light decimation to keep preview stable.
+      const coords = [];
+      let last = null;
+      const minMeters = 50;
+      const toRad = (x) => (x * Math.PI) / 180;
+      const distM = (a, b) => {
+        const R = 6371000;
+        const dLat = toRad(b[1] - a[1]);
+        const dLon = toRad(b[0] - a[0]);
+        const lat1 = toRad(a[1]);
+        const lat2 = toRad(b[1]);
+        const s = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(s));
+      };
+
+      for (const c of raw) {
+        if (!last) {
+          coords.push(c);
+          last = c;
+          continue;
+        }
+        if (distM(last, c) >= minMeters) {
+          coords.push(c);
+          last = c;
+        }
+      }
+      const final = raw[raw.length - 1];
+      if (coords.length && (coords[coords.length - 1][0] != final[0] || coords[coords.length - 1][1] != final[1])) coords.push(final);
+      if (coords.length < 2) return null;
+
+      // Split on big jumps to avoid triangle artifacts.
+      const jumpMeters = 2500;
+      const segments = [];
+      let seg = [coords[0]];
+      for (let i = 1; i < coords.length; i++) {
+        const a = coords[i - 1];
+        const b = coords[i];
+        if (distM(a, b) > jumpMeters) {
+          if (seg.length >= 2) segments.push(seg);
+          seg = [b];
+        } else {
+          seg.push(b);
+        }
+      }
+      if (seg.length >= 2) segments.push(seg);
+      if (!segments.length) return null;
+
+      const geom = segments.length === 1
+        ? { type: 'LineString', coordinates: segments[0] }
+        : { type: 'MultiLineString', coordinates: segments };
+
+      return { type: 'Feature', properties: {}, geometry: geom };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _lineToBreadcrumbPoints(lineFeature, { everyN = 8 } = {}) {
+    try {
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      let coords = null;
+      if (geom.type === 'LineString') coords = geom.coordinates;
+      else if (geom.type === 'MultiLineString') coords = (geom.coordinates || []).flat();
+      if (!Array.isArray(coords) || coords.length < 2) return null;
+      const features = [];
+      for (let i = 0; i < coords.length; i += Math.max(2, everyN)) {
+        const c = coords[i];
+        if (!Array.isArray(c) || c.length < 2) continue;
+        features.push({ type: 'Feature', properties: { i }, geometry: { type: 'Point', coordinates: c } });
+      }
+      return { type: 'FeatureCollection', features };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  _lineToEndpoints(lineFeature) {
+    try {
+      const geom = lineFeature?.geometry;
+      if (!geom) return null;
+      let first = null;
+      let last = null;
+      if (geom.type === 'LineString') {
+        first = geom.coordinates?.[0];
+        last = geom.coordinates?.[geom.coordinates.length - 1];
+      } else if (geom.type === 'MultiLineString') {
+        const segs = geom.coordinates || [];
+        if (segs.length) {
+          first = segs[0]?.[0];
+          const tail = segs[segs.length - 1];
+          last = tail?.[tail.length - 1];
+        }
+      }
+      if (!first || !last) return null;
+      return {
+        type: 'FeatureCollection',
+        features: [
+          { type: 'Feature', properties: { kind: 'start' }, geometry: { type: 'Point', coordinates: first } },
+          { type: 'Feature', properties: { kind: 'end' }, geometry: { type: 'Point', coordinates: last } },
+        ],
+      };
+    } catch (e) {
+      return null;
+    }
   }
 
   _statusToColor(status) {
@@ -54,6 +366,10 @@ class RoamcoreDashboardCard extends HTMLElement {
   _render() {
     if (!this._root || !this._hass) return;
 
+    // Build a stable DOM skeleton once, then update tile contents/values.
+    // This prevents the embedded map from flashing/re-mounting on every HA state update.
+    const alreadyBuilt = !!this._root.querySelector('.rc-wrap');
+
     const soc = this._num('sensor.rc_power_battery_soc', null);
     const solarW = this._num('sensor.rc_power_solar_power', null);
     const shore = this._getState('binary_sensor.rc_power_shore_connected');
@@ -65,8 +381,8 @@ class RoamcoreDashboardCard extends HTMLElement {
     const up = this._num('sensor.rc_net_upload', null);
     const ping = this._num('sensor.rc_net_ping', null);
 
-    const pitch = this._num('sensor.rc_system_level_pitch_deg', null);
-    const roll = this._num('sensor.rc_system_level_roll_deg', null);
+    const pitch = this._num('sensor.rc_system_level_pitch_deg', null) ?? this._num('sensor.rc_system_level_pitch', null);
+    const roll = this._num('sensor.rc_system_level_roll_deg', null) ?? this._num('sensor.rc_system_level_roll', null);
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -75,6 +391,14 @@ class RoamcoreDashboardCard extends HTMLElement {
     const pStatus = this._powerStatusFromSoc(soc);
     const pColor = this._statusToColor(pStatus);
 
+    // Network label + color
+    const netRaw = (netStatus && netStatus !== 'unknown' && netStatus !== 'unavailable') ? String(netStatus) : '';
+    const netLabel = netRaw ? this._cap(netRaw) : '—';
+    let netColor = 'var(--rc-muted)';
+    if (netRaw === 'good') netColor = 'var(--rc-good)';
+    else if (netRaw === 'ok') netColor = 'var(--rc-ok)';
+    else if (netRaw === 'bad') netColor = 'var(--rc-bad)';
+
     const shoreTxt = shore === 'on' ? 'Connected' : (shore === 'off' ? 'Off' : '—');
     const invTxtRaw = (invStatus && invStatus !== "unknown" && invStatus !== "unavailable") ? String(invStatus) : "—";
     const invTxt = (invTxtRaw === "on" ? "On" : invTxtRaw === "off" ? "Off" : invTxtRaw);
@@ -82,27 +406,76 @@ class RoamcoreDashboardCard extends HTMLElement {
     const pitchAbs = pitch == null ? '—' : Math.abs(pitch).toFixed(1);
     const rollAbs = roll == null ? '—' : Math.abs(roll).toFixed(1);
 
-    this._root.innerHTML = `
-      <div class="rc-wrap">
-        <div class="rc-header">
-          <div class="rc-header-left">
-            <div class="rc-time">${timeStr}</div>
-            <div class="rc-date">${dateStr}</div>
+    if (!alreadyBuilt) {
+      this._root.innerHTML = `
+        <div class="rc-wrap">
+          <div class="rc-header">
+            <div class="rc-header-left">
+              <div class="rc-time" data-bind="time"></div>
+              <div class="rc-date" data-bind="date"></div>
+            </div>
+            <div class="rc-header-right">
+              <button class="rc-gear" title="Settings">⚙</button>
+            </div>
           </div>
-          <div class="rc-header-right">
-            <div class="rc-chip"><span class="rc-chip-icon">☁︎</span><span class="rc-chip-text">—</span></div>
-            <div class="rc-gear">⚙︎</div>
-          </div>
-        </div>
 
-        <div class="rc-grid">
-          ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
-          ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
-          ${this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) })}
-          ${this._tileMap()}
+          <div id="rc-setup-banner"></div>
+
+          <div class="rc-grid">
+            <div id="rc-slot-power"></div>
+            <div id="rc-slot-network"></div>
+            <div id="rc-slot-level"></div>
+            <div id="rc-slot-map">${this._tileMap()}</div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+
+      const gear = this._root.querySelector('.rc-gear');
+      if (gear) gear.addEventListener('click', (e) => { e.stopPropagation(); this._goSettings(); });
+    }
+
+    // Update tile HTML (except the map tile, which is a stable skeleton).
+    try {
+      const p = this._root.querySelector('#rc-slot-power');
+      if (p) p.innerHTML = this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt });
+    } catch (e) {}
+    try {
+      const n = this._root.querySelector('#rc-slot-network');
+      if (n) n.innerHTML = this._tileNetwork({ netLabel, netColor, netSource, down, up, ping });
+    } catch (e) {}
+    try {
+      const l = this._root.querySelector('#rc-slot-level');
+      if (l) l.innerHTML = this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) });
+    } catch (e) {}
+
+    // Update header time/date every render.
+    const t = this._root.querySelector('[data-bind="time"]');
+    if (t) t.textContent = timeStr;
+    const d = this._root.querySelector('[data-bind="date"]');
+    if (d) d.textContent = dateStr;
+
+    // Setup banner (refresh every render)
+    try {
+      const b = this._root.querySelector('#rc-setup-banner');
+      if (b) b.innerHTML = this._setupBannerHtml();
+    } catch (e) {}
+
+    // Map tile (bind-only updates; do NOT rebuild the map container).
+    try {
+      const locRaw = this._getState('sensor.rc_map_location');
+      const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
+      const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
+      const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
+      const today = todayN == null ? '—' : `${Math.round(todayN)} mi`;
+      const total = totalN == null ? '—' : `${Math.round(totalN)} mi`;
+
+      const locEl = this._root.querySelector('[data-bind="map-loc"]');
+      if (locEl) locEl.textContent = loc;
+      const todayEl = this._root.querySelector('[data-bind="map-today"]');
+      if (todayEl) todayEl.textContent = today;
+      const totalEl = this._root.querySelector('[data-bind="map-total"]');
+      if (totalEl) totalEl.textContent = total;
+    } catch (e) {}
   }
 
   _levelStatus(pitch, roll) {
@@ -119,7 +492,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     const timeRemaining = '—';
 
     return `
-      <div class="rc-tile">
+      <div class="rc-tile rc-click" data-nav="${this._basePath()}/power">
         <div class="rc-tile-head">
           <div class="rc-tile-title">Power</div>
           <div class="rc-tile-sub">${chargingSource ? `☼ ${chargingSource}` : ''}</div>
@@ -147,7 +520,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     const src = (netSource && netSource !== 'unknown' && netSource !== 'unavailable') ? netSource : '—';
 
     return `
-      <div class="rc-tile">
+      <div class="rc-tile rc-click" data-nav="${this._basePath()}/network">
         <div class="rc-tile-head"><div class="rc-tile-title">Network</div><div class="rc-tile-sub">⌁</div></div>
 
         <div class="rc-net-main">
@@ -167,7 +540,7 @@ class RoamcoreDashboardCard extends HTMLElement {
 
   _tileLevel({ pitchAbs, rollAbs, status }) {
     return `
-      <div class="rc-tile">
+      <div class="rc-tile rc-click" data-nav="${this._basePath()}/level">
         <div class="rc-tile-head"><div class="rc-tile-title">Level</div><div class="rc-tile-sub" style="color:${status.color}">${status.label}</div></div>
 
         <div class="rc-level-main">
@@ -188,22 +561,20 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _tileMap() {
-    const loc = 'Lake District, UK';
-    const today = '42';
-    const total = '1847';
-
     return `
-      <div class="rc-tile">
+      <div class="rc-tile rc-click" data-nav="${this._basePath()}/map">
         <div class="rc-tile-head"><div class="rc-tile-title">Map</div><div class="rc-tile-sub">↗</div></div>
 
         <div class="rc-map-main">
-          <div class="rc-map-box">${this._mapSvg()}</div>
-          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
+          <div class="rc-map-box">
+            <div class="rc-map-leaflet" id="rc-overview-leaflet"></div>
+          </div>
+          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc" data-bind="map-loc">—</span></div>
         </div>
 
         <div class="rc-map-stats">
-          <div class="rc-stat"><div class="rc-stat-val">${today} mi</div><div class="rc-muted">Today</div></div>
-          <div class="rc-stat"><div class="rc-stat-val">${total} mi</div><div class="rc-muted">Total</div></div>
+          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-today">—</div><div class="rc-muted">Today</div></div>
+          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-total">—</div><div class="rc-muted">Total</div></div>
         </div>
       </div>
     `;
@@ -287,6 +658,569 @@ class RoamcoreDashboardCard extends HTMLElement {
     `;
   }
 
+  _tileUrl() {
+    const v = this._getState('input_text.rc_map_tile_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
+    return '/rc-tiles/{z}/{x}/{y}.png';
+  }
+
+  _mapStyleUrl() {
+    const v = this._getState('input_text.rc_map_style_url');
+    if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
+    // Default: keep MapLibre OFF for maximum reliability.
+    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
+    // if MapLibre/PMTiles assets are not present on the HA host.
+    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
+    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
+    return '';
+  }
+
+  _mapMode() {
+    const styleUrl = this._mapStyleUrl();
+    if (styleUrl) return { mode: 'maplibre', styleUrl };
+    return { mode: 'leaflet', tileUrl: this._tileUrl() };
+  }
+
+  _offlineMaxZoom() {
+    const v = this._getState('input_number.rc_map_offline_max_zoom');
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 6;
+  }
+
+  async _ensureLeaflet() {
+    try {
+      if (window.L && window.L.map) return true;
+      const cssId = 'rc-leaflet-css';
+      const jsId = 'rc-leaflet-js';
+
+      // IMPORTANT: this card uses shadow DOM; Leaflet CSS must be loaded inside
+      // the shadow root or the map can render as an unstyled grey/blank box.
+      try {
+        const haveCss = !!this.shadowRoot?.querySelector?.(`#${cssId}`);
+        if (!haveCss) {
+          const link = document.createElement('link');
+          link.id = cssId;
+          link.rel = 'stylesheet';
+          link.href = '/local/roamcore/vendor/leaflet/leaflet.css?v=' + Date.now();
+          const p = new Promise((resolve) => {
+            link.onload = () => resolve(true);
+            link.onerror = () => resolve(false);
+          });
+          (this.shadowRoot || document.head).appendChild(link);
+          // Best-effort: wait briefly so CSS applies before Leaflet initializes.
+          try { await Promise.race([p, new Promise(r => setTimeout(r, 800))]); } catch (e) {}
+        } else {
+          try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
+        }
+      } catch (e) {}
+
+      if (!document.getElementById(jsId)) {
+        const src = '/local/roamcore/vendor/leaflet/leaflet.js';
+        let lastErr = null;
+        for (let i = 0; i < 4; i++) {
+          try {
+            await new Promise((resolve, reject) => {
+              const s = document.createElement('script');
+              s.id = jsId;
+              s.src = src + (i ? `?v=${Date.now()}` : '');
+              s.async = true;
+              s.onload = resolve;
+              s.onerror = reject;
+              document.head.appendChild(s);
+            });
+            break;
+          } catch (e) {
+            lastErr = e;
+            try { await new Promise(r => setTimeout(r, 400)); } catch (e2) {}
+          }
+        }
+        if (lastErr && !(window.L && window.L.map)) throw lastErr;
+      }
+
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        if (window.L && window.L.map) return true;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return !!(window.L && window.L.map);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async _ensureMapLibre() {
+    try {
+      if (window.maplibregl && window.maplibregl.Map) return true;
+      const cssId = 'rc-maplibre-css';
+      const jsId = 'rc-maplibre-js';
+      const pmtilesId = 'rc-pmtiles-js';
+      // IMPORTANT: this card uses shadow DOM; ensure CSS is available inside shadow root.
+      if (!this.shadowRoot?.getElementById?.(cssId)) {
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css?v=' + Date.now();
+        (this.shadowRoot || document.head).appendChild(link);
+        try { await new Promise(r => setTimeout(r, 100)); } catch (e) {}
+      }
+      if (!document.getElementById(jsId)) {
+        const s = document.createElement('script');
+        s.id = jsId;
+        s.src = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.js';
+        s.async = true;
+        document.head.appendChild(s);
+      }
+      if (!document.getElementById(pmtilesId)) {
+        const s = document.createElement('script');
+        s.id = pmtilesId;
+        s.src = '/local/roamcore/vendor/pmtiles/pmtiles.js';
+        s.async = true;
+        document.head.appendChild(s);
+      }
+      const start = Date.now();
+      while (Date.now() - start < 4000) {
+        if (window.maplibregl && window.maplibregl.Map && window.pmtiles) return true;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return !!(window.maplibregl && window.maplibregl.Map && window.pmtiles);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _ensurePmtilesProtocol() {
+    try {
+      if (!window.maplibregl || !window.pmtiles) return false;
+      if (window.__rcPmtilesProtocol) return true;
+      const protocol = new window.pmtiles.Protocol();
+      window.maplibregl.addProtocol('pmtiles', protocol.tile);
+      window.__rcPmtilesProtocol = protocol;
+      return true;
+    } catch (e) {
+      console.warn('pmtiles protocol init failed', e);
+      return false;
+    }
+  }
+
+  async _loadJson(url) {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`fetch failed ${res.status} for ${url}`);
+    return await res.json();
+  }
+
+  _pickTrackerEntity() {
+    const configured = this._getState('input_text.rc_location_tracker_entity');
+    if (configured && configured !== 'unknown' && configured !== 'unavailable' && String(configured).trim()) {
+      return String(configured).trim();
+    }
+    try {
+      const st = this._hass?.states || {};
+      for (const id of Object.keys(st)) {
+        if (!id.startsWith('device_tracker.')) continue;
+        const a = st[id]?.attributes || {};
+        if (a.latitude != null && a.longitude != null) return id;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async _getTraccarLastFix() {
+    try {
+      if (!this._hass) return null;
+      // Pick first device and follow its positionId.
+      const devs = await this._hass.callApi('GET', 'roamcore/traccar_api/devices').catch(() => []);
+      if (!Array.isArray(devs) || devs.length === 0) return null;
+      const d = devs[0] || {};
+      const posId = d.positionId;
+      if (!posId) return null;
+
+      const positions = await this._hass.callApi('GET', `roamcore/traccar_api/positions?id=${encodeURIComponent(posId)}`).catch(() => []);
+      const p = Array.isArray(positions) && positions.length ? positions[0] : null;
+      if (!p) return null;
+      const lat = Number(p.latitude);
+      const lon = Number(p.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return { lat, lon, fixTime: p.fixTime || null };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async _loadTrail(trackerId, hours = 6) {
+    if (!this._hass || !trackerId) return [];
+    try {
+      const start = new Date(Date.now() - hours * 3600_000).toISOString();
+      const url = `history/period/${encodeURIComponent(start)}?filter_entity_id=${encodeURIComponent(trackerId)}`;
+      const rows = await this._hass.callApi('GET', url);
+      const list = Array.isArray(rows) && rows.length ? rows[0] : [];
+      const pts = [];
+      for (const s of list) {
+        const a = (s && s.attributes) || {};
+        const lat = Number(a.latitude);
+        const lon = Number(a.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        pts.push([lat, lon]);
+      }
+      const out = [];
+      for (const p of pts) {
+        const prev = out[out.length - 1];
+        if (prev && Math.abs(prev[0] - p[0]) < 1e-6 && Math.abs(prev[1] - p[1]) < 1e-6) continue;
+        out.push(p);
+      }
+      return out;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async _mountOverviewMap() {
+    try {
+      const el = this.shadowRoot?.querySelector('#rc-overview-leaflet');
+      if (!el) return;
+
+      // If nothing is mounted yet, show a lightweight placeholder so it isn't an empty box.
+      if (!el._rcMap && !el._rcMapLibre && !el._rcMapPlaceholder) {
+        try {
+          el._rcMapPlaceholder = true;
+          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.45);font-size:12px;">Loading map…</div>';
+        } catch (e) {}
+      }
+
+      // Prefer MapLibre only when explicitly configured; otherwise use Leaflet raster.
+      // If MapLibre fails to load (missing assets, CSP, etc.), fall back to Leaflet.
+      let mode = this._mapMode();
+      let switchedToLeaflet = false;
+      if (mode.mode === 'maplibre') {
+        if (el._rcMapLibre) return;
+        // If Leaflet map was mounted earlier (before style URL was set), remove it and switch.
+        if (el._rcMap) {
+          try { el._rcMap.remove?.(); } catch (e) {}
+          try { delete el._rcMap; } catch (e) { el._rcMap = null; }
+        }
+        const ok = await this._ensureMapLibre();
+        if (!ok) {
+          mode = { mode: 'leaflet', tileUrl: this._tileUrl() };
+          switchedToLeaflet = true;
+        }
+      } else {
+        if (el._rcMap) return;
+        // If MapLibre map was mounted earlier, remove it and switch.
+        if (el._rcMapLibre) {
+          try { el._rcMapLibre.remove?.(); } catch (e) {}
+          try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
+        }
+        const ok = await this._ensureLeaflet();
+        if (!ok) {
+          try {
+            el.innerHTML = `
+              <div class="rc-map-fallback">
+                ${this._mapSvg()}
+                <div class="rc-map-fallback-msg">
+                  <div class="rc-map-fallback-title">Map preview unavailable</div>
+                  <div class="rc-map-fallback-sub">Missing Leaflet assets. Verify <b>/local/roamcore/vendor/leaflet/</b> is installed, then reload.</div>
+                </div>
+              </div>
+            `;
+          } catch (e) {}
+          return;
+        }
+      }
+
+      if (switchedToLeaflet) {
+        // Ensure Leaflet is present if we switched away from MapLibre.
+        const ok = await this._ensureLeaflet();
+        if (!ok) {
+          try {
+            el.innerHTML = `
+              <div class="rc-map-fallback">
+                ${this._mapSvg()}
+                <div class="rc-map-fallback-msg">
+                  <div class="rc-map-fallback-title">Map preview unavailable</div>
+                  <div class="rc-map-fallback-sub">Leaflet failed to load after MapLibre fallback. Check <b>/local/roamcore/vendor/</b> assets.</div>
+                </div>
+              </div>
+            `;
+          } catch (e) {}
+          return;
+        }
+      }
+
+      const trackerId = this._pickTrackerEntity();
+      let lat = this._num('sensor.rc_location_lat', null);
+      let lon = this._num('sensor.rc_location_lon', null);
+      try {
+        const a = trackerId ? (this._hass?.states?.[trackerId]?.attributes || {}) : {};
+        if (!Number.isFinite(lat)) lat = Number(a.latitude);
+        if (!Number.isFinite(lon)) lon = Number(a.longitude);
+      } catch (e) {}
+
+      // If we still don't have a fix, fall back to Traccar last known position.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        try {
+          const fix = await this._getTraccarLastFix();
+          if (fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) {
+            lat = fix.lat;
+            lon = fix.lon;
+          }
+        } catch (e) {}
+      }
+
+      // As a last resort, pick a reasonable UK-ish default so the preview renders.
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        lat = 54.5;
+        lon = -3.0;
+      }
+
+      if (mode.mode === 'maplibre') {
+        // Ensure PMTiles protocol is registered.
+        this._ensurePmtilesProtocol();
+
+        // MapLibre overview (simple marker).
+        el.innerHTML = '';
+        const container = document.createElement('div');
+        container.style.width = '100%';
+        container.style.height = '100%';
+        el.appendChild(container);
+
+        const origin = (() => {
+          try { return window.location.origin; } catch (e) { return ''; }
+        })();
+
+        const minimalRasterStyle = () => ({
+          version: 8,
+          glyphs: `${origin}/local/roamcore/fonts/{fontstack}/{range}.pbf`,
+          sprite: `${origin}/local/roamcore/sprites/rc-sprite`,
+          sources: {
+            rc_raster: {
+              type: 'raster',
+              tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              maxzoom: 18,
+            },
+          },
+          layers: [
+            { id: 'background', type: 'background', paint: { 'background-color': '#0b1220' } },
+            { id: 'rc_raster', type: 'raster', source: 'rc_raster', paint: { 'raster-opacity': 1.0 } },
+          ],
+        });
+
+        let style = mode.styleUrl;
+        try {
+          if (typeof style === 'string' && style.startsWith('/local/roamcore/styles/') && style.endsWith('.json')) {
+            const obj = await this._loadJson(style);
+            const replaceOrigin = (v) => (typeof v === 'string' ? v.replaceAll('__ORIGIN__', origin) : v);
+            if (obj && obj.sources) {
+              for (const k of Object.keys(obj.sources)) {
+                if (obj.sources[k] && obj.sources[k].url) obj.sources[k].url = replaceOrigin(obj.sources[k].url);
+                if (obj.sources[k] && obj.sources[k].tiles) obj.sources[k].tiles = (obj.sources[k].tiles || []).map(replaceOrigin);
+              }
+            }
+            if (obj && obj.sprite) obj.sprite = replaceOrigin(obj.sprite);
+            if (obj && obj.glyphs) obj.glyphs = replaceOrigin(obj.glyphs);
+            style = obj;
+          }
+        } catch (e) {
+          console.warn('failed to load/patch style json (overview); falling back to raster-only style', e);
+          style = minimalRasterStyle();
+        }
+
+        const m = new maplibregl.Map({
+          container,
+          style,
+          center: [Number(lon), Number(lat)],
+          zoom: 6,
+          maxZoom: 12,
+          interactive: false,
+          attributionControl: false,
+        });
+        el._rcMapLibre = m;
+
+        // No always-on raster fallback in overview; keep basemap consistent.
+        try {
+          m.on('error', (ev) => {
+            try {
+              console.warn('roamcore overview maplibre error', ev?.error || ev);
+            } catch (e) {}
+          });
+          m.on('load', () => { try { m.resize(); } catch (e) {} });
+        } catch (e) {}
+        try {
+          new maplibregl.Marker({ color: '#0ea5e9' })
+            .setLngLat([Number(lon), Number(lat)])
+            .addTo(m);
+        } catch (e) {}
+
+        // Add trip route preview (same data as Map page) and auto-fit.
+        try {
+          const positions = await this._getTraccarRoutePositions({ hours: 6 });
+          const line = this._positionsToGeojsonLine(positions);
+          if (line) {
+            const crumbs = this._lineToBreadcrumbPoints(line, { everyN: 8 });
+            const ends = this._lineToEndpoints(line);
+
+            const applyRoute = () => {
+              try {
+                if (!m.getSource('rc_overview_route')) {
+                  m.addSource('rc_overview_route', { type: 'geojson', data: line });
+                  if (crumbs) m.addSource('rc_overview_route_points', { type: 'geojson', data: crumbs });
+                  if (ends) m.addSource('rc_overview_route_ends', { type: 'geojson', data: ends });
+
+                  m.addLayer({
+                    id: 'rc_overview_route_casing',
+                    type: 'line',
+                    source: 'rc_overview_route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': 'rgba(0,0,0,0.35)', 'line-width': 4, 'line-opacity': 0.9 },
+                  });
+                  m.addLayer({
+                    id: 'rc_overview_route_line',
+                    type: 'line',
+                    source: 'rc_overview_route',
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': '#1a73e8', 'line-width': 3, 'line-opacity': 0.95 },
+                  });
+                  if (crumbs) {
+                    m.addLayer({
+                      id: 'rc_overview_route_dots_outline',
+                      type: 'circle',
+                      source: 'rc_overview_route_points',
+                      paint: { 'circle-radius': 2.5, 'circle-color': '#1a73e8', 'circle-opacity': 0.9 },
+                    });
+                    m.addLayer({
+                      id: 'rc_overview_route_dots',
+                      type: 'circle',
+                      source: 'rc_overview_route_points',
+                      paint: { 'circle-radius': 1.5, 'circle-color': '#ffffff', 'circle-opacity': 0.85 },
+                    });
+                  }
+                  if (ends) {
+                    m.addLayer({
+                      id: 'rc_overview_route_ends',
+                      type: 'circle',
+                      source: 'rc_overview_route_ends',
+                      paint: {
+                        'circle-radius': 4,
+                        'circle-color': ['match', ['get', 'kind'], 'start', '#34a853', 'end', '#ea4335', '#1a73e8'],
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 2,
+                        'circle-opacity': 0.95,
+                      },
+                    });
+                  }
+                }
+
+                const bounds = new maplibregl.LngLatBounds();
+                const addCoord = (c) => { if (c && c.length >= 2) bounds.extend([c[0], c[1]]); };
+                if (line.geometry.type === 'LineString') {
+                  for (const c of line.geometry.coordinates) addCoord(c);
+                } else if (line.geometry.type === 'MultiLineString') {
+                  for (const seg of line.geometry.coordinates) for (const c of seg) addCoord(c);
+                }
+                if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 20, duration: 0, maxZoom: 6 });
+              } catch (e) {}
+            };
+
+            if (m.loaded && m.loaded()) applyRoute();
+            else m.on('load', applyRoute);
+          }
+        } catch (e) {}
+        // Force a resize after first render; HA navigation sometimes mounts at 0 width.
+        try {
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 300);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 1200);
+        } catch (e) {}
+        try {
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 50);
+          setTimeout(() => { try { m.resize(); } catch (e) {} }, 500);
+        } catch (e) {}
+      } else {
+        const L = window.L;
+        try { el.innerHTML = ''; } catch (e) {}
+        const m = L.map(el, {
+          zoomControl: false,
+          attributionControl: false,
+          dragging: false,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+          keyboard: false,
+          tap: false,
+        });
+        el._rcMap = m;
+
+        const offlineMaxZ = this._offlineMaxZoom();
+        const localLayer = L.tileLayer(this._tileUrl(), {
+          maxZoom: offlineMaxZ,
+          crossOrigin: true,
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        });
+        localLayer.addTo(m);
+
+        // If local tiles are missing/misconfigured, Leaflet will quietly render grey.
+        // Detect repeated tile errors and overlay a clear hint.
+        try {
+          let errs = 0;
+          let firstAt = 0;
+          localLayer.on('tileerror', () => {
+            errs++;
+            if (!firstAt) firstAt = Date.now();
+            const now = Date.now();
+            if (errs >= 6 && (now - firstAt) < 10_000) {
+              try {
+                if (!el.querySelector('.rc-map-overlay')) {
+                  const o = document.createElement('div');
+                  o.className = 'rc-map-overlay';
+                  o.innerHTML = `
+                    <div class="rc-map-ol-title">Map tiles unavailable</div>
+                    <div class="rc-map-ol-sub">Check <b>/rc-tiles</b> or set <b>input_text.rc_map_tile_url</b>.</div>
+                    <button class="rc-btn2" data-nav="${this._basePath()}/settings">Open settings</button>
+                  `;
+                  el.appendChild(o);
+                }
+              } catch (e) {}
+            }
+          });
+        } catch (e) {}
+
+        // Prefer Traccar route preview when available; fallback to device_tracker history.
+        let didFit = false;
+        try {
+          const positions = await this._getTraccarRoutePositions({ hours: 6 });
+          const line = this._positionsToGeojsonLine(positions);
+          const coords = line?.geometry?.type === 'LineString'
+            ? (line.geometry.coordinates || [])
+            : (line?.geometry?.type === 'MultiLineString' ? (line.geometry.coordinates || []).flat() : []);
+          const pts = coords.map(c => [c[1], c[0]]);
+          if (pts.length >= 2) {
+            const poly = L.polyline(pts, { color: '#1a73e8', weight: 3, opacity: 0.9 });
+            poly.addTo(m);
+            m.fitBounds(poly.getBounds(), { padding: [10, 10] });
+            didFit = true;
+          }
+        } catch (e) {}
+
+        if (!didFit) {
+          const trail = await this._loadTrail(trackerId, 6);
+          const pts = (trail && trail.length ? trail : [[lat, lon]]);
+          if (pts.length >= 2) {
+            const line = L.polyline(pts, { color: '#22c55e', weight: 3, opacity: 0.85 });
+            line.addTo(m);
+            m.fitBounds(line.getBounds(), { padding: [10, 10] });
+          } else {
+            m.setView([lat, lon], Math.min(offlineMaxZ, 7));
+          }
+        }
+        L.circleMarker([lat, lon], { radius: 6, color: '#0ea5e9', weight: 2, fillColor: '#0ea5e9', fillOpacity: 0.9 }).addTo(m);
+
+        try { setTimeout(() => { try { m.invalidateSize(true); } catch (e) {} }, 50); } catch (e) {}
+      }
+    } catch (e) {
+      // best-effort
+    }
+  }
+
   _css() {
     return `
       :host {
@@ -308,17 +1242,41 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-time { font-size:28px; font-weight:800; letter-spacing:0.5px; }
       .rc-date { font-size:13px; color:var(--rc-muted); font-weight:600; }
       .rc-header-right { display:flex; gap:10px; align-items:center; }
-      .rc-chip { display:flex; gap:6px; align-items:center; color:var(--rc-muted); font-weight:600; font-size:13px; }
-      .rc-gear { color:var(--rc-muted); font-size:16px; }
+      .rc-gear { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-muted); font-size: 16px; cursor:pointer; }
+      .rc-gear:hover { filter: brightness(1.08); }
+
+      /* Setup banner */
+      .rc-setup-banner {
+        margin: 6px 2px 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: linear-gradient(180deg, rgba(244,197,66,0.14), rgba(32,32,32,0.55));
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      }
+      .rc-setup-top { display:flex; align-items:flex-start; justify-content:space-between; gap: 10px; }
+      .rc-setup-right { display:flex; align-items:center; }
+      .rc-setup-title { font-weight: 900; letter-spacing: 0.2px; }
+      .rc-setup-sub { margin-top: 4px; color: var(--rc-muted); font-size: 13px; line-height: 1.35; }
+      .rc-setup-actions { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      .rc-btn2 { cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.92); font-weight: 900; }
+      .rc-btn2:hover { filter: brightness(1.05); }
+      .rc-pill-demo { display:inline-flex; align-items:center; padding: 4px 10px; border-radius: 999px; font-weight: 900; font-size: 12px; color: rgba(255,255,255,0.92); background: rgba(67,209,122,0.10); border: 1px solid rgba(67,209,122,0.30); }
 
       .rc-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+      .rc-click { cursor: pointer; }
+      .rc-click:hover { filter: brightness(1.05); }
 
       .rc-tile {
         background: linear-gradient(180deg, var(--rc-card), var(--rc-card2));
         border: 1px solid var(--rc-border);
         border-radius: 14px;
         padding: 14px;
-        min-height: 170px;
+        /* Slightly taller overall so the overview doesn't feel squashed */
+        min-height: 190px;
+        /* Prevent grid items from expanding the column due to min-content sizing */
+        min-width: 0;
         box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       }
 
@@ -353,16 +1311,41 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-van-svg { width:110px; height:52px; }
       .rc-deg { font-size:20px; font-weight:900; }
 
-      .rc-map-main { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; height: 120px; }
-      .rc-map-box { width: 140px; height: 86px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+      /* Make the map preview dominate the tile (~70-80% of tile body). */
+      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
+      .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
+      .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
+      .rc-map-leaflet { width: 100%; height: 100%; position: relative; }
+      /* MapLibre sometimes sets an explicit canvas width that can force grid columns to grow. */
+      .rc-map-box canvas { max-width: 100% !important; }
+      .rc-map-box .maplibregl-canvas { max-width: 100% !important; }
       .rc-map-svg { width:100%; height:100%; }
-      .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:180px; }
-      .rc-trunc { max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
+      .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .rc-map-stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+
+      .rc-map-fallback { position: relative; width:100%; height:100%; }
+      .rc-map-fallback-msg { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 10px; text-align:center; background: rgba(0,0,0,0.22); }
+      .rc-map-fallback-title { font-weight: 900; font-size: 13px; }
+      .rc-map-fallback-sub { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.3; }
+
+      .rc-map-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: 8px; padding: 12px; text-align:center; background: rgba(0,0,0,0.40); z-index: 10; }
+      .rc-map-ol-title { font-weight: 950; font-size: 13px; }
+      .rc-map-ol-sub { font-size: 12px; color: rgba(255,255,255,0.78); line-height: 1.3; }
 
       @media (min-width: 1280px) {
         .rc-grid { grid-template-columns: repeat(4, 1fr); }
-        .rc-tile { min-height: 190px; }
+        .rc-tile { min-height: 210px; }
+      }
+
+      /* Mobile portrait: stack tiles and give them breathing room */
+      @media (max-width: 700px) {
+        .rc-wrap { padding: 8px; }
+        .rc-grid { grid-template-columns: 1fr; }
+        .rc-tile { min-height: 220px; }
+        .rc-level-main { height: 140px; }
+        .rc-map-main { height: 190px; }
+        .rc-map-box { height: 160px; }
       }
     `;
   }
