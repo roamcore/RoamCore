@@ -146,6 +146,9 @@ class OpenClawSummaryView(HomeAssistantView):
                 "status": _state_value(hass, src["level"]["status"]),
                 "hint": _state_value(hass, src["level"]["hint"]),
             },
+            "agent_actions": {
+                "enabled": _state_bool(hass, "input_boolean.rc_agent_actions_enabled"),
+            },
         }
 
         # Debug block: entity existence + availability (helps fix install/mapping)
