@@ -1,0 +1,28 @@
+# RoamCore Agent Actions Allowlist (example)
+#
+# Copy to: /config/.roamcore/agent_allowlist.yaml
+# Then enable: input_boolean.rc_agent_actions_enabled
+
+version: 1
+
+defaults:
+  require_confirmation: true
+
+actions:
+  - id: set_trip_wrapped_range
+    description: "Set Trip Wrapped from/to ISO timestamps"
+    kind: set_helper
+    target:
+      entity_id:
+        - input_text.rc_trip_wrapped_from
+        - input_text.rc_trip_wrapped_to
+    constraints:
+      pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.?\\d*Z$"
+
+  - id: generate_trip_wrapped
+    description: "Generate Trip Wrapped latest report"
+    kind: run_script
+    target:
+      entity_id: script.rc_trip_wrapped_run
+    require_confirmation: false
+
