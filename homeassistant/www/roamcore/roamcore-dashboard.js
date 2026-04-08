@@ -366,7 +366,8 @@ class RoamcoreDashboardCard extends HTMLElement {
   _render() {
     if (!this._root || !this._hass) return;
 
-    // Avoid iframe flashing: do a full DOM build only once, then update text/values.
+    // Build a stable DOM skeleton once, then update tile contents/values.
+    // This prevents the embedded map from flashing/re-mounting on every HA state update.
     const alreadyBuilt = !!this._root.querySelector('.rc-wrap');
 
     const soc = this._num('sensor.rc_power_battery_soc', null);
@@ -421,10 +422,10 @@ class RoamcoreDashboardCard extends HTMLElement {
           <div id="rc-setup-banner"></div>
 
           <div class="rc-grid">
-            ${this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt })}
-            ${this._tileNetwork({ netLabel, netColor, netSource, down, up, ping })}
-            ${this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) })}
-            ${this._tileMap()}
+            <div id="rc-slot-power"></div>
+            <div id="rc-slot-network"></div>
+            <div id="rc-slot-level"></div>
+            <div id="rc-slot-map">${this._tileMap()}</div>
           </div>
         </div>
       `;
@@ -432,6 +433,20 @@ class RoamcoreDashboardCard extends HTMLElement {
       const gear = this._root.querySelector('.rc-gear');
       if (gear) gear.addEventListener('click', (e) => { e.stopPropagation(); this._goSettings(); });
     }
+
+    // Update tile HTML (except the map tile, which is a stable skeleton).
+    try {
+      const p = this._root.querySelector('#rc-slot-power');
+      if (p) p.innerHTML = this._tilePower({ soc, pColor, solarW, invTxt, shoreTxt });
+    } catch (e) {}
+    try {
+      const n = this._root.querySelector('#rc-slot-network');
+      if (n) n.innerHTML = this._tileNetwork({ netLabel, netColor, netSource, down, up, ping });
+    } catch (e) {}
+    try {
+      const l = this._root.querySelector('#rc-slot-level');
+      if (l) l.innerHTML = this._tileLevel({ pitchAbs, rollAbs, status: this._levelStatus(pitch, roll) });
+    } catch (e) {}
 
     // Update header time/date every render.
     const t = this._root.querySelector('[data-bind="time"]');
@@ -443,6 +458,23 @@ class RoamcoreDashboardCard extends HTMLElement {
     try {
       const b = this._root.querySelector('#rc-setup-banner');
       if (b) b.innerHTML = this._setupBannerHtml();
+    } catch (e) {}
+
+    // Map tile (bind-only updates; do NOT rebuild the map container).
+    try {
+      const locRaw = this._getState('sensor.rc_map_location');
+      const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
+      const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
+      const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
+      const today = todayN == null ? '—' : `${Math.round(todayN)} mi`;
+      const total = totalN == null ? '—' : `${Math.round(totalN)} mi`;
+
+      const locEl = this._root.querySelector('[data-bind="map-loc"]');
+      if (locEl) locEl.textContent = loc;
+      const todayEl = this._root.querySelector('[data-bind="map-today"]');
+      if (todayEl) todayEl.textContent = today;
+      const totalEl = this._root.querySelector('[data-bind="map-total"]');
+      if (totalEl) totalEl.textContent = total;
     } catch (e) {}
   }
 
@@ -529,14 +561,6 @@ class RoamcoreDashboardCard extends HTMLElement {
   }
 
   _tileMap() {
-    const locRaw = this._getState('sensor.rc_map_location');
-    const loc = (locRaw && locRaw !== 'unknown' && locRaw !== 'unavailable') ? String(locRaw) : '—';
-
-    const todayN = this._num('sensor.rc_trip_distance_today_mi', null);
-    const totalN = this._num('sensor.rc_trip_distance_total_mi', null);
-    const today = todayN == null ? '—' : `${Math.round(todayN)}`;
-    const total = totalN == null ? '—' : `${Math.round(totalN)}`;
-
     return `
       <div class="rc-tile rc-click" data-nav="${this._basePath()}/map">
         <div class="rc-tile-head"><div class="rc-tile-title">Map</div><div class="rc-tile-sub">↗</div></div>
@@ -545,12 +569,12 @@ class RoamcoreDashboardCard extends HTMLElement {
           <div class="rc-map-box">
             <div class="rc-map-leaflet" id="rc-overview-leaflet"></div>
           </div>
-          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc">${loc}</span></div>
+          <div class="rc-map-loc"><span class="rc-pin" style="color:var(--rc-good)">⌖</span><span class="rc-strong rc-trunc" data-bind="map-loc">—</span></div>
         </div>
 
         <div class="rc-map-stats">
-          <div class="rc-stat"><div class="rc-stat-val">${today} mi</div><div class="rc-muted">Today</div></div>
-          <div class="rc-stat"><div class="rc-stat-val">${total} mi</div><div class="rc-muted">Total</div></div>
+          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-today">—</div><div class="rc-muted">Today</div></div>
+          <div class="rc-stat"><div class="rc-stat-val" data-bind="map-total">—</div><div class="rc-muted">Total</div></div>
         </div>
       </div>
     `;
