@@ -27,6 +27,7 @@ from .openclaw_view import (
     OpenClawTimeSeriesView,
 )
 from .diagnostics_view import RoamcoreDiagnosticsView
+from .system_summary_view import RoamcoreSystemSummaryView
 from .update_view import RoamcoreUpdateView, fetch_latest_release_tag
 import aiohttp
 
@@ -259,6 +260,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))
+
+    # Always-on, authenticated deterministic system summary (UI + agents).
+    hass.http.register_view(RoamcoreSystemSummaryView(hass))
 
     # Always-on, authenticated update endpoint for the Settings UI.
     hass.http.register_view(RoamcoreUpdateView(hass, entry.entry_id))
