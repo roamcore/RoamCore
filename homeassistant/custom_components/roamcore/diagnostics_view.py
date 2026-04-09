@@ -90,6 +90,9 @@ def _state_snapshot(hass: HomeAssistant, entity_id: str) -> dict[str, Any]:
 
 
 KEY_ENTITIES: list[str] = [
+    # Advanced mode
+    "input_boolean.rc_advanced_mode_enabled",
+    "binary_sensor.rc_advanced_mode",
     # Setup wizard
     "input_select.rc_setup_stage",
     "sensor.rc_setup_progress",
@@ -241,4 +244,3 @@ class RoamcoreDiagnosticsView(HomeAssistantView):
             }
 
         return self.json(payload)
-

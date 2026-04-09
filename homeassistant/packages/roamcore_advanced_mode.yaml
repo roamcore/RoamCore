@@ -1,0 +1,24 @@
+# RoamCore Advanced Mode (scaffolding)
+#
+# Purpose:
+# - Provide a clear, explicit "power user" toggle that the UI can key off.
+# - Keep this reversible and deterministic.
+#
+# Notes:
+# - This is intentionally *not* wired to any destructive actions yet.
+# - Future: gate additional dashboards/pages + require explicit confirmation.
+
+input_boolean:
+  rc_advanced_mode_enabled:
+    name: "RC Advanced Mode"
+    icon: mdi:shield-star
+    initial: false
+
+template:
+  - binary_sensor:
+      - name: "RC Advanced Mode"
+        unique_id: rc_advanced_mode
+        icon: mdi:shield-star
+        state: >-
+          {{ is_state('input_boolean.rc_advanced_mode_enabled', 'on') }}
+
