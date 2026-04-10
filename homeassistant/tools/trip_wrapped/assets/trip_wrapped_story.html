@@ -116,6 +116,24 @@
     .dot.on{background:rgba(110,231,255,0.95)}
 
     .hint{margin-top:12px;color:rgba(255,255,255,0.55);font-size:12px}
+
+    .actions{display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:12px;}
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.92);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn.primary{
+      border-color: rgba(110,231,255,0.40);
+      background: linear-gradient(135deg, rgba(110,231,255,0.20), rgba(167,139,250,0.12));
+    }
+    .btn:active{transform: translateY(1px)}
   </style>
 </head>
 <body>
@@ -138,7 +156,10 @@
           </div>
         </div>
 
-        <div class="hint">Swipe →</div>
+        <div class="actions">
+          <button class="btn primary" id="btnDownload">Download summary</button>
+          <div class="hint">Swipe →</div>
+        </div>
       </div></div></div>
     </section>
 
@@ -355,6 +376,174 @@
         try { document.getElementById('mapFallback').style.display = ''; } catch(_e) {}
       }
     })();
+
+    // Export: summary card only (optimized for social sharing)
+    // This intentionally does NOT attempt to export every slide (users can screenshot those).
+    function _roundRect(ctx, x, y, w, h, r) {
+      r = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+    function _drawBg(ctx, W, H) {
+      // Base
+      ctx.fillStyle = '#070A12';
+      ctx.fillRect(0, 0, W, H);
+      // Soft gradient blobs
+      const g1 = ctx.createRadialGradient(W * 0.85, H * 0.10, 20, W * 0.85, H * 0.10, W * 0.70);
+      g1.addColorStop(0, 'rgba(110,231,255,0.18)');
+      g1.addColorStop(1, 'rgba(110,231,255,0)');
+      ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
+      const g2 = ctx.createRadialGradient(W * 0.15, H * 0.10, 20, W * 0.15, H * 0.10, W * 0.70);
+      g2.addColorStop(0, 'rgba(167,139,250,0.16)');
+      g2.addColorStop(1, 'rgba(167,139,250,0)');
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+      const g3 = ctx.createRadialGradient(W * 0.50, H * 1.15, 20, W * 0.50, H * 1.15, W * 0.85);
+      g3.addColorStop(0, 'rgba(255,122,69,0.10)');
+      g3.addColorStop(1, 'rgba(255,122,69,0)');
+      ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
+    }
+    function renderShareCardPng() {
+      const W = 1080;
+      const H = 1920;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+      _drawBg(ctx, W, H);
+
+      // Card container
+      const pad = 80;
+      const cardX = pad;
+      const cardY = 140;
+      const cardW = W - pad * 2;
+      const cardH = H - 240;
+
+      // Frame glow
+      const frame = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+      frame.addColorStop(0, 'rgba(110,231,255,0.35)');
+      frame.addColorStop(0.5, 'rgba(167,139,250,0.22)');
+      frame.addColorStop(1, 'rgba(255,122,69,0.18)');
+      _roundRect(ctx, cardX - 10, cardY - 10, cardW + 20, cardH + 20, 44);
+      ctx.fillStyle = frame;
+      ctx.fill();
+
+      // Inner card
+      _roundRect(ctx, cardX, cardY, cardW, cardH, 36);
+      ctx.fillStyle = 'rgba(10,16,32,0.75)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Header
+      ctx.save();
+      ctx.fillStyle = 'rgba(110,231,255,0.85)';
+      ctx.font = '900 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillText('ROAMCORE', cardX + 44, cardY + 70);
+      ctx.restore();
+
+      // Title
+      const t = String(title || 'Trip Wrapped').toUpperCase();
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.font = '1000 72px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      // Simple wrap: split on " — " or " - " if too long
+      const maxW = cardW - 88;
+      let line1 = t;
+      let line2 = '';
+      if (ctx.measureText(line1).width > maxW) {
+        const parts = t.split(/\s[-—>]\s/);
+        if (parts.length >= 2) {
+          line1 = parts[0].trim();
+          line2 = parts.slice(1).join(' → ').trim();
+        }
+      }
+      ctx.fillText(line1, cardX + 44, cardY + 160);
+      if (line2) {
+        ctx.font = '1000 60px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText(line2, cardX + 44, cardY + 228);
+      }
+
+      // Dates
+      const dateTxt = (from && to) ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : (from ? fmtDateUTC(from) : '—');
+      ctx.fillStyle = 'rgba(255,255,255,0.70)';
+      ctx.font = '800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillText(dateTxt, cardX + 44, cardY + (line2 ? 280 : 240));
+
+      // Map window
+      const mapTop = cardY + (line2 ? 330 : 290);
+      const mapX = cardX + 44;
+      const mapW = cardW - 88;
+      const mapH = 860;
+      _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.stroke();
+
+      // Draw route canvas into map window
+      try {
+        const src = document.getElementById('mapCanvas');
+        if (src && src.width > 10 && src.height > 10) {
+          ctx.save();
+          _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
+          ctx.clip();
+          ctx.drawImage(src, mapX, mapTop, mapW, mapH);
+          ctx.restore();
+        }
+      } catch(e) {}
+
+      // Key stats row (distance, stops, nights)
+      const y0 = mapTop + mapH + 80;
+      const cols = 3;
+      const gap = 16;
+      const boxW = (mapW - gap * (cols - 1)) / cols;
+      const boxH = 180;
+      const boxes = [
+        {k:'Distance', v: document.getElementById('statDistance')?.textContent || '—'},
+        {k:'Stops', v: document.getElementById('statStops')?.textContent || '—'},
+        {k:'Nights', v: document.getElementById('statNights')?.textContent || '—'},
+      ];
+      for (let i=0;i<cols;i++) {
+        const bx = mapX + i * (boxW + gap);
+        _roundRect(ctx, bx, y0, boxW, boxH, 26);
+        ctx.fillStyle = 'rgba(8,12,24,0.55)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.62)';
+        ctx.font = '900 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText(boxes[i].k.toUpperCase(), bx + 22, y0 + 46);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.font = '1000 46px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText(String(boxes[i].v).trim(), bx + 22, y0 + 120);
+      }
+
+      return c.toDataURL('image/png');
+    }
+    function downloadShareCard() {
+      try {
+        const url = renderShareCardPng();
+        const a = document.createElement('a');
+        a.href = url;
+        const safe = String(title || 'trip_wrapped').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+        a.download = `${safe || 'trip_wrapped'}_summary.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch(e) {
+        alert('Export failed. You can screenshot the summary slide as a fallback.');
+      }
+    }
+    try {
+      document.getElementById('btnDownload')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        downloadShareCard();
+      });
+    } catch(e) {}
   </script>
 </body>
 </html>
