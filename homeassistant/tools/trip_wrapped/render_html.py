@@ -14,5 +14,7 @@ def render_html(wrapped: dict, template: str = "classic") -> str:
         path = ASSET_STORY
     with open(path, "r", encoding="utf-8") as f:
         tpl = f.read()
-    data = json.dumps(wrapped, ensure_ascii=False)
+    # Safe JSON embedding: prevent closing the <script> tag if data contains "</script>".
+    # (Also helps avoid accidental HTML parsing issues.)
+    data = json.dumps(wrapped, ensure_ascii=False).replace("<", "\\u003c")
     return tpl.replace("/*__TRIP_WRAPPED_DATA__*/", f"window.TRIP_WRAPPED_DATA = {data};")
