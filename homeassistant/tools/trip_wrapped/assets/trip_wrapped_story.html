@@ -1032,6 +1032,121 @@
       } catch(e) {}
     }
 
+    // --- Minimal raster tile map renderer for PNG export ---
+    function _mercX(lon){ return (Number(lon) + 180) / 360; }
+    function _mercY(lat){
+      const phi = (Number(lat) * Math.PI) / 180;
+      const s = Math.sin(phi);
+      return 0.5 - (Math.log((1+s)/(1-s)) / (4*Math.PI));
+    }
+    function _chooseZoomLatLon(points, w, h, pad){
+      pad = pad == null ? 48 : pad;
+      let minLat=points[0][0], maxLat=points[0][0], minLon=points[0][1], maxLon=points[0][1];
+      for (const [lat,lon] of points) {
+        if (lat<minLat) minLat=lat; if (lat>maxLat) maxLat=lat;
+        if (lon<minLon) minLon=lon; if (lon>maxLon) maxLon=lon;
+      }
+      const cLon = (minLon+maxLon)/2;
+      const cLat = (minLat+maxLat)/2;
+      let best = 12;
+      for (let z=16; z>=3; z--) {
+        const scale = 256 * Math.pow(2,z);
+        const x1 = _mercX(minLon)*scale, x2 = _mercX(maxLon)*scale;
+        const y1 = _mercY(minLat)*scale, y2 = _mercY(maxLat)*scale;
+        const bw = Math.abs(x2-x1), bh = Math.abs(y2-y1);
+        if (bw <= Math.max(1,(w-pad*2)) && bh <= Math.max(1,(h-pad*2))) { best=z; break; }
+      }
+      return {z:best, cLat, cLon, minLat, maxLat, minLon, maxLon};
+    }
+    function _tileXY(lon, lat, z){
+      const n = Math.pow(2,z);
+      const xt = Math.floor((_mercX(lon))*n);
+      const yt = Math.floor((_mercY(lat))*n);
+      return {x:xt, y:yt};
+    }
+    function _lonLatToGlobalPx(lon, lat, z){
+      const scale = 256 * Math.pow(2,z);
+      return {x: _mercX(lon)*scale, y: _mercY(lat)*scale};
+    }
+    async function _drawRasterTiles(ctx, x, y, w, h, pts){
+      // Use CARTO light tiles (CORS-enabled) so canvas export is allowed.
+      // This affects PNG only; latest.html keeps its own map background.
+      const info = _chooseZoomLatLon(pts, w, h, 56);
+      const z = info.z;
+      const center = _lonLatToGlobalPx(info.cLon, info.cLat, z);
+      const topLeft = { x: center.x - w/2, y: center.y - h/2 };
+
+      const tileSize = 256;
+      const x0 = Math.floor(topLeft.x / tileSize);
+      const y0 = Math.floor(topLeft.y / tileSize);
+      const x1 = Math.floor((topLeft.x + w) / tileSize);
+      const y1 = Math.floor((topLeft.y + h) / tileSize);
+
+      const n = Math.pow(2,z);
+      const tasks = [];
+      for (let ty=y0; ty<=y1; ty++) {
+        for (let tx=x0; tx<=x1; tx++) {
+          const wrapX = ((tx % n) + n) % n;
+          if (ty < 0 || ty >= n) continue;
+          const url = `https://a.basemaps.cartocdn.com/light_all/${z}/${wrapX}/${ty}.png`;
+          tasks.push({tx,ty,url});
+        }
+      }
+
+      // Draw placeholder
+      ctx.fillStyle = 'rgba(8,12,24,0.55)';
+      ctx.fillRect(x, y, w, h);
+
+      // Load tiles in parallel (best-effort)
+      const imgs = await Promise.all(tasks.map(t=>_loadImage(t.url)));
+      for (let i=0;i<tasks.length;i++) {
+        const im = imgs[i];
+        if (!im) continue;
+        const t = tasks[i];
+        const dx = x + (t.tx*tileSize - topLeft.x);
+        const dy = y + (t.ty*tileSize - topLeft.y);
+        ctx.drawImage(im, dx, dy, tileSize, tileSize);
+      }
+
+      // Slight dark overlay to match RoamCore aesthetic
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(x, y, w, h);
+
+      return {z, topLeft};
+    }
+    function _drawRouteMerc(ctx, x, y, w, h, pts, z, topLeft){
+      // Project points into the same global-px space as tiles
+      const proj = pts.map(([lat,lon])=>_lonLatToGlobalPx(lon, lat, z));
+      const X = (p)=> x + (p.x - topLeft.x);
+      const Y = (p)=> y + (p.y - topLeft.y);
+
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i=0;i<proj.length;i++) {
+        const px = X(proj[i]);
+        const py = Y(proj[i]);
+        if (i===0) ctx.moveTo(px,py);
+        else ctx.lineTo(px,py);
+      }
+      // Glow
+      ctx.strokeStyle = 'rgba(110,231,255,0.18)';
+      ctx.lineWidth = 14;
+      ctx.stroke();
+      // Core
+      ctx.strokeStyle = 'rgba(110,231,255,0.95)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      // End dot
+      const last = proj[proj.length-1];
+      ctx.fillStyle = 'rgba(110,231,255,0.95)';
+      ctx.beginPath();
+      ctx.arc(X(last), Y(last), 6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     async function renderShareCardPng(opts) {
       opts = opts || {};
       const W = 1080;
@@ -1100,30 +1215,15 @@
       ctx.stroke();
 
       // Draw map background + route into map window.
-      // We explicitly load the static PNG so export is deterministic (no relying on DOM timing).
+      // NOTE: We render our own raster-tile map here to keep PNG export reliable.
       try {
-        const src = document.getElementById('mapCanvas');
-        if (src && src.width > 10 && src.height > 10) {
-          const mapImgUrl = (meta && meta.mapImageUrl) ? String(meta.mapImageUrl) : '';
-          const bgImg = await _loadImage(mapImgUrl);
-
+        const jr = _getRoutePoints();
+        if (jr && jr.length >= 2) {
           ctx.save();
           _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
           ctx.clip();
-
-          if (bgImg) {
-            _drawImageCover(ctx, bgImg, mapX, mapTop, mapW, mapH, 0.92);
-            // subtle dark overlay for legibility
-            ctx.fillStyle = 'rgba(0,0,0,0.22)';
-            ctx.fillRect(mapX, mapTop, mapW, mapH);
-          } else {
-            // fallback texture if no map image
-            ctx.fillStyle = 'rgba(8,12,24,0.55)';
-            ctx.fillRect(mapX, mapTop, mapW, mapH);
-          }
-
-          // route overlay
-          ctx.drawImage(src, mapX, mapTop, mapW, mapH);
+          const info = await _drawRasterTiles(ctx, mapX, mapTop, mapW, mapH, jr);
+          _drawRouteMerc(ctx, mapX, mapTop, mapW, mapH, jr, info.z, info.topLeft);
           ctx.restore();
         }
       } catch(e) {}
