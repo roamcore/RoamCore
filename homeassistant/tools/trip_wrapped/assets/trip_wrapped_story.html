@@ -910,35 +910,45 @@
       ctx.fillText('ROAMCORE', cardX + 44, cardY + 70);
       ctx.restore();
 
-      // Title
+      // Title (sharable-safe, never clipped)
       const t = String(title || 'Trip Wrapped').toUpperCase();
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
-      ctx.font = '1000 72px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-      // Simple wrap: split on " — " or " - " if too long
       const maxW = cardW - 88;
+      let size1 = 68;
+      ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+      // If too long, shrink a bit.
+      while (ctx.measureText(t).width > maxW && size1 > 52) {
+        size1 -= 2;
+        ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+      }
+      // If still too long, split into two lines at arrow or dash.
       let line1 = t;
       let line2 = '';
       if (ctx.measureText(line1).width > maxW) {
-        const parts = t.split(/\s[-—>]\s/);
+        const parts = t.split(/\s[→-—>]\s/);
         if (parts.length >= 2) {
           line1 = parts[0].trim();
           line2 = parts.slice(1).join(' → ').trim();
         }
       }
       ctx.fillText(line1, cardX + 44, cardY + 160);
+      let titleBottom = cardY + 160;
       if (line2) {
-        ctx.font = '1000 60px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-        ctx.fillText(line2, cardX + 44, cardY + 228);
+        const size2 = Math.max(44, Math.floor(size1 * 0.78));
+        ctx.font = `1000 ${size2}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+        ctx.fillText(line2, cardX + 44, cardY + 160 + size2 + 10);
+        titleBottom = cardY + 160 + size2 + 10;
+        ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
       }
 
       // Dates
       const dateTxt = (from && to) ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : (from ? fmtDateUTC(from) : '—');
       ctx.fillStyle = 'rgba(255,255,255,0.70)';
       ctx.font = '800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-      ctx.fillText(dateTxt, cardX + 44, cardY + (line2 ? 280 : 240));
+      ctx.fillText(dateTxt, cardX + 44, titleBottom + 54);
 
       // Map window
-      const mapTop = cardY + (line2 ? 330 : 290);
+      const mapTop = titleBottom + 95;
       const mapX = cardX + 44;
       const mapW = cardW - 88;
       const mapH = 860;
@@ -948,13 +958,23 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.10)';
       ctx.stroke();
 
-      // Draw route canvas into map window
+      // Draw map background + route into map window
       try {
         const src = document.getElementById('mapCanvas');
         if (src && src.width > 10 && src.height > 10) {
           ctx.save();
           _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
           ctx.clip();
+          // If the story map has a background image, draw it first.
+          const bg = document.getElementById('mapImg');
+          if (bg && bg.complete && bg.naturalWidth > 0) {
+            ctx.globalAlpha = 0.92;
+            ctx.drawImage(bg, mapX, mapTop, mapW, mapH);
+            ctx.globalAlpha = 1.0;
+            // subtle dark overlay for legibility
+            ctx.fillStyle = 'rgba(0,0,0,0.20)';
+            ctx.fillRect(mapX, mapTop, mapW, mapH);
+          }
           ctx.drawImage(src, mapX, mapTop, mapW, mapH);
           ctx.restore();
         }
