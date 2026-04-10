@@ -7,11 +7,46 @@ Generates a shareable “Trip Wrapped” report from Traccar trip data.
 - `latest.json` — raw stats + trip list
 - `latest.html` — self-contained HTML report viewable at `/local/...`
 
+The Story template also includes an in-browser **PNG exporter** (“Download summary”) optimized for social sharing.
+
 ## Runtime assumptions (HAOS)
 
 - This code lives under `/config/tools/trip_wrapped/` in Home Assistant.
 - Output is written under `/config/www/roamcore/trip_wrapped/` and served at:
   - `/local/roamcore/trip_wrapped/latest.html`
+
+## Production setup (Traccar auth)
+
+Recommended (no stored password in HA):
+
+1) Create a Traccar **User Token**
+2) Add it to `/config/secrets.yaml`:
+
+```yaml
+roamcore_traccar_user_token: "YOUR_TOKEN"
+```
+
+Fallback (basic auth; least preferred):
+
+```yaml
+roamcore_traccar_admin_email: "you@example.com"
+roamcore_traccar_admin_password: "..."
+```
+
+## Data/UX behavior
+
+- If Traccar credentials are missing, the exporter still generates HTML/JSON and shows a clear setup notice (`meta.dataStatus = needs_setup`).
+- If Traccar is reachable but no trips/routes exist for the chosen range/device, the exporter shows a helpful no-data notice (`meta.dataStatus = no_data`) instead of a blank report.
+
+## PNG exporter notes
+
+- The “Download summary” PNG is generated **client-side in the browser**.
+- The PNG map background currently uses internet-hosted raster tiles (CORS-enabled) so export works reliably.
+- If you see `SecurityError: Tainted canvases may not be exported`, it indicates a non-CORS image/tile was drawn into the export canvas.
+
+Tip: if you suspect caching, open with a cache buster:
+
+`/local/roamcore/trip_wrapped/latest.html?ts=123`
 
 ## Usage (CLI)
 
@@ -46,5 +81,5 @@ python3 export.py --no-ha-proxy ...
 - MVP uses stdlib-only HTTP (urllib) and supports Traccar **user token** auth to avoid storing credentials in HA.
 - Later iterations can add:
   - route polyline rendering
-  - PNG export (Pillow)
+  - server-side PNG export (Pillow) for offline/airgapped installs
   - nicer HTML templates / branding assets
