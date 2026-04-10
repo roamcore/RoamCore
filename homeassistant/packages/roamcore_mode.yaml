@@ -1,0 +1,27 @@
+# RoamCore contract entities: Mode subsystem (MVP scaffold)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+#
+# This is a minimal foundation for the planned Mode / automation builder.
+# It deliberately does NOT implement automations yet; it only defines the
+# canonical "current mode" entity that future UI + automation layers can use.
+
+input_select:
+  rc_mode:
+    name: "RC Mode"
+    options:
+      - auto
+      - travel
+      - camp
+      - stealth
+      - off
+    initial: auto
+    icon: mdi:route
+
+template:
+  - sensor:
+      - name: "RC Mode Current"
+        unique_id: rc_mode_current
+        state: >-
+          {{ states('input_select.rc_mode') }}
+
