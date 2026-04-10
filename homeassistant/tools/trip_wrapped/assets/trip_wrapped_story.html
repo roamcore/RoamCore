@@ -117,6 +117,10 @@
     .v{margin-top:6px; font-size:44px; font-weight:1000; letter-spacing:-1.2px; line-height:1.00;}
     .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:8px;}
 
+    /* Story headline (one sentence) */
+    .storyLine{margin-top:6px; font-size:clamp(22px, 3.6vw, 30px); font-weight:950; letter-spacing:-0.5px; line-height:1.15;}
+    .storySub{margin-top:8px; color:rgba(255,255,255,0.70); font-size:13px; line-height:1.35;}
+
     .grid2{display:grid; gap:10px; margin-top:12px; grid-template-columns:1fr 1fr;}
     .stat{padding:12px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background: rgba(8,12,24,0.45);backdrop-filter: blur(10px);}
 
@@ -207,13 +211,15 @@
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Overview</div></div>
         <div class="bigStat">
-          <div class="k">Total distance</div>
-          <div class="v" id="statDistance">—</div>
-          <div class="subtitle" id="statDistanceSub">—</div>
+          <div class="k">The big picture</div>
+          <div class="storyLine" id="storyOverview">—</div>
+          <div class="storySub" id="storyOverviewSub">—</div>
         </div>
         <div class="grid2">
+          <div class="stat"><div class="k">Total distance</div><div class="v" style="font-size:28px" id="statDistance">—</div></div>
           <div class="stat"><div class="k">Time driving</div><div class="v" style="font-size:28px" id="statDriveTime">—</div></div>
           <div class="stat"><div class="k">Avg per day</div><div class="v" style="font-size:28px" id="statAvgPerDay">—</div></div>
+          <div class="stat"><div class="k">Days</div><div class="v" style="font-size:28px" id="statDays">—</div></div>
         </div>
       </div></div></div>
     </section>
@@ -224,13 +230,15 @@
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Stops</div></div>
         <div class="bigStat">
-          <div class="k">Stops</div>
-          <div class="v" id="statStops">—</div>
-          <div class="subtitle" id="statStopsSub">—</div>
+          <div class="k">Your pace</div>
+          <div class="storyLine" id="storyStops">—</div>
+          <div class="storySub" id="storyStopsSub">—</div>
         </div>
         <div class="grid2">
+          <div class="stat"><div class="k">Stops</div><div class="v" style="font-size:28px" id="statStops">—</div></div>
           <div class="stat"><div class="k">Nights on the road</div><div class="v" style="font-size:28px" id="statNights">—</div></div>
           <div class="stat"><div class="k">Avg stop</div><div class="v" style="font-size:28px" id="statAvgStop">—</div></div>
+          <div class="stat"><div class="k">Longest stop</div><div class="v" style="font-size:28px" id="statLongestStop">—</div></div>
         </div>
       </div></div></div>
     </section>
@@ -241,13 +249,15 @@
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Climbs</div></div>
         <div class="bigStat">
-          <div class="k">Elevation gain</div>
-          <div class="v" id="statElev">—</div>
-          <div class="subtitle" id="statElevSub">—</div>
+          <div class="k">The terrain</div>
+          <div class="storyLine" id="storyClimbs">—</div>
+          <div class="storySub" id="storyClimbsSub">—</div>
         </div>
         <div class="grid2">
+          <div class="stat"><div class="k">Elevation gain</div><div class="v" style="font-size:28px" id="statElev">—</div></div>
           <div class="stat"><div class="k">Highest point</div><div class="v" style="font-size:28px" id="statHighest">—</div></div>
           <div class="stat"><div class="k">Furthest from start</div><div class="v" style="font-size:28px" id="statFurthest">—</div></div>
+          <div class="stat"><div class="k">Avg speed</div><div class="v" style="font-size:28px" id="statAvgSpeed">—</div></div>
         </div>
       </div></div></div>
     </section>
@@ -258,13 +268,15 @@
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Highlights</div></div>
         <div class="bigStat">
-          <div class="k">Longest drive</div>
-          <div class="v" style="font-size:34px" id="statLongestDrive">—</div>
-          <div class="subtitle" id="statLongestDriveSub">—</div>
+          <div class="k">The moment</div>
+          <div class="storyLine" id="storyHighlights">—</div>
+          <div class="storySub" id="storyHighlightsSub">—</div>
         </div>
         <div class="grid2">
-          <div class="stat"><div class="k">Longest stop</div><div class="v" style="font-size:28px" id="statLongestStop">—</div><div class="subtitle" id="statLongestStopSub" style="margin-top:6px">—</div></div>
+          <div class="stat"><div class="k">Longest drive</div><div class="v" style="font-size:28px" id="statLongestDrive">—</div><div class="subtitle" id="statLongestDriveSub" style="margin-top:6px">—</div></div>
           <div class="stat"><div class="k">Movement streak</div><div class="v" style="font-size:28px" id="statStreak">—</div></div>
+          <div class="stat"><div class="k">Longest stop</div><div class="v" style="font-size:28px" id="statLongestStop2">—</div><div class="subtitle" id="statLongestStopSub" style="margin-top:6px">—</div></div>
+          <div class="stat"><div class="k">Displacement</div><div class="v" style="font-size:28px" id="statDisplacement">—</div></div>
         </div>
       </div></div></div>
     </section>
@@ -320,14 +332,28 @@
     const unit = (meta.units || '').toString().toLowerCase();
     const useMiles = unit === 'imperial' || unit === 'us' || unit === 'mi' || unit === 'miles';
 
+    // Helpers
+    const fmtH = (h) => {
+      h = Number(h)||0;
+      if (!Number.isFinite(h) || h <= 0) return '—';
+      if (h >= 24) {
+        const d = Math.floor(h/24);
+        const r = Math.round(h - d*24);
+        return r ? `${d}d ${r}h` : `${d}d`;
+      }
+      return h >= 10 ? `${Math.round(h)}h` : `${h.toFixed(1)}h`;
+    };
+    const fmtDur = (ms) => fmtH((Number(ms)||0)/(1000*60*60));
+
     // Distance
     const totalM = Number(stats.totalDistanceM || 0);
+    let dist = 0;
+    let distLabel = useMiles ? 'miles' : 'km';
     if (totalM > 0) {
-      const dist = useMiles ? (totalM/1609.344) : (totalM/1000);
-      const label = useMiles ? 'miles' : 'km';
-      document.getElementById('statDistance').innerHTML = `${fmtInt(Math.round(dist))}<small>${label}</small>`;
-      document.getElementById('statDistanceSub').textContent = 'Your trip, measured in miles driven.';
-      try { document.getElementById('coverDistance').textContent = `${fmtInt(Math.round(dist))} ${label}`; } catch(e) {}
+      dist = useMiles ? (totalM/1609.344) : (totalM/1000);
+      distLabel = useMiles ? 'miles' : 'km';
+      document.getElementById('statDistance').textContent = `${fmtInt(Math.round(dist))} ${distLabel}`;
+      try { document.getElementById('coverDistance').textContent = `${fmtInt(Math.round(dist))} ${distLabel}`; } catch(e) {}
     }
 
     // Stops + nights
@@ -337,6 +363,7 @@
     try { document.getElementById('coverStops').textContent = stops ? `${fmtInt(stops)}` : '—'; } catch(e) {}
 
     const totalDays = Number(stats.totalDays || 0);
+    try { document.getElementById('statDays').textContent = totalDays ? `${fmtInt(totalDays)} days` : '—'; } catch(e) {}
     // Nights: best-effort. Prefer explicit if present, else fall back to (days-1).
     const nights = (stats.nightsOnRoad != null && stats.nightsOnRoad !== '')
       ? Number(stats.nightsOnRoad || 0)
@@ -353,7 +380,7 @@
     if (elevM > 0) {
       const elev = useMiles ? Math.round(elevM * 3.28084) : Math.round(elevM);
       const label = useMiles ? 'ft' : 'm';
-      document.getElementById('statElev').innerHTML = `${fmtInt(elev)}<small>${label}</small>`;
+      document.getElementById('statElev').textContent = `${fmtInt(elev)} ${label}`;
     }
 
     // Highest point
@@ -361,18 +388,29 @@
     if (highestM > 0) {
       const highest = useMiles ? Math.round(highestM * 3.28084) : Math.round(highestM);
       const label = useMiles ? 'ft' : 'm';
-      document.getElementById('statHighest').innerHTML = `${fmtInt(highest)}<small>${label}</small>`;
-      document.getElementById('statElevSub').textContent = 'Gain + peak altitude.';
+      document.getElementById('statHighest').textContent = `${fmtInt(highest)} ${label}`;
     } else {
       document.getElementById('statHighest').textContent = '—';
     }
+
+    // Avg speed
+    try {
+      const kph = Number(stats.avgSpeedKph || 0);
+      if (kph > 0) {
+        const v = useMiles ? (kph * 0.621371) : kph;
+        const label = useMiles ? 'mph' : 'kph';
+        document.getElementById('statAvgSpeed').textContent = `${Math.round(v)} ${label}`;
+      } else {
+        document.getElementById('statAvgSpeed').textContent = '—';
+      }
+    } catch(e) {}
 
     // Furthest
     const furthestKm = Number(stats.furthestFromStartKm || 0);
     if (furthestKm > 0) {
       const v = useMiles ? (furthestKm * 0.621371) : furthestKm;
       const label = useMiles ? 'mi' : 'km';
-      document.getElementById('statFurthest').innerHTML = `${fmtInt(Math.round(v))}<small>${label}</small>`;
+      document.getElementById('statFurthest').textContent = `${fmtInt(Math.round(v))} ${label}`;
     } else {
       document.getElementById('statFurthest').textContent = '—';
     }
@@ -398,6 +436,7 @@
         const h = ms / (1000*60*60);
         const txt = h >= 24 ? `${Math.round(h/24)}d` : `${h.toFixed(1)}h`;
         document.getElementById('statLongestStop').textContent = txt;
+        try { document.getElementById('statLongestStop2').textContent = txt; } catch(e) {}
         const where = (stats.longestStopLocationName || '').trim();
         document.getElementById('statLongestStopSub').textContent = where ? where : 'Longest time parked.';
       }
@@ -421,6 +460,67 @@
       } else {
         document.getElementById('statAvgPerDay').textContent = '—';
       }
+    } catch(e) {}
+
+    // Displacement
+    try {
+      const dk = Number(stats.displacementKm || 0);
+      if (dk > 0) {
+        const v = useMiles ? (dk * 0.621371) : dk;
+        const label = useMiles ? 'mi' : 'km';
+        document.getElementById('statDisplacement').textContent = `${fmtInt(Math.round(v))} ${label}`;
+      } else {
+        document.getElementById('statDisplacement').textContent = '—';
+      }
+    } catch(e) {}
+
+    // ---- Story headlines (one per slide) ----
+    try {
+      const movingH = Number(stats.movingHours || 0);
+      const avgDayKm = Number(stats.avgDailyDistanceKm || 0);
+      const avgDay = avgDayKm > 0 ? (useMiles ? (avgDayKm * 0.621371) : avgDayKm) : 0;
+      const avgDayLabel = useMiles ? 'mi/day' : 'km/day';
+      const avgDriveH = (totalDays > 0 && movingH > 0) ? (movingH / totalDays) : 0;
+
+      // Overview story
+      const ov = (dist > 0 && avgDriveH > 0)
+        ? `You travelled a lot — your average drive was ${avgDriveH.toFixed(1)} hours.`
+        : (dist > 0 ? `You travelled ${fmtInt(Math.round(dist))} ${distLabel} on this trip.` : 'A snapshot of your trip.' );
+      document.getElementById('storyOverview').textContent = ov;
+      const ov2 = (avgDay > 0) ? `That’s about ${Math.round(avgDay)} ${avgDayLabel} across ${fmtInt(totalDays||0)} days.` : 'Swipe for the details.';
+      document.getElementById('storyOverviewSub').textContent = ov2;
+
+      // Stops story
+      const st = (avgStopH > 0 && stops > 0)
+        ? `You stopped often — each stop averaged ${avgStopH.toFixed(1)} hours.`
+        : (stops > 0 ? `You made ${fmtInt(stops)} stops along the way.` : 'Stops and nights.' );
+      document.getElementById('storyStops').textContent = st;
+      document.getElementById('storyStopsSub').textContent = (Number.isFinite(nights) && nights > 0) ? `${fmtInt(nights)} nights on the road.` : 'Your rhythm on the road.';
+
+      // Climbs story
+      const elevTxt = (elevM > 0) ? (useMiles ? `${fmtInt(Math.round(elevM*3.28084))} ft` : `${fmtInt(Math.round(elevM))} m`) : '';
+      const hpTxt = (highestM > 0) ? (useMiles ? `${fmtInt(Math.round(highestM*3.28084))} ft` : `${fmtInt(Math.round(highestM))} m`) : '';
+      const cl = (elevM > 0 && highestM > 0)
+        ? `You climbed ${elevTxt} — topping out at ${hpTxt}.`
+        : (furthestKm > 0 ? `You made it ${fmtInt(Math.round(useMiles?furthestKm*0.621371:furthestKm))} ${useMiles?'mi':'km'} from where you started.` : 'The terrain you covered.' );
+      document.getElementById('storyClimbs').textContent = cl;
+      document.getElementById('storyClimbsSub').textContent = (furthestKm > 0) ? `Furthest point: ${fmtInt(Math.round(useMiles?furthestKm*0.621371:furthestKm))} ${useMiles?'mi':'km'} from start.` : 'Elevation and reach.';
+
+      // Highlights story
+      let best = 'Your highlights.';
+      try {
+        const ld = stats.longestDrive || null;
+        if (ld && (ld.distanceM || ld.durationMs)) {
+          const d0 = useMiles ? (Number(ld.distanceM||0)/1609.344) : (Number(ld.distanceM||0)/1000);
+          const lab = useMiles ? 'mi' : 'km';
+          const hh = (Number(ld.durationMs||0)/(1000*60*60));
+          best = `Your longest drive was ${Math.round(d0)} ${lab} in ${hh.toFixed(1)} hours.`;
+        }
+      } catch(e) {}
+      document.getElementById('storyHighlights').textContent = best;
+      document.getElementById('storyHighlightsSub').textContent = (Number(stats.longestMovementStreakDays||0) > 0)
+        ? `Longest movement streak: ${fmtInt(Number(stats.longestMovementStreakDays||0))} days.`
+        : 'The biggest moments of the trip.';
     } catch(e) {}
 
     // Final share slide values
