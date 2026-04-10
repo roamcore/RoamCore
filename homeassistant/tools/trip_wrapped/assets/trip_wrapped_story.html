@@ -399,6 +399,11 @@
           preserveDrawingBuffer: false,
         });
 
+        // Mark ready once we have something rendered.
+        try {
+          map.once('idle', () => { window.__RC_MAPBG_READY = true; });
+        } catch(e) {}
+
         const pts = (stats.journeyRoute || []).map(p => [Number(p.lon), Number(p.lat)]).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
         map.on('load', () => {
           try {
@@ -774,26 +779,28 @@
           }
         } catch(e) {}
 
-        // Base background (avoid "blank grey" even when route is missing)
+        // Clear the overlay canvas. If a background map is ready, keep this transparent.
+        // Otherwise, draw a subtle texture so it doesn't look empty.
         ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = 'rgba(8,12,24,0.55)';
-        ctx.fillRect(0, 0, w, h);
-
-        // Subtle "map" texture (grid + vignette) so it reads like a map even before we add real tiles.
-        try {
-          ctx.save();
-          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-          ctx.lineWidth = 1;
-          const step = 34;
-          for (let x=step; x<w; x+=step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
-          for (let y=step; y<h; y+=step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-          const vg = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.2, w*0.5,h*0.5, Math.max(w,h)*0.75);
-          vg.addColorStop(0,'rgba(0,0,0,0)');
-          vg.addColorStop(1,'rgba(0,0,0,0.55)');
-          ctx.fillStyle = vg;
-          ctx.fillRect(0,0,w,h);
-          ctx.restore();
-        } catch(e) {}
+        const bgReady = !!window.__RC_MAPBG_READY;
+        if (!bgReady) {
+          ctx.fillStyle = 'rgba(8,12,24,0.55)';
+          ctx.fillRect(0, 0, w, h);
+          try {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            const step = 34;
+            for (let x=step; x<w; x+=step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+            for (let y=step; y<h; y+=step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+            const vg = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.2, w*0.5,h*0.5, Math.max(w,h)*0.75);
+            vg.addColorStop(0,'rgba(0,0,0,0)');
+            vg.addColorStop(1,'rgba(0,0,0,0.55)');
+            ctx.fillStyle = vg;
+            ctx.fillRect(0,0,w,h);
+            ctx.restore();
+          } catch(e) {}
+        }
 
         const pts = _getRoutePoints();
         if (!pts || pts.length < 2) {
