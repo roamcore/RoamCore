@@ -16,5 +16,13 @@ def render_html(wrapped: dict, template: str = "classic") -> str:
         tpl = f.read()
     # Safe JSON embedding: prevent closing the <script> tag if data contains "</script>".
     # (Also helps avoid accidental HTML parsing issues.)
-    data = json.dumps(wrapped, ensure_ascii=False).replace("<", "\\u003c")
+    data = json.dumps(wrapped, ensure_ascii=False)
+    # Conservative escaping for HTML/script contexts.
+    data = (
+        data.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
     return tpl.replace("/*__TRIP_WRAPPED_DATA__*/", f"window.TRIP_WRAPPED_DATA = {data};")
