@@ -1001,13 +1001,22 @@
       } catch(e) { return String(u||''); }
     }
 
-    function _loadImage(src) {
+    function _loadImage(src, opts) {
       return new Promise((resolve) => {
         try {
           if (!src) return resolve(null);
+          opts = opts || {};
           const img = new Image();
-          // Avoid CORS/taint surprises: for same-origin images, don't set crossOrigin.
-          // (Setting it can cause the load to fail on some servers.)
+          // For remote tiles/images we MUST use anonymous CORS, otherwise the canvas
+          // becomes tainted and toDataURL() will throw.
+          try {
+            const abs = _absUrl(src);
+            const isRemote = abs.startsWith('http://') || abs.startsWith('https://');
+            const sameOrigin = isRemote && (abs.startsWith(String(window.location.origin || '')));
+            if (opts.crossOrigin === 'anonymous' || (isRemote && !sameOrigin)) {
+              img.crossOrigin = 'anonymous';
+            }
+          } catch(e) {}
           img.onload = () => resolve(img);
           img.onerror = () => resolve(null);
           img.src = _absUrl(src);
@@ -1098,7 +1107,7 @@
       ctx.fillRect(x, y, w, h);
 
       // Load tiles in parallel (best-effort)
-      const imgs = await Promise.all(tasks.map(t=>_loadImage(t.url)));
+      const imgs = await Promise.all(tasks.map(t=>_loadImage(t.url, {crossOrigin:'anonymous'})));
       for (let i=0;i<tasks.length;i++) {
         const im = imgs[i];
         if (!im) continue;
@@ -1108,8 +1117,8 @@
         ctx.drawImage(im, dx, dy, tileSize, tileSize);
       }
 
-      // Slight dark overlay to match RoamCore aesthetic
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      // Very light dark overlay for contrast (keep map readable)
+      ctx.fillStyle = 'rgba(0,0,0,0.10)';
       ctx.fillRect(x, y, w, h);
 
       return {z, topLeft};
