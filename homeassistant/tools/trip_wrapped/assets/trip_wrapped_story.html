@@ -324,6 +324,32 @@
   <script>
     /*__TRIP_WRAPPED_DATA__*/
 
+    // If anything goes wrong on a phone browser, surface it visibly.
+    (function(){
+      function showErr(msg){
+        try {
+          const el = document.createElement('div');
+          el.style.position = 'sticky';
+          el.style.top = '0';
+          el.style.zIndex = '10000';
+          el.style.padding = '10px 14px';
+          el.style.background = 'rgba(255, 80, 80, 0.14)';
+          el.style.borderBottom = '1px solid rgba(255, 80, 80, 0.25)';
+          el.style.color = '#fff';
+          el.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+          el.style.fontSize = '13px';
+          el.innerHTML = `<b>Trip Wrapped error:</b> ${String(msg)}`;
+          document.body.prepend(el);
+        } catch(e) {}
+      }
+      window.addEventListener('error', (e)=>{
+        showErr(e && e.message ? e.message : 'Unknown error');
+      });
+      window.addEventListener('unhandledrejection', (e)=>{
+        showErr(e && e.reason ? e.reason : 'Unhandled promise rejection');
+      });
+    })();
+
     const d = window.TRIP_WRAPPED_DATA || {};
     const meta = d.meta || {};
     const stats = d.stats || {};
@@ -343,7 +369,6 @@
     const to = meta.to ? new Date(meta.to) : null;
     const title = meta.title || 'Trip Wrapped';
 
-    // Notice banner (demo / needs setup)
     try {
       const notice = meta.notice || '';
       if (notice && String(notice).trim()) {
