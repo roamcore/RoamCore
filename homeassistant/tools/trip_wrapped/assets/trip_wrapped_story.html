@@ -431,7 +431,7 @@
     // Stops + nights
     const stops = Number(stats.numberOfStops || 0);
     document.getElementById('statStops').innerHTML = stops ? `${fmtInt(stops)}<small>${stops===1?'stop':'stops'}</small>` : '—';
-    document.getElementById('statStopsSub').textContent = stops ? 'How many times you settled somewhere.' : '—';
+    // (statStopsSub removed in the new layout)
     try { document.getElementById('coverStops').textContent = stops ? `${fmtInt(stops)}` : '—'; } catch(e) {}
 
     const totalDays = Number(stats.totalDays || 0);
