@@ -4,6 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>RoamCore — Trip Wrapped</title>
+  <!-- MapLibre (local vendor copy from RoamCore assets) -->
+  <link rel="stylesheet" href="/local/roamcore/vendor/maplibre-gl/maplibre-gl.css"/>
   <style>
     :root{
       --bg:#070A12;
@@ -98,6 +100,7 @@
       position:relative;
       height:300px;
     }
+    .mapBg{position:absolute; inset:0;}
     .mapImg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; opacity:0.92; filter:saturate(0.95) contrast(1.05)}
     .mapCanvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
     .mapFallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
@@ -187,13 +190,14 @@
         </header>
 
         <div class="statsStack">
-          <div class="mapBox">
-            <img class="mapImg" id="mapImg" alt="Trip map"/>
-            <canvas class="mapCanvas" id="mapCanvas"></canvas>
-            <div class="mapFallback" id="mapFallback" style="display:none;">
-              <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
-            </div>
+        <div class="mapBox">
+          <div class="mapBg" id="mapBg"></div>
+          <img class="mapImg" id="mapImg" alt="Trip map"/>
+          <canvas class="mapCanvas" id="mapCanvas"></canvas>
+          <div class="mapFallback" id="mapFallback" style="display:none;">
+            <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
           </div>
+        </div>
 
           <!-- Quick headline strip (keeps cover from feeling empty) -->
           <div class="strip">
@@ -324,6 +328,12 @@
   <script>
     /*__TRIP_WRAPPED_DATA__*/
 
+    // MapLibre script (local)
+  </script>
+  <script src="/local/roamcore/vendor/maplibre-gl/maplibre-gl.js"></script>
+  <script src="/local/roamcore/vendor/pmtiles/pmtiles.js"></script>
+  <script>
+
     // If anything goes wrong on a phone browser, surface it visibly.
     (function(){
       function showErr(msg){
@@ -353,6 +363,55 @@
     const d = window.TRIP_WRAPPED_DATA || {};
     const meta = d.meta || {};
     const stats = d.stats || {};
+
+    // Background map (raster) with place names.
+    // Uses OSM raster tiles as a dependable default; if you later add local PMTiles,
+    // we can swap the style to the RoamCore vector style.
+    function initMapBg() {
+      try {
+        if (typeof maplibregl === 'undefined') return;
+        const el = document.getElementById('mapBg');
+        if (!el) return;
+
+        // Basic raster style (labels included)
+        const style = {
+          version: 8,
+          sources: {
+            osm: {
+              type: 'raster',
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+              tileSize: 256,
+              attribution: '© OpenStreetMap contributors'
+            }
+          },
+          layers: [
+            { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-opacity': 0.85 } },
+            // darken a touch for contrast
+            { id: 'shade', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0.15)' } }
+          ]
+        };
+
+        const map = new maplibregl.Map({
+          container: el,
+          style,
+          interactive: false,
+          attributionControl: false,
+          preserveDrawingBuffer: false,
+        });
+
+        const pts = (stats.journeyRoute || []).map(p => [Number(p.lon), Number(p.lat)]).filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+        map.on('load', () => {
+          try {
+            if (pts.length >= 2) {
+              let minX=pts[0][0], maxX=pts[0][0], minY=pts[0][1], maxY=pts[0][1];
+              for (const [x,y] of pts) { if (x<minX) minX=x; if (x>maxX) maxX=x; if (y<minY) minY=y; if (y>maxY) maxY=y; }
+              map.fitBounds([[minX, minY],[maxX, maxY]], { padding: 28, duration: 0 });
+            }
+            // subtle vignette overlay via CSS? (canvas overlay already exists)
+          } catch(e) {}
+        });
+      } catch(e) {}
+    }
 
     const fmtInt = (n) => (Number(n)||0).toLocaleString();
     const fmtDateUTC = (dt) => {
@@ -831,6 +890,9 @@
         try { document.getElementById('mapFallback').style.display = ''; } catch (_e) {}
       }
     }
+
+    // Init background map as soon as possible.
+    try { initMapBg(); } catch(e) {}
 
     // Draw after layout; redraw on resize/orientation changes.
     try {
