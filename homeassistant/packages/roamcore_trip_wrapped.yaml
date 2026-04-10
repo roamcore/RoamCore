@@ -82,6 +82,7 @@ shell_command:
     --to {{ states('input_text.rc_trip_wrapped_to') }}
     --title "Trip Wrapped"
     --owner-name "{{ states('input_text.rc_owner_name') if states('input_text.rc_owner_name') not in ['unknown','unavailable','none',''] else 'You' }}"
+    --template story
     --out-json /config/www/roamcore/trip_wrapped/latest.json
     --out-html /config/www/roamcore/trip_wrapped/latest.html
 
@@ -96,6 +97,7 @@ shell_command:
     --from {{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}
     --to {{ now().isoformat() }}
     --title "RoamCore Trip Wrapped (Today)"
+    --template story
     --out-json /config/www/roamcore/trip_wrapped/today.json
     --out-html /config/www/roamcore/trip_wrapped/today.html
 
