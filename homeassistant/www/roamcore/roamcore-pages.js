@@ -428,6 +428,25 @@ class RoamcoreBasePage extends HTMLElement {
     //   - /roamcore/...    (legacy)
     //   - /lovelace/roamcore/... (storage dashboard)
     try {
+      // Prefer HA's panel registry when available. This correctly resolves
+      // storage dashboards which mount at /dashboard-<url_path>/...
+      // Example: dashboard item url_path=roamcore => /dashboard-roamcore
+      try {
+        const panels = this._hass?.panels || {};
+        for (const k of Object.keys(panels)) {
+          const p = panels[k];
+          const urlPath = String(p?.url_path || '');
+          const title = String(p?.title || p?.config?.title || '');
+          if (!urlPath) continue;
+          // We accept either explicit RoamCore title or url_path match.
+          if (title.toLowerCase().includes('roamcore') || urlPath.toLowerCase().includes('roamcore')) {
+            // HA prefixes dashboard paths with /<url_path>
+            // Storage dashboards typically use url_path like "dashboard-roamcore".
+            return urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
+          }
+        }
+      } catch (e) {}
+
       const p = String(window.location?.pathname || '');
       // Modern HA storage dashboards often mount at /dashboard-<url_path>/...
       // Example: /dashboard-roamcore/home
@@ -435,6 +454,8 @@ class RoamcoreBasePage extends HTMLElement {
         const m = p.match(/^\/(dashboard-[^\/]+)(?:\/|$)/);
         if (m && m[1]) return `/${m[1]}`;
       } catch (e) {}
+
+      // Legacy/YAML dashboard routes.
       if (p.startsWith('/roam-core/')) return '/roam-core';
       if (p === '/roam-core') return '/roam-core';
       if (p.startsWith('/roamcore/')) return '/roamcore';
