@@ -1967,19 +1967,16 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const tripWrappedTile = `
       <div style="margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-          <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <div style="min-width:0;">
             <div style="font-weight: 900; font-size: 14px;">Trip Wrapped</div>
-          <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, top trip, etc.). Source-of-truth comes from Traccar reports.</div>
-          <div class="rc-label" style="margin-top:8px;">Status: ${twBadge} · Last generated: <b>${twGenTxt}</b></div>
+            <div class="rc-label" style="margin-top:4px;">Generate an overview of your adventure — Spotify Wrapped style.</div>
+            <div class="rc-label" style="margin-top:8px;">Status: ${twBadge}${twGenTxt !== '—' ? ` · Last generated: <b>${twGenTxt}</b>` : ''}</div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-            <button class="rc-btn" id="rc-tripwrapped-generate-quick">Generate</button>
-            <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
-            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
+            <button class="rc-btn" id="rc-tripwrapped-open" style="width:auto; padding-left:18px; padding-right:18px;">Generate</button>
           </div>
         </div>
-        <div id="rc-tripwrapped-preview" class="rc-label" style="margin-top:12px;">No summary loaded yet.</div>
       </div>
     `;
 
@@ -2073,27 +2070,10 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       }
     } catch (e) {}
 
-    // Trip Wrapped: async preview + modal.
+    // Trip Wrapped: simplified flow (modal)
     try {
       const btn = this._root.querySelector('#rc-tripwrapped-open');
       if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
-      const quick = this._root.querySelector('#rc-tripwrapped-generate-quick');
-      if (quick) quick.addEventListener('click', async () => {
-        try {
-          quick.disabled = true;
-          // Generate using current helper values (From/To). Users can fine-tune in Options.
-          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
-          // Refresh preview
-          const prev = this._root.querySelector('#rc-tripwrapped-preview');
-          if (prev) this._loadTripWrappedPreview(prev);
-        } catch (e) {
-          console.warn('quick trip wrapped generate failed', e);
-        } finally {
-          try { quick.disabled = false; } catch (e) {}
-        }
-      });
-      const prev = this._root.querySelector('#rc-tripwrapped-preview');
-      if (prev) this._loadTripWrappedPreview(prev);
     } catch (e) {}
   }
 
@@ -2156,68 +2136,48 @@ class RoamcoreMapPage extends RoamcoreBasePage {
             <button class="rc-btn" id="rc-tripwrapped-close">Close</button>
           </div>
 
-          <div class="rc-label" style="margin-top:8px;">Pick a time range, then generate a shareable recap.</div>
+          <div class="rc-label" style="margin-top:8px;">Generate an overview of your adventure — Spotify Wrapped style.</div>
 
-          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="rc-btn" id="rc-tripwrapped-preset-today">Today</button>
-            <button class="rc-btn" id="rc-tripwrapped-preset-7d">Last 7 days</button>
-            <button class="rc-btn" id="rc-tripwrapped-preset-30d">Last 30 days</button>
-          </div>
-
-          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">From</div>
-              <input id="rc-tripwrapped-from" type="datetime-local" class="rc-input" />
+          <div style="margin-top:14px;">
+            <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">1) Select date range</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+              <button class="rc-btn" id="rc-tripwrapped-preset-7d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 7 days</button>
+              <button class="rc-btn" id="rc-tripwrapped-preset-30d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 30 days</button>
+              <button class="rc-btn" id="rc-tripwrapped-preset-90d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 90 days</button>
             </div>
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">To</div>
-              <input id="rc-tripwrapped-to" type="datetime-local" class="rc-input" />
-            </div>
-          </div>
-
-          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">Export</div>
-              <select id="rc-tripwrapped-export" class="rc-input">
-                <option value="html_json" selected>HTML + JSON (recommended)</option>
-                <option value="json">JSON only</option>
-                <option value="html">HTML only</option>
-              </select>
-            </div>
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">After generate</div>
-              <select id="rc-tripwrapped-after" class="rc-input">
-                <option value="none" selected>Do nothing</option>
-                <option value="open_latest">Open latest report</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">Map theme</div>
-              <select id="rc-tripwrapped-theme" class="rc-input">
-                <option value="light" selected>Light</option>
-                <option value="dark">Dark</option>
-              </select>
-            </div>
-            <div>
-              <div class="rc-label" style="margin-bottom:6px;">Open</div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Latest (light)</a>
-                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html?theme=dark" target="_blank" rel="noreferrer">Latest (dark)</a>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <div class="rc-label" style="margin-bottom:6px;">From</div>
+                <input id="rc-tripwrapped-from" type="datetime-local" class="rc-input" />
+              </div>
+              <div>
+                <div class="rc-label" style="margin-bottom:6px;">To</div>
+                <input id="rc-tripwrapped-to" type="datetime-local" class="rc-input" />
               </div>
             </div>
           </div>
 
-          <div class="rc-label" style="margin-top:12px;">Metrics come from Traccar (reports/trips/route/etc). RoamCore only renders the results.</div>
-
-          <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-            <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
-            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
+          <div style="margin-top:16px;">
+            <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">2) Name (optional)</div>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+              <input id="rc-tripwrapped-name-enabled" type="checkbox" checked />
+              <span class="rc-label">Include my name on the report</span>
+            </label>
+            <div style="height:10px"></div>
+            <input id="rc-tripwrapped-name" type="text" class="rc-input" placeholder="Your name" />
           </div>
 
-          <div id="rc-tripwrapped-status" class="rc-label" style="margin-top:10px;"></div>
+          <div style="margin-top:18px;">
+            <button class="rc-btn" id="rc-tripwrapped-generate" style="padding: 14px 16px; font-size: 14px;">Generate</button>
+            <div style="height:10px"></div>
+            <a class="rc-btn" id="rc-tripwrapped-view" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer" style="display:none; padding: 14px 16px; font-size: 14px;">View</a>
+            <div id="rc-tripwrapped-status" class="rc-label" style="margin-top:10px;"></div>
+          </div>
+
+          <div class="rc-label" style="margin-top:16px; opacity:0.9;">
+            All of your data is 100% private and encrypted on disk. All tracking data is stored locally and is private to you.
+            Find more details at <a href="https://github.com/roamcore/RoamCore" target="_blank" rel="noreferrer">github.com/roamcore/roamcore</a>.
+          </div>
         </div>
       </div>
     `;
@@ -2243,6 +2203,9 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const fromEl = backdrop.querySelector('#rc-tripwrapped-from');
       const toEl = backdrop.querySelector('#rc-tripwrapped-to');
       const statusEl = backdrop.querySelector('#rc-tripwrapped-status');
+      const viewEl = backdrop.querySelector('#rc-tripwrapped-view');
+      const nameEnabledEl = backdrop.querySelector('#rc-tripwrapped-name-enabled');
+      const nameEl = backdrop.querySelector('#rc-tripwrapped-name');
 
       const setRange = (fromDate, toDate) => {
         try {
@@ -2256,17 +2219,30 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const now = new Date();
       setRange(new Date(now.getTime() - 7*24*3600*1000), now);
 
-      const todayBtn = backdrop.querySelector('#rc-tripwrapped-preset-today');
-      if (todayBtn) todayBtn.addEventListener('click', () => {
-        const d = new Date();
-        const from = new Date(d);
-        from.setHours(0,0,0,0);
-        setRange(from, d);
-      });
+      // Auto-populate name from HA helper.
+      try {
+        const current = this._getState('input_text.rc_owner_name');
+        if (nameEl) nameEl.value = (!rcIsMissingState(current) ? String(current) : 'You');
+      } catch (e) {}
+
+      const setNameEnabled = (on) => {
+        try {
+          const v = !!on;
+          if (nameEl) nameEl.disabled = !v;
+          if (nameEl) nameEl.style.opacity = v ? '1' : '0.55';
+        } catch (e) {}
+      };
+      setNameEnabled(true);
+      try {
+        if (nameEnabledEl) nameEnabledEl.addEventListener('change', () => setNameEnabled(nameEnabledEl.checked));
+      } catch (e) {}
+
       const d7Btn = backdrop.querySelector('#rc-tripwrapped-preset-7d');
       if (d7Btn) d7Btn.addEventListener('click', () => setRange(new Date(Date.now()-7*24*3600*1000), new Date()));
       const d30Btn = backdrop.querySelector('#rc-tripwrapped-preset-30d');
       if (d30Btn) d30Btn.addEventListener('click', () => setRange(new Date(Date.now()-30*24*3600*1000), new Date()));
+      const d90Btn = backdrop.querySelector('#rc-tripwrapped-preset-90d');
+      if (d90Btn) d90Btn.addEventListener('click', () => setRange(new Date(Date.now()-90*24*3600*1000), new Date()));
 
       const genBtn = backdrop.querySelector('#rc-tripwrapped-generate');
       if (genBtn) genBtn.addEventListener('click', async () => {
@@ -2287,27 +2263,28 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_from', value: fromIso });
           await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_to', value: toIso });
 
+          // Persist owner name (optional)
+          try {
+            const enabled = !!nameEnabledEl?.checked;
+            const nm = String(nameEl?.value || '').trim();
+            await this._hass.callService('input_text', 'set_value', {
+              entity_id: 'input_text.rc_owner_name',
+              value: enabled ? (nm || 'You') : '',
+            });
+          } catch (e) {}
+
           // For now, export always generates both HTML+JSON (shell_command does both).
           // We keep the UI option for future, but do not branch yet.
           await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
 
-          const theme = backdrop.querySelector('#rc-tripwrapped-theme')?.value || 'light';
-          const url = theme === 'dark'
-            ? '/local/roamcore/trip_wrapped/latest.html?theme=dark'
-            : '/local/roamcore/trip_wrapped/latest.html';
-
-          if (statusEl) statusEl.innerHTML = `Done. Open: <a href="${url}" target="_blank" rel="noreferrer">latest.html</a>`;
-
-          // Refresh preview (best effort)
+          const url = '/local/roamcore/trip_wrapped/latest.html';
+          if (statusEl) statusEl.textContent = 'Done.';
           try {
-            const prev = this._root.querySelector('#rc-tripwrapped-preview');
-            if (prev) this._loadTripWrappedPreview(prev);
+            if (viewEl) {
+              viewEl.href = url + '?v=' + encodeURIComponent(String(Date.now()));
+              viewEl.style.display = '';
+            }
           } catch (e) {}
-
-          const after = backdrop.querySelector('#rc-tripwrapped-after')?.value;
-          if (after === 'open_latest') {
-            try { window.open(url, '_blank'); } catch (e) {}
-          }
         } catch (e) {
           console.warn('trip wrapped generate failed', e);
           if (statusEl) statusEl.textContent = 'Generate failed (check Traccar credentials/config).';
