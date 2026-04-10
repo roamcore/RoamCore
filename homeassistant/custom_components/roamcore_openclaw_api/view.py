@@ -10,6 +10,8 @@ from homeassistant.util import dt as dt_util
 
 from .const import CONTRACT_VERSION
 
+from aiohttp import web
+
 
 def _state_or_none(hass: HomeAssistant, entity_id: str) -> str | None:
     st = hass.states.get(entity_id)
@@ -80,7 +82,7 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
 
         # When disabled, return 404 so clients can treat it as "off".
         if not self._enabled():
-            return self.json({"ok": False, "error": "disabled"}, status=404)
+            return web.json_response({"ok": False, "error": "disabled"}, status=404)
 
         # Entities used by the contract (prefer rc_* contract ids where they exist).
         # Power
@@ -210,7 +212,7 @@ class RoamCoreOpenClawSkillView(HomeAssistantView):
         hass: HomeAssistant = request.app["hass"]
 
         if not self._enabled():
-            return self.json({"ok": False, "error": "disabled"}, status=404)
+            return web.json_response({"ok": False, "error": "disabled"}, status=404)
         base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
         summary = f"{base}/api/roamcore/openclaw/summary"
 
