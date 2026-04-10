@@ -1,0 +1,18 @@
+# RoamCore OpenClaw API controls (legacy integration)
+#
+# The legacy custom component `roamcore_openclaw_api` registers the OpenClaw
+# endpoints from configuration.yaml. These helpers allow the UI to:
+# - enable/disable the API (404 when disabled)
+# - require auth (LLAT) when enabled
+
+input_boolean:
+  rc_openclaw_api_enabled:
+    name: "RC OpenClaw API Enabled"
+    icon: mdi:robot
+    initial: false
+
+  rc_openclaw_api_requires_auth:
+    name: "RC OpenClaw API Requires Auth"
+    icon: mdi:lock
+    initial: false
+

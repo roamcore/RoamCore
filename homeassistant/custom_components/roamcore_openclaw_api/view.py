@@ -53,13 +53,34 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
 
     url = "/api/roamcore/openclaw/summary"
     name = "api:roamcore:openclaw:summary"
-    # MVP: no auth to keep OpenClaw simple on isolated LANs.
-    # If exposed beyond a trusted network, put HA behind a reverse proxy/VPN and/or
-    # adjust this to True.
-    requires_auth = False
+    def __init__(self, hass: HomeAssistant):
+        self._hass = hass
+
+    @property
+    def requires_auth(self) -> bool:
+        # Gate via helper so users can flip this without editing code.
+        try:
+            st = self._hass.states.get("input_boolean.rc_openclaw_api_requires_auth")
+            return st is not None and st.state == "on"
+        except Exception:
+            return False
+
+    def _enabled(self) -> bool:
+        try:
+            st = self._hass.states.get("input_boolean.rc_openclaw_api_enabled")
+            # Default to enabled if helper is missing (back-compat).
+            if st is None:
+                return True
+            return st.state == "on"
+        except Exception:
+            return True
 
     async def get(self, request):
         hass: HomeAssistant = request.app["hass"]
+
+        # When disabled, return 404 so clients can treat it as "off".
+        if not self._enabled():
+            return self.json({"ok": False, "error": "disabled"}, status=404)
 
         # Entities used by the contract (prefer rc_* contract ids where they exist).
         # Power
@@ -165,10 +186,31 @@ class RoamCoreOpenClawSkillView(HomeAssistantView):
 
     url = "/api/roamcore/openclaw/skill"
     name = "api:roamcore:openclaw:skill"
-    requires_auth = False
+    def __init__(self, hass: HomeAssistant):
+        self._hass = hass
+
+    @property
+    def requires_auth(self) -> bool:
+        try:
+            st = self._hass.states.get("input_boolean.rc_openclaw_api_requires_auth")
+            return st is not None and st.state == "on"
+        except Exception:
+            return False
+
+    def _enabled(self) -> bool:
+        try:
+            st = self._hass.states.get("input_boolean.rc_openclaw_api_enabled")
+            if st is None:
+                return True
+            return st.state == "on"
+        except Exception:
+            return True
 
     async def get(self, request):
         hass: HomeAssistant = request.app["hass"]
+
+        if not self._enabled():
+            return self.json({"ok": False, "error": "disabled"}, status=404)
         base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
         summary = f"{base}/api/roamcore/openclaw/summary"
 
@@ -177,7 +219,7 @@ class RoamCoreOpenClawSkillView(HomeAssistantView):
             "generated_at": dt_util.utcnow().replace(tzinfo=timezone.utc).isoformat(),
             "roamcore": {
                 "openclaw_summary_url": summary,
-                "requires_auth": False,
+                "requires_auth": bool(self.requires_auth),
                 "summary_contract": {"name": "roamcore_openclaw_summary", "version": CONTRACT_VERSION},
             },
             "user_instructions": [

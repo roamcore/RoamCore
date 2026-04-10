@@ -3093,10 +3093,23 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         try {
           enableBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Updating…';
-          await this._hass.callService('roamcore', 'options_set', {
-            openclaw_api_enabled: !enabled,
-            openclaw_api_requires_auth: !!reqAuthEl?.checked,
-          });
+          // Prefer the new RoamCore integration service if present; otherwise
+          // fall back to the legacy roamcore_openclaw_api service.
+          let ok = false;
+          try {
+            await this._hass.callService('roamcore', 'options_set', {
+              openclaw_api_enabled: !enabled,
+              openclaw_api_requires_auth: !!reqAuthEl?.checked,
+            });
+            ok = true;
+          } catch (e) {
+            // Legacy fallback: expects keys enabled/requires_auth
+            await this._hass.callService('roamcore_openclaw_api', 'options_set', {
+              enabled: !enabled,
+              requires_auth: !!reqAuthEl?.checked,
+            });
+            ok = true;
+          }
           if (statusEl) statusEl.textContent = 'Updated. Refreshing…';
           await this._fetchDiagnostics({ force: true });
           // Re-open modal with fresh state.
