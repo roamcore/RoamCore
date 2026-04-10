@@ -2569,7 +2569,12 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
               label: 'Mode (optional)',
               ok: null,
               sub: `Current: <b>${(mode && !rcIsMissingState(mode)) ? rcCap(mode) : '—'}</b>`,
-              actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_select.rc_mode">Change</button>`
+              actionsHtml: `
+                <button class="rc-btn rc-btn-mini" data-more="input_select.rc_mode">Change</button>
+                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_auto">Auto</button>
+                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_travel">Travel</button>
+                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_camp">Camp</button>
+              `
             })}
           </div>
         </div>

@@ -25,3 +25,45 @@ template:
         state: >-
           {{ states('input_select.rc_mode') }}
 
+
+# Convenience scripts (UI-friendly quick-set)
+script:
+  rc_mode_set_auto:
+    alias: "RC Mode: Auto"
+    sequence:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.rc_mode
+          option: auto
+
+  rc_mode_set_travel:
+    alias: "RC Mode: Travel"
+    sequence:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.rc_mode
+          option: travel
+
+  rc_mode_set_camp:
+    alias: "RC Mode: Camp"
+    sequence:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.rc_mode
+          option: camp
+
+  rc_mode_set_stealth:
+    alias: "RC Mode: Stealth"
+    sequence:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.rc_mode
+          option: stealth
+
+  rc_mode_set_off:
+    alias: "RC Mode: Off"
+    sequence:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.rc_mode
+          option: off
