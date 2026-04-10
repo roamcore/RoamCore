@@ -121,6 +121,11 @@ def parse_args():
         choices=["classic", "story"],
         help="HTML template to render (classic single-card or story swipe-deck).",
     )
+    p.add_argument(
+        "--demo",
+        action="store_true",
+        help="Generate a demo Trip Wrapped (no Traccar required). Useful for UI previews.",
+    )
     p.add_argument("--owner-name", help="Optional owner name used for auto-title (e.g. Emily)")
     p.add_argument(
         "--config-dir",
@@ -165,6 +170,69 @@ def _norm(v: str | None) -> str | None:
 def main():
     a = parse_args()
 
+    def _demo_payload():
+        """Return (trips, journey_route) demo payload in Traccar-like shape."""
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        # 3-day trip with 4 driving segments
+        t0 = now - timedelta(days=3)
+        trips = [
+            {
+                "distance": 220_000,
+                "duration": 2 * 60 * 60 * 1000 + 18 * 60 * 1000,
+                "startTime": (t0 + timedelta(hours=9)).isoformat(),
+                "endTime": (t0 + timedelta(hours=11, minutes=18)).isoformat(),
+                "startAddress": "Santa Monica",
+                "endAddress": "Palm Springs",
+            },
+            {
+                "distance": 410_000,
+                "duration": 4 * 60 * 60 * 1000 + 5 * 60 * 1000,
+                "startTime": (t0 + timedelta(days=1, hours=8)).isoformat(),
+                "endTime": (t0 + timedelta(days=1, hours=12, minutes=5)).isoformat(),
+                "startAddress": "Palm Springs",
+                "endAddress": "Grand Canyon Village",
+            },
+            {
+                "distance": 530_000,
+                "duration": 5 * 60 * 60 * 1000 + 25 * 60 * 1000,
+                "startTime": (t0 + timedelta(days=2, hours=7)).isoformat(),
+                "endTime": (t0 + timedelta(days=2, hours=12, minutes=25)).isoformat(),
+                "startAddress": "Grand Canyon Village",
+                "endAddress": "Albuquerque",
+            },
+            {
+                "distance": 610_000,
+                "duration": 6 * 60 * 60 * 1000 + 10 * 60 * 1000,
+                "startTime": (t0 + timedelta(days=3, hours=6)).isoformat(),
+                "endTime": (t0 + timedelta(days=3, hours=12, minutes=10)).isoformat(),
+                "startAddress": "Albuquerque",
+                "endAddress": "Denver",
+            },
+        ]
+
+        # Journey route points (positions report-like)
+        # Rough line: LA -> Palm Springs -> Grand Canyon -> Albuquerque -> Denver
+        pts = [
+            (34.0100, -118.4960, 30),
+            (33.8303, -116.5453, 140),
+            (36.0544, -112.1401, 2090),
+            (35.0844, -106.6504, 1610),
+            (39.7392, -104.9903, 1609),
+        ]
+        journey = []
+        for i, (lat, lon, alt) in enumerate(pts):
+            journey.append(
+                {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "altitude": alt,
+                    "deviceTime": (t0 + timedelta(hours=i * 6)).isoformat(),
+                }
+            )
+        return trips, journey
+
     user = _norm(a.username)
     pw = _norm(a.password)
 
@@ -172,6 +240,47 @@ def main():
     # email/password login endpoint is unavailable) so we don't need to store creds.
     trips = None
     pref_err = None
+
+    # Demo mode: skip Traccar entirely.
+    if a.demo:
+        demo_trips, demo_journey = _demo_payload()
+        wrapped = build_wrapped(
+            title=a.title,
+            device_id=a.device_id,
+            from_ts=a.from_ts,
+            to_ts=a.to_ts,
+            trips=demo_trips,
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            journey_route=demo_journey,
+            top_trip_route=[],
+            stops=[],
+            map_image_url=None,
+            owner_name=_norm(a.owner_name) or "You",
+            comparisons={},
+        )
+        wrapped.setdefault("meta", {})
+        wrapped["meta"]["dataStatus"] = "demo"
+        wrapped["meta"]["notice"] = "Showing demo data. Turn off Demo Mode to use your real trip." 
+        os.makedirs(os.path.dirname(a.out_json), exist_ok=True)
+        os.makedirs(os.path.dirname(a.out_html), exist_ok=True)
+        def _atomic_write_text(path: str, text: str):
+            d = os.path.dirname(path)
+            fd, tmp = tempfile.mkstemp(prefix=os.path.basename(path) + ".", dir=d)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(text)
+                os.replace(tmp, path)
+            finally:
+                try:
+                    if os.path.exists(tmp):
+                        os.unlink(tmp)
+                except Exception:
+                    pass
+        def _atomic_write_json(path: str, obj):
+            _atomic_write_text(path, json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
+        _atomic_write_json(a.out_json, wrapped)
+        _atomic_write_text(a.out_html, render_html(wrapped, template=a.template))
+        return
     try:
         sec = _load_secrets()
         tok = _norm(a.user_token) or sec.get("roamcore_traccar_user_token")
