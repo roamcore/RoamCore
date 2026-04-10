@@ -450,13 +450,26 @@ def main():
         comparisons={},
     )
 
-    if export_notice:
-        try:
-            wrapped.setdefault("meta", {})
+    # Meta notices for better UX (avoid blank/"—" screens with no explanation).
+    try:
+        wrapped.setdefault("meta", {})
+        if export_notice:
             wrapped["meta"]["notice"] = export_notice
             wrapped["meta"]["dataStatus"] = "needs_setup"
-        except Exception:
-            pass
+        else:
+            # If we connected but got no usable trip/route data, surface a helpful message.
+            has_trips = bool(wrapped.get("trips"))
+            jr = (wrapped.get("stats", {}) or {}).get("journeyRoute") or []
+            has_route = bool(jr)
+            if not has_trips and not has_route:
+                wrapped["meta"].setdefault(
+                    "notice",
+                    "No trip data found for this range yet. Try expanding the date range, "
+                    "confirm the device ID, and ensure Traccar is connected.",
+                )
+                wrapped["meta"].setdefault("dataStatus", "no_data")
+    except Exception:
+        pass
 
     # Local, privacy-first comparisons vs past trips.
     try:
