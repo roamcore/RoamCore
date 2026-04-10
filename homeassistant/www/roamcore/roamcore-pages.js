@@ -3123,8 +3123,24 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
             entity_id: 'input_boolean.rc_openclaw_api_requires_auth',
           });
 
-          // Give HA a beat to propagate state so the tile immediately reflects the change.
-          try { await new Promise(r => setTimeout(r, 250)); } catch (e) {}
+          // Wait briefly for state propagation; if it doesn't flip, surface a clear error.
+          const wantEnabled = nextEnabled ? 'on' : 'off';
+          const wantAuth = nextAuth ? 'on' : 'off';
+          const waitFor = async (eid, want, ms = 2000) => {
+            const start = Date.now();
+            while (Date.now() - start < ms) {
+              const cur = String(this._hass?.states?.[eid]?.state || '').toLowerCase();
+              if (cur === want) return true;
+              await new Promise(r => setTimeout(r, 150));
+            }
+            return false;
+          };
+          const ok1 = await waitFor('input_boolean.rc_openclaw_api_enabled', wantEnabled);
+          const ok2 = await waitFor('input_boolean.rc_openclaw_api_requires_auth', wantAuth);
+          if (!ok1 || !ok2) {
+            if (statusEl) statusEl.textContent = 'Enable toggle did not take effect. Check HA permissions and that helpers are writable.';
+            return;
+          }
 
           // Best-effort: if the newer service exists, also persist options there.
           // We explicitly check service presence to avoid the noisy "Action not found" toast.
