@@ -2987,8 +2987,15 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
       const skillUrl = endpoints.openclaw_skill || (base.replace(/\/$/, '') + '/api/roamcore/openclaw/skill');
       const docsUrl = 'https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md';
 
-      const enabled = !!opts.openclaw_api_enabled;
-      const requiresAuth = !!opts.openclaw_api_requires_auth;
+      // Prefer helper-backed state (works in legacy YAML installs too).
+      const helperEnabled = this._hass?.states?.['input_boolean.rc_openclaw_api_enabled']?.state;
+      const helperAuth = this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth']?.state;
+      const enabled = (helperEnabled != null)
+        ? (String(helperEnabled).toLowerCase() === 'on')
+        : !!opts.openclaw_api_enabled;
+      const requiresAuth = (helperAuth != null)
+        ? (String(helperAuth).toLowerCase() === 'on')
+        : !!opts.openclaw_api_requires_auth;
 
       const host = document.createElement('div');
       host.innerHTML = `
@@ -3093,6 +3100,15 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         try {
           enableBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Updating…';
+
+          // Hard check: if helpers are missing, tell the user exactly what to do.
+          const hasEnabledHelper = !!this._hass?.states?.['input_boolean.rc_openclaw_api_enabled'];
+          const hasAuthHelper = !!this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth'];
+          if (!hasEnabledHelper || !hasAuthHelper) {
+            if (statusEl) statusEl.textContent = 'OpenClaw helpers missing. Restart Home Assistant to load RoamCore packages (rc_openclaw_api_*).';
+            return;
+          }
+
           // Most reliable approach: toggle helpers directly (built-in services).
           // These helpers are created by RoamCore packages:
           //   input_boolean.rc_openclaw_api_enabled
@@ -3106,6 +3122,9 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           await this._hass.callService('input_boolean', nextAuth ? 'turn_on' : 'turn_off', {
             entity_id: 'input_boolean.rc_openclaw_api_requires_auth',
           });
+
+          // Give HA a beat to propagate state so the tile immediately reflects the change.
+          try { await new Promise(r => setTimeout(r, 250)); } catch (e) {}
 
           // Best-effort: if the newer service exists, also persist options there.
           // We explicitly check service presence to avoid the noisy "Action not found" toast.
@@ -3188,8 +3207,15 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const diag = this._diag || {};
     const endpoints = diag?.endpoints || {};
     const opts = diag?.roamcore?.config_entry?.options || {};
-    const openclawEnabled = !!opts.openclaw_api_enabled;
-    const openclawAuth = !!opts.openclaw_api_requires_auth;
+    // Prefer helper-backed state so legacy YAML installs still work.
+    const helperEnabled = this._hass?.states?.['input_boolean.rc_openclaw_api_enabled']?.state;
+    const helperAuth = this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth']?.state;
+    const openclawEnabled = (helperEnabled != null)
+      ? (String(helperEnabled).toLowerCase() === 'on')
+      : !!opts.openclaw_api_enabled;
+    const openclawAuth = (helperAuth != null)
+      ? (String(helperAuth).toLowerCase() === 'on')
+      : !!opts.openclaw_api_requires_auth;
     const openclawLast = this._getState('sensor.rc_openclaw_last_seen');
     const openclawLastEp = this._hass?.states?.['sensor.rc_openclaw_last_seen']?.attributes?.endpoint;
 
