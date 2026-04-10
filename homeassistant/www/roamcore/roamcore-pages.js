@@ -3202,8 +3202,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
 
               <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
                 <button class="rc-btn" id="rcOpenClawConnect" style="flex:1; min-width: 160px;">Connect / Setup</button>
-                <a class="rc-btn rc-btn-ghost" href="${this._esc(endpoints.openclaw_skill || '/api/roamcore/openclaw/skill')}" target="_blank" rel="noreferrer">/skill</a>
-                <a class="rc-btn rc-btn-ghost" href="https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md" target="_blank" rel="noreferrer">Docs</a>
               </div>
 
               <div class="rc-mini" style="margin-top:10px; opacity:0.8;">
