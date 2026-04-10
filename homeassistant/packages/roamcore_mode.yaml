@@ -67,3 +67,71 @@ script:
         data:
           entity_id: input_select.rc_mode
           option: off
+
+
+  # ---
+  # Mode application scaffold
+  #
+  # This is intentionally non-destructive: it currently only logs which mode
+  # would be applied. Later, each branch can be extended to call real services.
+
+  rc_mode_apply:
+    alias: "RC Mode: Apply"
+    mode: single
+    sequence:
+      - choose:
+          - conditions: "{{ is_state('input_select.rc_mode', 'auto') }}"
+            sequence:
+              - service: script.rc_mode_apply_auto
+          - conditions: "{{ is_state('input_select.rc_mode', 'travel') }}"
+            sequence:
+              - service: script.rc_mode_apply_travel
+          - conditions: "{{ is_state('input_select.rc_mode', 'camp') }}"
+            sequence:
+              - service: script.rc_mode_apply_camp
+          - conditions: "{{ is_state('input_select.rc_mode', 'stealth') }}"
+            sequence:
+              - service: script.rc_mode_apply_stealth
+          - conditions: "{{ is_state('input_select.rc_mode', 'off') }}"
+            sequence:
+              - service: script.rc_mode_apply_off
+
+  rc_mode_apply_auto:
+    alias: "RC Mode: Apply Auto"
+    sequence:
+      - service: logbook.log
+        data:
+          name: RoamCore
+          message: "Mode apply (scaffold): auto"
+
+  rc_mode_apply_travel:
+    alias: "RC Mode: Apply Travel"
+    sequence:
+      - service: logbook.log
+        data:
+          name: RoamCore
+          message: "Mode apply (scaffold): travel"
+
+  rc_mode_apply_camp:
+    alias: "RC Mode: Apply Camp"
+    sequence:
+      - service: logbook.log
+        data:
+          name: RoamCore
+          message: "Mode apply (scaffold): camp"
+
+  rc_mode_apply_stealth:
+    alias: "RC Mode: Apply Stealth"
+    sequence:
+      - service: logbook.log
+        data:
+          name: RoamCore
+          message: "Mode apply (scaffold): stealth"
+
+  rc_mode_apply_off:
+    alias: "RC Mode: Apply Off"
+    sequence:
+      - service: logbook.log
+        data:
+          name: RoamCore
+          message: "Mode apply (scaffold): off"

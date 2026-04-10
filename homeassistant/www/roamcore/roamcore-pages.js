@@ -2574,6 +2574,7 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
                 <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_auto">Auto</button>
                 <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_travel">Travel</button>
                 <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_camp">Camp</button>
+                <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_mode_apply">Apply</button>
               `
             })}
           </div>
