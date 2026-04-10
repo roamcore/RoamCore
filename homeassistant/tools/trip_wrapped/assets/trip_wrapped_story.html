@@ -1173,6 +1173,17 @@
       const cardW = W - pad * 2;
       const cardH = H - (cardY + 110);
 
+      // Inner layout constants (computed to avoid overlaps)
+      const innerPadX = 44;
+      const contentX = cardX + innerPadX;
+      const contentW = cardW - innerPadX * 2;
+      const gapAfterDate = (H > 1500) ? 26 : 18;
+      const gapAfterMap = (H > 1500) ? 60 : 42;
+      const gapAfterStats = 22;
+      const statsH = (H > 1500) ? 180 : 160;
+      const highlightsH = (H > 1500) ? 140 : 132;
+      const footerH = (H > 1500) ? 74 : 58;
+
       // Frame glow
       const frame = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
       frame.addColorStop(0, 'rgba(110,231,255,0.35)');
@@ -1194,29 +1205,40 @@
       ctx.save();
       ctx.fillStyle = 'rgba(110,231,255,0.85)';
       ctx.font = '900 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-      ctx.fillText('ROAMCORE', cardX + 44, cardY + 70);
+      ctx.fillText('ROAMCORE', contentX, cardY + 70);
       ctx.restore();
 
       // Title (share-safe, never clipped)
       const t = String(title || 'Trip Wrapped').toUpperCase();
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
-      const maxW = cardW - 88;
+      const maxW = contentW;
       const topY = cardY + 160;
-      const fitted = _fitText(ctx, t, cardX + 44, topY, maxW, (H>1500?68:60), 44, 1000, 1.05);
+      const fitted = _fitText(ctx, t, contentX, topY, maxW, (H>1500?68:60), 44, 1000, 1.05);
       const titleBottom = fitted.bottomY + Math.round((H>1500?68:60) * 0.65);
 
       // Dates
       const dateTxt = (from && to) ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : (from ? fmtDateUTC(from) : '—');
       ctx.fillStyle = 'rgba(255,255,255,0.70)';
       ctx.font = '800 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-      ctx.fillText(dateTxt, cardX + 44, titleBottom + 54);
+      ctx.fillText(dateTxt, contentX, titleBottom + 54);
+
+      const contentTop = titleBottom + 54 + gapAfterDate;
 
       // Map window
-      const mapTop = titleBottom + 92;
-      const mapX = cardX + 44;
-      const mapW = cardW - 88;
-      // Leave vertical room for highlights + footer.
-      const mapH = (H > 1500) ? 820 : 500;
+      const mapTop = contentTop;
+      const mapX = contentX;
+      const mapW = contentW;
+      // Allocate map height from remaining space so nothing overlaps.
+      const maxMapH = (H > 1500) ? 860 : 560;
+      const minMapH = (H > 1500) ? 620 : 420;
+      const availableBelow = (cardY + cardH) - footerH - mapTop;
+      const mapH = Math.max(
+        minMapH,
+        Math.min(
+          maxMapH,
+          availableBelow - (gapAfterMap + statsH + gapAfterStats + highlightsH)
+        )
+      );
       _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       ctx.fill();
@@ -1238,11 +1260,11 @@
       } catch(e) {}
 
       // Key stats row (distance, stops, nights)
-      const y0 = mapTop + mapH + ((H > 1500) ? 80 : 44);
+      const y0 = mapTop + mapH + gapAfterMap;
       const cols = 3;
       const gap = 16;
       const boxW = (mapW - gap * (cols - 1)) / cols;
-      const boxH = (H > 1500) ? 180 : 160;
+      const boxH = statsH;
       // Use clean values (no HTML <small> tags)
       const totalM2 = Number(stats.totalDistanceM || 0);
       const dist2 = totalM2 > 0 ? (useMiles ? (totalM2/1609.344) : (totalM2/1000)) : 0;
@@ -1282,12 +1304,8 @@
 
       // Highlights strip (more info-dense, story/adventure)
       try {
-        const stripH = (H > 1500) ? 140 : 132;
-        // Keep strip inside the card, above the footer.
-        const minStripY = y0 + boxH + 22;
-        const maxStripY = (cardY + cardH) - stripH - 56;
-        // If space is tight, prefer keeping it inside the card even if it overlaps slightly.
-        const stripY = (maxStripY < minStripY) ? maxStripY : minStripY;
+        const stripH = highlightsH;
+        const stripY = y0 + boxH + gapAfterStats;
         _roundRect(ctx, mapX, stripY, mapW, stripH, 26);
         ctx.fillStyle = 'rgba(8,12,24,0.45)';
         ctx.fill();
@@ -1338,13 +1356,17 @@
         ctx.font = '800 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
         const foot = (meta.dataStatus === 'demo') ? 'Demo Trip Wrapped' : 'Trip Wrapped';
         const foot2 = (meta.generatedAt) ? (()=>{ try{ return `Updated ${new Date(meta.generatedAt).toLocaleString()}`; }catch(e){ return ''; } })() : '';
-        const fx = cardX + 44;
+        const fx = contentX;
         const fy = cardY + cardH - 44;
         ctx.fillText(foot, fx, fy);
         if (foot2) {
           ctx.fillStyle = 'rgba(255,255,255,0.30)';
           ctx.font = '800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-          ctx.fillText(foot2, fx, fy + 26);
+          // Only draw second line if it won't collide with the highlights strip.
+          const stripBottom = y0 + boxH + gapAfterStats + highlightsH;
+          if ((fy + 26) > (stripBottom + 18)) {
+            ctx.fillText(foot2, fx, fy + 26);
+          }
         }
       } catch(e) {}
 
