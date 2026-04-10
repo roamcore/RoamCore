@@ -170,13 +170,15 @@ def _norm(v: str | None) -> str | None:
 def main():
     a = parse_args()
 
-    def _demo_payload():
-        """Return (trips, journey_route) demo payload in Traccar-like shape."""
-        from datetime import datetime, timedelta, timezone
+    def _demo_payload(from_ts: str, to_ts: str):
+        """Return (trips, journey_route, stops, top_trip_route) demo payload in Traccar-like shape."""
+        from datetime import timedelta
 
-        now = datetime.now(timezone.utc)
-        # 3-day trip with 4 driving segments
-        t0 = now - timedelta(days=3)
+        # Anchor demo times to the requested range so the UI shows sane day counts.
+        try:
+            t0 = datetime.fromisoformat(str(from_ts).replace("Z", "+00:00"))
+        except Exception:
+            t0 = datetime.now(timezone.utc) - timedelta(days=3)
         trips = [
             {
                 "distance": 220_000,
@@ -212,6 +214,34 @@ def main():
             },
         ]
 
+        # Stops report-like entries (duration in ms + address).
+        stops = [
+            {
+                "startTime": (t0 + timedelta(hours=12)).isoformat(),
+                "endTime": (t0 + timedelta(days=1, hours=7, minutes=30)).isoformat(),
+                "duration": int(19.5 * 60 * 60 * 1000),
+                "address": "Palm Springs",
+            },
+            {
+                "startTime": (t0 + timedelta(days=1, hours=12, minutes=30)).isoformat(),
+                "endTime": (t0 + timedelta(days=2, hours=6, minutes=30)).isoformat(),
+                "duration": int(18.0 * 60 * 60 * 1000),
+                "address": "Grand Canyon Village",
+            },
+            {
+                "startTime": (t0 + timedelta(days=2, hours=12, minutes=40)).isoformat(),
+                "endTime": (t0 + timedelta(days=3, hours=5, minutes=40)).isoformat(),
+                "duration": int(17.0 * 60 * 60 * 1000),
+                "address": "Albuquerque",
+            },
+            {
+                "startTime": (t0 + timedelta(days=3, hours=12, minutes=20)).isoformat(),
+                "endTime": (t0 + timedelta(days=3, hours=20, minutes=20)).isoformat(),
+                "duration": int(8.0 * 60 * 60 * 1000),
+                "address": "Denver",
+            },
+        ]
+
         # Journey route points (positions report-like)
         # Rough line: LA -> Palm Springs -> Grand Canyon -> Albuquerque -> Denver
         pts = [
@@ -221,17 +251,37 @@ def main():
             (35.0844, -106.6504, 1610),
             (39.7392, -104.9903, 1609),
         ]
+        def lerp(a: float, b: float, t: float) -> float:
+            return a + (b - a) * t
+
         journey = []
-        for i, (lat, lon, alt) in enumerate(pts):
-            journey.append(
-                {
-                    "latitude": lat,
-                    "longitude": lon,
-                    "altitude": alt,
-                    "deviceTime": (t0 + timedelta(hours=i * 6)).isoformat(),
-                }
-            )
-        return trips, journey
+        samples_per_leg = 24
+        idx = 0
+        for (a_lat, a_lon, a_alt), (b_lat, b_lon, b_alt) in zip(pts, pts[1:]):
+            for j in range(samples_per_leg):
+                t = j / float(samples_per_leg)
+                journey.append(
+                    {
+                        "latitude": lerp(a_lat, b_lat, t),
+                        "longitude": lerp(a_lon, b_lon, t),
+                        "altitude": lerp(a_alt, b_alt, t),
+                        "deviceTime": (t0 + timedelta(minutes=idx * 18)).isoformat(),
+                    }
+                )
+                idx += 1
+
+        # Ensure final point included.
+        journey.append(
+            {
+                "latitude": pts[-1][0],
+                "longitude": pts[-1][1],
+                "altitude": pts[-1][2],
+                "deviceTime": (t0 + timedelta(minutes=idx * 18)).isoformat(),
+            }
+        )
+
+        top_trip_route = journey[-(samples_per_leg + 1) :]
+        return trips, journey, stops, top_trip_route
 
     user = _norm(a.username)
     pw = _norm(a.password)
@@ -243,7 +293,7 @@ def main():
 
     # Demo mode: skip Traccar entirely.
     if a.demo:
-        demo_trips, demo_journey = _demo_payload()
+        demo_trips, demo_journey, demo_stops, demo_top_trip_route = _demo_payload(a.from_ts, a.to_ts)
         wrapped = build_wrapped(
             title=a.title,
             device_id=a.device_id,
@@ -252,15 +302,39 @@ def main():
             trips=demo_trips,
             generated_at=datetime.now(timezone.utc).isoformat(),
             journey_route=demo_journey,
-            top_trip_route=[],
-            stops=[],
+            top_trip_route=demo_top_trip_route,
+            stops=demo_stops,
             map_image_url=None,
             owner_name=_norm(a.owner_name) or "You",
             comparisons={},
         )
         wrapped.setdefault("meta", {})
         wrapped["meta"]["dataStatus"] = "demo"
-        wrapped["meta"]["notice"] = "Showing demo data. Turn off Demo Mode to use your real trip." 
+        wrapped["meta"]["notice"] = "Showing demo data. Turn off Demo Mode to use your real trip."
+
+        # Generate a static map PNG (demo too), so the map box never looks empty.
+        try:
+            pts = []
+            for p in wrapped.get("stats", {}).get("journeyRoute") or []:
+                lat = p.get("lat")
+                lon = p.get("lon")
+                if lat is None or lon is None:
+                    continue
+                pts.append((float(lat), float(lon)))
+            if len(pts) >= 2:
+                map_url = _build_staticmap_url(pts, w=980, h=420)
+                out_png = os.path.join(os.path.dirname(a.out_html), "latest_map.png")
+                import urllib.request
+
+                req = urllib.request.Request(map_url, headers={"User-Agent": "RoamCore-TripWrapped/0.1"})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = resp.read()
+                with open(out_png, "wb") as f:
+                    f.write(data)
+                wrapped["meta"]["mapImageUrl"] = "/local/roamcore/trip_wrapped/latest_map.png"
+        except Exception:
+            pass
+
         os.makedirs(os.path.dirname(a.out_json), exist_ok=True)
         os.makedirs(os.path.dirname(a.out_html), exist_ok=True)
         def _atomic_write_text(path: str, text: str):
