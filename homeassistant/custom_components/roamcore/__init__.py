@@ -250,13 +250,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Provisioning is best-effort; never break HA startup.
         pass
 
-    # Register HTTP endpoints (OpenClaw summary)
-    if options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED):
-        hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
-        hass.http.register_view(OpenClawSkillView(hass, entry.entry_id))
-        hass.http.register_view(OpenClawRcDumpView(hass, entry.entry_id))
-        hass.http.register_view(OpenClawTimeSeriesCatalogView(hass, entry.entry_id))
-        hass.http.register_view(OpenClawTimeSeriesView(hass, entry.entry_id))
+    # Register HTTP endpoints (OpenClaw API)
+    # NOTE: always register views so the enable toggle can take effect immediately
+    # without requiring a HA restart/reload. Each view checks the config entry
+    # option at request-time and returns 404 when disabled.
+    hass.http.register_view(OpenClawSummaryView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawSkillView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawRcDumpView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawTimeSeriesCatalogView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawTimeSeriesView(hass, entry.entry_id))
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))
@@ -314,6 +316,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "secrets_delete",
         _svc_secrets_delete,
+        schema=None,
+    )
+
+    # --- Options helpers (for dashboard UX) ---
+    # The RoamCore dashboard (roamcore-pages.js) uses these to provide a simple
+    # toggle + onboarding flow without requiring the user to dig into HA's
+    # integration options UI.
+    async def _svc_options_set(call):
+        data = call.data or {}
+        enabled = data.get("openclaw_api_enabled", None)
+        requires_auth = data.get("openclaw_api_requires_auth", None)
+
+        # Find the (single) RoamCore config entry.
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            raise ValueError("No RoamCore config entry found")
+        ent = entries[0]
+
+        opts = dict(ent.options)
+        changed = False
+
+        if enabled is not None:
+            opts[CONF_OPENCLAW_API_ENABLED] = bool(enabled)
+            changed = True
+        if requires_auth is not None:
+            opts[CONF_OPENCLAW_API_REQUIRES_AUTH] = bool(requires_auth)
+            changed = True
+
+        if changed:
+            hass.config_entries.async_update_entry(ent, options=opts)
+
+    hass.services.async_register(
+        DOMAIN,
+        "options_set",
+        _svc_options_set,
         schema=None,
     )
 

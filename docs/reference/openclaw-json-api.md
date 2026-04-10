@@ -36,12 +36,21 @@ This returns a copy/paste-friendly payload that includes:
 
 ### Auth
 
-Current MVP implementation sets `requires_auth = false` to keep OpenClaw simple on an isolated LAN.
+RoamCore supports two modes:
 
-If you expose Home Assistant beyond a trusted network, you should:
+1) **Require auth (recommended)** — OpenClaw must send a Home Assistant **Long‑Lived Access Token**:
 
-1. Put HA behind a VPN / reverse proxy with auth, and/or
-2. Change the view to `requires_auth = True` and use a Long-Lived Access Token.
+```http
+Authorization: Bearer <LLAT>
+```
+
+2) **No auth** — intended only for isolated/trusted LANs.
+
+You can toggle this from the RoamCore dashboard:
+
+- **Settings → OpenClaw API → Connect / Setup**
+
+Or via Home Assistant integration options for **RoamCore**.
 
 ## Diagnostic endpoint (rc dump)
 
@@ -175,6 +184,14 @@ The integration registers a `HomeAssistantView` and reads `rc_*` entity states f
 curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/summary
 curl http://HOME_ASSISTANT:8123/api/roamcore/openclaw/skill
 ```
+
+### Enable/disable (dashboard)
+
+The RoamCore dashboard provides a simple toggle:
+
+- **Settings → OpenClaw API**
+
+When disabled, the OpenClaw endpoints return **HTTP 404**.
 
 ### Manual / legacy path
 

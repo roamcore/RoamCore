@@ -12,9 +12,23 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
+    CONF_OPENCLAW_API_ENABLED,
+    DEFAULT_OPENCLAW_API_ENABLED,
     CONF_OPENCLAW_API_REQUIRES_AUTH,
     DEFAULT_OPENCLAW_API_REQUIRES_AUTH,
 )
+
+from aiohttp import web
+
+
+def _openclaw_enabled(hass: HomeAssistant, entry_id: str) -> bool:
+    try:
+        entry: Optional[ConfigEntry] = hass.config_entries.async_get_entry(entry_id)
+        if not entry:
+            return bool(DEFAULT_OPENCLAW_API_ENABLED)
+        return bool(entry.options.get(CONF_OPENCLAW_API_ENABLED, DEFAULT_OPENCLAW_API_ENABLED))
+    except Exception:
+        return bool(DEFAULT_OPENCLAW_API_ENABLED)
 
 
 def _mark_openclaw_last_seen(hass: HomeAssistant, entry_id: str, endpoint: str) -> None:
@@ -105,6 +119,12 @@ class OpenClawSummaryView(HomeAssistantView):
 
     async def get(self, request):
         hass = self._hass
+
+        # Option-gated: return 404 when disabled so it's safe to leave this
+        # integration installed but keep the API off by default.
+        if not _openclaw_enabled(hass, self._entry_id):
+            return web.Response(status=404)
+
         _mark_openclaw_last_seen(hass, self._entry_id, "summary")
 
         # Contract sources (rc_* only)
@@ -205,6 +225,9 @@ class OpenClawSkillView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
         base = str(request.url).split("/api/roamcore/openclaw/skill", 1)[0]
         summary = f"{base}/api/roamcore/openclaw/summary"
         payload: dict[str, Any] = {
@@ -245,6 +268,9 @@ class OpenClawRcDumpView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
         _mark_openclaw_last_seen(self._hass, self._entry_id, "rc_dump")
         hass = self._hass
         reg = async_get_entity_registry(hass)
@@ -325,6 +351,9 @@ class OpenClawTimeSeriesCatalogView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
         _mark_openclaw_last_seen(self._hass, self._entry_id, "timeseries_catalog")
         hass = self._hass
         items: dict[str, Any] = {}
@@ -377,6 +406,9 @@ class OpenClawTimeSeriesView(HomeAssistantView):
         return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
 
     async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
         _mark_openclaw_last_seen(self._hass, self._entry_id, "timeseries")
         hass = self._hass
         q = request.query

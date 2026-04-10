@@ -2891,8 +2891,205 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
 }
 
 class RoamcoreSettingsPage extends RoamcoreBasePage {
+  constructor() {
+    super();
+    this._diag = null;
+    this._diagErr = null;
+    this._diagLoading = false;
+    this._diagFetchedAt = 0;
+  }
+
+  async _fetchDiagnostics({ force = false } = {}) {
+    try {
+      if (!this._hass) return;
+      if (this._diagLoading) return;
+
+      const age = Date.now() - (this._diagFetchedAt || 0);
+      if (!force && this._diag && age < 15000) return;
+
+      this._diagLoading = true;
+      this._diagErr = null;
+      this._render();
+
+      const data = await this._hass.callApi('get', 'roamcore/diagnostics');
+      this._diag = data;
+      this._diagFetchedAt = Date.now();
+    } catch (e) {
+      this._diagErr = String(e?.message || e || 'Diagnostics fetch failed');
+    } finally {
+      this._diagLoading = false;
+      this._render();
+    }
+  }
+
+  _openOpenClawModal() {
+    try {
+      if (!this._root || !this._hass) return;
+
+      // Remove any existing modal.
+      try { this._root.querySelector('#rc-openclaw-backdrop')?.remove?.(); } catch (e) {}
+
+      const diag = this._diag || {};
+      const endpoints = diag?.endpoints || {};
+      const opts = diag?.roamcore?.config_entry?.options || {};
+      const base = endpoints.base_url || window.location.origin;
+      const summaryUrl = endpoints.openclaw_summary || (base.replace(/\/$/, '') + '/api/roamcore/openclaw/summary');
+      const skillUrl = endpoints.openclaw_skill || (base.replace(/\/$/, '') + '/api/roamcore/openclaw/skill');
+      const docsUrl = 'https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md';
+
+      const enabled = !!opts.openclaw_api_enabled;
+      const requiresAuth = !!opts.openclaw_api_requires_auth;
+
+      const host = document.createElement('div');
+      host.innerHTML = `
+        <div class="rc-modal-backdrop" id="rc-openclaw-backdrop">
+          <div class="rc-modal" role="dialog" aria-modal="true">
+            <div class="rc-modal-head">
+              <div style="font-weight:900; font-size: 16px;">OpenClaw API</div>
+              <button class="rc-x" id="rc-openclaw-close" aria-label="Close">×</button>
+            </div>
+
+            <div class="rc-label" style="margin-top:8px;">Connect an OpenClaw agent to RoamCore using a stable JSON contract.</div>
+
+            <div style="margin-top:14px;">
+              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">1) Enable API</div>
+              <div class="rc-label" style="opacity:0.9;">Toggle on to expose <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">/api/roamcore/openclaw/*</span>.</div>
+              <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+                <button class="rc-btn" id="rc-openclaw-enable">${enabled ? 'Disable' : 'Enable'}</button>
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+                  <input id="rc-openclaw-requires-auth" type="checkbox" ${requiresAuth ? 'checked' : ''} />
+                  <span class="rc-label">Require HA auth (recommended)</span>
+                </label>
+              </div>
+              <div class="rc-label" style="margin-top:8px; opacity:0.85;">If you want to use this outside your LAN, create a Home Assistant Long-Lived Access Token and send it as <b>Authorization: Bearer</b>.</div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">2) Copy endpoints</div>
+              <div class="rc-label" style="opacity:0.9;">Base URL: <b>${this._esc(base)}</b></div>
+              <div style="height:8px"></div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="rc-btn rc-btn-ghost" id="rc-openclaw-copy-summary" style="text-align:left; justify-content:flex-start;">Copy summary URL</button>
+                <button class="rc-btn rc-btn-ghost" id="rc-openclaw-copy-skill" style="text-align:left; justify-content:flex-start;">Copy skill URL</button>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">3) Verify</div>
+              <div class="rc-label" style="opacity:0.9;">This test runs from your HA browser session (so it should work even when auth is required).</div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <button class="rc-btn" id="rc-openclaw-test">Test now</button>
+                <a class="rc-btn rc-btn-ghost" href="${this._esc(summaryUrl)}" target="_blank" rel="noreferrer">Open summary JSON</a>
+              </div>
+              <div id="rc-openclaw-status" class="rc-label" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="rc-label" style="margin-top:16px; opacity:0.9;">
+              Docs: <a href="${docsUrl}" target="_blank" rel="noreferrer">openclaw-json-api.md</a>
+              · Quick config payload: <a href="${this._esc(skillUrl)}" target="_blank" rel="noreferrer">/skill</a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const backdrop = host.firstElementChild;
+      if (!backdrop) return;
+      this._root.appendChild(backdrop);
+
+      const close = () => { try { backdrop.remove(); } catch (e) {} };
+      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+      const closeBtn = backdrop.querySelector('#rc-openclaw-close');
+      if (closeBtn) closeBtn.addEventListener('click', close);
+
+      const statusEl = backdrop.querySelector('#rc-openclaw-status');
+
+      const copy = async (text) => {
+        try {
+          const s = String(text || '');
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(s);
+            return true;
+          }
+          const ta = document.createElement('textarea');
+          ta.value = s;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return !!ok;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      const copySummaryBtn = backdrop.querySelector('#rc-openclaw-copy-summary');
+      if (copySummaryBtn) copySummaryBtn.addEventListener('click', async () => {
+        const ok = await copy(summaryUrl);
+        if (statusEl) statusEl.textContent = ok ? 'Copied summary URL.' : 'Copy failed.';
+      });
+      const copySkillBtn = backdrop.querySelector('#rc-openclaw-copy-skill');
+      if (copySkillBtn) copySkillBtn.addEventListener('click', async () => {
+        const ok = await copy(skillUrl);
+        if (statusEl) statusEl.textContent = ok ? 'Copied skill URL.' : 'Copy failed.';
+      });
+
+      const enableBtn = backdrop.querySelector('#rc-openclaw-enable');
+      const reqAuthEl = backdrop.querySelector('#rc-openclaw-requires-auth');
+      if (enableBtn) enableBtn.addEventListener('click', async () => {
+        try {
+          enableBtn.disabled = true;
+          if (statusEl) statusEl.textContent = 'Updating…';
+          await this._hass.callService('roamcore', 'options_set', {
+            openclaw_api_enabled: !enabled,
+            openclaw_api_requires_auth: !!reqAuthEl?.checked,
+          });
+          if (statusEl) statusEl.textContent = 'Updated. Refreshing…';
+          await this._fetchDiagnostics({ force: true });
+          // Re-open modal with fresh state.
+          try { close(); } catch (e) {}
+          this._openOpenClawModal();
+        } catch (e) {
+          if (statusEl) statusEl.textContent = `Update failed: ${String(e?.message || e)}`;
+        } finally {
+          try { enableBtn.disabled = false; } catch (e) {}
+        }
+      });
+
+      const testBtn = backdrop.querySelector('#rc-openclaw-test');
+      if (testBtn) testBtn.addEventListener('click', async () => {
+        try {
+          testBtn.disabled = true;
+          if (statusEl) statusEl.textContent = 'Testing…';
+          const r = await fetch(summaryUrl + '?v=' + Date.now(), { cache: 'no-store' });
+          if (!r.ok) {
+            if (statusEl) statusEl.textContent = `Test failed: HTTP ${r.status}`;
+            return;
+          }
+          const obj = await r.json().catch(() => null);
+          const c = obj?.contract?.name || '—';
+          if (statusEl) statusEl.textContent = `OK. Contract: ${c}`;
+        } catch (e) {
+          if (statusEl) statusEl.textContent = `Test failed: ${String(e?.message || e)}`;
+        } finally {
+          try { testBtn.disabled = false; } catch (e) {}
+        }
+      });
+    } catch (e) {
+      console.warn('open openclaw modal failed', e);
+    }
+  }
+
   _render() {
     if (!this._root || !this._hass) return;
+
+    // Kick off an initial diagnostics fetch once per mount.
+    if (!this._diag && !this._diagLoading && !this._diagErr) {
+      this._fetchDiagnostics({ force: false });
+    }
 
     const tracker = this._getState('input_text.rc_location_tracker_entity');
     const weather = this._getState('input_text.rc_weather_entity_id');
@@ -2905,6 +3102,14 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const victronReady = this._getState('binary_sensor.rc_setup_victron_ready');
 
     const demoMode = this._getState('input_boolean.rc_demo_mode');
+
+    const diag = this._diag || {};
+    const endpoints = diag?.endpoints || {};
+    const opts = diag?.roamcore?.config_entry?.options || {};
+    const openclawEnabled = !!opts.openclaw_api_enabled;
+    const openclawAuth = !!opts.openclaw_api_requires_auth;
+    const openclawLast = this._getState('sensor.rc_openclaw_last_seen');
+    const openclawLastEp = this._hass?.states?.['sensor.rc_openclaw_last_seen']?.attributes?.endpoint;
 
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
@@ -2951,6 +3156,29 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
               ${this._row('Time zone override', (tz && tz.trim()) ? tz : '—')}
             `
           })}
+
+          ${this._tile({
+            title: 'OpenClaw API',
+            icon: '🤖',
+            content: `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+                ${this._tileStatusPill({ ok: openclawEnabled, okLabel: 'Enabled', badLabel: 'Disabled' })}
+                <div class="rc-label" style="text-align:right;">Auth: <b>${openclawAuth ? 'Required' : 'Not required'}</b></div>
+              </div>
+              <div class="rc-label" style="margin-top:10px; opacity:0.9;">Connect a local OpenClaw agent using a stable JSON contract.</div>
+              ${this._row('Summary endpoint', (endpoints.openclaw_summary || '/api/roamcore/openclaw/summary'))}
+              ${this._row('Last seen', (openclawLast && openclawLast !== 'unknown' && openclawLast !== 'unavailable') ? openclawLast : '—')}
+              ${this._row('Last endpoint', (openclawLastEp && String(openclawLastEp).trim()) ? String(openclawLastEp) : '—')}
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button class="rc-btn" id="rcOpenClawConnect">Connect / Setup</button>
+                <a class="rc-btn rc-btn-ghost" href="${this._esc(endpoints.openclaw_skill || '/api/roamcore/openclaw/skill')}" target="_blank" rel="noreferrer">Open /skill</a>
+                <a class="rc-btn rc-btn-ghost" href="https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md" target="_blank" rel="noreferrer">Docs</a>
+              </div>
+
+              ${this._diagErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._diagErr)}</div>` : ''}
+            `
+          })}
           ${this._tile({
             title: 'Advanced',
             icon: '🧰',
@@ -2965,6 +3193,12 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
+
+    // Wire OpenClaw modal
+    try {
+      const btn = this._root.querySelector('#rcOpenClawConnect');
+      if (btn) btn.addEventListener('click', () => this._openOpenClawModal());
+    } catch (e) {}
   }
 }
 
