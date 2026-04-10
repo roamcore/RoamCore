@@ -940,20 +940,72 @@
       g3.addColorStop(1, 'rgba(255,122,69,0)');
       ctx.fillStyle = g3; ctx.fillRect(0, 0, W, H);
     }
-    function renderShareCardPng() {
+    // --- PNG export helpers ---
+    function _fitText(ctx, text, x, y, maxW, startSize, minSize, weight, lineHeightMul) {
+      // Returns {size, lines, bottomY}
+      text = String(text || '').trim();
+      const lh = (s)=>Math.round(s * (lineHeightMul || 1.08));
+      let size = startSize;
+      const fam = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      while (size > (minSize || 10)) {
+        ctx.font = `${weight || 1000} ${size}px ${fam}`;
+        if (ctx.measureText(text).width <= maxW) {
+          ctx.fillText(text, x, y);
+          return { size, lines: [text], bottomY: y };
+        }
+        size -= 2;
+      }
+      // Fallback: simple two-line wrap at arrow/dash or nearest space.
+      const splitAt = (()=>{
+        const m = text.match(/\s(?:→|—|-|>)\s/);
+        if (m && m.index != null) return m.index;
+        // nearest space to middle
+        const mid = Math.floor(text.length/2);
+        let best = -1;
+        for (let i=mid; i>=0; i--) { if (text[i]===' ') { best=i; break; } }
+        if (best < 0) for (let i=mid; i<text.length; i++) { if (text[i]===' ') { best=i; break; } }
+        return best;
+      })();
+      const a = (splitAt>0) ? text.slice(0, splitAt).trim() : text;
+      const b = (splitAt>0) ? text.slice(splitAt).replace(/^\s*(?:→|—|-|>)\s*/,'').trim() : '';
+      let s1 = startSize;
+      while (s1 > (minSize || 10)) {
+        ctx.font = `${weight || 1000} ${s1}px ${fam}`;
+        if (ctx.measureText(a).width <= maxW) break;
+        s1 -= 2;
+      }
+      ctx.font = `${weight || 1000} ${s1}px ${fam}`;
+      ctx.fillText(a, x, y);
+      if (b) {
+        let s2 = Math.max((minSize || 10), Math.floor(s1 * 0.78));
+        while (s2 > (minSize || 10)) {
+          ctx.font = `${weight || 1000} ${s2}px ${fam}`;
+          if (ctx.measureText(b).width <= maxW) break;
+          s2 -= 2;
+        }
+        ctx.font = `${weight || 1000} ${s2}px ${fam}`;
+        ctx.fillText(b, x, y + lh(s1));
+        return { size: s2, lines: [a,b], bottomY: y + lh(s1) };
+      }
+      return { size: s1, lines: [a], bottomY: y };
+    }
+
+    function renderShareCardPng(opts) {
+      opts = opts || {};
       const W = 1080;
-      const H = 1920;
+      // Social default: IG portrait post (4:5). Story is available too.
+      const H = (opts.format === 'story') ? 1920 : 1350;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       const ctx = c.getContext('2d');
       _drawBg(ctx, W, H);
 
       // Card container
-      const pad = 80;
+      const pad = 72;
       const cardX = pad;
-      const cardY = 140;
+      const cardY = (H > 1500) ? 140 : 110;
       const cardW = W - pad * 2;
-      const cardH = H - 240;
+      const cardH = H - (cardY + 110);
 
       // Frame glow
       const frame = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
@@ -979,36 +1031,13 @@
       ctx.fillText('ROAMCORE', cardX + 44, cardY + 70);
       ctx.restore();
 
-      // Title (sharable-safe, never clipped)
+      // Title (share-safe, never clipped)
       const t = String(title || 'Trip Wrapped').toUpperCase();
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
       const maxW = cardW - 88;
-      let size1 = 68;
-      ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
-      // If too long, shrink a bit.
-      while (ctx.measureText(t).width > maxW && size1 > 52) {
-        size1 -= 2;
-        ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
-      }
-      // If still too long, split into two lines at arrow or dash.
-      let line1 = t;
-      let line2 = '';
-      if (ctx.measureText(line1).width > maxW) {
-        const parts = t.split(/\s[→-—>]\s/);
-        if (parts.length >= 2) {
-          line1 = parts[0].trim();
-          line2 = parts.slice(1).join(' → ').trim();
-        }
-      }
-      ctx.fillText(line1, cardX + 44, cardY + 160);
-      let titleBottom = cardY + 160;
-      if (line2) {
-        const size2 = Math.max(44, Math.floor(size1 * 0.78));
-        ctx.font = `1000 ${size2}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
-        ctx.fillText(line2, cardX + 44, cardY + 160 + size2 + 10);
-        titleBottom = cardY + 160 + size2 + 10;
-        ctx.font = `1000 ${size1}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
-      }
+      const topY = cardY + 160;
+      const fitted = _fitText(ctx, t, cardX + 44, topY, maxW, (H>1500?68:60), 44, 1000, 1.05);
+      const titleBottom = fitted.bottomY + Math.round((H>1500?68:60) * 0.65);
 
       // Dates
       const dateTxt = (from && to) ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : (from ? fmtDateUTC(from) : '—');
@@ -1017,10 +1046,10 @@
       ctx.fillText(dateTxt, cardX + 44, titleBottom + 54);
 
       // Map window
-      const mapTop = titleBottom + 95;
+      const mapTop = titleBottom + 92;
       const mapX = cardX + 44;
       const mapW = cardW - 88;
-      const mapH = 860;
+      const mapH = (H > 1500) ? 860 : 560;
       _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       ctx.fill();
@@ -1050,15 +1079,24 @@
       } catch(e) {}
 
       // Key stats row (distance, stops, nights)
-      const y0 = mapTop + mapH + 80;
+      const y0 = mapTop + mapH + ((H > 1500) ? 80 : 54);
       const cols = 3;
       const gap = 16;
       const boxW = (mapW - gap * (cols - 1)) / cols;
-      const boxH = 180;
+      const boxH = (H > 1500) ? 180 : 160;
+      // Use clean values (no HTML <small> tags)
+      const totalM2 = Number(stats.totalDistanceM || 0);
+      const dist2 = totalM2 > 0 ? (useMiles ? (totalM2/1609.344) : (totalM2/1000)) : 0;
+      const distTxt = dist2 > 0 ? `${fmtInt(Math.round(dist2))} ${useMiles?'miles':'km'}` : '—';
+      const stops2 = Number(stats.numberOfStops || 0);
+      const stopsTxt = stops2 > 0 ? `${fmtInt(stops2)} ${stops2===1?'stop':'stops'}` : '—';
+      const days2 = Number(stats.totalDays || 0);
+      const nights2 = (stats.nightsOnRoad != null && stats.nightsOnRoad !== '') ? Number(stats.nightsOnRoad||0) : (days2>0?Math.max(0,days2-1):0);
+      const nightsTxt = (Number.isFinite(nights2) && nights2 > 0) ? `${fmtInt(nights2)} ${nights2===1?'night':'nights'}` : '—';
       const boxes = [
-        {k:'Distance', v: document.getElementById('statDistance')?.textContent || '—'},
-        {k:'Stops', v: document.getElementById('statStops')?.textContent || '—'},
-        {k:'Nights', v: document.getElementById('statNights')?.textContent || '—'},
+        {k:'Distance', v: distTxt},
+        {k:'Stops', v: stopsTxt},
+        {k:'Nights', v: nightsTxt},
       ];
       for (let i=0;i<cols;i++) {
         const bx = mapX + i * (boxW + gap);
@@ -1071,15 +1109,31 @@
         ctx.font = '900 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
         ctx.fillText(boxes[i].k.toUpperCase(), bx + 22, y0 + 46);
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.font = '1000 46px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-        ctx.fillText(String(boxes[i].v).trim(), bx + 22, y0 + 120);
+        // Fit value into box width
+        const val = String(boxes[i].v).trim();
+        const maxValW = boxW - 44;
+        let s = (H>1500) ? 44 : 40;
+        while (s > 26) {
+          ctx.font = `1000 ${s}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+          if (ctx.measureText(val).width <= maxValW) break;
+          s -= 2;
+        }
+        ctx.fillText(val, bx + 22, y0 + ((H>1500)?120:112));
       }
+
+      // Footer hint (small + subtle)
+      try {
+        ctx.fillStyle = 'rgba(255,255,255,0.40)';
+        ctx.font = '800 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        const foot = (meta.dataStatus === 'demo') ? 'Demo Trip Wrapped' : 'Trip Wrapped';
+        ctx.fillText(foot, cardX + 44, cardY + cardH - 44);
+      } catch(e) {}
 
       return c.toDataURL('image/png');
     }
     function downloadShareCard() {
       try {
-        const url = renderShareCardPng();
+        const url = renderShareCardPng({format:'post'});
         const a = document.createElement('a');
         a.href = url;
         const safe = String(title || 'trip_wrapped').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
