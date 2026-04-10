@@ -2274,6 +2274,19 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
       const genBtn = backdrop.querySelector('#rc-tripwrapped-generate');
       if (genBtn) genBtn.addEventListener('click', async () => {
+        // IMPORTANT: HA state changes triggered by generation can cause this page to
+        // re-render, which may remove the modal from the DOM mid-flight.
+        // To keep the UX stable (and to avoid popup blockers), open the report tab
+        // immediately on click, then navigate it once generation finishes.
+        let reportWin = null;
+        try {
+          reportWin = window.open('about:blank', '_blank', 'noopener');
+          if (reportWin && reportWin.document) {
+            reportWin.document.title = 'Trip Wrapped';
+            reportWin.document.body.innerHTML = '<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px;">Generating Trip Wrapped…</div>';
+          }
+        } catch (e) {}
+
         try {
           genBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Generating…';
@@ -2307,16 +2320,33 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
 
           const url = '/local/roamcore/trip_wrapped/latest.html';
-          if (statusEl) statusEl.textContent = 'Done.';
+          const finalUrl = url + '?v=' + encodeURIComponent(String(Date.now()));
+          if (statusEl) statusEl.textContent = 'Opening…';
+
+          // Auto-open the report (requested UX: Generate → open immediately).
           try {
-            if (viewEl) {
-              viewEl.href = url + '?v=' + encodeURIComponent(String(Date.now()));
-              viewEl.style.display = '';
+            if (reportWin && !reportWin.closed) {
+              reportWin.location.href = finalUrl;
+            } else {
+              // Fallback if the popup was blocked.
+              window.open(finalUrl, '_blank', 'noopener');
             }
-          } catch (e) {}
+          } catch (e) {
+            try { window.open(finalUrl, '_blank', 'noopener'); } catch (e2) {}
+          }
+
+          // Close the modal (best-effort). If HA re-rendered it away already, this
+          // is a no-op.
+          try { close(); } catch (e) {}
         } catch (e) {
           console.warn('trip wrapped generate failed', e);
           if (statusEl) statusEl.textContent = 'Generate failed (check Traccar credentials/config).';
+          // If we opened a placeholder tab, try to make it obvious something failed.
+          try {
+            if (reportWin && !reportWin.closed) {
+              reportWin.document.body.innerHTML = '<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px;">Trip Wrapped generation failed. Check Traccar credentials/config, then try again.</div>';
+            }
+          } catch (e2) {}
         } finally {
           try { genBtn.disabled = false; } catch (e) {}
         }
