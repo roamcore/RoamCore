@@ -28,6 +28,10 @@
       overflow:hidden;
     }
 
+    /* Hide deck scrollbars (cosmetic) */
+    .deck::-webkit-scrollbar{display:none}
+    .deck{scrollbar-width:none}
+
     /* Story deck (no external libs; scroll-snap as a safe MVP)
        Later we can swap to Swiper.js, keeping the card markup stable. */
     .deck{
@@ -54,7 +58,11 @@
       width:min(560px, 100%);
       border-radius:22px;
       padding:12px;
-      background: linear-gradient(135deg, rgba(110,231,255,0.35), rgba(167,139,250,0.22), rgba(255,122,69,0.18));
+      /* Designed, not neon-random: per-slide accent drives the frame */
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--slide-accent) 38%, transparent),
+        rgba(255,255,255,0.08),
+        rgba(0,0,0,0));
       box-shadow: 0 30px 90px rgba(0,0,0,0.55);
     }
     .card{
@@ -79,10 +87,10 @@
     .inner{position:relative; padding:18px 16px 16px;}
 
     .brand{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 10px;}
-    .brandName{font-weight:900;letter-spacing:1px;font-size:12px;color:rgba(110,231,255,0.85)}
+    .brandName{font-weight:900;letter-spacing:0.12em;font-size:11px;color:color-mix(in srgb, var(--slide-accent) 75%, rgba(255,255,255,0.55))}
     .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.82)}
 
-    .title{font-weight:1000;font-size:34px;letter-spacing:-0.8px;margin:0; text-transform:uppercase;}
+    .title{font-weight:1000;font-size:clamp(30px, 4.8vw, 44px);letter-spacing:-0.7px;margin:0; text-transform:none;}
     .subtitle{margin-top:6px;color:var(--muted); font-size:13px;}
 
     .mapBox{margin-top:14px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);
@@ -111,9 +119,17 @@
     .grid2{display:grid; gap:10px; margin-top:12px; grid-template-columns:1fr 1fr;}
     .stat{padding:12px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background: rgba(8,12,24,0.45);backdrop-filter: blur(10px);}
 
-    .dots{position:fixed; left:0; right:0; bottom:12px; display:flex; justify-content:center; gap:6px; pointer-events:none;}
-    .dot{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,0.25)}
-    .dot.on{background:rgba(110,231,255,0.95)}
+    /* Instagram-style progress bar */
+    .progress{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:12px;right:12px;display:flex;gap:6px;z-index:40;pointer-events:auto}
+    .seg{height:3px;flex:1;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
+    .seg > i{display:block;height:100%;width:0;background:color-mix(in srgb, var(--slide-accent) 80%, rgba(255,255,255,0.85))}
+    .seg.done > i{width:100%}
+    .seg.on > i{width:100%}
+
+    /* Tap zones for story nav (left/back, right/next) */
+    .tapZones{position:fixed; inset:0; z-index:30; display:flex; pointer-events:auto;}
+    .tap{flex:1; background:transparent; border:0; padding:0; margin:0; cursor:pointer;}
+    .tap:focus{outline:none}
 
     .hint{margin-top:12px;color:rgba(255,255,255,0.55);font-size:12px}
 
@@ -138,15 +154,21 @@
 </head>
 <body>
 
-  <div class="deck" id="deck">
+  <div class="progress" id="progress" aria-label="Trip Wrapped progress"></div>
+  <div class="tapZones" aria-hidden="true">
+    <button class="tap" id="tapBack" tabindex="-1" aria-hidden="true"></button>
+    <button class="tap" id="tapNext" tabindex="-1" aria-hidden="true"></button>
+  </div>
+
+  <div class="deck" id="deck" aria-label="Trip Wrapped story deck">
     <!-- Slide 1: cover + map -->
-    <section class="slide">
+    <section class="slide" style="--slide-accent:#6EE7FF">
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand">
           <div class="brandName">ROAMCORE</div>
-          <div class="pill" id="pillDates">—</div>
+          <div class="pill" id="pillDates" style="border-color:color-mix(in srgb, var(--slide-accent) 35%, rgba(255,255,255,0.12));">Route</div>
         </div>
-        <h1 class="title" id="title">TRIP WRAPPED</h1>
+        <h1 class="title" id="title">Trip Wrapped</h1>
         <div class="subtitle" id="subtitle">—</div>
 
         <div class="mapBox">
@@ -164,7 +186,7 @@
     </section>
 
     <!-- Slide 2: distance -->
-    <section class="slide">
+    <section class="slide" style="--slide-accent:#A78BFA">
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Distance</div></div>
         <div class="bigStat">
@@ -176,7 +198,7 @@
     </section>
 
     <!-- Slide 3: stops + nights -->
-    <section class="slide">
+    <section class="slide" style="--slide-accent:#6EE7FF">
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Stops</div></div>
         <div class="bigStat">
@@ -192,7 +214,7 @@
     </section>
 
     <!-- Slide 4: elevation -->
-    <section class="slide">
+    <section class="slide" style="--slide-accent:#FF7A45">
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Elevation</div></div>
         <div class="bigStat">
@@ -204,7 +226,7 @@
     </section>
 
     <!-- Slide 5: longest drive (placeholder until computed fields are added) -->
-    <section class="slide">
+    <section class="slide" style="--slide-accent:#6EE7FF">
       <div class="frame"><div class="card"><div class="inner">
         <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Story</div></div>
         <div class="bigStat">
@@ -215,8 +237,6 @@
       </div></div></div>
     </section>
   </div>
-
-  <div class="dots" id="dots"></div>
 
   <script>
     /*__TRIP_WRAPPED_DATA__*/
@@ -291,19 +311,45 @@
       }
     } catch(e) {}
 
-    // Dots
+    // Progress + navigation
     const deck = document.getElementById('deck');
     const slides = Array.from(deck.querySelectorAll('.slide'));
-    const dots = document.getElementById('dots');
-    dots.innerHTML = slides.map((_,i) => `<div class="dot" data-i="${i}"></div>`).join('');
-    const dotEls = Array.from(dots.querySelectorAll('.dot'));
-    const setDot = (idx) => dotEls.forEach((d,i) => d.classList.toggle('on', i===idx));
+    const progress = document.getElementById('progress');
+    progress.innerHTML = slides.map((_,i) => `<div class="seg" data-i="${i}"><i></i></div>`).join('');
+    const segs = Array.from(progress.querySelectorAll('.seg'));
     const idxFromScroll = () => {
       const w = deck.clientWidth || 1;
       return Math.round((deck.scrollLeft || 0) / w);
     };
-    setDot(0);
-    deck.addEventListener('scroll', () => setDot(idxFromScroll()), {passive:true});
+    const setProgress = (idx) => {
+      segs.forEach((s,i)=>{
+        s.classList.toggle('done', i < idx);
+        s.classList.toggle('on', i === idx);
+      });
+    };
+    const goTo = (i) => {
+      i = Math.max(0, Math.min(slides.length - 1, i));
+      slides[i].scrollIntoView({behavior:'smooth', inline:'start'});
+    };
+    setProgress(0);
+    deck.addEventListener('scroll', () => setProgress(idxFromScroll()), {passive:true});
+    // Tap zones (left/back, right/next)
+    try {
+      document.getElementById('tapBack').addEventListener('click', (e)=>{ e.preventDefault(); goTo(idxFromScroll()-1); });
+      document.getElementById('tapNext').addEventListener('click', (e)=>{ e.preventDefault(); goTo(idxFromScroll()+1); });
+      // Click progress segments
+      progress.addEventListener('click', (e)=>{
+        const t = e.target && e.target.closest ? e.target.closest('.seg') : null;
+        if (t && t.getAttribute) {
+          const i = Number(t.getAttribute('data-i')||0);
+          if (Number.isFinite(i)) goTo(i);
+        }
+      });
+      window.addEventListener('keydown', (e)=>{
+        if (e.key === 'ArrowRight') goTo(idxFromScroll()+1);
+        if (e.key === 'ArrowLeft') goTo(idxFromScroll()-1);
+      });
+    } catch(e) {}
 
     // Map preview: draw a route polyline into a canvas.
     // Source of points (current generator): stats.journeyRoute = [{lat,lon},...]
