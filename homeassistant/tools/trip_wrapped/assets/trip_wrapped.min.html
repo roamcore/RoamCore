@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <!-- Reduce cache confusion when serving as /local/.../latest.html -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>RoamCore — Trip Wrapped</title>
   <style>
     :root{
@@ -245,7 +249,11 @@
         el.style.color = '#fff';
         el.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
         el.style.fontSize = '14px';
-        el.innerHTML = `<b>Setup needed:</b> ${String(notice)}`;
+        // Avoid innerHTML to prevent any HTML injection via notice strings.
+        const b = document.createElement('b');
+        b.textContent = 'Setup needed:';
+        el.appendChild(b);
+        el.appendChild(document.createTextNode(' ' + String(notice)));
         document.body.prepend(el);
       }
     } catch(e) {}
@@ -555,7 +563,10 @@
 
     // Prefer a pre-rendered static PNG generated at export time; else draw an offline preview.
     if (meta.mapImageUrl) {
-      showImg(meta.mapImageUrl);
+      // Cache-bust between regenerations (HA /local can be aggressively cached by clients).
+      const v = meta.generatedAt ? String(meta.generatedAt) : String(Date.now());
+      const sep = String(meta.mapImageUrl).includes('?') ? '&' : '?';
+      showImg(String(meta.mapImageUrl) + sep + 'v=' + encodeURIComponent(v));
     } else {
       const ok = drawRouteCanvas();
       if (ok) showCanvas(); else showFallback();

@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <!-- Reduce cache confusion when serving as /local/.../latest.html -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>RoamCore — Trip Wrapped</title>
   <!-- MapLibre (local vendor copy from RoamCore assets) -->
   <link rel="stylesheet" href="/local/roamcore/vendor/maplibre-gl/maplibre-gl.css"/>
@@ -446,7 +450,11 @@
         el.style.color = 'rgba(255,255,255,0.92)';
         el.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
         el.style.fontSize = '13px';
-        el.innerHTML = `<b>${(meta.dataStatus==='demo') ? 'Demo:' : 'Notice:'}</b> ${String(notice)}`;
+        // Avoid innerHTML to prevent any HTML injection via notice strings.
+        const b = document.createElement('b');
+        b.textContent = (meta.dataStatus==='demo') ? 'Demo:' : 'Notice:';
+        el.appendChild(b);
+        el.appendChild(document.createTextNode(' ' + String(notice)));
         document.body.prepend(el);
       }
     } catch(e) {}
