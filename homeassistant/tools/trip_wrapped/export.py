@@ -89,8 +89,8 @@ def _build_staticmap_url(points: list[tuple[float, float]], w: int, h: int) -> s
         "maptype": "mapnik",
         "path": path,
     }
-    # Use http to avoid SSL/CA issues in constrained HA containers.
-    return "http://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
+    # Use https; some environments block plain http.
+    return "https://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
 
 
 def parse_args():
