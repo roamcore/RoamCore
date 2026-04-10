@@ -117,9 +117,17 @@
     .v{margin-top:6px; font-size:44px; font-weight:1000; letter-spacing:-1.2px; line-height:1.00;}
     .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:8px;}
 
-    /* Story headline (one sentence) */
-    .storyLine{margin-top:6px; font-size:clamp(22px, 3.6vw, 30px); font-weight:950; letter-spacing:-0.5px; line-height:1.15;}
-    .storySub{margin-top:8px; color:rgba(255,255,255,0.70); font-size:13px; line-height:1.35;}
+    /* Slide layout: story headline at top, then a stack of existing stat boxes below */
+    .storyHead{margin-top:2px;}
+    .storyHead .k{margin:0 0 6px;}
+    .storyLine{margin:0; font-size:clamp(26px, 4.2vw, 36px); font-weight:1000; letter-spacing:-0.6px; line-height:1.10;}
+    .storySub{margin-top:8px; color:var(--muted); font-size:13px; line-height:1.35; max-width:52ch;}
+    .statsStack{margin-top:14px; display:flex; flex-direction:column; gap:12px;}
+    .statsStack > .mapBox,
+    .statsStack > .bigStat,
+    .statsStack > .grid2,
+    .statsStack > .strip,
+    .statsStack > .actions{margin-top:0;}
 
     .grid2{display:grid; gap:10px; margin-top:12px; grid-template-columns:1fr 1fr;}
     .stat{padding:12px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background: rgba(8,12,24,0.45);backdrop-filter: blur(10px);}
@@ -138,10 +146,8 @@
     .seg.done > i{width:100%}
     .seg.on > i{width:100%}
 
-    /* Tap zones for story nav (left/back, right/next) */
-    .tapZones{position:fixed; inset:0; z-index:30; display:flex; pointer-events:auto;}
-    .tap{flex:1; background:transparent; border:0; padding:0; margin:0; cursor:pointer;}
-    .tap:focus{outline:none}
+    /* IMPORTANT: don't block swipe gestures. We use tap detection on the deck instead. */
+    .tapZones{display:none}
 
     .hint{margin-top:12px;color:rgba(255,255,255,0.55);font-size:12px}
 
@@ -167,11 +173,6 @@
 <body>
 
   <div class="progress" id="progress" aria-label="Trip Wrapped progress"></div>
-  <div class="tapZones" aria-hidden="true">
-    <button class="tap" id="tapBack" tabindex="-1" aria-hidden="true"></button>
-    <button class="tap" id="tapNext" tabindex="-1" aria-hidden="true"></button>
-  </div>
-
   <div class="deck" id="deck" aria-label="Trip Wrapped story deck">
     <!-- Slide 1: cover + map -->
     <section class="slide" style="--slide-accent:#6EE7FF">
@@ -180,27 +181,31 @@
           <div class="brandName">ROAMCORE</div>
           <div class="pill" id="pillDates" style="border-color:color-mix(in srgb, var(--slide-accent) 35%, rgba(255,255,255,0.12));">Route</div>
         </div>
-        <h1 class="title" id="title">Trip Wrapped</h1>
-        <div class="subtitle" id="subtitle">—</div>
+        <header class="storyHead">
+          <h1 class="title" id="title">Trip Wrapped</h1>
+          <div class="subtitle" id="subtitle">—</div>
+        </header>
 
-        <div class="mapBox">
-          <img class="mapImg" id="mapImg" alt="Trip map"/>
-          <canvas class="mapCanvas" id="mapCanvas"></canvas>
-          <div class="mapFallback" id="mapFallback" style="display:none;">
-            <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
+        <div class="statsStack">
+          <div class="mapBox">
+            <img class="mapImg" id="mapImg" alt="Trip map"/>
+            <canvas class="mapCanvas" id="mapCanvas"></canvas>
+            <div class="mapFallback" id="mapFallback" style="display:none;">
+              <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
+            </div>
           </div>
-        </div>
 
-        <!-- Quick headline strip (keeps cover from feeling empty) -->
-        <div class="strip">
-          <div class="mini"><div class="k">Distance</div><div class="v" id="coverDistance">—</div></div>
-          <div class="mini"><div class="k">Stops</div><div class="v" id="coverStops">—</div></div>
-          <div class="mini"><div class="k">Nights</div><div class="v" id="coverNights">—</div></div>
-        </div>
+          <!-- Quick headline strip (keeps cover from feeling empty) -->
+          <div class="strip">
+            <div class="mini"><div class="k">Distance</div><div class="v" id="coverDistance">—</div></div>
+            <div class="mini"><div class="k">Stops</div><div class="v" id="coverStops">—</div></div>
+            <div class="mini"><div class="k">Nights</div><div class="v" id="coverNights">—</div></div>
+          </div>
 
-        <div class="actions">
-          <div class="pill" id="pillHeadline" style="border-color:rgba(255,255,255,0.14)">Big picture first</div>
-          <div class="hint">Swipe →</div>
+          <div class="actions">
+            <div class="pill" id="pillHeadline" style="border-color:rgba(255,255,255,0.14)">Big picture first</div>
+            <div class="hint">Swipe →</div>
+          </div>
         </div>
       </div></div></div>
     </section>
@@ -553,10 +558,34 @@
     };
     setProgress(0);
     deck.addEventListener('scroll', () => setProgress(idxFromScroll()), {passive:true});
-    // Tap zones (left/back, right/next)
+    // Tap-to-advance WITHOUT blocking swipe:
+    // We detect a short press with minimal movement on the deck.
     try {
-      document.getElementById('tapBack').addEventListener('click', (e)=>{ e.preventDefault(); goTo(idxFromScroll()-1); });
-      document.getElementById('tapNext').addEventListener('click', (e)=>{ e.preventDefault(); goTo(idxFromScroll()+1); });
+      let downX = null;
+      let downY = null;
+      let downT = 0;
+      deck.addEventListener('pointerdown', (e)=>{
+        // ignore taps on buttons/interactive elements
+        const tgt = e.target;
+        if (tgt && tgt.closest && (tgt.closest('button') || tgt.closest('a'))) return;
+        downX = e.clientX;
+        downY = e.clientY;
+        downT = Date.now();
+      }, {passive:true});
+      deck.addEventListener('pointerup', (e)=>{
+        if (downX == null || downY == null) return;
+        const dt = Date.now() - downT;
+        const dx = Math.abs(e.clientX - downX);
+        const dy = Math.abs(e.clientY - downY);
+        downX = null; downY = null;
+        // treat as tap if quick + low movement
+        if (dt > 450 || dx > 14 || dy > 14) return;
+        const x = e.clientX / Math.max(1, window.innerWidth || 1);
+        const idx = idxFromScroll();
+        if (x < 0.33) goTo(idx - 1);
+        else if (x > 0.66) goTo(idx + 1);
+      }, {passive:true});
+
       // Click progress segments
       progress.addEventListener('click', (e)=>{
         const t = e.target && e.target.closest ? e.target.closest('.seg') : null;
