@@ -305,26 +305,54 @@
     setDot(0);
     deck.addEventListener('scroll', () => setDot(idxFromScroll()), {passive:true});
 
-    // Map preview: reuse the existing canvas path renderer if we have route points.
-    // (Current wrapped JSON may not include full points; fall back gracefully.)
-    (function drawRoute(){
+    // Map preview: draw a route polyline into a canvas.
+    // Source of points (current generator): stats.journeyRoute = [{lat,lon},...]
+    // (Older/alternate schema: stats.route.points = [[lat,lon],...])
+    function _getRoutePoints() {
+      try {
+        const jr = stats.journeyRoute;
+        if (Array.isArray(jr) && jr.length >= 2) {
+          const out = [];
+          for (const p of jr) {
+            const lat = Number(p && p.lat);
+            const lon = Number(p && p.lon);
+            if (Number.isFinite(lat) && Number.isFinite(lon)) out.push([lat, lon]);
+          }
+          if (out.length >= 2) return out;
+        }
+      } catch(e) {}
+      try {
+        const pts = (stats.route && Array.isArray(stats.route.points)) ? stats.route.points : null;
+        if (Array.isArray(pts) && pts.length >= 2) return pts;
+      } catch(e) {}
+      return null;
+    }
+
+    function drawRoute() {
       try {
         const canvas = document.getElementById('mapCanvas');
+        const fallback = document.getElementById('mapFallback');
         const ctx = canvas.getContext('2d');
+
+        const w = Math.max(1, canvas.clientWidth || 1);
+        const h = Math.max(1, canvas.clientHeight || 1);
         const dpr = window.devicePixelRatio || 1;
-        const w = canvas.clientWidth || 1;
-        const h = canvas.clientHeight || 1;
         canvas.width = Math.floor(w * dpr);
         canvas.height = Math.floor(h * dpr);
-        ctx.scale(dpr, dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        const pts = (stats.route && Array.isArray(stats.route.points)) ? stats.route.points : null;
+        // Base background (avoid "blank grey" even when route is missing)
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(8,12,24,0.55)';
+        ctx.fillRect(0, 0, w, h);
+
+        const pts = _getRoutePoints();
         if (!pts || pts.length < 2) {
-          document.getElementById('mapFallback').style.display = '';
+          if (fallback) fallback.style.display = '';
           return;
         }
+        if (fallback) fallback.style.display = 'none';
 
-        // pts expected as [lat,lon] pairs
         const lats = pts.map(p => Number(p[0])).filter(Number.isFinite);
         const lons = pts.map(p => Number(p[1])).filter(Number.isFinite);
         const minLat = Math.min(...lats), maxLat = Math.max(...lats);
@@ -333,49 +361,57 @@
         const pad = 18;
         const X = (lon) => {
           const t = (lon - minLon) / Math.max(1e-9, (maxLon - minLon));
-          return pad + t * (w - pad*2);
+          return pad + t * (w - pad * 2);
         };
         const Y = (lat) => {
           const t = (lat - minLat) / Math.max(1e-9, (maxLat - minLat));
-          // invert y
-          return (h - pad) - t * (h - pad*2);
+          return (h - pad) - t * (h - pad * 2);
         };
 
-        // background
-        ctx.clearRect(0,0,w,h);
-        ctx.fillStyle = 'rgba(8,12,24,0.55)';
-        ctx.fillRect(0,0,w,h);
-
-        // glow
+        // Path
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.beginPath();
-        for (let i=0;i<pts.length;i++){
-          const p=pts[i];
-          const lat=Number(p[0]), lon=Number(p[1]);
+        for (let i = 0; i < pts.length; i++) {
+          const lat = Number(pts[i][0]);
+          const lon = Number(pts[i][1]);
           if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-          const xx=X(lon), yy=Y(lat);
-          if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+          const xx = X(lon), yy = Y(lat);
+          if (i === 0) ctx.moveTo(xx, yy);
+          else ctx.lineTo(xx, yy);
         }
-        ctx.strokeStyle = 'rgba(110,231,255,0.20)';
-        ctx.lineWidth = 10;
+
+        // Glow
+        ctx.strokeStyle = 'rgba(110,231,255,0.18)';
+        ctx.lineWidth = 12;
         ctx.stroke();
 
-        // core line
+        // Core
         ctx.strokeStyle = 'rgba(110,231,255,0.95)';
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // end dot
-        const last = pts[pts.length-1];
+        // End dot
+        const last = pts[pts.length - 1];
         const endX = X(Number(last[1]));
         const endY = Y(Number(last[0]));
         ctx.fillStyle = 'rgba(110,231,255,0.95)';
-        ctx.beginPath(); ctx.arc(endX,endY,5,0,Math.PI*2); ctx.fill();
-      } catch(e) {
-        try { document.getElementById('mapFallback').style.display = ''; } catch(_e) {}
+        ctx.beginPath();
+        ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } catch (e) {
+        try { document.getElementById('mapFallback').style.display = ''; } catch (_e) {}
       }
-    })();
+    }
+
+    // Draw after layout; redraw on resize/orientation changes.
+    try {
+      requestAnimationFrame(() => { requestAnimationFrame(drawRoute); });
+      window.addEventListener('resize', () => { try { drawRoute(); } catch(e) {} }, {passive:true});
+      window.addEventListener('orientationchange', () => { setTimeout(() => { try { drawRoute(); } catch(e) {} }, 250); }, {passive:true});
+    } catch(e) {
+      try { drawRoute(); } catch(_e) {}
+    }
 
     // Export: summary card only (optimized for social sharing)
     // This intentionally does NOT attempt to export every slide (users can screenshot those).
