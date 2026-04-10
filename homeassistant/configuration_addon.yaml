@@ -16,7 +16,7 @@ lovelace:
       type: module
     # NOTE: Home Assistant aggressively caches /local module assets.
     # Bump the cache-bust query param when updating roamcore-pages.js.
-    - url: /local/roamcore/roamcore-pages.js?v=169ec55
+    - url: /local/roamcore/roamcore-pages.js?v=ca865dd
       type: module
   dashboards:
     roamcore:
