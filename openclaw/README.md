@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/openclawbanner.png" alt="RoamCore x OpenClaw Banner" width="100%">
+  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/openclaw-banner.png" alt="RoamCore x OpenClaw Banner" width="100%">
 </p>
 
 # OpenClaw + RoamCore
