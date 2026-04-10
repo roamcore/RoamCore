@@ -990,7 +990,37 @@
       return { size: s1, lines: [a], bottomY: y };
     }
 
-    function renderShareCardPng(opts) {
+    function _loadImage(src) {
+      return new Promise((resolve) => {
+        try {
+          if (!src) return resolve(null);
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = String(src);
+        } catch(e) { resolve(null); }
+      });
+    }
+
+    function _drawImageCover(ctx, img, x, y, w, h, alpha) {
+      try {
+        if (!img || !img.naturalWidth || !img.naturalHeight) return;
+        const iw = img.naturalWidth;
+        const ih = img.naturalHeight;
+        const s = Math.max(w / iw, h / ih);
+        const sw = iw * s;
+        const sh = ih * s;
+        const dx = x + (w - sw) / 2;
+        const dy = y + (h - sh) / 2;
+        const prev = ctx.globalAlpha;
+        if (alpha != null) ctx.globalAlpha = alpha;
+        ctx.drawImage(img, dx, dy, sw, sh);
+        ctx.globalAlpha = prev;
+      } catch(e) {}
+    }
+
+    async function renderShareCardPng(opts) {
       opts = opts || {};
       const W = 1080;
       // Social default: IG portrait post (4:5). Story is available too.
@@ -1049,37 +1079,44 @@
       const mapTop = titleBottom + 92;
       const mapX = cardX + 44;
       const mapW = cardW - 88;
-      const mapH = (H > 1500) ? 860 : 560;
+      const mapH = (H > 1500) ? 860 : 520;
       _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.10)';
       ctx.stroke();
 
-      // Draw map background + route into map window
+      // Draw map background + route into map window.
+      // We explicitly load the static PNG so export is deterministic (no relying on DOM timing).
       try {
         const src = document.getElementById('mapCanvas');
         if (src && src.width > 10 && src.height > 10) {
+          const mapImgUrl = (meta && meta.mapImageUrl) ? String(meta.mapImageUrl) : '';
+          const bgImg = await _loadImage(mapImgUrl);
+
           ctx.save();
           _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
           ctx.clip();
-          // If the story map has a background image, draw it first.
-          const bg = document.getElementById('mapImg');
-          if (bg && bg.complete && bg.naturalWidth > 0) {
-            ctx.globalAlpha = 0.92;
-            ctx.drawImage(bg, mapX, mapTop, mapW, mapH);
-            ctx.globalAlpha = 1.0;
+
+          if (bgImg) {
+            _drawImageCover(ctx, bgImg, mapX, mapTop, mapW, mapH, 0.92);
             // subtle dark overlay for legibility
-            ctx.fillStyle = 'rgba(0,0,0,0.20)';
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fillRect(mapX, mapTop, mapW, mapH);
+          } else {
+            // fallback texture if no map image
+            ctx.fillStyle = 'rgba(8,12,24,0.55)';
             ctx.fillRect(mapX, mapTop, mapW, mapH);
           }
+
+          // route overlay
           ctx.drawImage(src, mapX, mapTop, mapW, mapH);
           ctx.restore();
         }
       } catch(e) {}
 
       // Key stats row (distance, stops, nights)
-      const y0 = mapTop + mapH + ((H > 1500) ? 80 : 54);
+      const y0 = mapTop + mapH + ((H > 1500) ? 80 : 44);
       const cols = 3;
       const gap = 16;
       const boxW = (mapW - gap * (cols - 1)) / cols;
@@ -1121,26 +1158,84 @@
         ctx.fillText(val, bx + 22, y0 + ((H>1500)?120:112));
       }
 
+      // Highlights strip (more info-dense, story/adventure)
+      try {
+        const stripY = y0 + boxH + 26;
+        const stripH = (H > 1500) ? 140 : 132;
+        _roundRect(ctx, mapX, stripY, mapW, stripH, 26);
+        ctx.fillStyle = 'rgba(8,12,24,0.45)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.stroke();
+
+        const movingH = Number(stats.movingHours || 0);
+        const elevM = Number(stats.totalElevationGainM || stats.elevationGainM || 0);
+        const highestM = Number(stats.highestPointM || 0);
+        const avgSpeedKph = Number(stats.avgSpeedKph || 0);
+
+        const movingTxt = (movingH > 0) ? `${movingH.toFixed(1)}h` : '—';
+        const elevTxt = (elevM > 0) ? `${fmtInt(Math.round(useMiles ? elevM*3.28084 : elevM))} ${useMiles?'ft':'m'}` : '—';
+        const highTxt = (highestM > 0) ? `${fmtInt(Math.round(useMiles ? highestM*3.28084 : highestM))} ${useMiles?'ft':'m'}` : '—';
+        const spdTxt = (avgSpeedKph > 0) ? `${Math.round(useMiles ? avgSpeedKph*0.621371 : avgSpeedKph)} ${useMiles?'mph':'kph'}` : '—';
+
+        const items = [
+          {k:'Time driving', v:movingTxt},
+          {k:'Elevation gain', v:elevTxt},
+          {k:'Highest point', v:highTxt},
+          {k:'Avg speed', v:spdTxt},
+        ];
+        const n = items.length;
+        const gap2 = 14;
+        const colW = (mapW - gap2*(n-1)) / n;
+        for (let i=0;i<n;i++) {
+          const bx = mapX + i*(colW+gap2);
+          // label
+          ctx.fillStyle = 'rgba(255,255,255,0.58)';
+          ctx.font = '900 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+          ctx.fillText(items[i].k.toUpperCase(), bx + 14, stripY + 44);
+          // value
+          ctx.fillStyle = 'rgba(255,255,255,0.94)';
+          let s = 30;
+          const v = String(items[i].v||'—');
+          while (s > 22) {
+            ctx.font = `1000 ${s}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+            if (ctx.measureText(v).width <= (colW - 28)) break;
+            s -= 2;
+          }
+          ctx.fillText(v, bx + 14, stripY + 92);
+        }
+      } catch(e) {}
+
       // Footer hint (small + subtle)
       try {
         ctx.fillStyle = 'rgba(255,255,255,0.40)';
         ctx.font = '800 20px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
         const foot = (meta.dataStatus === 'demo') ? 'Demo Trip Wrapped' : 'Trip Wrapped';
-        ctx.fillText(foot, cardX + 44, cardY + cardH - 44);
+        const foot2 = (meta.generatedAt) ? (()=>{ try{ return `Updated ${new Date(meta.generatedAt).toLocaleString()}`; }catch(e){ return ''; } })() : '';
+        const fx = cardX + 44;
+        const fy = cardY + cardH - 40;
+        ctx.fillText(foot, fx, fy);
+        if (foot2) {
+          ctx.fillStyle = 'rgba(255,255,255,0.30)';
+          ctx.font = '800 18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+          ctx.fillText(foot2, fx, fy + 26);
+        }
       } catch(e) {}
 
       return c.toDataURL('image/png');
     }
     function downloadShareCard() {
       try {
-        const url = renderShareCardPng({format:'post'});
-        const a = document.createElement('a');
-        a.href = url;
-        const safe = String(title || 'trip_wrapped').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-        a.download = `${safe || 'trip_wrapped'}_summary.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        (async ()=>{
+          const url = await renderShareCardPng({format:'post'});
+          const a = document.createElement('a');
+          a.href = url;
+          const safe = String(title || 'trip_wrapped').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+          a.download = `${safe || 'trip_wrapped'}_summary.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        })();
       } catch(e) {
         alert('Export failed. You can screenshot the summary slide as a fallback.');
       }
