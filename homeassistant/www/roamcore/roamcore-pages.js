@@ -588,6 +588,10 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding: 14px; z-index: 9999; }
       .rc-modal { width: min(720px, calc(100vw - 28px)); max-height: min(80vh, 760px); overflow:auto; background: linear-gradient(180deg, rgba(26,26,26,0.96), rgba(18,18,18,0.96)); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.55); }
       .rc-modal-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+      .rc-x { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-text); font-size: 20px; line-height: 1; font-weight: 900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+      .rc-x:hover { filter: brightness(1.06); }
+      .rc-btn-chip { width:auto !important; padding: 8px 12px !important; border-radius:999px !important; font-weight: 900; font-size: 12px; color: rgba(255,255,255,0.78); background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.10); }
+      .rc-btn-chip:hover { filter: brightness(1.08); }
       .rc-input { width: 100%; padding: 10px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); color: var(--rc-text); font-weight: 700; box-sizing: border-box; }
       .rc-input:focus { outline: none; border-color: rgba(67,209,122,0.55); }
       .rc-modal a { color: rgba(255,255,255,0.92); }
@@ -2156,17 +2160,18 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div class="rc-modal" role="dialog" aria-modal="true">
           <div class="rc-modal-head">
             <div style="font-weight:900; font-size: 16px;">Trip Wrapped</div>
-            <button class="rc-btn" id="rc-tripwrapped-close">Close</button>
+            <button class="rc-x" id="rc-tripwrapped-close" aria-label="Close">×</button>
           </div>
 
           <div class="rc-label" style="margin-top:8px;">Generate an overview of your adventure — Spotify Wrapped style.</div>
 
           <div style="margin-top:14px;">
             <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">1) Select date range</div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-              <button class="rc-btn" id="rc-tripwrapped-preset-7d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 7 days</button>
-              <button class="rc-btn" id="rc-tripwrapped-preset-30d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 30 days</button>
-              <button class="rc-btn" id="rc-tripwrapped-preset-90d" style="width:auto; padding: 10px 14px; border-radius:999px;">Last 90 days</button>
+            <div class="rc-label" style="margin-bottom:8px; opacity:0.85;">Quick picks</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-7d">7 days</button>
+              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-30d">30 days</button>
+              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-90d">90 days</button>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div>
@@ -2272,6 +2277,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         try {
           genBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Generating…';
+          try { if (viewEl) viewEl.style.display = 'none'; } catch (e) {}
 
           const fromVal = fromEl?.value;
           const toVal = toEl?.value;
