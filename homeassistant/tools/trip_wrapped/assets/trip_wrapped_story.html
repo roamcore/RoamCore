@@ -720,6 +720,22 @@
         ctx.fillStyle = 'rgba(8,12,24,0.55)';
         ctx.fillRect(0, 0, w, h);
 
+        // Subtle "map" texture (grid + vignette) so it reads like a map even before we add real tiles.
+        try {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.lineWidth = 1;
+          const step = 34;
+          for (let x=step; x<w; x+=step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+          for (let y=step; y<h; y+=step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+          const vg = ctx.createRadialGradient(w*0.5,h*0.5, Math.min(w,h)*0.2, w*0.5,h*0.5, Math.max(w,h)*0.75);
+          vg.addColorStop(0,'rgba(0,0,0,0)');
+          vg.addColorStop(1,'rgba(0,0,0,0.55)');
+          ctx.fillStyle = vg;
+          ctx.fillRect(0,0,w,h);
+          ctx.restore();
+        } catch(e) {}
+
         const pts = _getRoutePoints();
         if (!pts || pts.length < 2) {
           if (fallback) fallback.style.display = '';
@@ -773,6 +789,44 @@
         ctx.beginPath();
         ctx.arc(endX, endY, 5, 0, Math.PI * 2);
         ctx.fill();
+
+        // Place labels (few names) — uses available meta names, no external geocoding.
+        try {
+          const startName = (meta.startLocationName || (stats.longestDrive && stats.longestDrive.fromName) || '').toString().trim();
+          const endName = (meta.endLocationName || (stats.longestDrive && stats.longestDrive.toName) || '').toString().trim();
+
+          const label = (text, x, y) => {
+            if (!text) return;
+            ctx.save();
+            ctx.font = '900 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+            ctx.textBaseline = 'middle';
+            const padX = 8, padY = 5;
+            const tw = ctx.measureText(text).width;
+            const bx = Math.max(10, Math.min(w - (tw + padX*2) - 10, x));
+            const by = Math.max(10, Math.min(h - (padY*2 + 16) - 10, y));
+            ctx.fillStyle = 'rgba(8,12,24,0.65)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            const r = 10;
+            ctx.moveTo(bx+r, by);
+            ctx.arcTo(bx+tw+padX*2, by, bx+tw+padX*2, by+padY*2+16, r);
+            ctx.arcTo(bx+tw+padX*2, by+padY*2+16, bx, by+padY*2+16, r);
+            ctx.arcTo(bx, by+padY*2+16, bx, by, r);
+            ctx.arcTo(bx, by, bx+tw+padX*2, by, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.88)';
+            ctx.fillText(text, bx + padX, by + padY + 8);
+            ctx.restore();
+          };
+
+          const first = pts[0];
+          const last = pts[pts.length-1];
+          label(startName, X(Number(first[1])) + 10, Y(Number(first[0])) - 24);
+          label(endName, X(Number(last[1])) + 10, Y(Number(last[0])) - 24);
+        } catch(e) {}
       } catch (e) {
         try { document.getElementById('mapFallback').style.display = ''; } catch (_e) {}
       }
