@@ -120,6 +120,13 @@
     .grid2{display:grid; gap:10px; margin-top:12px; grid-template-columns:1fr 1fr;}
     .stat{padding:12px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background: rgba(8,12,24,0.45);backdrop-filter: blur(10px);}
 
+    .strip{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+    .mini{flex:1; min-width: 120px; padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,24,0.45); backdrop-filter: blur(10px);
+    }
+    .mini .k{font-size:11px}
+    .mini .v{font-size:22px; letter-spacing:-0.4px; margin-top:4px}
+
     /* Instagram-style progress bar */
     .progress{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:12px;right:12px;display:flex;gap:6px;z-index:40;pointer-events:auto}
     .seg{height:3px;flex:1;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
@@ -178,6 +185,13 @@
           <div class="mapFallback" id="mapFallback" style="display:none;">
             <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
           </div>
+        </div>
+
+        <!-- Quick headline strip (keeps cover from feeling empty) -->
+        <div class="strip">
+          <div class="mini"><div class="k">Distance</div><div class="v" id="coverDistance">—</div></div>
+          <div class="mini"><div class="k">Stops</div><div class="v" id="coverStops">—</div></div>
+          <div class="mini"><div class="k">Nights</div><div class="v" id="coverNights">—</div></div>
         </div>
 
         <div class="actions">
@@ -313,12 +327,14 @@
       const label = useMiles ? 'miles' : 'km';
       document.getElementById('statDistance').innerHTML = `${fmtInt(Math.round(dist))}<small>${label}</small>`;
       document.getElementById('statDistanceSub').textContent = 'Your trip, measured in miles driven.';
+      try { document.getElementById('coverDistance').textContent = `${fmtInt(Math.round(dist))} ${label}`; } catch(e) {}
     }
 
     // Stops + nights
     const stops = Number(stats.numberOfStops || 0);
     document.getElementById('statStops').innerHTML = stops ? `${fmtInt(stops)}<small>${stops===1?'stop':'stops'}</small>` : '—';
     document.getElementById('statStopsSub').textContent = stops ? 'How many times you settled somewhere.' : '—';
+    try { document.getElementById('coverStops').textContent = stops ? `${fmtInt(stops)}` : '—'; } catch(e) {}
 
     const totalDays = Number(stats.totalDays || 0);
     // Nights: best-effort. Prefer explicit if present, else fall back to (days-1).
@@ -326,6 +342,7 @@
       ? Number(stats.nightsOnRoad || 0)
       : (totalDays > 0 ? Math.max(0, totalDays - 1) : 0);
     document.getElementById('statNights').textContent = (Number.isFinite(nights) && nights > 0) ? `${fmtInt(nights)} nights` : '—';
+    try { document.getElementById('coverNights').textContent = (Number.isFinite(nights) && nights > 0) ? `${fmtInt(nights)}` : '—'; } catch(e) {}
 
     // Avg stop
     const avgStopH = Number(stats.avgStopHours || 0);
