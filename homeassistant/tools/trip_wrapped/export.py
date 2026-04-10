@@ -115,6 +115,12 @@ def parse_args():
     p.add_argument("--out-json", required=True)
     p.add_argument("--out-html", required=True)
     p.add_argument("--title", default="Trip Wrapped")
+    p.add_argument(
+        "--template",
+        default="classic",
+        choices=["classic", "story"],
+        help="HTML template to render (classic single-card or story swipe-deck).",
+    )
     p.add_argument("--owner-name", help="Optional owner name used for auto-title (e.g. Emily)")
     p.add_argument(
         "--config-dir",
@@ -325,7 +331,7 @@ def main():
         _atomic_write_text(path, json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
 
     _atomic_write_json(a.out_json, wrapped)
-    _atomic_write_text(a.out_html, render_html(wrapped))
+    _atomic_write_text(a.out_html, render_html(wrapped, template=a.template))
 
 
 if __name__ == "__main__":

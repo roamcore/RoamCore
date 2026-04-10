@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>RoamCore — Trip Wrapped</title>
+  <style>
+    :root{
+      --bg:#070A12;
+      --panel:#0A1020;
+      --border:rgba(255,255,255,0.10);
+      --text:rgba(255,255,255,0.92);
+      --muted:rgba(255,255,255,0.62);
+      --muted2:rgba(255,255,255,0.44);
+      --accent:#6EE7FF;
+      --accent2:#A78BFA;
+      --accent3:#FF7A45;
+      --good:#6EE7FF;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:
+      radial-gradient(900px 600px at 80% 0%, rgba(110,231,255,0.10), transparent 55%),
+      radial-gradient(900px 600px at 10% 0%, rgba(167,139,250,0.10), transparent 55%),
+      radial-gradient(900px 800px at 50% 120%, rgba(255,122,69,0.06), transparent 55%),
+      var(--bg);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      overflow:hidden;
+    }
+
+    /* Story deck (no external libs; scroll-snap as a safe MVP)
+       Later we can swap to Swiper.js, keeping the card markup stable. */
+    .deck{
+      height: 100svh;
+      width: 100vw;
+      display:flex;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior:smooth;
+    }
+    .slide{
+      flex:0 0 100%;
+      height: 100svh;
+      scroll-snap-align:start;
+      padding: max(16px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .frame{
+      width:min(560px, 100%);
+      border-radius:22px;
+      padding:12px;
+      background: linear-gradient(135deg, rgba(110,231,255,0.35), rgba(167,139,250,0.22), rgba(255,122,69,0.18));
+      box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+    }
+    .card{
+      border-radius:18px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.10);
+      position:relative;
+      min-height: min(740px, calc(100svh - 64px));
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(800px 520px at 50% -40%, rgba(110,231,255,0.10), transparent 60%),
+        radial-gradient(700px 520px at 0% 140%, rgba(167,139,250,0.10), transparent 58%),
+        radial-gradient(700px 520px at 100% 140%, rgba(255,122,69,0.08), transparent 58%);
+      pointer-events:none;
+      opacity:0.85;
+    }
+    .inner{position:relative; padding:18px 16px 16px;}
+
+    .brand{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 10px;}
+    .brandName{font-weight:900;letter-spacing:1px;font-size:12px;color:rgba(110,231,255,0.85)}
+    .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.82)}
+
+    .title{font-weight:1000;font-size:34px;letter-spacing:-0.8px;margin:0; text-transform:uppercase;}
+    .subtitle{margin-top:6px;color:var(--muted); font-size:13px;}
+
+    .mapBox{margin-top:14px; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.02);
+      position:relative;
+      height:300px;
+    }
+    .mapCanvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+    .mapFallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+      padding:18px;
+      color: rgba(255,255,255,0.68);
+      background:
+        radial-gradient(700px 280px at 30% 20%, rgba(110,231,255,0.10), transparent 60%),
+        radial-gradient(700px 280px at 70% 80%, rgba(167,139,250,0.10), transparent 60%),
+        rgba(8,12,24,0.55);
+    }
+
+    .bigStat{margin-top:16px; padding:14px 14px; border-radius:16px; border:1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,24,0.45);
+      backdrop-filter: blur(10px);
+    }
+    .k{font-size:12px; color: rgba(255,255,255,0.62); letter-spacing:0.6px; text-transform:uppercase;}
+    .v{margin-top:6px; font-size:44px; font-weight:1000; letter-spacing:-1.2px; line-height:1.00;}
+    .v small{font-weight:900; font-size:14px; color: rgba(255,255,255,0.62); margin-left:8px;}
+
+    .grid2{display:grid; gap:10px; margin-top:12px; grid-template-columns:1fr 1fr;}
+    .stat{padding:12px 12px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background: rgba(8,12,24,0.45);backdrop-filter: blur(10px);}
+
+    .dots{position:fixed; left:0; right:0; bottom:12px; display:flex; justify-content:center; gap:6px; pointer-events:none;}
+    .dot{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,0.25)}
+    .dot.on{background:rgba(110,231,255,0.95)}
+
+    .hint{margin-top:12px;color:rgba(255,255,255,0.55);font-size:12px}
+  </style>
+</head>
+<body>
+
+  <div class="deck" id="deck">
+    <!-- Slide 1: cover + map -->
+    <section class="slide">
+      <div class="frame"><div class="card"><div class="inner">
+        <div class="brand">
+          <div class="brandName">ROAMCORE</div>
+          <div class="pill" id="pillDates">—</div>
+        </div>
+        <h1 class="title" id="title">TRIP WRAPPED</h1>
+        <div class="subtitle" id="subtitle">—</div>
+
+        <div class="mapBox">
+          <canvas class="mapCanvas" id="mapCanvas"></canvas>
+          <div class="mapFallback" id="mapFallback" style="display:none;">
+            <div><b>Map unavailable</b><div style="height:6px"></div>Route preview will appear when GPS data is available.</div>
+          </div>
+        </div>
+
+        <div class="hint">Swipe →</div>
+      </div></div></div>
+    </section>
+
+    <!-- Slide 2: distance -->
+    <section class="slide">
+      <div class="frame"><div class="card"><div class="inner">
+        <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Distance</div></div>
+        <div class="bigStat">
+          <div class="k">Total distance</div>
+          <div class="v" id="statDistance">—</div>
+          <div class="subtitle" id="statDistanceSub">—</div>
+        </div>
+      </div></div></div>
+    </section>
+
+    <!-- Slide 3: stops + nights -->
+    <section class="slide">
+      <div class="frame"><div class="card"><div class="inner">
+        <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Stops</div></div>
+        <div class="bigStat">
+          <div class="k">Stops</div>
+          <div class="v" id="statStops">—</div>
+          <div class="subtitle" id="statStopsSub">—</div>
+        </div>
+        <div class="grid2">
+          <div class="stat"><div class="k">Nights on the road</div><div class="v" style="font-size:28px" id="statNights">—</div></div>
+          <div class="stat"><div class="k">Days in range</div><div class="v" style="font-size:28px" id="statDays">—</div></div>
+        </div>
+      </div></div></div>
+    </section>
+
+    <!-- Slide 4: elevation -->
+    <section class="slide">
+      <div class="frame"><div class="card"><div class="inner">
+        <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Elevation</div></div>
+        <div class="bigStat">
+          <div class="k">Elevation gain</div>
+          <div class="v" id="statElev">—</div>
+          <div class="subtitle" id="statElevSub">Highest point + profile coming next.</div>
+        </div>
+      </div></div></div>
+    </section>
+
+    <!-- Slide 5: longest drive (placeholder until computed fields are added) -->
+    <section class="slide">
+      <div class="frame"><div class="card"><div class="inner">
+        <div class="brand"><div class="brandName">ROAMCORE</div><div class="pill">Story</div></div>
+        <div class="bigStat">
+          <div class="k">Longest drive</div>
+          <div class="v" style="font-size:34px" id="statLongestDrive">—</div>
+          <div class="subtitle" id="statLongestDriveSub">We’ll show distance + time + from → to.</div>
+        </div>
+      </div></div></div>
+    </section>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <script>
+    /*__TRIP_WRAPPED_DATA__*/
+
+    const d = window.TRIP_WRAPPED_DATA || {};
+    const meta = d.meta || {};
+    const stats = d.stats || {};
+
+    const fmtInt = (n) => (Number(n)||0).toLocaleString();
+    const fmtDateUTC = (dt) => {
+      try {
+        if (!dt) return '—';
+        const y = dt.getUTCFullYear();
+        const m = String(dt.getUTCMonth()+1).padStart(2,'0');
+        const d0 = String(dt.getUTCDate()).padStart(2,'0');
+        return `${d0}/${m}/${y}`;
+      } catch(e){ return '—'; }
+    };
+
+    const from = meta.from ? new Date(meta.from) : null;
+    const to = meta.to ? new Date(meta.to) : null;
+    const title = meta.title || 'Trip Wrapped';
+
+    document.getElementById('title').textContent = String(title).toUpperCase();
+    document.getElementById('subtitle').textContent = from && to ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : (from ? fmtDateUTC(from) : '—');
+    document.getElementById('pillDates').textContent = from && to ? `${fmtDateUTC(from)} → ${fmtDateUTC(to)}` : '—';
+
+    // Units
+    const unit = (meta.units || '').toString().toLowerCase();
+    const useMiles = unit === 'imperial' || unit === 'us' || unit === 'mi' || unit === 'miles';
+
+    // Distance
+    const totalM = Number(stats.totalDistanceM || 0);
+    if (totalM > 0) {
+      const dist = useMiles ? (totalM/1609.344) : (totalM/1000);
+      const label = useMiles ? 'miles' : 'km';
+      document.getElementById('statDistance').innerHTML = `${fmtInt(Math.round(dist))}<small>${label}</small>`;
+      document.getElementById('statDistanceSub').textContent = 'Your trip, measured in miles driven.';
+    }
+
+    // Stops + nights
+    const stops = Number(stats.numberOfStops || 0);
+    document.getElementById('statStops').innerHTML = stops ? `${fmtInt(stops)}<small>${stops===1?'stop':'stops'}</small>` : '—';
+    document.getElementById('statStopsSub').textContent = stops ? 'How many times you settled somewhere.' : '—';
+
+    const totalDays = Number(stats.totalDays || 0);
+    document.getElementById('statDays').textContent = totalDays ? `${fmtInt(totalDays)} days` : '—';
+
+    // Nights: best-effort. Prefer explicit if present, else fall back to (days-1).
+    const nights = Number(stats.nightsOnRoad || 0) || (totalDays > 0 ? Math.max(0, totalDays - 1) : 0);
+    document.getElementById('statNights').textContent = nights ? `${fmtInt(nights)} nights` : '—';
+
+    // Elevation
+    const elevM = Number(stats.totalElevationGainM || stats.elevationGainM || 0);
+    if (elevM > 0) {
+      const elev = useMiles ? Math.round(elevM * 3.28084) : Math.round(elevM);
+      const label = useMiles ? 'ft' : 'm';
+      document.getElementById('statElev').innerHTML = `${fmtInt(elev)}<small>${label}</small>`;
+    }
+
+    // Longest drive (placeholder until build_wrapped provides a field)
+    try {
+      const ld = stats.longestDrive || null;
+      if (ld && (ld.distanceM || ld.durationMs)) {
+        const dist = useMiles ? (Number(ld.distanceM||0)/1609.344) : (Number(ld.distanceM||0)/1000);
+        const label = useMiles ? 'mi' : 'km';
+        const hrs = (Number(ld.durationMs||0) / (1000*60*60));
+        document.getElementById('statLongestDrive').textContent = `${Math.round(dist)} ${label} • ${hrs.toFixed(1)}h`;
+        const fromTxt = (ld.fromName || '').trim();
+        const toTxt = (ld.toName || '').trim();
+        document.getElementById('statLongestDriveSub').textContent = (fromTxt || toTxt) ? `${fromTxt || 'Start'} → ${toTxt || 'End'}` : '—';
+      }
+    } catch(e) {}
+
+    // Dots
+    const deck = document.getElementById('deck');
+    const slides = Array.from(deck.querySelectorAll('.slide'));
+    const dots = document.getElementById('dots');
+    dots.innerHTML = slides.map((_,i) => `<div class="dot" data-i="${i}"></div>`).join('');
+    const dotEls = Array.from(dots.querySelectorAll('.dot'));
+    const setDot = (idx) => dotEls.forEach((d,i) => d.classList.toggle('on', i===idx));
+    const idxFromScroll = () => {
+      const w = deck.clientWidth || 1;
+      return Math.round((deck.scrollLeft || 0) / w);
+    };
+    setDot(0);
+    deck.addEventListener('scroll', () => setDot(idxFromScroll()), {passive:true});
+
+    // Map preview: reuse the existing canvas path renderer if we have route points.
+    // (Current wrapped JSON may not include full points; fall back gracefully.)
+    (function drawRoute(){
+      try {
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.clientWidth || 1;
+        const h = canvas.clientHeight || 1;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.scale(dpr, dpr);
+
+        const pts = (stats.route && Array.isArray(stats.route.points)) ? stats.route.points : null;
+        if (!pts || pts.length < 2) {
+          document.getElementById('mapFallback').style.display = '';
+          return;
+        }
+
+        // pts expected as [lat,lon] pairs
+        const lats = pts.map(p => Number(p[0])).filter(Number.isFinite);
+        const lons = pts.map(p => Number(p[1])).filter(Number.isFinite);
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+        const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+
+        const pad = 18;
+        const X = (lon) => {
+          const t = (lon - minLon) / Math.max(1e-9, (maxLon - minLon));
+          return pad + t * (w - pad*2);
+        };
+        const Y = (lat) => {
+          const t = (lat - minLat) / Math.max(1e-9, (maxLat - minLat));
+          // invert y
+          return (h - pad) - t * (h - pad*2);
+        };
+
+        // background
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = 'rgba(8,12,24,0.55)';
+        ctx.fillRect(0,0,w,h);
+
+        // glow
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let i=0;i<pts.length;i++){
+          const p=pts[i];
+          const lat=Number(p[0]), lon=Number(p[1]);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+          const xx=X(lon), yy=Y(lat);
+          if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+        }
+        ctx.strokeStyle = 'rgba(110,231,255,0.20)';
+        ctx.lineWidth = 10;
+        ctx.stroke();
+
+        // core line
+        ctx.strokeStyle = 'rgba(110,231,255,0.95)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // end dot
+        const last = pts[pts.length-1];
+        const endX = X(Number(last[1]));
+        const endY = Y(Number(last[0]));
+        ctx.fillStyle = 'rgba(110,231,255,0.95)';
+        ctx.beginPath(); ctx.arc(endX,endY,5,0,Math.PI*2); ctx.fill();
+      } catch(e) {
+        try { document.getElementById('mapFallback').style.display = ''; } catch(_e) {}
+      }
+    })();
+  </script>
+</body>
+</html>
