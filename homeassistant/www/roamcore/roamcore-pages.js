@@ -2277,13 +2277,89 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         // IMPORTANT: HA state changes triggered by generation can cause this page to
         // re-render, which may remove the modal from the DOM mid-flight.
         // To keep the UX stable (and to avoid popup blockers), open the report tab
-        // immediately on click, then navigate it once generation finishes.
+        // immediately on click. The opened tab polls for the newly-generated report
+        // and navigates to it when ready.
         let reportWin = null;
         try {
-          reportWin = window.open('about:blank', '_blank', 'noopener');
+          // NOTE: do not use the `noopener` window feature here. Some browsers will
+          // return a null WindowProxy, which prevents us from updating the tab.
+          // We keep this safe by never touching `window.opener` in the child.
+          reportWin = window.open('about:blank', '_blank');
+
+          // Build a self-contained polling page that waits for latest.json to show
+          // a new generatedAt >= startTs, then redirects to latest.html (cache-busted).
+          const startTs = Date.now();
+          const pollHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trip Wrapped</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; background: #0b0f14; color: #e8eef6; }
+      .muted { opacity: 0.8; font-size: 13px; }
+      .box { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); }
+      a { color: #7dd3fc; }
+    </style>
+  </head>
+  <body>
+    <div style="font-weight:900; font-size:16px;">Generating Trip Wrapped…</div>
+    <div class="muted" style="margin-top:6px;">We’ll open your report automatically when it’s ready.</div>
+    <div class="box muted" id="status">Waiting…</div>
+    <script>
+      const START_TS = ${startTs};
+      const JSON_URL = '/local/roamcore/trip_wrapped/latest.json';
+      const HTML_URL = '/local/roamcore/trip_wrapped/latest.html';
+
+      const statusEl = document.getElementById('status');
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const fmt = (d) => { try { return new Date(d).toLocaleString(); } catch (e) { return String(d || '—'); } };
+
+      async function checkOnce() {
+        // Prefer JSON (has generatedAt). If it fails, fall back to just loading HTML.
+        try {
+          const r = await fetch(JSON_URL + '?v=' + Date.now(), { cache: 'no-store' });
+          if (r.ok) {
+            const obj = await r.json();
+            const gen = obj && obj.meta ? obj.meta.generatedAt : null;
+            const genTs = gen ? Date.parse(gen) : NaN;
+            if (statusEl) statusEl.textContent = 'Latest generatedAt: ' + fmt(gen);
+            if (Number.isFinite(genTs) && genTs >= START_TS - 2000) {
+              location.replace(HTML_URL + '?v=' + Date.now());
+              return true;
+            }
+          }
+        } catch (e) {}
+
+        // Fallback: attempt to load HTML anyway (may show the previous report).
+        // If it loads, the user can still see something while generation finishes.
+        try {
+          const r2 = await fetch(HTML_URL + '?v=' + Date.now(), { cache: 'no-store' });
+          if (r2.ok && r2.headers && String(r2.headers.get('content-type') || '').includes('text/html')) {
+            // Don't redirect on the first successful HTML fetch unless JSON agrees.
+            // This avoids opening an old report immediately.
+          }
+        } catch (e) {}
+
+        return false;
+      }
+
+      (async () => {
+        for (let i=0; i<60; i++) {
+          const ok = await checkOnce();
+          if (ok) return;
+          await sleep(1000);
+        }
+        if (statusEl) statusEl.innerHTML = 'Still generating. You can try opening the latest report manually: <a href="' + HTML_URL + '?v=' + Date.now() + '">Open latest</a>';
+      })();
+    </script>
+  </body>
+</html>`;
+
           if (reportWin && reportWin.document) {
-            reportWin.document.title = 'Trip Wrapped';
-            reportWin.document.body.innerHTML = '<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px;">Generating Trip Wrapped…</div>';
+            reportWin.document.open();
+            reportWin.document.write(pollHtml);
+            reportWin.document.close();
           }
         } catch (e) {}
 
@@ -2319,24 +2395,9 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           // We keep the UI option for future, but do not branch yet.
           await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
 
-          const url = '/local/roamcore/trip_wrapped/latest.html';
-          const finalUrl = url + '?v=' + encodeURIComponent(String(Date.now()));
-          if (statusEl) statusEl.textContent = 'Opening…';
+          if (statusEl) statusEl.textContent = 'Generating… (opening when ready)';
 
-          // Auto-open the report (requested UX: Generate → open immediately).
-          try {
-            if (reportWin && !reportWin.closed) {
-              reportWin.location.href = finalUrl;
-            } else {
-              // Fallback if the popup was blocked.
-              window.open(finalUrl, '_blank', 'noopener');
-            }
-          } catch (e) {
-            try { window.open(finalUrl, '_blank', 'noopener'); } catch (e2) {}
-          }
-
-          // Close the modal (best-effort). If HA re-rendered it away already, this
-          // is a no-op.
+          // Close the modal (best-effort). If HA re-rendered it away already, this is a no-op.
           try { close(); } catch (e) {}
         } catch (e) {
           console.warn('trip wrapped generate failed', e);
