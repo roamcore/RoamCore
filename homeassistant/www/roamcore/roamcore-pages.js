@@ -2,6 +2,9 @@
 // Goal: translate v0/lovable TSX pages into HAOS without depending on HA default card styling.
 // Naming convention reference: RoamCore/docs/reference/rc-entity-naming.md
 
+// Visible build marker for cache/debugging.
+const RC_PAGES_BUILD = 'settings-openclaw-fix-64c50fc';
+
 function rcStatusToColor(status) {
   if (status === 'good') return 'var(--rc-good)';
   if (status === 'ok') return 'var(--rc-ok)';
@@ -3117,6 +3120,7 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Settings')}
+        <div class="rc-label" style="margin-top:-8px; margin-bottom:10px; opacity:0.7;">UI build: <b>${this._esc(RC_PAGES_BUILD)}</b></div>
         <div class="rc-grid" style="grid-template-columns: 1fr;">
           ${this._tile({
             title: 'Setup',
