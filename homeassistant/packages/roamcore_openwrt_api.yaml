@@ -109,7 +109,6 @@ rest:
 
       - name: "RC Router Firmware"
         unique_id: rc_openwrt_router_firmware
-        object_id: rc_router_firmware
         value_template: "{{ value_json.openwrt_version | default('') }}"
 
   # Firewall diagnostics (fw4 broken on current x86 VM; iptables MVP should be detectable)
@@ -118,31 +117,26 @@ rest:
     sensor:
       - name: "RC OpenWrt Firewall Backend"
         unique_id: rc_openwrt_firewall_backend
-        object_id: rc_openwrt_firewall_backend
         value_template: "{{ value_json.firewall_backend | default('unknown') }}"
         icon: mdi:shield
 
       - name: "RC OpenWrt fw4 OK"
         unique_id: rc_openwrt_fw4_ok
-        object_id: rc_openwrt_fw4_ok
         value_template: "{{ value_json.fw4_ok | default(false) }}"
         icon: mdi:shield-alert
 
       - name: "RC OpenWrt iptables MVP detected"
         unique_id: rc_openwrt_iptables_mvp_detected
-        object_id: rc_openwrt_iptables_mvp_detected
         value_template: "{{ value_json.iptables_mvp_detected | default(false) }}"
         icon: mdi:check-network-outline
 
       - name: "RC OpenWrt iptables NAT table OK"
         unique_id: rc_openwrt_iptables_nat_table_ok
-        object_id: rc_openwrt_iptables_nat_table_ok
         value_template: "{{ value_json.iptables_nat_table_ok | default(false) }}"
         icon: mdi:check-network-outline
 
       - name: "RC OpenWrt RoamCore FW service running"
         unique_id: rc_openwrt_roamcore_fw_running
-        object_id: rc_openwrt_roamcore_fw_running
         value_template: "{{ value_json.roamcore_fw_running | default(false) }}"
         icon: mdi:shield-check
 
@@ -151,13 +145,11 @@ rest:
     sensor:
       - name: "RC WiFi SSID"
         unique_id: rc_openwrt_wifi_ssid
-        object_id: rc_wifi_ssid
         value_template: "{{ value_json.ssid }}"
         icon: mdi:wifi
 
       - name: "RC WiFi Clients"
         unique_id: rc_openwrt_wifi_clients
-        object_id: rc_wifi_clients
         value_template: "{{ value_json.client_count | int(0) }}"
         icon: mdi:devices
 
@@ -166,28 +158,24 @@ rest:
     sensor:
       - name: "RC Starlink Today Download"
         unique_id: rc_openwrt_starlink_today_rx_mb
-        object_id: rc_starlink_today_download
         value_template: "{{ value_json.starlink.today_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC Starlink Month Download"
         unique_id: rc_openwrt_starlink_month_rx_mb
-        object_id: rc_starlink_month_download
         value_template: "{{ value_json.starlink.month_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC LTE Today Download"
         unique_id: rc_openwrt_lte_today_rx_mb
-        object_id: rc_lte_today_download
         value_template: "{{ value_json.lte.today_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download
 
       - name: "RC LTE Month Download"
         unique_id: rc_openwrt_lte_month_rx_mb
-        object_id: rc_lte_month_download
         value_template: "{{ value_json.lte.month_rx_mb | int(0) }}"
         unit_of_measurement: "MB"
         icon: mdi:download

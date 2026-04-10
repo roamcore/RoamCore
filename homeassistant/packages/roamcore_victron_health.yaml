@@ -21,7 +21,6 @@ mqtt:
   binary_sensor:
     - name: "VT Victron Availability"
       unique_id: vt_victron_availability
-      object_id: vt_victron_availability
       state_topic: "roamcore/victron/roamcore-victron/availability"
       payload_on: "online"
       payload_off: "offline"
@@ -30,25 +29,21 @@ mqtt:
   sensor:
     - name: "VT Victron Backend Status"
       unique_id: vt_victron_backend_status
-      object_id: vt_victron_backend_status
       state_topic: "roamcore/victron/roamcore-victron/status"
       icon: "mdi:heart-pulse"
 
     - name: "VT Victron Snapshot State"
       unique_id: vt_victron_snapshot_state
-      object_id: vt_victron_snapshot_state
       state_topic: "roamcore/victron/roamcore-victron/snapshot_state"
       icon: "mdi:database-check"
 
     - name: "VT Victron Devices Count"
       unique_id: vt_victron_devices_count
-      object_id: vt_victron_devices_count
       state_topic: "roamcore/victron/roamcore-victron/devices/count"
       icon: "mdi:devices"
 
     - name: "VT Victron Topics Count"
       unique_id: vt_victron_topics_count
-      object_id: vt_victron_topics_count
       state_topic: "roamcore/victron/roamcore-victron/topics/count"
       icon: "mdi:format-list-bulleted"
 
