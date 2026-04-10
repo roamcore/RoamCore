@@ -429,6 +429,12 @@ class RoamcoreBasePage extends HTMLElement {
     //   - /lovelace/roamcore/... (storage dashboard)
     try {
       const p = String(window.location?.pathname || '');
+      // Modern HA storage dashboards often mount at /dashboard-<url_path>/...
+      // Example: /dashboard-roamcore/home
+      try {
+        const m = p.match(/^\/(dashboard-[^\/]+)(?:\/|$)/);
+        if (m && m[1]) return `/${m[1]}`;
+      } catch (e) {}
       if (p.startsWith('/roam-core/')) return '/roam-core';
       if (p === '/roam-core') return '/roam-core';
       if (p.startsWith('/roamcore/')) return '/roamcore';
