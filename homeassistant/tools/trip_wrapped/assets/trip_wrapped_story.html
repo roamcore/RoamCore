@@ -778,7 +778,13 @@
 
         // Static map image (if provided by generator)
         try {
-          const src = (meta && meta.mapImageUrl) ? String(meta.mapImageUrl) : '';
+          let src = (meta && meta.mapImageUrl) ? String(meta.mapImageUrl) : '';
+          // Cache-bust between regenerations (HA /local can be aggressively cached by clients).
+          if (src) {
+            const v = meta && meta.generatedAt ? String(meta.generatedAt) : String(Date.now());
+            const sep = src.includes('?') ? '&' : '?';
+            src = src + sep + 'v=' + encodeURIComponent(v);
+          }
           if (img && src) {
             img.src = src;
             img.style.display = '';
