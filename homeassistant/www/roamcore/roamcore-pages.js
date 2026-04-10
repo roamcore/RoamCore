@@ -2929,7 +2929,16 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
       this._diag = data;
       this._diagFetchedAt = Date.now();
     } catch (e) {
-      this._diagErr = String(e?.message || e || 'Diagnostics fetch failed');
+      // Avoid unhelpful "[object Object]".
+      try {
+        if (e && typeof e === 'object') {
+          this._diagErr = String(e.message || e.error || '') || JSON.stringify(e);
+        } else {
+          this._diagErr = String(e || 'Diagnostics fetch failed');
+        }
+      } catch (e2) {
+        this._diagErr = 'Diagnostics fetch failed';
+      }
     } finally {
       this._diagLoading = false;
       this._render();
@@ -3131,7 +3140,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Settings')}
-        <div class="rc-label" style="margin-top:-8px; margin-bottom:10px; opacity:0.7;">UI build: <b>${this._esc(RC_PAGES_BUILD)}</b></div>
         <div class="rc-grid" style="grid-template-columns: 1fr;">
           ${this._tile({
             title: 'Setup',
@@ -3180,15 +3188,21 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
                 ${this._badge(openclawEnabled ? 'Enabled' : 'Disabled', openclawEnabled ? 'good' : 'inactive')}
                 <div class="rc-label" style="text-align:right;">Auth: <b>${openclawAuth ? 'Required' : 'Not required'}</b></div>
               </div>
-              <div class="rc-label" style="margin-top:10px; opacity:0.9;">Connect a local OpenClaw agent using a stable JSON contract.</div>
-              ${this._row('Summary endpoint', (endpoints.openclaw_summary || '/api/roamcore/openclaw/summary'))}
-              ${this._row('Last seen', (openclawLast && openclawLast !== 'unknown' && openclawLast !== 'unavailable') ? openclawLast : '—')}
-              ${this._row('Last endpoint', (openclawLastEp && String(openclawLastEp).trim()) ? String(openclawLastEp) : '—')}
+              <div class="rc-label" style="margin-top:10px; opacity:0.9;">Stable JSON contract for local agents.</div>
+              <div class="rc-row" style="gap:12px; align-items:flex-start;">
+                <div class="rc-label" style="min-width:140px; opacity:0.85;">Summary endpoint</div>
+                <div style="flex:1; text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:12px; color: rgba(255,255,255,0.80); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this._esc(endpoints.openclaw_summary || '/api/roamcore/openclaw/summary')}</div>
+              </div>
 
-              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-                <button class="rc-btn" id="rcOpenClawConnect">Connect / Setup</button>
-                <a class="rc-btn rc-btn-ghost" href="${this._esc(endpoints.openclaw_skill || '/api/roamcore/openclaw/skill')}" target="_blank" rel="noreferrer">Open /skill</a>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <button class="rc-btn" id="rcOpenClawConnect" style="flex:1; min-width: 160px;">Connect / Setup</button>
+                <a class="rc-btn rc-btn-ghost" href="${this._esc(endpoints.openclaw_skill || '/api/roamcore/openclaw/skill')}" target="_blank" rel="noreferrer">/skill</a>
                 <a class="rc-btn rc-btn-ghost" href="https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md" target="_blank" rel="noreferrer">Docs</a>
+              </div>
+
+              <div class="rc-mini" style="margin-top:10px; opacity:0.8;">
+                Last seen: <b>${(openclawLast && openclawLast !== 'unknown' && openclawLast !== 'unavailable') ? this._esc(openclawLast) : '—'}</b>
+                ${openclawLastEp && String(openclawLastEp).trim() ? ` · endpoint: <b>${this._esc(String(openclawLastEp))}</b>` : ''}
               </div>
 
               ${this._diagErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._diagErr)}</div>` : ''}
