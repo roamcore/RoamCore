@@ -1918,6 +1918,10 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
 }
 
 class RoamcoreMapPage extends RoamcoreBasePage {
+  // Cache-bust key for /local JS assets. Bump when changing roamcore-pages.js
+  // so clients don't get stuck on a month-cached file.
+  static ASSET_V = '2026-04-10T15:52Z';
+
   _render() {
     if (!this._root || !this._hass) return;
 
@@ -2035,6 +2039,25 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
+
+    // Ensure the JS bundle itself isn't stuck in cache: re-inject self once per session.
+    // (HA serves /local with long cache headers.)
+    try {
+      if (!window.__rcPagesReloaded) {
+        window.__rcPagesReloaded = true;
+        const cur = document.querySelector('script[src*="/local/roamcore/roamcore-pages.js"]');
+        if (cur && cur.getAttribute) {
+          const src = cur.getAttribute('src') || '/local/roamcore/roamcore-pages.js';
+          const next = src.split('?')[0] + '?v=' + encodeURIComponent(RoamcoreMapPage.ASSET_V);
+          if (!src.includes('v=')) {
+            const s = document.createElement('script');
+            s.src = next;
+            s.async = true;
+            document.head.appendChild(s);
+          }
+        }
+      }
+    } catch (e) {}
 
     // Mount map into placeholder.
     try {
