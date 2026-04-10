@@ -3162,7 +3162,7 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
             icon: '🤖',
             content: `
               <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-                ${this._tileStatusPill({ ok: openclawEnabled, okLabel: 'Enabled', badLabel: 'Disabled' })}
+                ${this._badge(openclawEnabled ? 'Enabled' : 'Disabled', openclawEnabled ? 'good' : 'inactive')}
                 <div class="rc-label" style="text-align:right;">Auth: <b>${openclawAuth ? 'Required' : 'Not required'}</b></div>
               </div>
               <div class="rc-label" style="margin-top:10px; opacity:0.9;">Connect a local OpenClaw agent using a stable JSON contract.</div>
