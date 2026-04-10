@@ -990,15 +990,27 @@
       return { size: s1, lines: [a], bottomY: y };
     }
 
+    function _absUrl(u) {
+      try {
+        u = String(u||'').trim();
+        if (!u) return '';
+        if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:')) return u;
+        // ensure absolute so canvas export doesn't depend on odd base URL behavior
+        if (u.startsWith('/')) return (window.location.origin || '') + u;
+        return (window.location.origin || '') + '/' + u;
+      } catch(e) { return String(u||''); }
+    }
+
     function _loadImage(src) {
       return new Promise((resolve) => {
         try {
           if (!src) return resolve(null);
           const img = new Image();
-          img.crossOrigin = 'anonymous';
+          // Avoid CORS/taint surprises: for same-origin images, don't set crossOrigin.
+          // (Setting it can cause the load to fail on some servers.)
           img.onload = () => resolve(img);
           img.onerror = () => resolve(null);
-          img.src = String(src);
+          img.src = _absUrl(src);
         } catch(e) { resolve(null); }
       });
     }
@@ -1079,7 +1091,8 @@
       const mapTop = titleBottom + 92;
       const mapX = cardX + 44;
       const mapW = cardW - 88;
-      const mapH = (H > 1500) ? 860 : 520;
+      // Leave vertical room for highlights + footer.
+      const mapH = (H > 1500) ? 820 : 500;
       _roundRect(ctx, mapX, mapTop, mapW, mapH, 32);
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       ctx.fill();
@@ -1160,8 +1173,12 @@
 
       // Highlights strip (more info-dense, story/adventure)
       try {
-        const stripY = y0 + boxH + 26;
         const stripH = (H > 1500) ? 140 : 132;
+        // Keep strip inside the card, above the footer.
+        const minStripY = y0 + boxH + 22;
+        const maxStripY = (cardY + cardH) - stripH - 56;
+        // If space is tight, prefer keeping it inside the card even if it overlaps slightly.
+        const stripY = (maxStripY < minStripY) ? maxStripY : minStripY;
         _roundRect(ctx, mapX, stripY, mapW, stripH, 26);
         ctx.fillStyle = 'rgba(8,12,24,0.45)';
         ctx.fill();
@@ -1213,7 +1230,7 @@
         const foot = (meta.dataStatus === 'demo') ? 'Demo Trip Wrapped' : 'Trip Wrapped';
         const foot2 = (meta.generatedAt) ? (()=>{ try{ return `Updated ${new Date(meta.generatedAt).toLocaleString()}`; }catch(e){ return ''; } })() : '';
         const fx = cardX + 44;
-        const fy = cardY + cardH - 40;
+        const fy = cardY + cardH - 44;
         ctx.fillText(foot, fx, fy);
         if (foot2) {
           ctx.fillStyle = 'rgba(255,255,255,0.30)';
