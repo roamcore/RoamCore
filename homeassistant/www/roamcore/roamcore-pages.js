@@ -224,6 +224,17 @@ class RoamcoreBasePage extends HTMLElement {
     } catch (e) {}
   }
 
+  // HTML-escape helper (safe to use in template literals).
+  _esc(s) {
+    const v = (s === null || s === undefined) ? '' : String(s);
+    return v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
   _isDemoMode() {
     try {
       return this._hass?.states?.['input_boolean.rc_demo_mode']?.state === 'on';
@@ -3241,16 +3252,6 @@ class RoamcoreDiagnosticsPage extends RoamcoreBasePage {
       .rc-btn2:hover { filter: brightness(1.06); }
       .rc-btn2:disabled { opacity: 0.6; cursor: not-allowed; }
     `;
-  }
-
-  _esc(s) {
-    const v = (s === null || s === undefined) ? '' : String(s);
-    return v
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
   }
 
   _stateObj(entityId) {
