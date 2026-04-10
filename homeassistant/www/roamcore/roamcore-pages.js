@@ -1714,6 +1714,11 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
     const rUptime = this._getState('sensor.rc_router_uptime');
     const rFw = this._getState('sensor.rc_router_firmware');
 
+    // OpenWrt controls (best-effort; scripts may not exist in mock-only setups)
+    const openwrtPreferred = this._getState('sensor.rc_openwrt_preferred_wan');
+    const openwrtActive = this._getState('sensor.rc_openwrt_active_wan');
+    const openwrtInternet = this._getState('sensor.rc_openwrt_internet');
+
     const status = (netStatus && netStatus !== 'unknown' && netStatus !== 'unavailable') ? netStatus : 'inactive';
     const c = rcStatusToColor(status);
 
@@ -1800,6 +1805,22 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
       ${this._row('Firmware', (rFw && rFw !== 'unknown' && rFw !== 'unavailable') ? rFw : '—')}
     `;
 
+    const controls = `
+      <div class="rc-label" style="margin-bottom:8px;">WAN switching (OpenWrt)</div>
+      ${this._row('Preferred', (openwrtPreferred && openwrtPreferred !== 'unknown' && openwrtPreferred !== 'unavailable') ? rcCap(openwrtPreferred) : '—')}
+      ${this._row('Active', (openwrtActive && openwrtActive !== 'unknown' && openwrtActive !== 'unavailable') ? rcCap(openwrtActive) : '—')}
+      ${this._row('Internet', (openwrtInternet && openwrtInternet !== 'unknown' && openwrtInternet !== 'unavailable') ? rcCap(openwrtInternet) : '—')}
+      <div style="height:10px;"></div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_starlink">Prefer Starlink</button>
+        <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_lte">Prefer LTE</button>
+        <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_auto">Auto</button>
+      </div>
+      <div style="height:10px;"></div>
+      <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_openwrt_restart_network">Restart network</button>
+      <div class="rc-label" style="margin-top:10px;">Tip: if the router backend is offline, these buttons will do nothing.</div>
+    `;
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Network')}
@@ -1811,6 +1832,7 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
           ${this._tile({title:'Cellular', icon:'⋮', content: cellular})}
           ${this._tile({title:'Local Network', icon:'⌂', content: localNet})}
           ${this._tile({title:'Router Health', icon:'⎇', content: router})}
+          ${this._tile({title:'Controls', icon:'⟲', content: controls})}
         </div>
       </div>
     `;

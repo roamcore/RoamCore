@@ -211,3 +211,37 @@ rest_command:
   rc_openwrt_restart_network:
     url: "http://192.168.1.250:8080/api/v1/restart"
     method: POST
+
+
+# ---
+# Convenience scripts (UI-friendly)
+#
+# These wrap rest_command calls so the RoamCore UI can offer simple buttons.
+# They are intentionally thin; the OpenWrt side remains the source of truth.
+
+script:
+  rc_openwrt_prefer_starlink:
+    alias: "RC OpenWrt: Prefer Starlink"
+    sequence:
+      - service: rest_command.rc_openwrt_set_wan_preference
+        data:
+          preferred: "starlink"
+
+  rc_openwrt_prefer_lte:
+    alias: "RC OpenWrt: Prefer LTE"
+    sequence:
+      - service: rest_command.rc_openwrt_set_wan_preference
+        data:
+          preferred: "lte"
+
+  rc_openwrt_prefer_auto:
+    alias: "RC OpenWrt: WAN Preference Auto"
+    sequence:
+      - service: rest_command.rc_openwrt_set_wan_preference
+        data:
+          preferred: "auto"
+
+  rc_openwrt_restart_network:
+    alias: "RC OpenWrt: Restart Network"
+    sequence:
+      - service: rest_command.rc_openwrt_restart_network
