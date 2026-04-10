@@ -373,25 +373,19 @@
         const el = document.getElementById('mapBg');
         if (!el) return;
 
-        // Basic raster style (labels included) — use a tile source that allows CORS
-        // so we can safely export the map into a PNG.
+        // Basic raster style (labels included)
         const style = {
           version: 8,
           sources: {
-            carto: {
+            osm: {
               type: 'raster',
-              tiles: [
-                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-              ],
+              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
               tileSize: 256,
-              attribution: '© OpenStreetMap contributors, © CARTO'
+              attribution: '© OpenStreetMap contributors'
             }
           },
           layers: [
-            { id: 'carto', type: 'raster', source: 'carto', paint: { 'raster-opacity': 0.90 } },
+            { id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-opacity': 0.85 } },
             // darken a touch for contrast
             { id: 'shade', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0.15)' } }
           ]
@@ -402,8 +396,7 @@
           style,
           interactive: false,
           attributionControl: false,
-          // Required for PNG export of the WebGL canvas.
-          preserveDrawingBuffer: true,
+          preserveDrawingBuffer: false,
         });
 
         // Mark ready once we have something rendered.
@@ -1124,22 +1117,9 @@
             ctx.fillStyle = 'rgba(0,0,0,0.22)';
             ctx.fillRect(mapX, mapTop, mapW, mapH);
           } else {
-            // Fallback: grab the live MapLibre canvas (CORS-safe tiles) if available.
-            let drew = false;
-            try {
-              const live = document.querySelector('#mapBg canvas');
-              if (live && live.width > 10 && live.height > 10) {
-                ctx.drawImage(live, mapX, mapTop, mapW, mapH);
-                ctx.fillStyle = 'rgba(0,0,0,0.22)';
-                ctx.fillRect(mapX, mapTop, mapW, mapH);
-                drew = true;
-              }
-            } catch(e) {}
-            if (!drew) {
-              // fallback texture if no map image
-              ctx.fillStyle = 'rgba(8,12,24,0.55)';
-              ctx.fillRect(mapX, mapTop, mapW, mapH);
-            }
+            // fallback texture if no map image
+            ctx.fillStyle = 'rgba(8,12,24,0.55)';
+            ctx.fillRect(mapX, mapTop, mapW, mapH);
           }
 
           // route overlay
