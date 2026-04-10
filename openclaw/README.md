@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/roamcore/RoamCore/main/assets/openclawbanner.png" alt="RoamCore x OpenClaw Banner" width="100%">
+</p>
+
 # OpenClaw + RoamCore
 
 RoamCore exposes a small set of **agent-friendly JSON endpoints** from Home Assistant so an OpenClaw agent can “talk to your van” with deep context.
