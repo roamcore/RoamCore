@@ -3093,23 +3093,42 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         try {
           enableBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Updating…';
-          // Prefer the new RoamCore integration service if present; otherwise
-          // fall back to the legacy roamcore_openclaw_api service.
-          let ok = false;
+          // Most reliable approach: toggle helpers directly (built-in services).
+          // These helpers are created by RoamCore packages:
+          //   input_boolean.rc_openclaw_api_enabled
+          //   input_boolean.rc_openclaw_api_requires_auth
+          // This avoids dependency on custom service registration.
+          const nextEnabled = !enabled;
+          const nextAuth = !!reqAuthEl?.checked;
+          await this._hass.callService('input_boolean', nextEnabled ? 'turn_on' : 'turn_off', {
+            entity_id: 'input_boolean.rc_openclaw_api_enabled',
+          });
+          await this._hass.callService('input_boolean', nextAuth ? 'turn_on' : 'turn_off', {
+            entity_id: 'input_boolean.rc_openclaw_api_requires_auth',
+          });
+
+          // Best-effort: if the newer service exists, also persist options there.
+          // We explicitly check service presence to avoid the noisy "Action not found" toast.
           try {
-            await this._hass.callService('roamcore', 'options_set', {
-              openclaw_api_enabled: !enabled,
-              openclaw_api_requires_auth: !!reqAuthEl?.checked,
-            });
-            ok = true;
-          } catch (e) {
-            // Legacy fallback: expects keys enabled/requires_auth
-            await this._hass.callService('roamcore_openclaw_api', 'options_set', {
-              enabled: !enabled,
-              requires_auth: !!reqAuthEl?.checked,
-            });
-            ok = true;
-          }
+            const hasSvc = !!(this._hass?.services?.roamcore?.options_set);
+            if (hasSvc) {
+              await this._hass.callService('roamcore', 'options_set', {
+                openclaw_api_enabled: nextEnabled,
+                openclaw_api_requires_auth: nextAuth,
+              });
+            }
+          } catch (e) {}
+
+          // Legacy best-effort: if legacy service exists, keep it in sync too.
+          try {
+            const hasLegacy = !!(this._hass?.services?.roamcore_openclaw_api?.options_set);
+            if (hasLegacy) {
+              await this._hass.callService('roamcore_openclaw_api', 'options_set', {
+                enabled: nextEnabled,
+                requires_auth: nextAuth,
+              });
+            }
+          } catch (e) {}
           if (statusEl) statusEl.textContent = 'Updated. Refreshing…';
           await this._fetchDiagnostics({ force: true });
           // Re-open modal with fresh state.
