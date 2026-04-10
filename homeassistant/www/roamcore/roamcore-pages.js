@@ -2507,6 +2507,9 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
     const demoMode = this._getState('input_boolean.rc_demo_mode');
     const demoOn = String(demoMode || '').toLowerCase() === 'on';
 
+    // Mode (scaffold)
+    const mode = this._getState('input_select.rc_mode');
+
     // Power details
     const backendOnline = this._isOn('binary_sensor.rc_system_power_backend_connected');
     const backendStatus = this._getState('sensor.rc_system_power_backend_status');
@@ -2560,6 +2563,13 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
               ok: demoOn ? false : true,
               sub: demoOn ? 'Demo mode is ON (some tiles may show demo values).' : 'Demo mode is OFF.',
               actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
+            })}
+
+            ${this._step({
+              label: 'Mode (optional)',
+              ok: null,
+              sub: `Current: <b>${(mode && !rcIsMissingState(mode)) ? rcCap(mode) : '—'}</b>`,
+              actionsHtml: `<button class="rc-btn rc-btn-mini" data-more="input_select.rc_mode">Change</button>`
             })}
           </div>
         </div>
