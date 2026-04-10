@@ -297,8 +297,24 @@ def build_wrapped(
             tt = best[1]
             longest_drive_from = _safe_str(tt.get("startAddress"))
             longest_drive_to = _safe_str(tt.get("endAddress"))
+
+    # Story-friendly object/aliases (UI expects this shape)
+    longest_drive_obj = {
+        "distanceM": float(longest_drive_m or 0.0),
+        "durationMs": int(longest_drive_ms or 0),
+        "fromName": longest_drive_from or "",
+        "toName": longest_drive_to or "",
+    }
+    # Days (deterministic): include both endpoints (UTC) rather than rounding duration.
     total_days = 0
-    if total_duration_ms:
+    try:
+        from_dt = _parse_dt(from_ts)
+        to_dt = _parse_dt(to_ts)
+        if from_dt and to_dt:
+            total_days = (to_dt.date() - from_dt.date()).days + 1
+    except Exception:
+        total_days = 0
+    if not total_days and total_duration_ms:
         total_days = max(1, round(total_duration_ms / (1000 * 60 * 60 * 24)))
     avg_days_per_stop = None
     if total_days and number_of_stops:
@@ -335,6 +351,9 @@ def build_wrapped(
             nights_parked = int(round(stationary_hours / 24.0))
         except Exception:
             nights_parked = None
+
+    # UI-friendly alias (until we implement true midnight-covered nights)
+    nights_on_road = nights_parked
 
     avg_stop_hours = None
     if stops:
@@ -499,6 +518,7 @@ def build_wrapped(
             "longestDriveHours": (longest_drive_ms / (1000 * 60 * 60)) if longest_drive_ms else 0.0,
             "longestDriveFrom": longest_drive_from,
             "longestDriveTo": longest_drive_to,
+            "longestDrive": longest_drive_obj,
             "longestStopDurationMs": longest_stop_ms,
             "longestStopLocationName": longest_stop_name,
 
@@ -512,6 +532,7 @@ def build_wrapped(
             "avgDailyDistanceKm": avg_daily_distance_km,
             "avgSpeedKph": avg_speed_kph,
             "nightsParked": nights_parked,
+            "nightsOnRoad": nights_on_road,
             "avgStopHours": avg_stop_hours,
 
             "displacementKm": displacement_km,
