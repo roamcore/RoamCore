@@ -3402,6 +3402,126 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           ],
         },
       },
+
+      {
+        key: 'battery_full',
+        id: 'roamcore_battery_full_alert_v01',
+        name: 'RoamCore - Battery Full Alert',
+        description: 'When the battery stays near full, send a notification so you can take advantage of surplus solar.',
+        requires: [
+          'sensor.rc_power_battery_soc',
+        ],
+        config: {
+          alias: 'RoamCore - Battery Full Alert',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_power_battery_soc',
+              above: 95,
+              for: '00:15:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Battery full',
+                message: 'Battery is near full. Consider running high-load tasks to use surplus solar.',
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Battery full alert triggered (SOC > 95%).',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'inverter_overtemp',
+        id: 'roamcore_inverter_overtemp_v01',
+        name: 'RoamCore - Inverter Overheat Alert',
+        description: 'If the inverter temperature stays high, alert you to reduce load / improve airflow.',
+        requires: [
+          'sensor.rc_power_inverter_temperature',
+        ],
+        config: {
+          alias: 'RoamCore - Inverter Overheat Alert',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_power_inverter_temperature',
+              above: 75,
+              for: '00:05:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Inverter hot',
+                message: "Inverter temperature is high ({{ states('sensor.rc_power_inverter_temperature') }} °C). Consider reducing load or improving airflow.",
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Inverter overtemp alert: {{ states('sensor.rc_power_inverter_temperature') }} °C.",
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'router_overtemp',
+        id: 'roamcore_router_overtemp_v01',
+        name: 'RoamCore - Router Overheat Alert',
+        description: 'If the router temperature stays high, alert you (hot routers can cause disconnects).',
+        requires: [
+          'sensor.rc_router_temperature',
+        ],
+        config: {
+          alias: 'RoamCore - Router Overheat Alert',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_router_temperature',
+              above: 70,
+              for: '00:10:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Router hot',
+                message: "Router temperature is high ({{ states('sensor.rc_router_temperature') }} °C). Consider improving ventilation.",
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Router overtemp alert: {{ states('sensor.rc_router_temperature') }} °C.",
+              },
+            },
+          ],
+        },
+      },
     ];
 
     // Attach managed marker + hash into description.

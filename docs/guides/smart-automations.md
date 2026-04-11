@@ -81,6 +81,36 @@ You can manage these from:
 - `sensor.rc_trip_distance_today_mi`
 - `sensor.rc_trip_time_today`
 
+### 6) RoamCore - Battery Full Alert
+
+**What it does:**
+
+- If battery SOC stays above **95%** for 15 minutes → creates a notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_power_battery_soc`
+
+### 7) RoamCore - Inverter Overheat Alert
+
+**What it does:**
+
+- If inverter temperature stays above **75°C** for 5 minutes → creates a notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_power_inverter_temperature`
+
+### 8) RoamCore - Router Overheat Alert
+
+**What it does:**
+
+- If router temperature stays above **70°C** for 10 minutes → creates a notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_router_temperature`
+
 ## Editing
 
 Use **Edit** in the UI (or open HA → Settings → Automations) to change the behavior.
