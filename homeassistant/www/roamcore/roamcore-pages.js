@@ -3734,6 +3734,122 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           ],
         },
       },
+
+      {
+        key: 'battery_critical',
+        id: 'roamcore_battery_critical_v01',
+        name: 'RoamCore - Battery Critical Alert',
+        description: 'If SOC stays critically low, alert you so you can conserve power or find a charge source.',
+        requires: [
+          'sensor.rc_power_battery_soc',
+        ],
+        config: {
+          alias: 'RoamCore - Battery Critical Alert',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_power_battery_soc',
+              below: 10,
+              for: '00:05:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Battery critical',
+                message: "Battery SOC is critically low ({{ states('sensor.rc_power_battery_soc') }}%). Consider reducing loads or finding charge.",
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Battery critical alert: {{ states('sensor.rc_power_battery_soc') }}%.",
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'bedtime_level_check',
+        id: 'roamcore_bedtime_level_check_v01',
+        name: 'RoamCore - Bedtime Level Check',
+        description: 'At bedtime, if you are not level, remind you before you settle in.',
+        requires: [
+          'binary_sensor.rc_level',
+          'sensor.rc_level_status',
+        ],
+        config: {
+          alias: 'RoamCore - Bedtime Level Check',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'time', at: '22:00:00' },
+          ],
+          condition: [
+            { condition: 'state', entity_id: 'binary_sensor.rc_level', state: 'off' },
+          ],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Not level',
+                message: "Van is not level ({{ states('sensor.rc_level_status') }}). Consider leveling before bed.",
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Bedtime level reminder: {{ states('sensor.rc_level_status') }}.",
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'quiet_hours',
+        id: 'roamcore_quiet_hours_v01',
+        name: 'RoamCore - Quiet Hours Reminder',
+        description: 'At night, gently remind you to switch to Stealth mode (no device control; just a prompt).',
+        requires: [
+          'input_select.rc_mode',
+          'script.rc_mode_set_stealth',
+        ],
+        config: {
+          alias: 'RoamCore - Quiet Hours Reminder',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'time', at: '21:30:00' },
+          ],
+          condition: [
+            { condition: 'template', value_template: "{{ states('input_select.rc_mode') not in ['stealth','Stealth'] }}" },
+          ],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Quiet hours',
+                message: 'Quiet hours starting. Consider switching Mode to Stealth for a low-impact night.',
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Quiet hours reminder issued.',
+              },
+            },
+          ],
+        },
+      },
     ];
 
     // Attach managed marker + hash into description.

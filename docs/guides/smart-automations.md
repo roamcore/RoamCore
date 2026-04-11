@@ -174,6 +174,38 @@ You can manage these from:
 
 - `sensor.rc_power_solar_power`
 
+### 15) RoamCore - Battery Critical Alert
+
+**What it does:**
+
+- If battery SOC stays below **10%** for 5 minutes → notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_power_battery_soc`
+
+### 16) RoamCore - Bedtime Level Check
+
+**What it does:**
+
+- At **22:00**, if you are not level → reminder notification + logbook entry.
+
+**Dependencies:**
+
+- `binary_sensor.rc_level`
+- `sensor.rc_level_status`
+
+### 17) RoamCore - Quiet Hours Reminder
+
+**What it does:**
+
+- At **21:30**, if Mode is not Stealth → reminder notification.
+
+**Dependencies:**
+
+- `input_select.rc_mode`
+- `script.rc_mode_set_stealth`
+
 ## Editing
 
 Use **Edit** in the UI (or open HA → Settings → Automations) to change the behavior.
