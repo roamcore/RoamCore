@@ -5,6 +5,36 @@
 // Visible build marker for cache/debugging.
 const RC_PAGES_BUILD = 'settings-openclaw-fix-64c50fc';
 
+// -----------------
+// Smart Automations (v0.1)
+// -----------------
+// Goals:
+// - One-click enable/disable
+// - Uses native HA automations (storage)
+// - Never overwrites user edits (best-effort)
+
+function rcHashStr(s) {
+  // small, deterministic non-crypto hash for change detection
+  try {
+    const str = String(s || '');
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) + h) ^ str.charCodeAt(i);
+    }
+    return (h >>> 0).toString(16);
+  } catch (e) {
+    return '0';
+  }
+}
+
+function rcStableJson(v) {
+  try {
+    return JSON.stringify(v, Object.keys(v || {}).sort());
+  } catch (e) {
+    try { return JSON.stringify(v); } catch (e2) { return ''; }
+  }
+}
+
 function rcStatusToColor(status) {
   if (status === 'good') return 'var(--rc-good)';
   if (status === 'ok') return 'var(--rc-ok)';
@@ -3200,6 +3230,197 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     }
   }
 
+  _automationDefs() {
+    // Keep these extremely safe: only set Mode helpers / call known scripts.
+    // If dependencies aren't present, the UI will lock the automation.
+    const defs = [
+      {
+        key: 'night_mode',
+        id: 'roamcore_night_mode_v01',
+        name: 'RoamCore - Night Mode',
+        description: 'At night, set Mode to Stealth; in the morning, set Mode back to Auto.',
+        requires: [
+          'script.rc_mode_set_stealth',
+          'script.rc_mode_set_auto',
+        ],
+        config: {
+          alias: 'RoamCore - Night Mode',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'time', at: '23:00:00' },
+            { platform: 'time', at: '07:00:00' },
+          ],
+          condition: [],
+          action: [
+            {
+              choose: [
+                {
+                  conditions: [
+                    { condition: 'time', after: '22:59:59', before: '23:59:59' },
+                  ],
+                  sequence: [
+                    { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_stealth' } },
+                  ],
+                },
+                {
+                  conditions: [
+                    { condition: 'time', after: '06:59:59', before: '07:59:59' },
+                  ],
+                  sequence: [
+                    { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_auto' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        key: 'auto_wan',
+        id: 'roamcore_auto_wan_preference_v01',
+        name: 'RoamCore - Auto Internet Failover',
+        description: 'If WAN health degrades, ask the router to re-evaluate WAN preference (auto).',
+        requires: [
+          'sensor.rc_net_wan_status',
+          'script.rc_openwrt_prefer_auto',
+        ],
+        config: {
+          alias: 'RoamCore - Auto Internet Failover',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'state',
+              entity_id: 'sensor.rc_net_wan_status',
+              to: 'bad',
+              for: '00:02:00',
+            },
+          ],
+          condition: [],
+          action: [
+            { service: 'script.turn_on', target: { entity_id: 'script.rc_openwrt_prefer_auto' } },
+          ],
+        },
+      },
+      {
+        key: 'low_battery',
+        id: 'roamcore_low_battery_mode_v01',
+        name: 'RoamCore - Low Battery Mode',
+        description: 'If SOC stays low while off-shore-power, switch Mode to Camp as a safety hint.',
+        requires: [
+          'sensor.rc_power_battery_soc',
+          'binary_sensor.rc_power_shore_connected',
+          'script.rc_mode_set_camp',
+        ],
+        config: {
+          alias: 'RoamCore - Low Battery Mode',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_power_battery_soc',
+              below: 20,
+              for: '00:10:00',
+            },
+          ],
+          condition: [
+            { condition: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', state: 'off' },
+          ],
+          action: [
+            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_camp' } },
+          ],
+        },
+      },
+    ];
+
+    // Attach managed marker + hash into description.
+    for (const d of defs) {
+      try {
+        const core = {
+          trigger: d.config.trigger,
+          condition: d.config.condition,
+          action: d.config.action,
+          mode: d.config.mode,
+        };
+        const h = rcHashStr(rcStableJson(core));
+        d._hash = h;
+        d.config.description = `Managed by RoamCore Smart Automations v0.1\nkey=${d.key}\nhash=${h}\n(If you edit this automation in HA, RoamCore will stop updating it.)`;
+      } catch (e) {}
+    }
+    return defs;
+  }
+
+  _hasEntities(entityIds = []) {
+    try {
+      for (const eid of (entityIds || [])) {
+        const st = this._hass?.states?.[String(eid)];
+        if (!st) return false;
+        const s = String(st.state || '').toLowerCase();
+        if (!s || s === 'unknown' || s === 'unavailable' || s === 'none') return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async _haListAutomations() {
+    return await this._hass.callApi('get', 'config/automation/config');
+  }
+
+  async _haCreateAutomation(cfg) {
+    return await this._hass.callApi('post', 'config/automation/config', cfg);
+  }
+
+  async _haUpdateAutomation(id, cfg) {
+    return await this._hass.callApi('put', `config/automation/config/${encodeURIComponent(String(id))}`, cfg);
+  }
+
+  _isManagedAutomation(def, cfg) {
+    try {
+      const desc = String(cfg?.description || '');
+      if (!desc.includes('Managed by RoamCore Smart Automations')) return false;
+      if (!desc.includes(`key=${def.key}`)) return false;
+      if (!desc.includes(`hash=${def._hash}`)) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async _ensureAutomation(def) {
+    const list = await this._haListAutomations();
+    const cur = Array.isArray(list) ? list.find(a => String(a?.id || '') === String(def.id)) : null;
+    if (!cur) {
+      const created = await this._haCreateAutomation({ id: def.id, ...def.config });
+      return { cfg: created || null, created: true };
+    }
+    return { cfg: cur, created: false };
+  }
+
+  async _setAutomationEnabled(def, enabled) {
+    const { cfg } = await this._ensureAutomation(def);
+    const cur = cfg || {};
+    const wasManaged = this._isManagedAutomation(def, cur);
+
+    // If user edited it (not managed anymore), we only flip enabled state.
+    // If managed, we also ensure it matches current template.
+    const nextCfg = wasManaged ? ({ id: def.id, ...def.config, enabled: !!enabled }) : ({ ...cur, enabled: !!enabled });
+    await this._haUpdateAutomation(def.id, nextCfg);
+  }
+
+  _openAutomationEdit(defId) {
+    // Best-effort deep link.
+    try {
+      // Many HA versions support /config/automation/edit/<id>
+      window.open(`/config/automation/edit/${encodeURIComponent(String(defId))}`, '_blank', 'noopener');
+    } catch (e) {
+      try { window.open('/config/automation', '_blank', 'noopener'); } catch (e2) {}
+    }
+  }
+
   _render() {
     if (!this._root || !this._hass) return;
 
@@ -3234,6 +3455,30 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
       : !!opts.openclaw_api_requires_auth;
     const openclawLast = this._getState('sensor.rc_openclaw_last_seen');
     const openclawLastEp = this._hass?.states?.['sensor.rc_openclaw_last_seen']?.attributes?.endpoint;
+
+    const automations = this._automationDefs();
+    const autoRows = automations.map((a) => {
+      const available = this._hasEntities(a.requires);
+      const status = available ? 'ok' : 'inactive';
+      const hint = available ? 'Ready' : 'Connect system to unlock';
+      return `
+        <div class="rc-row" style="align-items:flex-start; gap: 12px;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: 900;">${this._esc(a.name)}</div>
+            <div class="rc-mini" style="margin-top: 4px; opacity: 0.85;">${this._esc(a.description)}</div>
+            <div class="rc-mini" style="margin-top: 6px; opacity: 0.75;">Deps: ${this._esc(a.requires.join(', '))}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+            ${this._badge(hint, status)}
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+              <button class="rc-btn rc-btn-mini" data-auto-enable="${this._esc(a.key)}" ${available ? '' : 'disabled'}>Enable</button>
+              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-auto-disable="${this._esc(a.key)}" ${available ? '' : 'disabled'}>Disable</button>
+              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-auto-edit="${this._esc(a.id)}">Edit</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
@@ -3307,6 +3552,17 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
               ${this._diagErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._diagErr)}</div>` : ''}
             `
           })}
+
+          ${this._tile({
+            title: 'Smart Automations',
+            icon: '🪄',
+            content: `
+              <div class="rc-label" style="opacity:0.9;">Prebuilt automations you can enable with one click. All are native HA automations and editable.</div>
+              <div style="height:10px"></div>
+              ${autoRows || '<div class="rc-mini">No automations available.</div>'}
+              <div id="rc-auto-status" class="rc-label" style="margin-top:10px;"></div>
+            `
+          })}
           ${this._tile({
             title: 'Advanced',
             icon: '🧰',
@@ -3326,6 +3582,56 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     try {
       const btn = this._root.querySelector('#rcOpenClawConnect');
       if (btn) btn.addEventListener('click', () => this._openOpenClawModal());
+    } catch (e) {}
+
+    // Wire Smart Automations buttons
+    try {
+      const statusEl = this._root.querySelector('#rc-auto-status');
+      const byKey = {};
+      for (const a of this._automationDefs()) byKey[a.key] = a;
+
+      this._root.querySelectorAll('[data-auto-enable]').forEach((b) => {
+        b.addEventListener('click', async () => {
+          const k = b.getAttribute('data-auto-enable');
+          const def = byKey[k];
+          if (!def) return;
+          try {
+            b.disabled = true;
+            if (statusEl) statusEl.textContent = `Enabling: ${def.name}…`;
+            await this._setAutomationEnabled(def, true);
+            if (statusEl) statusEl.textContent = `Enabled: ${def.name}`;
+          } catch (e) {
+            if (statusEl) statusEl.textContent = `Enable failed: ${String(e?.message || e)}`;
+          } finally {
+            try { b.disabled = false; } catch (e) {}
+          }
+        });
+      });
+
+      this._root.querySelectorAll('[data-auto-disable]').forEach((b) => {
+        b.addEventListener('click', async () => {
+          const k = b.getAttribute('data-auto-disable');
+          const def = byKey[k];
+          if (!def) return;
+          try {
+            b.disabled = true;
+            if (statusEl) statusEl.textContent = `Disabling: ${def.name}…`;
+            await this._setAutomationEnabled(def, false);
+            if (statusEl) statusEl.textContent = `Disabled: ${def.name}`;
+          } catch (e) {
+            if (statusEl) statusEl.textContent = `Disable failed: ${String(e?.message || e)}`;
+          } finally {
+            try { b.disabled = false; } catch (e) {}
+          }
+        });
+      });
+
+      this._root.querySelectorAll('[data-auto-edit]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const id = b.getAttribute('data-auto-edit');
+          if (id) this._openAutomationEdit(id);
+        });
+      });
     } catch (e) {}
   }
 }
