@@ -142,6 +142,38 @@ You can manage these from:
 - `binary_sensor.rc_net_internet_reachable`
 - `script.rc_openwrt_restart_network`
 
+### 12) RoamCore - Arrive at Camp
+
+**What it does:**
+
+- If speed stays below **1** for 15 minutes between **18:00–23:59** → sets Mode to **Camp**.
+
+**Dependencies:**
+
+- `sensor.rc_location_speed`
+- `script.rc_mode_set_camp`
+
+### 13) RoamCore - Depart (Travel Mode)
+
+**What it does:**
+
+- If speed stays above **10** for 2 minutes → sets Mode to **Travel**.
+
+**Dependencies:**
+
+- `sensor.rc_location_speed`
+- `script.rc_mode_set_travel`
+
+### 14) RoamCore - Solar is Crushing It
+
+**What it does:**
+
+- If solar stays above **600W** for 5 minutes → notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_power_solar_power`
+
 ## Editing
 
 Use **Edit** in the UI (or open HA → Settings → Automations) to change the behavior.

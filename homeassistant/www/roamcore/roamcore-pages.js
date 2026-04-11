@@ -3622,6 +3622,118 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           ],
         },
       },
+
+      {
+        key: 'arrive_at_camp',
+        id: 'roamcore_arrive_at_camp_v01',
+        name: 'RoamCore - Arrive at Camp',
+        description: 'When you stop moving in the evening, switch Mode to Camp (best-effort).',
+        requires: [
+          'sensor.rc_location_speed',
+          'script.rc_mode_set_camp',
+        ],
+        config: {
+          alias: 'RoamCore - Arrive at Camp',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_location_speed',
+              below: 1,
+              for: '00:15:00',
+            },
+          ],
+          condition: [
+            { condition: 'time', after: '18:00:00', before: '23:59:59' },
+          ],
+          action: [
+            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_camp' } },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Arrive at Camp: vehicle stationary in evening → set Mode to Camp.',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'depart_travel',
+        id: 'roamcore_depart_travel_v01',
+        name: 'RoamCore - Depart (Travel Mode)',
+        description: 'When you start driving, switch Mode to Travel (best-effort).',
+        requires: [
+          'sensor.rc_location_speed',
+          'script.rc_mode_set_travel',
+        ],
+        config: {
+          alias: 'RoamCore - Depart (Travel Mode)',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_location_speed',
+              above: 10,
+              for: '00:02:00',
+            },
+          ],
+          condition: [],
+          action: [
+            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_travel' } },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Depart: driving detected → set Mode to Travel.',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'solar_wow',
+        id: 'roamcore_solar_wow_v01',
+        name: 'RoamCore - Solar is Crushing It',
+        description: 'When solar output is high, notify you (a quick “wow” moment).',
+        requires: [
+          'sensor.rc_power_solar_power',
+        ],
+        config: {
+          alias: 'RoamCore - Solar is Crushing It',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_power_solar_power',
+              above: 600,
+              for: '00:05:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Solar is crushing it',
+                message: "Solar is strong ({{ states('sensor.rc_power_solar_power') }} W). Great time to run high loads.",
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Solar output high: {{ states('sensor.rc_power_solar_power') }} W.",
+              },
+            },
+          ],
+        },
+      },
     ];
 
     // Attach managed marker + hash into description.
