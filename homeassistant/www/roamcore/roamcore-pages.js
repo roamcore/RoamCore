@@ -3522,6 +3522,106 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           ],
         },
       },
+
+      {
+        key: 'shore_connected_notice',
+        id: 'roamcore_shore_power_connected_notice_v01',
+        name: 'RoamCore - Shore Power Connected',
+        description: 'When shore power connects, log it and notify you (useful to confirm hookup worked).',
+        requires: [
+          'binary_sensor.rc_power_shore_connected',
+        ],
+        config: {
+          alias: 'RoamCore - Shore Power Connected',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', to: 'on' },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Shore power connected',
+                message: 'Shore power is connected.',
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Shore power connected.',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'shore_disconnected_alert',
+        id: 'roamcore_shore_power_disconnected_alert_v01',
+        name: 'RoamCore - Shore Power Disconnected',
+        description: 'When shore power disconnects unexpectedly, alert you so you can avoid draining the battery.',
+        requires: [
+          'binary_sensor.rc_power_shore_connected',
+        ],
+        config: {
+          alias: 'RoamCore - Shore Power Disconnected',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', to: 'off', for: '00:01:00' },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Shore power disconnected',
+                message: 'Shore power disconnected. Check your hookup/cable.',
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Shore power disconnected.',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'internet_recovery',
+        id: 'roamcore_internet_recovery_v01',
+        name: 'RoamCore - Internet Recovery',
+        description: 'If the internet becomes unreachable, restart the router network stack (best-effort).',
+        requires: [
+          'binary_sensor.rc_net_internet_reachable',
+          'script.rc_openwrt_restart_network',
+        ],
+        config: {
+          alias: 'RoamCore - Internet Recovery',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'state', entity_id: 'binary_sensor.rc_net_internet_reachable', to: 'off', for: '00:02:00' },
+          ],
+          condition: [],
+          action: [
+            { service: 'script.turn_on', target: { entity_id: 'script.rc_openwrt_restart_network' } },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Internet unreachable: restarted router network stack (best-effort).',
+              },
+            },
+          ],
+        },
+      },
     ];
 
     // Attach managed marker + hash into description.

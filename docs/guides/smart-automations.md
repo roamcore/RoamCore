@@ -111,6 +111,37 @@ You can manage these from:
 
 - `sensor.rc_router_temperature`
 
+### 9) RoamCore - Shore Power Connected
+
+**What it does:**
+
+- When shore power connects → notification + logbook entry.
+
+**Dependencies:**
+
+- `binary_sensor.rc_power_shore_connected`
+
+### 10) RoamCore - Shore Power Disconnected
+
+**What it does:**
+
+- When shore power disconnects for 1 minute → notification + logbook entry.
+
+**Dependencies:**
+
+- `binary_sensor.rc_power_shore_connected`
+
+### 11) RoamCore - Internet Recovery
+
+**What it does:**
+
+- If internet is unreachable for 2 minutes → triggers a router network restart script.
+
+**Dependencies:**
+
+- `binary_sensor.rc_net_internet_reachable`
+- `script.rc_openwrt_restart_network`
+
 ## Editing
 
 Use **Edit** in the UI (or open HA → Settings → Automations) to change the behavior.
