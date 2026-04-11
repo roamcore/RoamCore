@@ -3333,6 +3333,75 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
           ],
         },
       },
+
+      {
+        key: 'freeze_protection',
+        id: 'roamcore_freeze_protection_v01',
+        name: 'RoamCore - Freeze Protection',
+        description: 'If outside temperature stays near freezing, show an alert so you can protect water systems.',
+        requires: [
+          'sensor.rc_weather_temp_c',
+        ],
+        config: {
+          alias: 'RoamCore - Freeze Protection',
+          description: '',
+          mode: 'single',
+          trigger: [
+            {
+              platform: 'numeric_state',
+              entity_id: 'sensor.rc_weather_temp_c',
+              below: 2,
+              for: '00:10:00',
+            },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'persistent_notification.create',
+              data: {
+                title: 'RoamCore: Freeze protection',
+                message: 'Outside temperature is near freezing. Consider protecting water systems and checking heating.',
+              },
+            },
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: 'Freeze protection alert triggered (outside temp near freezing).',
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        key: 'daily_trip_log',
+        id: 'roamcore_daily_trip_log_v01',
+        name: 'RoamCore - Daily Trip Log',
+        description: 'At the end of the day, write a simple trip summary to the logbook (distance + drive time).',
+        requires: [
+          'sensor.rc_trip_distance_today_mi',
+          'sensor.rc_trip_time_today',
+        ],
+        config: {
+          alias: 'RoamCore - Daily Trip Log',
+          description: '',
+          mode: 'single',
+          trigger: [
+            { platform: 'time', at: '23:59:00' },
+          ],
+          condition: [],
+          action: [
+            {
+              service: 'logbook.log',
+              data: {
+                name: 'RoamCore',
+                message: "Daily trip summary: {{ states('sensor.rc_trip_distance_today_mi') }} mi, {{ states('sensor.rc_trip_time_today') }} driving.",
+              },
+            },
+          ],
+        },
+      },
     ];
 
     // Attach managed marker + hash into description.

@@ -60,9 +60,29 @@ You can manage these from:
 - `binary_sensor.rc_power_shore_connected`
 - `script.rc_mode_set_camp`
 
+### 4) RoamCore - Freeze Protection
+
+**What it does:**
+
+- If outside temperature stays below **2°C** for 10 minutes → creates a persistent notification + logbook entry.
+
+**Dependencies:**
+
+- `sensor.rc_weather_temp_c`
+
+### 5) RoamCore - Daily Trip Log
+
+**What it does:**
+
+- At **23:59** → writes a simple daily trip summary to HA Logbook.
+
+**Dependencies:**
+
+- `sensor.rc_trip_distance_today_mi`
+- `sensor.rc_trip_time_today`
+
 ## Editing
 
 Use **Edit** in the UI (or open HA → Settings → Automations) to change the behavior.
 
 Once edited, RoamCore will not overwrite your changes.
-
