@@ -1,12 +1,12 @@
-# Level Sensor
+# Lighting
 
-This folder is the **Level Sensor** tag in the RoamCore catalog.
+This folder is the **Lighting** tag in the RoamCore catalog.
 
 ## Overview
-Being level makes sleeping, cooking, and living in the van much nicer. This section covers sensors and integrations that measure pitch/roll, show an easy “are we level?” status, and help you dial in a perfect park.
+Good lighting makes the van feel bigger, calmer, and safer at night. This section covers smart switches, dimmers, RGB strips, and simple scenes like “Cooking”, “Movie”, or “Night” that you can trigger from the dashboard or automations.
 
 ## What belongs here
-- Features/integrations related to **Level Sensor**.
+- Features/integrations related to **Lighting**.
 
 ## Support tiers
 - **A** = RoamCore native (supported)
@@ -23,3 +23,11 @@ Every page should include:
 ## Add a new item
 - Copy: `docs/catalog/_templates/integration-page.template.md`
 - Place into this folder with a clear filename, e.g. `diesel-heater.md`
+
+<!-- RC_FEATURE_LIST_START -->
+
+## Features
+
+Nothing listed here yet.
+
+<!-- RC_FEATURE_LIST_END -->

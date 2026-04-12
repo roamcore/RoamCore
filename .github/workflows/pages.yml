@@ -29,6 +29,10 @@ jobs:
         run: |
           python scripts/build_catalog_index.py
 
+      - name: Generate category feature lists
+        run: |
+          python scripts/build_category_indexes.py
+
       - name: Build MkDocs (into public/docs)
         run: |
           mkdocs build --clean

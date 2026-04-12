@@ -103,6 +103,7 @@ def main() -> int:
 
     for p in sorted(CATALOG.rglob("*.md")):
         rel = p.relative_to(DOCS)
+        # Exclude category indexes and the catalog index.
         if rel.name.lower() in ("readme.md", "index.md"):
             continue
         if "_templates" in rel.parts:

@@ -1,12 +1,12 @@
-# Homelab
+# NFC Tags
 
-This folder is the **Homelab** tag in the RoamCore catalog.
+This folder is the **NFC Tags** tag in the RoamCore catalog.
 
 ## Overview
-Some vanlifers run a small “homelab on wheels”: a mini PC, NAS, router, cameras, and local services. This section covers useful self-hosted tools and integrations that can run locally (even without internet) for more privacy and reliability.
+NFC tags are a cheap, simple way to make the van feel magical: tap your phone to run a scene (“Lights off”, “Bedtime”, “Leave camp”). This section covers easy NFC-based automations and practical places to put tags in a van.
 
 ## What belongs here
-- Features/integrations related to **Homelab**.
+- Features/integrations related to **NFC Tags**.
 
 ## Support tiers
 - **A** = RoamCore native (supported)
@@ -23,3 +23,11 @@ Every page should include:
 ## Add a new item
 - Copy: `docs/catalog/_templates/integration-page.template.md`
 - Place into this folder with a clear filename, e.g. `diesel-heater.md`
+
+<!-- RC_FEATURE_LIST_START -->
+
+## Features
+
+Nothing listed here yet.
+
+<!-- RC_FEATURE_LIST_END -->

@@ -23,3 +23,14 @@ Every page should include:
 ## Add a new item
 - Copy: `docs/catalog/_templates/integration-page.template.md`
 - Place into this folder with a clear filename, e.g. `diesel-heater.md`
+
+<!-- RC_FEATURE_LIST_START -->
+
+## Features
+
+<div class="rc-feature-list">
+  <a class="rc-feature" href="catalog/bed-lift/diy-bedlift.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">DIY bed lift (actuators / motor + strap)</div><div class="rc-feature-sub">## What this is</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="catalog/bed-lift/happijac.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">HappiJac bed lift</div><div class="rc-feature-sub">## What this is</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+</div>
+
+<!-- RC_FEATURE_LIST_END -->

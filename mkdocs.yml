@@ -57,25 +57,25 @@ nav:
   - Home: index.md
   - Catalog:
       - Browse all: catalog/index.md
-      - Power: catalog/power/README.md
-      - Water: catalog/water/README.md
-      - Map: catalog/map/README.md
-      - Weather: catalog/weather/README.md
-      - Time: catalog/time/README.md
-      - CCTV: catalog/cctv/README.md
-      - AI: catalog/ai/README.md
-      - HVAC: catalog/hvac/README.md
-      - Networking: catalog/networking/README.md
-      - Fans: catalog/fans/README.md
-      - Safety: catalog/safety/README.md
-      - Remote Access: catalog/remote-access/README.md
-      - Vehicle OBD: catalog/vehicle-obd/README.md
-      - Lighting: catalog/lighting/README.md
-      - Bed Lift: catalog/bed-lift/README.md
-      - NFC Tags: catalog/nfc-tags/README.md
-      - Audio/Media: catalog/audio-media/README.md
-      - Homelab: catalog/homelab/README.md
-      - Level Sensor: catalog/level-sensor/README.md
+      - Power: catalog/power/index.md
+      - Water: catalog/water/index.md
+      - Map: catalog/map/index.md
+      - Weather: catalog/weather/index.md
+      - Time: catalog/time/index.md
+      - CCTV: catalog/cctv/index.md
+      - AI: catalog/ai/index.md
+      - HVAC: catalog/hvac/index.md
+      - Networking: catalog/networking/index.md
+      - Fans: catalog/fans/index.md
+      - Safety: catalog/safety/index.md
+      - Remote Access: catalog/remote-access/index.md
+      - Vehicle OBD: catalog/vehicle-obd/index.md
+      - Lighting: catalog/lighting/index.md
+      - Bed Lift: catalog/bed-lift/index.md
+      - NFC Tags: catalog/nfc-tags/index.md
+      - Audio/Media: catalog/audio-media/index.md
+      - Homelab: catalog/homelab/index.md
+      - Level Sensor: catalog/level-sensor/index.md
   - Technical (advanced):
       - Install: howto/homeassistant-installer.md
       - Troubleshooting: guides/troubleshooting.md
