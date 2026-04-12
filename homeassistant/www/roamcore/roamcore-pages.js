@@ -497,13 +497,38 @@ class RoamcoreBasePage extends HTMLElement {
     return '/roam-core';
   }
 
+  _hasDashboardView(path) {
+    // Best-effort: if a user deletes dashboard views, other pages should still render.
+    // We use Lovelace config (when available) to avoid navigating to missing pages.
+    try {
+      const p = String(path || '').replace(/^\//, '');
+      if (!p) return false;
+      const views = this._hass?.lovelace?.config?.views || [];
+      for (const v of views) {
+        const vp = String(v?.path || '').replace(/^\//, '');
+        if (vp && vp === p) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   _header(title) {
+    const base = this._basePath();
+    const hasHome = this._hasDashboardView('home');
+    const hasSettings = this._hasDashboardView('settings');
+    const backBtn = hasHome
+      ? `<button class="rc-back" data-nav="${base}/home">←</button>`
+      : `<button class="rc-back" data-nav="${base}">←</button>`;
+    const gearBtn = hasSettings
+      ? `<button class="rc-gear" title="Settings" data-nav="${base}/settings">⚙</button>`
+      : '';
+
     return `
       <div class="rc-subheader">
-        <button class="rc-back" data-nav="${this._basePath()}/home">←</button>
+        ${backBtn}
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
-        <button class="rc-gear" title="Settings" data-nav="${this._basePath()}/settings">⚙</button>
+        ${gearBtn}
       </div>
       ${this._setupBanner()}
     `;
