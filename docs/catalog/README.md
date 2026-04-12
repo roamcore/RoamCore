@@ -2,6 +2,8 @@
 
 This folder will become the canonical, browseable catalog of RoamCore features + integrations.
 
+If you’re new: pick a category below (Power, Safety, Networking, etc.). Each item in the catalog will tell you what it does, what hardware (if any) you need, and give you a clear “best next step” install button plus extra links at the bottom.
+
 ## Tagging / design rules (Bernard)
 - **Folder title = primary tag** (e.g. `power/`, `connectivity/`, `safety/`).
 - **Support tier tag:**

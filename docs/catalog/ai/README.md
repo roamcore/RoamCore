@@ -2,6 +2,9 @@
 
 This folder is the **AI** tag in the RoamCore catalog.
 
+## Overview
+AI can turn a pile of sensors into plain-English answers and suggested actions. This section covers optional AI/assistant-style integrations and ideas—ranging from safe, read-only summaries to more advanced workflows you can build yourself.
+
 ## What belongs here
 - Features/integrations related to **AI**.
 

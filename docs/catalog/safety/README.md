@@ -2,6 +2,9 @@
 
 This folder is the **Safety** tag in the RoamCore catalog.
 
+## Overview
+Safety is about early warning and clear alerts: CO/smoke, propane, leaks, low battery, and temperature risks. This section focuses on integrations and recipes that help you catch problems fast—especially when you’re asleep or away from the van.
+
 ## What belongs here
 - Features/integrations related to **Safety**.
 

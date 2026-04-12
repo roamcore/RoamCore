@@ -2,6 +2,9 @@
 
 This folder is the **Map** tag in the RoamCore catalog.
 
+## Overview
+Maps and location features help you understand where the van is, where it’s been, and what’s nearby. This section includes tracking, trip history, offline maps, and overlays that can make planning and “where did we park?” moments much easier.
+
 ## What belongs here
 - Features/integrations related to **Map**.
 

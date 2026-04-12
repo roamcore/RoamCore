@@ -2,6 +2,9 @@
 
 This folder is the **Networking** tag in the RoamCore catalog.
 
+## Overview
+Internet in a van is usually a mix of Wi‑Fi, LTE/5G, and sometimes Starlink. This section covers ways to monitor connectivity, failover between WANs, and basic network health—so you know when things are working (or why they aren’t).
+
 ## What belongs here
 - Features/integrations related to **Networking**.
 

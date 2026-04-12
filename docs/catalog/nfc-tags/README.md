@@ -2,6 +2,9 @@
 
 This folder is the **NFC Tags** tag in the RoamCore catalog.
 
+## Overview
+NFC tags are a cheap, simple way to make the van feel magical: tap your phone to run a scene (“Lights off”, “Bedtime”, “Leave camp”). This section covers easy NFC-based automations and practical places to put tags in a van.
+
 ## What belongs here
 - Features/integrations related to **NFC Tags**.
 

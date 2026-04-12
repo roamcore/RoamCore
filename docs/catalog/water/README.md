@@ -2,6 +2,9 @@
 
 This folder is the **Water** tag in the RoamCore catalog.
 
+## Overview
+Water systems are easy to forget until something goes wrong. This section covers ways to track fresh/grey levels, pump activity, leaks, and usage trends—so you can avoid surprises and plan refills/dumps around your travel.
+
 ## What belongs here
 - Features/integrations related to **Water**.
 

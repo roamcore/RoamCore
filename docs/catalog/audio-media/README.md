@@ -2,6 +2,9 @@
 
 This folder is the **Audio/Media** tag in the RoamCore catalog.
 
+## Overview
+Audio and media integrations help you control speakers, TVs, and streaming devices from one place—useful when you’re in a small space and want quick “play/pause/volume” controls. This section covers common media devices and simple routines like “Movie night”.
+
 ## What belongs here
 - Features/integrations related to **Audio/Media**.
 

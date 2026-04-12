@@ -2,6 +2,9 @@
 
 This folder is the **Remote Access** tag in the RoamCore catalog.
 
+## Overview
+Remote access lets you check on the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems. This section covers safe ways to reach Home Assistant remotely, with clear notes on security and support level.
+
 ## What belongs here
 - Features/integrations related to **Remote Access**.
 
