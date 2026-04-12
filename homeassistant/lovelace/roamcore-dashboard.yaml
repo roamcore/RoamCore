@@ -46,7 +46,12 @@ views:
     icon: mdi:map
     panel: true
     cards:
-      - type: custom:roamcore-map-page
+      # Failsafe: render a working map even if custom JS assets aren't loaded.
+      # Uses the Traccar UI through the RoamCore proxy (same-origin), so no
+      # manual sign-in is required when the proxy is configured.
+      - type: iframe
+        url: /traccar/
+        aspect_ratio: 75%
 
   # Traccar page (full UI, proxied + auto-login)
   - path: traccar
