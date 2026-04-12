@@ -25,6 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs-material
 
+      - name: Generate catalog index
+        run: |
+          python scripts/build_catalog_index.py
+
       - name: Build MkDocs (into public/docs)
         run: |
           mkdocs build --clean
