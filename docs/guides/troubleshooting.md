@@ -72,6 +72,31 @@ Attach the ZIP to your support ticket **only if requested**.
 - Check `binary_sensor.rc_system_power_backend_connected`
 - Verify the Victron add-on is installed/running and MQTT topics are present.
 
+### Map is blank / grey
+
+The Map page depends on **front-end assets** being present under Home Assistant’s web root.
+
+Quick checks:
+
+1) **Hard refresh the browser**
+   - Desktop: `Ctrl/Cmd + Shift + R`
+   - Mobile: close the HA app/webview and reopen
+
+2) **Confirm RoamCore assets exist** (requires `/config` access)
+   - `/config/www/roamcore/` should exist
+   - `/config/www/roamcore/roamcore-pages.js` should exist
+
+3) **Confirm your dashboard is the RoamCore one**
+   - If you have multiple dashboards, make sure you’re looking at the dashboard sourced from the RoamCore YAML in `/config/lovelace/`.
+
+4) **Check for Lovelace/front-end errors**
+   - Open the browser devtools console (if available) and look for `404` (missing assets) or JS errors.
+
+If you’re filing an issue, include:
+- A screenshot of the page (including the browser address bar if possible)
+- A screenshot of any HA “red error” banner
+- The Diagnostics JSON bundle
+
 ---
 
 If you’re filing an issue, include the JSON bundle + a brief timeline of what changed (updates, reboots, new hardware, etc.).

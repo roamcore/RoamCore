@@ -29,3 +29,9 @@ artifacts/tmp/
 # Build / scratch artifacts
 artifacts/tmp/
 artifacts/**/*.zip
+
+# Local venvs / builds (never commit)
+.venv/
+
+# MkDocs output (site_dir)
+public/
