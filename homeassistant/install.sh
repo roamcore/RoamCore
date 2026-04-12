@@ -18,6 +18,10 @@ ROAMCORE_REPO="${ROAMCORE_REPO:-https://github.com/roamcore/RoamCore}"
 ROAMCORE_REF="${ROAMCORE_REF:-main}"
 CONFIG_DIR="${CONFIG_DIR:-/config}"
 
+# PMTiles bundle tag to download from GitHub Releases when missing.
+# These archives are required for the default offline MapLibre style.
+ROAMCORE_PMTILES_TAG="${ROAMCORE_PMTILES_TAG:-pmtiles-v1}"
+
 need() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "ERROR: missing required command: $1" >&2
@@ -53,6 +57,8 @@ repo_slug() {
 
 SLUG="$(repo_slug)"
 ARCHIVE_URL="https://github.com/${SLUG}/archive/${ROAMCORE_REF}.tar.gz"
+
+PMTILES_RELEASE_BASE="https://github.com/${SLUG}/releases/download/${ROAMCORE_PMTILES_TAG}"
 
 # HAOS rootfs can be very small / full. Prefer a workdir on /mnt/data when present.
 WORK_BASE="${WORK_BASE:-}"
@@ -194,6 +200,37 @@ install_dir_children "$HA_SRC/custom_components" "$CONFIG_DIR/custom_components"
 
 # 3) Dashboard JS → /config/www/roamcore/
 install_dir_children "$HA_SRC/www" "$CONFIG_DIR/www"
+
+# 3b) PMTiles (required for offline MapLibre style)
+# The repo does not store these large binaries; we fetch them from GitHub Releases.
+ensure_pmtiles() {
+  pm_dir="$CONFIG_DIR/www/roamcore/pmtiles"
+  mkdir -p "$pm_dir"
+
+  # Files referenced by homeassistant/www/roamcore/styles/rc-offline-protomaps-light.json
+  # If any are missing, the PMTiles vector map will render as blank/grey.
+  for f in protomaps_planet_z0-8.pmtiles protomaps_europe_z9-11.pmtiles protomaps_uk_z0-12.pmtiles; do
+    if [ -s "$pm_dir/$f" ]; then
+      continue
+    fi
+    url="$PMTILES_RELEASE_BASE/$f"
+    tmp="$WORK/$f.tmp"
+    echo "Downloading PMTiles: $f"
+    # Use -L for redirects; prefer curl if available.
+    if command -v curl >/dev/null 2>&1; then
+      curl -fL --retry 3 --retry-delay 2 "$url" -o "$tmp"
+    elif command -v wget >/dev/null 2>&1; then
+      wget -qO "$tmp" "$url"
+    else
+      echo "ERROR: need curl or wget to download $url" >&2
+      exit 1
+    fi
+    mv -f "$tmp" "$pm_dir/$f"
+    write_manifest_line "$pm_dir/$f"
+  done
+}
+
+ensure_pmtiles
 
 # 4) Lovelace yaml → /config/lovelace/
 install_dir_children "$HA_SRC/lovelace" "$CONFIG_DIR/lovelace"
