@@ -25,3 +25,7 @@ secrets/
 
 # Build artifacts / scratch
 artifacts/tmp/
+
+# Build / scratch artifacts
+artifacts/tmp/
+artifacts/**/*.zip
