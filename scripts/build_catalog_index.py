@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+from collections import defaultdict
 
 DOCS = Path(__file__).resolve().parents[1] / "docs"
 CATALOG = DOCS / "catalog"
@@ -129,6 +130,7 @@ def main() -> int:
                 # MkDocs pages render as /<path-without-.md>/
                 "href": str(rel.with_suffix("")).replace("\\", "/") + "/",
                 "summary": summary,
+                "category": (rel.parts[1] if len(rel.parts) >= 3 else ""),
             }
         )
 
@@ -164,6 +166,40 @@ def main() -> int:
 
     (CATALOG / "index.md").write_text("".join(out), encoding="utf-8")
     print(f"Generated catalog/index.md with {len(items)} items")
+
+    # Also generate tier rollup pages (one long scroll per tier)
+    def pretty_category(slug: str) -> str:
+        return slug.replace("-", " ").replace("_", " ").title()
+
+    by_tier_cat: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    for it in items:
+        by_tier_cat[it["tier"]][it["category"]].append(it)
+
+    for tier in ["a", "b", "c"]:
+        md = []
+        md.append(f"# Support tier {tier.upper()}\n\n")
+        md.append(
+            "One long page listing every feature currently tagged with this tier, grouped by category.\n\n"
+        )
+        md.append(
+            "Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’, ‘tailscale’).\n\n"
+        )
+
+        cats = sorted(by_tier_cat.get(tier, {}).keys())
+        for cat in cats:
+            items2 = sorted(by_tier_cat[tier][cat], key=lambda x: x["title"].lower())
+            if not items2:
+                continue
+            md.append(f"## {pretty_category(cat)}\n\n")
+            for it in items2:
+                # tier pages live at docs/catalog/<this-file>, so link to category pages relatively
+                # (strip the leading 'catalog/' prefix).
+                href = it["href"].replace("catalog/", "", 1)
+                md.append(f"- [{it['title']}]({href}) — {it['summary']}\n")
+            md.append("\n")
+
+        (CATALOG / f"tier-{tier}.md").write_text("".join(md), encoding="utf-8")
+        print(f"Generated catalog/tier-{tier}.md")
     return 0
 
 

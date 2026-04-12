@@ -5,15 +5,15 @@ This site is the **feature catalog** for RoamCore + Home Assistant in a van.
 ## Pick what you want to add
 
 <div class="rc-grid">
-  <a class="rc-card" href="catalog/index.md">
+  <a class="rc-card" href="catalog/">
     <div class="rc-card-title">Browse the Catalog</div>
     <div class="rc-card-sub">Power, Map, Networking, Safety, Remote Access and more. See what’s possible.</div>
   </a>
-  <a class="rc-card" href="howto/homeassistant-installer.md">
+  <a class="rc-card" href="howto/homeassistant-installer/">
     <div class="rc-card-title">Install RoamCore</div>
     <div class="rc-card-sub">One-line installer and rollback guidance.</div>
   </a>
-  <a class="rc-card" href="guides/troubleshooting.md">
+  <a class="rc-card" href="guides/troubleshooting/">
     <div class="rc-card-title">Troubleshooting</div>
     <div class="rc-card-sub">If something doesn’t work, start here.</div>
   </a>
@@ -24,6 +24,14 @@ This site is the **feature catalog** for RoamCore + Home Assistant in a van.
 - <span class="rc-tier a">A</span> RoamCore native (we own it; supported)
 - <span class="rc-tier b">B</span> Home Assistant supported (existing integration; setup required)
 - <span class="rc-tier c">C</span> Custom/manual (no support; inspiration/potential)
+
+### Show only
+
+<div class="rc-chips">
+  <a class="rc-chip a" href="catalog/tier-a/">A</a>
+  <a class="rc-chip b" href="catalog/tier-b/">B</a>
+  <a class="rc-chip c" href="catalog/tier-c/">C</a>
+</div>
 
 ## Why this site links out
 
