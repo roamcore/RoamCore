@@ -1,0 +1,40 @@
+{
+  "version": 8,
+  "glyphs": "/local/roamcore/fonts/{fontstack}/{range}.pbf",
+  "sprite": "/local/roamcore/sprites/rc-sprite",
+  "sources": {
+    "carto": {
+      "type": "raster",
+      "tiles": [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "maxzoom": 20,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a> · <a href=\"https://carto.com/attributions\" target=\"_blank\">© CARTO</a>"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#e8eef2"
+      }
+    },
+    {
+      "id": "carto",
+      "type": "raster",
+      "source": "carto",
+      "paint": {
+        "raster-opacity": 1.0,
+        "raster-contrast": 0.03,
+        "raster-saturation": -0.12,
+        "raster-brightness-min": 0.92,
+        "raster-brightness-max": 1.06
+      }
+    }
+  ]
+}

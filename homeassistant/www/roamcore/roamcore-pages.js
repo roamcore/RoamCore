@@ -339,10 +339,11 @@ class RoamcoreBasePage extends HTMLElement {
       return String(v).trim();
     }
 
-    // Default (beta): online OSM raster tiles in a clean MapLibre style.
-    // This avoids multi-GB PMTiles downloads while keeping MapLibre UI/overlays.
-    // NOTE: this requires internet access and should respect OSM tile usage policy.
-    return '/local/roamcore/styles/rc-online-osm-light.json';
+    // Default (beta): online CARTO raster tiles in a clean MapLibre style.
+    // We intentionally avoid tile.openstreetmap.org here because it does not
+    // send CORS headers required for WebGL textures, which makes MapLibre
+    // render blank/grey.
+    return '/local/roamcore/styles/rc-online-carto-light.json';
   }
 
   _maplibreMaxZoom(styleUrl, lat, lon) {
@@ -1315,6 +1316,24 @@ class RoamcoreBasePage extends HTMLElement {
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
+
+      // If MapLibre emits repeated tile errors (often due to CORS/range issues),
+      // fall back to Leaflet raster so the user always has a usable map.
+      try {
+        let errCount = 0;
+        m.on('error', async (ev) => {
+          try {
+            errCount += 1;
+            if (errCount < 3) return;
+            if (el._rcMapLibreFailed) return;
+            el._rcMapLibreFailed = true;
+            console.warn('maplibre error; falling back to Leaflet', ev?.error || ev);
+            try { m.remove?.(); } catch (e) {}
+            try { delete el._rcMapLibre; } catch (e) { el._rcMapLibre = null; }
+            await this._mountLeafletMap(el, { lat, lon, trackerId: this._pickTrackerEntity() });
+          } catch (e) {}
+        });
+      } catch (e) {}
 
       // If the user pans/zooms, stop auto-recentering.
       try {
