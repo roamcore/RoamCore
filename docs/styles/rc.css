@@ -87,6 +87,52 @@
   line-height: 1.35;
 }
 
+/* Filter UI */
+.rc-filter {
+  display:flex;
+  flex-wrap:wrap;
+  gap: 10px;
+  align-items:center;
+  margin: 12px 0 18px;
+}
+
+.rc-filter input {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: rgba(255,255,255,0.90);
+  min-width: 220px;
+}
+
+.rc-chips { display:flex; gap:8px; flex-wrap:wrap; }
+
+.rc-chip {
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration:none;
+  cursor: pointer;
+  user-select:none;
+}
+
+.rc-chip.active {
+  border-color: rgba(91,227,255,0.35);
+  background: rgba(91,227,255,0.10);
+}
+
+.rc-chip.a.active { border-color: rgba(124,255,178,0.35); background: rgba(124,255,178,0.10); }
+.rc-chip.b.active { border-color: rgba(91,227,255,0.35); background: rgba(91,227,255,0.10); }
+.rc-chip.c.active { border-color: rgba(255,210,117,0.35); background: rgba(255,210,117,0.10); }
+
+.rc-filter-meta { color: rgba(255,255,255,0.65); font-size: 12px; }
+
 /* Simple “install CTA button” style for links marked with .rc-cta */
 a.rc-cta {
   display: inline-flex;

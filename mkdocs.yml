@@ -33,6 +33,9 @@ theme:
 extra_css:
   - styles/rc.css
 
+extra_javascript:
+  - javascripts/catalog-filter.js
+
 markdown_extensions:
   - admonition
   - attr_list
