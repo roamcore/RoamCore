@@ -376,21 +376,27 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _mapStyleUrl() {
-    // MapLibre style URL (vector).
+    // Optional MapLibre style URL (vector).
     // Set via HA Helper: input_text.rc_map_style_url
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    // Default: RoamCore offline PMTiles vector style.
-    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
+
+    // Default: keep MapLibre OFF for maximum reliability.
+    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
+    // if PMTiles assets are not present on the HA host.
+    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
+    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
+    return '';
   }
 
   _mapMode() {
-    // RoamCore Map page should be PMTiles vector-first.
-    // Leaflet is reserved for absolute last-resort failure.
     const styleUrl = this._mapStyleUrl();
-    return { mode: 'maplibre', styleUrl };
+
+    // Prefer MapLibre only when explicitly configured; otherwise use Leaflet raster.
+    if (styleUrl) return { mode: 'maplibre', styleUrl };
+    return { mode: 'leaflet', tileUrl: this._tileUrl() };
   }
 
   _vectorMaxZoomFor(lat, lon) {
