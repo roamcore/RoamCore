@@ -3,7 +3,7 @@
 // Naming convention reference: RoamCore/docs/reference/rc-entity-naming.md
 
 // Visible build marker for cache/debugging.
-const RC_PAGES_BUILD = 'settings-openclaw-fix-64c50fc';
+const RC_PAGES_BUILD = 'map-fallback-hotfix-20fd188';
 
 // -----------------
 // Smart Automations (v0.1)
@@ -2064,7 +2064,7 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
 class RoamcoreMapPage extends RoamcoreBasePage {
   // Cache-bust key for /local JS assets. Bump when changing roamcore-pages.js
   // so clients don't get stuck on a month-cached file.
-  static ASSET_V = '2026-04-10T15:52Z';
+  static ASSET_V = '2026-04-12T19:40Z';
 
   _render() {
     if (!this._root || !this._hass) return;
