@@ -202,7 +202,14 @@ install_dir_children "$HA_SRC/custom_components" "$CONFIG_DIR/custom_components"
 # 3) Dashboard JS → /config/www/roamcore/
 install_dir_children "$HA_SRC/www" "$CONFIG_DIR/www"
 
-# 3b) PMTiles (required for offline MapLibre style)
+# 4) Lovelace yaml → /config/lovelace/
+install_dir_children "$HA_SRC/lovelace" "$CONFIG_DIR/lovelace"
+
+# 5) Tools (exporters/helpers) → /config/tools/
+# This is required for features like Trip Wrapped which execute local python.
+install_dir_children "$HA_SRC/tools" "$CONFIG_DIR/tools"
+
+# 6) PMTiles (required for offline MapLibre style)
 # The repo does not store these large binaries; we fetch them from a pinned pack manifest.
 ensure_pmtiles() {
   if [ "$ROAMCORE_SKIP_PMTILES" = "1" ]; then
@@ -221,6 +228,11 @@ ensure_pmtiles() {
   fi
   install_file "$PACK_MANIFEST_SRC" "$PACK_MANIFEST_DST"
 
+  if [ ! -f "$CONFIG_DIR/tools/roamcore/pmtiles-install.sh" ]; then
+    echo "ERROR: PMTiles provisioner script missing after tools install: $CONFIG_DIR/tools/roamcore/pmtiles-install.sh" >&2
+    exit 1
+  fi
+
   echo "Provisioning PMTiles pack: $ROAMCORE_PMTILES_PACK"
   CONFIG_DIR="$CONFIG_DIR" \
   ROAMCORE_PMTILES_PACK="$ROAMCORE_PMTILES_PACK" \
@@ -229,13 +241,6 @@ ensure_pmtiles() {
 }
 
 ensure_pmtiles
-
-# 4) Lovelace yaml → /config/lovelace/
-install_dir_children "$HA_SRC/lovelace" "$CONFIG_DIR/lovelace"
-
-# 5) Tools (exporters/helpers) → /config/tools/
-# This is required for features like Trip Wrapped which execute local python.
-install_dir_children "$HA_SRC/tools" "$CONFIG_DIR/tools"
 
 # Write install metadata.
 {
