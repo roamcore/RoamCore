@@ -1380,8 +1380,9 @@ class RoamcoreBasePage extends HTMLElement {
         style,
         center: [centerLon, centerLat],
         zoom,
-        // Clamp to shipped PMTiles max zoom for current location (prevents blanks/grey).
-        maxZoom: this._vectorMaxZoomFor(centerLat, centerLon),
+        // Allow zooming freely; sources should set correct maxzoom so MapLibre overzooms
+        // (reuses highest-available tiles) instead of requesting missing tiles and showing grey.
+        maxZoom: 18,
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
