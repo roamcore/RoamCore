@@ -1350,6 +1350,18 @@ class RoamcoreBasePage extends HTMLElement {
         ],
       });
 
+      const assetExists = async (url) => {
+        try {
+          // Prefer HEAD, fall back to a tiny ranged GET (some proxies disallow HEAD).
+          let r = await fetch(url, { method: 'HEAD', cache: 'no-cache' }).catch(() => null);
+          if (r && r.ok) return true;
+          r = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' }, cache: 'no-cache' }).catch(() => null);
+          return !!(r && (r.status === 206 || r.ok));
+        } catch (e) {
+          return false;
+        }
+      };
+
       // Allow using a local JSON style and patching in the current origin.
       let style = styleUrl;
       try {
@@ -1371,6 +1383,19 @@ class RoamcoreBasePage extends HTMLElement {
         style = minimalRasterStyle();
       }
 
+      // If PMTiles archives are missing on /local, the vector style will render blank/grey.
+      // Detect this up front and fall back to raster tiles so the Map page always shows *something*.
+      try {
+        if (style && typeof style === 'object') {
+          const pm = `${origin}/local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles`;
+          const okPm = await assetExists(pm);
+          if (!okPm) {
+            console.warn('PMTiles archive missing; falling back to raster tiles', pm);
+            style = minimalRasterStyle();
+          }
+        }
+      } catch (e) {}
+
       // If a remote style URL is configured and fails later, MapLibre will emit an error.
       // RoamCore prefers a single, consistent vector basemap (PMTiles). Only fall back to
       // raster/Leaflet as an absolute last resort.
@@ -1387,6 +1412,24 @@ class RoamcoreBasePage extends HTMLElement {
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
+
+      // If the style errors at runtime (bad PMTiles URL, protocol, etc.), fall back to raster.
+      try {
+        if (!el._rcMapLibreDidFallback) {
+          m.on('error', (ev) => {
+            try {
+              if (el._rcMapLibreDidFallback) return;
+              const msg = String(ev?.error?.message || ev?.error || '');
+              const srcId = String(ev?.sourceId || '');
+              const isVectorFailure = msg.toLowerCase().includes('pmtiles') || srcId.toLowerCase().includes('protomaps');
+              if (!isVectorFailure) return;
+              el._rcMapLibreDidFallback = true;
+              console.warn('maplibre vector style failed; switching to raster-only style', msg);
+              m.setStyle(minimalRasterStyle());
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
 
       // If we don't have live HA GPS yet, poll Traccar periodically and update the marker.
       try {
