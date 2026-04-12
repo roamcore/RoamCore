@@ -339,13 +339,22 @@ class RoamcoreBasePage extends HTMLElement {
       return String(v).trim();
     }
 
-    // Default: keep MapLibre OFF for maximum reliability.
-    // If PMTiles assets aren't present/served correctly, MapLibre tends to render as blank/grey.
-    // Leaflet + raster tiles is deterministic (and you've confirmed /rc-tiles works).
-    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to:
-    //   /local/roamcore/styles/rc-offline-protomaps-light.json
-    // ).
-    return '';
+    // Default (beta): online OSM raster tiles in a clean MapLibre style.
+    // This avoids multi-GB PMTiles downloads while keeping MapLibre UI/overlays.
+    // NOTE: this requires internet access and should respect OSM tile usage policy.
+    return '/local/roamcore/styles/rc-online-osm-light.json';
+  }
+
+  _maplibreMaxZoom(styleUrl, lat, lon) {
+    // PMTiles packs have limited max zoom; clamp to avoid grey tiles.
+    // Online raster/vector sources can go higher.
+    try {
+      const s = String(styleUrl || '');
+      if (s.includes('pmtiles') || s.includes('rc-offline-protomaps')) {
+        return this._vectorMaxZoomFor(lat, lon);
+      }
+    } catch (e) {}
+    return 19;
   }
 
   _mapMode() {
@@ -1301,7 +1310,7 @@ class RoamcoreBasePage extends HTMLElement {
         center: [centerLon, centerLat],
         zoom,
         // Clamp to shipped PMTiles max zoom for current location (prevents blanks/grey).
-        maxZoom: this._vectorMaxZoomFor(centerLat, centerLon),
+        maxZoom: this._maplibreMaxZoom(styleUrl, centerLat, centerLon),
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');

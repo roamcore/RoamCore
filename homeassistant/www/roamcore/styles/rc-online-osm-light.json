@@ -1,0 +1,35 @@
+{
+  "version": 8,
+  "glyphs": "/local/roamcore/fonts/{fontstack}/{range}.pbf",
+  "sprite": "/local/roamcore/sprites/rc-sprite",
+  "sources": {
+    "osm": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#e8eef2"
+      }
+    },
+    {
+      "id": "osm",
+      "type": "raster",
+      "source": "osm",
+      "paint": {
+        "raster-opacity": 1.0,
+        "raster-contrast": 0.02,
+        "raster-saturation": -0.1
+      }
+    }
+  ]
+}
