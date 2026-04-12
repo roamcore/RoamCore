@@ -9,6 +9,8 @@ Good lighting makes the van feel bigger, calmer, and safer at night. This sectio
 
 ## Features
 
-Nothing listed here yet.
+<div class="rc-feature-list">
+  <a class="rc-feature" href="approach-and-underbody-lights/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Approach + underbody lights (welcome home)</div><div class="rc-feature-sub">Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you’re stepping and feel like the van is “welcoming y</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+</div>
 
 <!-- RC_FEATURE_LIST_END -->

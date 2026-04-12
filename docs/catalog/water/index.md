@@ -10,6 +10,7 @@ Water systems are easy to forget until something goes wrong. This section covers
 ## Features
 
 <div class="rc-feature-list">
+  <a class="rc-feature" href="electronic-valves-and-auto-tank-switch/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Electronic valves + auto tank switching</div><div class="rc-feature-sub">Use electronically controlled valves to automate water routing: switching between primary/aux tanks, closing a grey valve if it’s left open, and protecting the </div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
   <a class="rc-feature" href="water-tanks/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh/grey) monitoring</div><div class="rc-feature-sub">A placeholder for common water monitoring approaches (fresh/grey tank levels, pump runtime, leak sensors). RoamCore doesn’t ship a single mandated hardware solu</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
