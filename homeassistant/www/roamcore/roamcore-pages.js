@@ -1307,6 +1307,14 @@ class RoamcoreBasePage extends HTMLElement {
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
 
+      // If the user pans/zooms, stop auto-recentering.
+      try {
+        el._rcUserMoved = false;
+        const markMoved = () => { try { el._rcUserMoved = true; } catch (e) {} };
+        m.on('dragstart', markMoved);
+        m.on('zoomstart', markMoved);
+      } catch (e) {}
+
       // If we don't have live HA GPS yet, poll Traccar periodically and update the marker.
       try {
         if (!el._rcTraccarPoll) {
@@ -1324,8 +1332,10 @@ class RoamcoreBasePage extends HTMLElement {
                   el._rcMapLibreMarker.setLngLat(lngLat);
                 }
               } catch (e) {}
+              // Only auto-center once during initial bring-up, and only if the
+              // user hasn't moved the map AND we didn't restore a saved view.
               try {
-                if (!el._rcTraccarDidCenter) {
+                if (!el._rcTraccarDidCenter && !saved && !el._rcUserMoved) {
                   el._rcTraccarDidCenter = true;
                   m.setCenter(lngLat);
                 }
@@ -1919,6 +1929,18 @@ class RoamcoreMapPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
+    // IMPORTANT: Keep a stable map container node across renders.
+    // This avoids MapLibre/Leaflet being destroyed and recreated (flash, recenter, marker flicker).
+    if (!this._rcMapHostEl) {
+      const host = document.createElement('div');
+      host.id = 'rc-map';
+      host.style.height = '100%';
+      host.style.width = '100%';
+      host.style.borderRadius = '12px';
+      host.style.overflow = 'hidden';
+      this._rcMapHostEl = host;
+    }
+
     const loc = this._getState('sensor.rc_map_location');
     const lat = this._num('sensor.rc_location_lat', null);
     const lon = this._num('sensor.rc_location_lon', null);
@@ -2041,12 +2063,10 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     try {
       const inner = this._root.querySelector('#rc-map-inner');
       if (inner) {
-        // Don't nuke the DOM on every HA re-render (causes a visible flash).
-        // Create the container once, then keep it stable.
-        let el = this._root.querySelector('#rc-map');
-        if (!el) {
-          inner.innerHTML = `<div id="rc-map" style="height:100%; width:100%; border-radius:12px; overflow:hidden;"></div>`;
-          el = this._root.querySelector('#rc-map');
+        // Reattach the stable map host element (keeps map instance alive across renders).
+        const el = this._rcMapHostEl;
+        if (el && el.parentElement !== inner) {
+          try { inner.replaceChildren(el); } catch (e) { try { inner.innerHTML = ''; inner.appendChild(el); } catch (e2) {} }
         }
         const lat = this._num('sensor.rc_location_lat', null);
         const lon = this._num('sensor.rc_location_lon', null);
