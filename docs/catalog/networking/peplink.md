@@ -21,3 +21,5 @@ RoamCore doesn’t ship a native Peplink integration yet. The usual HA approach 
 ## Links
 - Peplink: https://www.peplink.com/
 - Home Assistant SNMP: https://www.home-assistant.io/integrations/snmp/
+- Peplink InControl 2 API docs (cloud): https://www.peplink.com/ic2-api-doc/
+- hass-incontrol2 (community integration): https://github.com/sneelco/hass-incontrol2

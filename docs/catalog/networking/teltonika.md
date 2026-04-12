@@ -21,3 +21,5 @@ RoamCore doesn’t ship a native Teltonika integration yet. Common HA approaches
 ## Links
 - Teltonika Networks: https://teltonika-networks.com/
 - Home Assistant SNMP: https://www.home-assistant.io/integrations/snmp/
+- Teltonika SNMP wiki: https://wiki.teltonika-networks.com/view/SNMP
+- Teltonika developers portal (RMS/Web API): https://developers.teltonika-networks.com/
