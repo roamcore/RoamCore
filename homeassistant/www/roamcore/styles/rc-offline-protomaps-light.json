@@ -6,7 +6,7 @@
     "protomaps_low": {
       "type": "vector",
       "minzoom": 0,
-      "maxzoom": 8,
+      "maxzoom": 24,
       "url": "pmtiles://__ORIGIN__/local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     },

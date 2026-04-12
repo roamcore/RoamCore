@@ -3,7 +3,7 @@
 // Naming convention reference: RoamCore/docs/reference/rc-entity-naming.md
 
 // Visible build marker for cache/debugging.
-const RC_PAGES_BUILD = 'map-fallback-hotfix-20fd188';
+const RC_PAGES_BUILD = 'settings-openclaw-fix-64c50fc';
 
 // -----------------
 // Smart Automations (v0.1)
@@ -417,13 +417,12 @@ class RoamcoreBasePage extends HTMLElement {
   _onlineTileUrl() {
     // Optional online tile URL for detailed view when internet is available.
     // Set via HA Helper: input_text.rc_map_tile_url_online
-    // Default ON (OSM) as an emergency backstop so the map never renders blank
-    // during bring-up if local offline tiles aren't installed.
+    // Default OFF (empty) to keep the map fully offline unless explicitly enabled.
     const v = this._getState('input_text.rc_map_tile_url_online');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-    return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    return '';
   }
 
   _offlineMaxZoom() {
@@ -1333,14 +1332,14 @@ class RoamcoreBasePage extends HTMLElement {
         try { return window.location.origin; } catch (e) { return ''; }
       })();
 
-      const minimalRasterStyle = (tileUrl) => ({
+      const minimalRasterStyle = () => ({
         version: 8,
         glyphs: `${origin}/local/roamcore/fonts/{fontstack}/{range}.pbf`,
         sprite: `${origin}/local/roamcore/sprites/rc-sprite`,
         sources: {
           rc_raster: {
             type: 'raster',
-            tiles: [tileUrl || '/rc-tiles/{z}/{x}/{y}.png'],
+            tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
             tileSize: 256,
             maxzoom: 18,
           },
@@ -1350,32 +1349,6 @@ class RoamcoreBasePage extends HTMLElement {
           { id: 'rc_raster', type: 'raster', source: 'rc_raster', paint: { 'raster-opacity': 1.0 } },
         ],
       });
-
-      const pickRasterTilesUrl = async () => {
-        // Prefer offline local tiles if present; otherwise fall back to a public raster source.
-        // This ensures the Map page is never blank even on first install.
-        try {
-          const r = await fetch('/rc-tiles/health', { cache: 'no-cache' }).catch(() => null);
-          if (r && r.ok) {
-            const j = await r.json().catch(() => null);
-            if (j && j.ok) return '/rc-tiles/{z}/{x}/{y}.png';
-          }
-        } catch (e) {}
-        // Online fallback (best-effort).
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-      };
-
-      const assetExists = async (url) => {
-        try {
-          // Prefer HEAD, fall back to a tiny ranged GET (some proxies disallow HEAD).
-          let r = await fetch(url, { method: 'HEAD', cache: 'no-cache' }).catch(() => null);
-          if (r && r.ok) return true;
-          r = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' }, cache: 'no-cache' }).catch(() => null);
-          return !!(r && (r.status === 206 || r.ok));
-        } catch (e) {
-          return false;
-        }
-      };
 
       // Allow using a local JSON style and patching in the current origin.
       let style = styleUrl;
@@ -1395,23 +1368,8 @@ class RoamcoreBasePage extends HTMLElement {
         }
       } catch (e) {
         console.warn('failed to load/patch style json; falling back to raster-only style', e);
-        const tilesUrl = await pickRasterTilesUrl();
-        style = minimalRasterStyle(tilesUrl);
+        style = minimalRasterStyle();
       }
-
-      // If PMTiles archives are missing on /local, the vector style will render blank/grey.
-      // Detect this up front and fall back to raster tiles so the Map page always shows *something*.
-      try {
-        if (style && typeof style === 'object') {
-          const pm = `${origin}/local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles`;
-          const okPm = await assetExists(pm);
-          if (!okPm) {
-            console.warn('PMTiles archive missing; falling back to raster tiles', pm);
-            const tilesUrl = await pickRasterTilesUrl();
-            style = minimalRasterStyle(tilesUrl);
-          }
-        }
-      } catch (e) {}
 
       // If a remote style URL is configured and fails later, MapLibre will emit an error.
       // RoamCore prefers a single, consistent vector basemap (PMTiles). Only fall back to
@@ -1422,33 +1380,12 @@ class RoamcoreBasePage extends HTMLElement {
         style,
         center: [centerLon, centerLat],
         zoom,
-        // Allow zooming freely; sources should set correct maxzoom so MapLibre overzooms
-        // (reuses highest-available tiles) instead of requesting missing tiles and showing grey.
-        maxZoom: 18,
+        // Clamp to shipped PMTiles max zoom for current location (prevents blanks/grey).
+        maxZoom: this._vectorMaxZoomFor(centerLat, centerLon),
         attributionControl: false,
       });
       m.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       el._rcMapLibre = m;
-
-      // If the style errors at runtime (bad PMTiles URL, protocol, etc.), fall back to raster.
-      try {
-        if (!el._rcMapLibreDidFallback) {
-          m.on('error', (ev) => {
-            try {
-              if (el._rcMapLibreDidFallback) return;
-              const msg = String(ev?.error?.message || ev?.error || '');
-              const srcId = String(ev?.sourceId || '');
-              const isVectorFailure = msg.toLowerCase().includes('pmtiles') || srcId.toLowerCase().includes('protomaps');
-              if (!isVectorFailure) return;
-              el._rcMapLibreDidFallback = true;
-              console.warn('maplibre vector style failed; switching to raster-only style', msg);
-              Promise.resolve(pickRasterTilesUrl()).then((tilesUrl) => {
-                try { m.setStyle(minimalRasterStyle(tilesUrl)); } catch (e) {}
-              });
-            } catch (e) {}
-          });
-        }
-      } catch (e) {}
 
       // If we don't have live HA GPS yet, poll Traccar periodically and update the marker.
       try {
@@ -2083,14 +2020,10 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
 class RoamcoreMapPage extends RoamcoreBasePage {
   // Cache-bust key for /local JS assets. Bump when changing roamcore-pages.js
   // so clients don't get stuck on a month-cached file.
-  static ASSET_V = '2026-04-12T19:40Z';
+  static ASSET_V = '2026-04-10T15:52Z';
 
   _render() {
     if (!this._root || !this._hass) return;
-
-    // Hard guard: Map page should never render "nothing". If anything throws,
-    // surface a visible error with build marker so we can debug from screenshots.
-    try {
 
     const loc = this._getState('sensor.rc_map_location');
     const lat = this._num('sensor.rc_location_lat', null);
@@ -2207,24 +2140,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
-    // Add a tiny always-visible build marker + runtime info.
-    try {
-      const inner = this._root.querySelector('#rc-map-inner');
-      if (inner && !this._root.querySelector('#rc-map-debug')) {
-        const dbg = document.createElement('div');
-        dbg.id = 'rc-map-debug';
-        dbg.className = 'rc-label';
-        dbg.style.cssText = 'margin:6px 0 10px; opacity:0.75; font-size:12px;';
-        const s = [
-          `build=${RC_PAGES_BUILD}`,
-          `style=${this._mapStyleUrl()}`,
-        ].join(' · ');
-        // Insert above map container.
-        inner.parentElement?.insertBefore(dbg, inner);
-        dbg.textContent = s;
-      }
-    } catch (e) {}
-
     // Ensure the JS bundle itself isn't stuck in cache: re-inject self once per session.
     // (HA serves /local with long cache headers.)
     try {
@@ -2283,22 +2198,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const btn = this._root.querySelector('#rc-tripwrapped-open');
       if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
     } catch (e) {}
-
-    } catch (err) {
-      try {
-        const msg = (err && (err.stack || err.message)) ? String(err.stack || err.message) : String(err || 'unknown');
-        this._root.innerHTML = `
-          <div class="rc-page">
-            ${this._header('Map')}
-            <div class="rc-tile">
-              <div class="rc-label" style="font-weight:900; color: var(--rc-bad)">Map render failed</div>
-              <div class="rc-label" style="margin-top:6px; opacity:0.85">build=${this._esc(RC_PAGES_BUILD)}</div>
-              <pre style="white-space:pre-wrap; font-size:12px; opacity:0.85; margin-top:10px;">${this._esc(msg).slice(0, 2000)}</pre>
-            </div>
-          </div>
-        `;
-      } catch (e2) {}
-    }
   }
 
   async _loadTripWrappedPreview(el) {
