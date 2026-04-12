@@ -1,0 +1,8 @@
+# RoamCore PMTiles pack manifest: pmtiles-v1
+# Format: filename|sha256|url
+# Files are served to HA under: /config/www/roamcore/pmtiles/<filename>
+# (which maps to /local/roamcore/pmtiles/<filename> in the frontend)
+
+protomaps_planet_z0-8.pmtiles|45c77c53780ef3b4082037ca2e83f7462ca0e06a16c7105848469c9cea8a6a01|https://github.com/roamcore/RoamCore/releases/download/pmtiles-v1/protomaps_planet_z0-8.pmtiles
+protomaps_europe_z9-11.pmtiles|6989f5d8977c148d48de33f961e7333236d5dc41d94bfd3e3e034343789394c6|https://github.com/roamcore/RoamCore/releases/download/pmtiles-v1/protomaps_europe_z9-11.pmtiles
+protomaps_uk_z0-12.pmtiles|68d0d109c9b38f2ccbe75f08386494afdf6da62e8c58af2762cc40369de1089b|https://github.com/roamcore/RoamCore/releases/download/pmtiles-v1/protomaps_uk_z0-12.pmtiles

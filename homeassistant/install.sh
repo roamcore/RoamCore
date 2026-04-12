@@ -18,9 +18,10 @@ ROAMCORE_REPO="${ROAMCORE_REPO:-https://github.com/roamcore/RoamCore}"
 ROAMCORE_REF="${ROAMCORE_REF:-main}"
 CONFIG_DIR="${CONFIG_DIR:-/config}"
 
-# PMTiles bundle tag to download from GitHub Releases when missing.
-# These archives are required for the default offline MapLibre style.
-ROAMCORE_PMTILES_TAG="${ROAMCORE_PMTILES_TAG:-pmtiles-v1}"
+# PMTiles pack id (manifest name). These archives are required for PMTiles MapLibre.
+ROAMCORE_PMTILES_PACK="${ROAMCORE_PMTILES_PACK:-pmtiles-v1}"
+# Set to 1 to skip downloading PMTiles (not recommended; MapLibre offline style will be blank/grey).
+ROAMCORE_SKIP_PMTILES="${ROAMCORE_SKIP_PMTILES:-0}"
 
 need() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -58,7 +59,7 @@ repo_slug() {
 SLUG="$(repo_slug)"
 ARCHIVE_URL="https://github.com/${SLUG}/archive/${ROAMCORE_REF}.tar.gz"
 
-PMTILES_RELEASE_BASE="https://github.com/${SLUG}/releases/download/${ROAMCORE_PMTILES_TAG}"
+
 
 # HAOS rootfs can be very small / full. Prefer a workdir on /mnt/data when present.
 WORK_BASE="${WORK_BASE:-}"
@@ -202,35 +203,29 @@ install_dir_children "$HA_SRC/custom_components" "$CONFIG_DIR/custom_components"
 install_dir_children "$HA_SRC/www" "$CONFIG_DIR/www"
 
 # 3b) PMTiles (required for offline MapLibre style)
-# The repo does not store these large binaries; we fetch them from GitHub Releases.
+# The repo does not store these large binaries; we fetch them from a pinned pack manifest.
 ensure_pmtiles() {
-  pm_dir="$CONFIG_DIR/www/roamcore/pmtiles"
-  mkdir -p "$pm_dir"
+  if [ "$ROAMCORE_SKIP_PMTILES" = "1" ]; then
+    echo "Skipping PMTiles download (ROAMCORE_SKIP_PMTILES=1)"
+    return 0
+  fi
 
-  echo "PMTiles pack tag: $ROAMCORE_PMTILES_TAG"
-  echo "PMTiles dir:      $pm_dir"
+  mkdir -p "$CONFIG_DIR/tools/roamcore"
 
-  # Files referenced by homeassistant/www/roamcore/styles/rc-offline-protomaps-light.json
-  # If any are missing, the PMTiles vector map will render as blank/grey.
-  for f in protomaps_planet_z0-8.pmtiles protomaps_europe_z9-11.pmtiles protomaps_uk_z0-12.pmtiles; do
-    if [ -s "$pm_dir/$f" ]; then
-      continue
-    fi
-    url="$PMTILES_RELEASE_BASE/$f"
-    tmp="$WORK/$f.tmp"
-    echo "Downloading PMTiles: $f"
-    # Use -L for redirects; prefer curl if available.
-    if command -v curl >/dev/null 2>&1; then
-      curl -fL --retry 3 --retry-delay 2 "$url" -o "$tmp"
-    elif command -v wget >/dev/null 2>&1; then
-      wget -qO "$tmp" "$url"
-    else
-      echo "ERROR: need curl or wget to download $url" >&2
-      exit 1
-    fi
-    mv -f "$tmp" "$pm_dir/$f"
-    write_manifest_line "$pm_dir/$f"
-  done
+  # Copy the manifest into /config/tools so the provisioner can run stand-alone later.
+  PACK_MANIFEST_SRC="$HA_SRC/pmtiles/packs/${ROAMCORE_PMTILES_PACK}.manifest"
+  PACK_MANIFEST_DST="$CONFIG_DIR/tools/roamcore/${ROAMCORE_PMTILES_PACK}.manifest"
+  if [ ! -f "$PACK_MANIFEST_SRC" ]; then
+    echo "ERROR: PMTiles manifest not found in archive: $PACK_MANIFEST_SRC" >&2
+    exit 1
+  fi
+  install_file "$PACK_MANIFEST_SRC" "$PACK_MANIFEST_DST"
+
+  echo "Provisioning PMTiles pack: $ROAMCORE_PMTILES_PACK"
+  CONFIG_DIR="$CONFIG_DIR" \
+  ROAMCORE_PMTILES_PACK="$ROAMCORE_PMTILES_PACK" \
+  ROAMCORE_PMTILES_MANIFEST="$PACK_MANIFEST_DST" \
+  sh "$CONFIG_DIR/tools/roamcore/pmtiles-install.sh"
 }
 
 ensure_pmtiles
