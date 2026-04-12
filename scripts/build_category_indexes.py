@@ -19,6 +19,13 @@ CAT = DOCS / "catalog"
 START = "<!-- RC_FEATURE_LIST_START -->"
 END = "<!-- RC_FEATURE_LIST_END -->"
 
+REMOVE_HEADS = {
+    "What belongs here",
+    "Support tiers",
+    "Page checklist (per item)",
+    "Add a new item",
+}
+
 
 def read(p: Path) -> str:
     return p.read_text(encoding="utf-8", errors="ignore")
@@ -85,6 +92,31 @@ def upsert_block(txt: str, block: str) -> str:
     return txt.rstrip() + "\n\n" + START + "\n" + block + "\n" + END + "\n"
 
 
+def strip_repeated_sections(txt: str) -> str:
+    """Remove repeated boilerplate sections from category index pages."""
+    feature = ""
+    pre = txt
+    if START in txt:
+        pre, feature = txt.split(START, 1)
+        feature = START + feature
+
+    lines = pre.splitlines(True)
+    out = []
+    skipping = False
+    for line in lines:
+        m = re.match(r"^##\s+(.+?)\s*$", line.strip())
+        if m:
+            head = m.group(1)
+            skipping = head in REMOVE_HEADS
+            if skipping:
+                continue
+        if skipping:
+            continue
+        out.append(line)
+
+    return ("".join(out).rstrip() + "\n\n" + feature.lstrip()).rstrip() + "\n"
+
+
 def main() -> int:
     for catdir in sorted(CAT.iterdir()):
         if not catdir.is_dir():
@@ -112,8 +144,8 @@ def main() -> int:
                 'href': p.name,
             })
 
-        # Keep index content but refresh feature list block
-        txt = read(idx)
+        # Keep index content but refresh feature list block (and strip repeated sections)
+        txt = strip_repeated_sections(read(idx))
         block = render_list(items) if items else "\n## Features\n\nNothing listed here yet.\n"
         out = upsert_block(txt, block)
         idx.write_text(out, encoding='utf-8')
