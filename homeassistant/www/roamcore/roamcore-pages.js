@@ -2,39 +2,6 @@
 // Goal: translate v0/lovable TSX pages into HAOS without depending on HA default card styling.
 // Naming convention reference: RoamCore/docs/reference/rc-entity-naming.md
 
-// Visible build marker for cache/debugging.
-const RC_PAGES_BUILD = 'settings-openclaw-fix-64c50fc';
-
-// -----------------
-// Smart Automations (v0.1)
-// -----------------
-// Goals:
-// - One-click enable/disable
-// - Uses native HA automations (storage)
-// - Never overwrites user edits (best-effort)
-
-function rcHashStr(s) {
-  // small, deterministic non-crypto hash for change detection
-  try {
-    const str = String(s || '');
-    let h = 5381;
-    for (let i = 0; i < str.length; i++) {
-      h = ((h << 5) + h) ^ str.charCodeAt(i);
-    }
-    return (h >>> 0).toString(16);
-  } catch (e) {
-    return '0';
-  }
-}
-
-function rcStableJson(v) {
-  try {
-    return JSON.stringify(v, Object.keys(v || {}).sort());
-  } catch (e) {
-    try { return JSON.stringify(v); } catch (e2) { return ''; }
-  }
-}
-
 function rcStatusToColor(status) {
   if (status === 'good') return 'var(--rc-good)';
   if (status === 'ok') return 'var(--rc-ok)';
@@ -254,17 +221,6 @@ class RoamcoreBasePage extends HTMLElement {
     } catch (e) {}
   }
 
-  // HTML-escape helper (safe to use in template literals).
-  _esc(s) {
-    const v = (s === null || s === undefined) ? '' : String(s);
-    return v
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
-
   _isDemoMode() {
     try {
       return this._hass?.states?.['input_boolean.rc_demo_mode']?.state === 'on';
@@ -376,27 +332,21 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _mapStyleUrl() {
-    // Optional MapLibre style URL (vector).
+    // MapLibre style URL (vector).
     // Set via HA Helper: input_text.rc_map_style_url
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) {
       return String(v).trim();
     }
-
-    // Default: keep MapLibre OFF for maximum reliability.
-    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
-    // if PMTiles assets are not present on the HA host.
-    // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
-    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
-    return '';
+    // Default: RoamCore offline PMTiles vector style.
+    return '/local/roamcore/styles/rc-offline-protomaps-light.json';
   }
 
   _mapMode() {
+    // RoamCore Map page should be PMTiles vector-first.
+    // Leaflet is reserved for absolute last-resort failure.
     const styleUrl = this._mapStyleUrl();
-
-    // Prefer MapLibre only when explicitly configured; otherwise use Leaflet raster.
-    if (styleUrl) return { mode: 'maplibre', styleUrl };
-    return { mode: 'leaflet', tileUrl: this._tileUrl() };
+    return { mode: 'maplibre', styleUrl };
   }
 
   _vectorMaxZoomFor(lat, lon) {
@@ -464,34 +414,7 @@ class RoamcoreBasePage extends HTMLElement {
     //   - /roamcore/...    (legacy)
     //   - /lovelace/roamcore/... (storage dashboard)
     try {
-      // Prefer HA's panel registry when available. This correctly resolves
-      // storage dashboards which mount at /dashboard-<url_path>/...
-      // Example: dashboard item url_path=roamcore => /dashboard-roamcore
-      try {
-        const panels = this._hass?.panels || {};
-        for (const k of Object.keys(panels)) {
-          const p = panels[k];
-          const urlPath = String(p?.url_path || '');
-          const title = String(p?.title || p?.config?.title || '');
-          if (!urlPath) continue;
-          // We accept either explicit RoamCore title or url_path match.
-          if (title.toLowerCase().includes('roamcore') || urlPath.toLowerCase().includes('roamcore')) {
-            // HA prefixes dashboard paths with /<url_path>
-            // Storage dashboards typically use url_path like "dashboard-roamcore".
-            return urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
-          }
-        }
-      } catch (e) {}
-
       const p = String(window.location?.pathname || '');
-      // Modern HA storage dashboards often mount at /dashboard-<url_path>/...
-      // Example: /dashboard-roamcore/home
-      try {
-        const m = p.match(/^\/(dashboard-[^\/]+)(?:\/|$)/);
-        if (m && m[1]) return `/${m[1]}`;
-      } catch (e) {}
-
-      // Legacy/YAML dashboard routes.
       if (p.startsWith('/roam-core/')) return '/roam-core';
       if (p === '/roam-core') return '/roam-core';
       if (p.startsWith('/roamcore/')) return '/roamcore';
@@ -503,38 +426,13 @@ class RoamcoreBasePage extends HTMLElement {
     return '/roam-core';
   }
 
-  _hasDashboardView(path) {
-    // Best-effort: if a user deletes dashboard views, other pages should still render.
-    // We use Lovelace config (when available) to avoid navigating to missing pages.
-    try {
-      const p = String(path || '').replace(/^\//, '');
-      if (!p) return false;
-      const views = this._hass?.lovelace?.config?.views || [];
-      for (const v of views) {
-        const vp = String(v?.path || '').replace(/^\//, '');
-        if (vp && vp === p) return true;
-      }
-    } catch (e) {}
-    return false;
-  }
-
   _header(title) {
-    const base = this._basePath();
-    const hasHome = this._hasDashboardView('home');
-    const hasSettings = this._hasDashboardView('settings');
-    const backBtn = hasHome
-      ? `<button class="rc-back" data-nav="${base}/home">←</button>`
-      : `<button class="rc-back" data-nav="${base}">←</button>`;
-    const gearBtn = hasSettings
-      ? `<button class="rc-gear" title="Settings" data-nav="${base}/settings">⚙</button>`
-      : '';
-
     return `
       <div class="rc-subheader">
-        ${backBtn}
+        <button class="rc-back" data-nav="${this._basePath()}/home">←</button>
         <div class="rc-subtitle">${title}</div>
         <div class="rc-subspacer"></div>
-        ${gearBtn}
+        <button class="rc-gear" title="Settings" data-nav="${this._basePath()}/settings">⚙</button>
       </div>
       ${this._setupBanner()}
     `;
@@ -690,10 +588,6 @@ class RoamcoreBasePage extends HTMLElement {
       .rc-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding: 14px; z-index: 9999; }
       .rc-modal { width: min(720px, calc(100vw - 28px)); max-height: min(80vh, 760px); overflow:auto; background: linear-gradient(180deg, rgba(26,26,26,0.96), rgba(18,18,18,0.96)); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.55); }
       .rc-modal-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
-      .rc-x { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--rc-border); background: rgba(255,255,255,0.04); color: var(--rc-text); font-size: 20px; line-height: 1; font-weight: 900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
-      .rc-x:hover { filter: brightness(1.06); }
-      .rc-btn-chip { width:auto !important; padding: 8px 12px !important; border-radius:999px !important; font-weight: 900; font-size: 12px; color: rgba(255,255,255,0.78); background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.10); }
-      .rc-btn-chip:hover { filter: brightness(1.08); }
       .rc-input { width: 100%; padding: 10px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.04); color: var(--rc-text); font-weight: 700; box-sizing: border-box; }
       .rc-input:focus { outline: none; border-color: rgba(67,209,122,0.55); }
       .rc-modal a { color: rgba(255,255,255,0.92); }
@@ -1820,11 +1714,6 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
     const rUptime = this._getState('sensor.rc_router_uptime');
     const rFw = this._getState('sensor.rc_router_firmware');
 
-    // OpenWrt controls (best-effort; scripts may not exist in mock-only setups)
-    const openwrtPreferred = this._getState('sensor.rc_openwrt_preferred_wan');
-    const openwrtActive = this._getState('sensor.rc_openwrt_active_wan');
-    const openwrtInternet = this._getState('sensor.rc_openwrt_internet');
-
     const status = (netStatus && netStatus !== 'unknown' && netStatus !== 'unavailable') ? netStatus : 'inactive';
     const c = rcStatusToColor(status);
 
@@ -1911,22 +1800,6 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
       ${this._row('Firmware', (rFw && rFw !== 'unknown' && rFw !== 'unavailable') ? rFw : '—')}
     `;
 
-    const controls = `
-      <div class="rc-label" style="margin-bottom:8px;">WAN switching (OpenWrt)</div>
-      ${this._row('Preferred', (openwrtPreferred && openwrtPreferred !== 'unknown' && openwrtPreferred !== 'unavailable') ? rcCap(openwrtPreferred) : '—')}
-      ${this._row('Active', (openwrtActive && openwrtActive !== 'unknown' && openwrtActive !== 'unavailable') ? rcCap(openwrtActive) : '—')}
-      ${this._row('Internet', (openwrtInternet && openwrtInternet !== 'unknown' && openwrtInternet !== 'unavailable') ? rcCap(openwrtInternet) : '—')}
-      <div style="height:10px;"></div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px;">
-        <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_starlink">Prefer Starlink</button>
-        <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_lte">Prefer LTE</button>
-        <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_openwrt_prefer_auto">Auto</button>
-      </div>
-      <div style="height:10px;"></div>
-      <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_openwrt_restart_network">Restart network</button>
-      <div class="rc-label" style="margin-top:10px;">Tip: if the router backend is offline, these buttons will do nothing.</div>
-    `;
-
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Network')}
@@ -1938,7 +1811,6 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
           ${this._tile({title:'Cellular', icon:'⋮', content: cellular})}
           ${this._tile({title:'Local Network', icon:'⌂', content: localNet})}
           ${this._tile({title:'Router Health', icon:'⎇', content: router})}
-          ${this._tile({title:'Controls', icon:'⟲', content: controls})}
         </div>
       </div>
     `;
@@ -2024,10 +1896,6 @@ class RoamcoreLevelPage extends RoamcoreBasePage {
 }
 
 class RoamcoreMapPage extends RoamcoreBasePage {
-  // Cache-bust key for /local JS assets. Bump when changing roamcore-pages.js
-  // so clients don't get stuck on a month-cached file.
-  static ASSET_V = '2026-04-10T15:52Z';
-
   _render() {
     if (!this._root || !this._hass) return;
 
@@ -2077,16 +1945,19 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
     const tripWrappedTile = `
       <div style="margin-top: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-          <div style="min-width:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div>
             <div style="font-weight: 900; font-size: 14px;">Trip Wrapped</div>
-            <div class="rc-label" style="margin-top:4px;">Generate an overview of your adventure — Spotify Wrapped style.</div>
-            <div class="rc-label" style="margin-top:8px;">Status: ${twBadge}${twGenTxt !== '—' ? ` · Last generated: <b>${twGenTxt}</b>` : ''}</div>
+          <div class="rc-label" style="margin-top:4px;">Generate a shareable recap (distance, drive time, top trip, etc.). Source-of-truth comes from Traccar reports.</div>
+          <div class="rc-label" style="margin-top:8px;">Status: ${twBadge} · Last generated: <b>${twGenTxt}</b></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-            <button class="rc-btn" id="rc-tripwrapped-open" style="width:auto; padding-left:18px; padding-right:18px;">Generate</button>
+            <button class="rc-btn" id="rc-tripwrapped-generate-quick">Generate</button>
+            <button class="rc-btn" id="rc-tripwrapped-open">Options</button>
+            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
           </div>
         </div>
+        <div id="rc-tripwrapped-preview" class="rc-label" style="margin-top:12px;">No summary loaded yet.</div>
       </div>
     `;
 
@@ -2146,25 +2017,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
-    // Ensure the JS bundle itself isn't stuck in cache: re-inject self once per session.
-    // (HA serves /local with long cache headers.)
-    try {
-      if (!window.__rcPagesReloaded) {
-        window.__rcPagesReloaded = true;
-        const cur = document.querySelector('script[src*="/local/roamcore/roamcore-pages.js"]');
-        if (cur && cur.getAttribute) {
-          const src = cur.getAttribute('src') || '/local/roamcore/roamcore-pages.js';
-          const next = src.split('?')[0] + '?v=' + encodeURIComponent(RoamcoreMapPage.ASSET_V);
-          if (!src.includes('v=')) {
-            const s = document.createElement('script');
-            s.src = next;
-            s.async = true;
-            document.head.appendChild(s);
-          }
-        }
-      }
-    } catch (e) {}
-
     // Mount map into placeholder.
     try {
       const inner = this._root.querySelector('#rc-map-inner');
@@ -2199,10 +2051,27 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       }
     } catch (e) {}
 
-    // Trip Wrapped: simplified flow (modal)
+    // Trip Wrapped: async preview + modal.
     try {
       const btn = this._root.querySelector('#rc-tripwrapped-open');
       if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
+      const quick = this._root.querySelector('#rc-tripwrapped-generate-quick');
+      if (quick) quick.addEventListener('click', async () => {
+        try {
+          quick.disabled = true;
+          // Generate using current helper values (From/To). Users can fine-tune in Options.
+          await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
+          // Refresh preview
+          const prev = this._root.querySelector('#rc-tripwrapped-preview');
+          if (prev) this._loadTripWrappedPreview(prev);
+        } catch (e) {
+          console.warn('quick trip wrapped generate failed', e);
+        } finally {
+          try { quick.disabled = false; } catch (e) {}
+        }
+      });
+      const prev = this._root.querySelector('#rc-tripwrapped-preview');
+      if (prev) this._loadTripWrappedPreview(prev);
     } catch (e) {}
   }
 
@@ -2262,52 +2131,71 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div class="rc-modal" role="dialog" aria-modal="true">
           <div class="rc-modal-head">
             <div style="font-weight:900; font-size: 16px;">Trip Wrapped</div>
-            <button class="rc-x" id="rc-tripwrapped-close" aria-label="Close">×</button>
+            <button class="rc-btn" id="rc-tripwrapped-close">Close</button>
           </div>
 
-          <div class="rc-label" style="margin-top:8px;">Generate an overview of your adventure — Spotify Wrapped style.</div>
+          <div class="rc-label" style="margin-top:8px;">Pick a time range, then generate a shareable recap.</div>
 
-          <div style="margin-top:14px;">
-            <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">1) Select date range</div>
-            <div class="rc-label" style="margin-bottom:8px; opacity:0.85;">Quick picks</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-7d">7 days</button>
-              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-30d">30 days</button>
-              <button class="rc-btn rc-btn-chip" id="rc-tripwrapped-preset-90d">90 days</button>
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="rc-btn" id="rc-tripwrapped-preset-today">Today</button>
+            <button class="rc-btn" id="rc-tripwrapped-preset-7d">Last 7 days</button>
+            <button class="rc-btn" id="rc-tripwrapped-preset-30d">Last 30 days</button>
+          </div>
+
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">From</div>
+              <input id="rc-tripwrapped-from" type="datetime-local" class="rc-input" />
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <div>
-                <div class="rc-label" style="margin-bottom:6px;">From</div>
-                <input id="rc-tripwrapped-from" type="datetime-local" class="rc-input" />
-              </div>
-              <div>
-                <div class="rc-label" style="margin-bottom:6px;">To</div>
-                <input id="rc-tripwrapped-to" type="datetime-local" class="rc-input" />
-              </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">To</div>
+              <input id="rc-tripwrapped-to" type="datetime-local" class="rc-input" />
             </div>
           </div>
 
-          <div style="margin-top:16px;">
-            <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">2) Name (optional)</div>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
-              <input id="rc-tripwrapped-name-enabled" type="checkbox" checked />
-              <span class="rc-label">Include my name on the report</span>
-            </label>
-            <div style="height:10px"></div>
-            <input id="rc-tripwrapped-name" type="text" class="rc-input" placeholder="Your name" />
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Export</div>
+              <select id="rc-tripwrapped-export" class="rc-input">
+                <option value="html_json" selected>HTML + JSON (recommended)</option>
+                <option value="json">JSON only</option>
+                <option value="html">HTML only</option>
+              </select>
+            </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">After generate</div>
+              <select id="rc-tripwrapped-after" class="rc-input">
+                <option value="none" selected>Do nothing</option>
+                <option value="open_latest">Open latest report</option>
+              </select>
+            </div>
           </div>
 
-          <div style="margin-top:18px;">
-            <button class="rc-btn" id="rc-tripwrapped-generate" style="padding: 14px 16px; font-size: 14px;">Generate</button>
-            <div style="height:10px"></div>
-            <a class="rc-btn" id="rc-tripwrapped-view" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer" style="display:none; padding: 14px 16px; font-size: 14px;">View</a>
-            <div id="rc-tripwrapped-status" class="rc-label" style="margin-top:10px;"></div>
+          <div style="margin-top:14px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Map theme</div>
+              <select id="rc-tripwrapped-theme" class="rc-input">
+                <option value="light" selected>Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <div>
+              <div class="rc-label" style="margin-bottom:6px;">Open</div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Latest (light)</a>
+                <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html?theme=dark" target="_blank" rel="noreferrer">Latest (dark)</a>
+              </div>
+            </div>
           </div>
 
-          <div class="rc-label" style="margin-top:16px; opacity:0.9;">
-            All of your data is 100% private and encrypted on disk. All tracking data is stored locally and is private to you.
-            Find more details at <a href="https://github.com/roamcore/RoamCore" target="_blank" rel="noreferrer">github.com/roamcore/roamcore</a>.
+          <div class="rc-label" style="margin-top:12px;">Metrics come from Traccar (reports/trips/route/etc). RoamCore only renders the results.</div>
+
+          <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
+            <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
           </div>
+
+          <div id="rc-tripwrapped-status" class="rc-label" style="margin-top:10px;"></div>
         </div>
       </div>
     `;
@@ -2333,9 +2221,6 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const fromEl = backdrop.querySelector('#rc-tripwrapped-from');
       const toEl = backdrop.querySelector('#rc-tripwrapped-to');
       const statusEl = backdrop.querySelector('#rc-tripwrapped-status');
-      const viewEl = backdrop.querySelector('#rc-tripwrapped-view');
-      const nameEnabledEl = backdrop.querySelector('#rc-tripwrapped-name-enabled');
-      const nameEl = backdrop.querySelector('#rc-tripwrapped-name');
 
       const setRange = (fromDate, toDate) => {
         try {
@@ -2349,126 +2234,23 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const now = new Date();
       setRange(new Date(now.getTime() - 7*24*3600*1000), now);
 
-      // Auto-populate name from HA helper.
-      try {
-        const current = this._getState('input_text.rc_owner_name');
-        if (nameEl) nameEl.value = (!rcIsMissingState(current) ? String(current) : 'You');
-      } catch (e) {}
-
-      const setNameEnabled = (on) => {
-        try {
-          const v = !!on;
-          if (nameEl) nameEl.disabled = !v;
-          if (nameEl) nameEl.style.opacity = v ? '1' : '0.55';
-        } catch (e) {}
-      };
-      setNameEnabled(true);
-      try {
-        if (nameEnabledEl) nameEnabledEl.addEventListener('change', () => setNameEnabled(nameEnabledEl.checked));
-      } catch (e) {}
-
+      const todayBtn = backdrop.querySelector('#rc-tripwrapped-preset-today');
+      if (todayBtn) todayBtn.addEventListener('click', () => {
+        const d = new Date();
+        const from = new Date(d);
+        from.setHours(0,0,0,0);
+        setRange(from, d);
+      });
       const d7Btn = backdrop.querySelector('#rc-tripwrapped-preset-7d');
       if (d7Btn) d7Btn.addEventListener('click', () => setRange(new Date(Date.now()-7*24*3600*1000), new Date()));
       const d30Btn = backdrop.querySelector('#rc-tripwrapped-preset-30d');
       if (d30Btn) d30Btn.addEventListener('click', () => setRange(new Date(Date.now()-30*24*3600*1000), new Date()));
-      const d90Btn = backdrop.querySelector('#rc-tripwrapped-preset-90d');
-      if (d90Btn) d90Btn.addEventListener('click', () => setRange(new Date(Date.now()-90*24*3600*1000), new Date()));
 
       const genBtn = backdrop.querySelector('#rc-tripwrapped-generate');
       if (genBtn) genBtn.addEventListener('click', async () => {
-        // IMPORTANT: HA state changes triggered by generation can cause this page to
-        // re-render, which may remove the modal from the DOM mid-flight.
-        // To keep the UX stable (and to avoid popup blockers), open the report tab
-        // immediately on click. The opened tab polls for the newly-generated report
-        // and navigates to it when ready.
-        let reportWin = null;
-        try {
-          // NOTE: do not use the `noopener` window feature here. Some browsers will
-          // return a null WindowProxy, which prevents us from updating the tab.
-          // We keep this safe by never touching `window.opener` in the child.
-          reportWin = window.open('about:blank', '_blank');
-
-          // Build a self-contained polling page that waits for latest.json to show
-          // a new generatedAt >= startTs, then redirects to latest.html (cache-busted).
-          const startTs = Date.now();
-          const pollHtml = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Trip Wrapped</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; background: #0b0f14; color: #e8eef6; }
-      .muted { opacity: 0.8; font-size: 13px; }
-      .box { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); }
-      a { color: #7dd3fc; }
-    </style>
-  </head>
-  <body>
-    <div style="font-weight:900; font-size:16px;">Generating Trip Wrapped…</div>
-    <div class="muted" style="margin-top:6px;">We’ll open your report automatically when it’s ready.</div>
-    <div class="box muted" id="status">Waiting…</div>
-    <script>
-      const START_TS = ${startTs};
-      const JSON_URL = '/local/roamcore/trip_wrapped/latest.json';
-      const HTML_URL = '/local/roamcore/trip_wrapped/latest.html';
-
-      const statusEl = document.getElementById('status');
-      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-      const fmt = (d) => { try { return new Date(d).toLocaleString(); } catch (e) { return String(d || '—'); } };
-
-      async function checkOnce() {
-        // Prefer JSON (has generatedAt). If it fails, fall back to just loading HTML.
-        try {
-          const r = await fetch(JSON_URL + '?v=' + Date.now(), { cache: 'no-store' });
-          if (r.ok) {
-            const obj = await r.json();
-            const gen = obj && obj.meta ? obj.meta.generatedAt : null;
-            const genTs = gen ? Date.parse(gen) : NaN;
-            if (statusEl) statusEl.textContent = 'Latest generatedAt: ' + fmt(gen);
-            if (Number.isFinite(genTs) && genTs >= START_TS - 2000) {
-              location.replace(HTML_URL + '?v=' + Date.now());
-              return true;
-            }
-          }
-        } catch (e) {}
-
-        // Fallback: attempt to load HTML anyway (may show the previous report).
-        // If it loads, the user can still see something while generation finishes.
-        try {
-          const r2 = await fetch(HTML_URL + '?v=' + Date.now(), { cache: 'no-store' });
-          if (r2.ok && r2.headers && String(r2.headers.get('content-type') || '').includes('text/html')) {
-            // Don't redirect on the first successful HTML fetch unless JSON agrees.
-            // This avoids opening an old report immediately.
-          }
-        } catch (e) {}
-
-        return false;
-      }
-
-      (async () => {
-        for (let i=0; i<60; i++) {
-          const ok = await checkOnce();
-          if (ok) return;
-          await sleep(1000);
-        }
-        if (statusEl) statusEl.innerHTML = 'Still generating. You can try opening the latest report manually: <a href="' + HTML_URL + '?v=' + Date.now() + '">Open latest</a>';
-      })();
-    </script>
-  </body>
-</html>`;
-
-          if (reportWin && reportWin.document) {
-            reportWin.document.open();
-            reportWin.document.write(pollHtml);
-            reportWin.document.close();
-          }
-        } catch (e) {}
-
         try {
           genBtn.disabled = true;
           if (statusEl) statusEl.textContent = 'Generating…';
-          try { if (viewEl) viewEl.style.display = 'none'; } catch (e) {}
 
           const fromVal = fromEl?.value;
           const toVal = toEl?.value;
@@ -2483,33 +2265,30 @@ class RoamcoreMapPage extends RoamcoreBasePage {
           await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_from', value: fromIso });
           await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.rc_trip_wrapped_to', value: toIso });
 
-          // Persist owner name (optional)
-          try {
-            const enabled = !!nameEnabledEl?.checked;
-            const nm = String(nameEl?.value || '').trim();
-            await this._hass.callService('input_text', 'set_value', {
-              entity_id: 'input_text.rc_owner_name',
-              value: enabled ? (nm || 'You') : '',
-            });
-          } catch (e) {}
-
           // For now, export always generates both HTML+JSON (shell_command does both).
           // We keep the UI option for future, but do not branch yet.
           await this._hass.callService('script', 'turn_on', { entity_id: 'script.rc_trip_wrapped_run' });
 
-          if (statusEl) statusEl.textContent = 'Generating… (opening when ready)';
+          const theme = backdrop.querySelector('#rc-tripwrapped-theme')?.value || 'light';
+          const url = theme === 'dark'
+            ? '/local/roamcore/trip_wrapped/latest.html?theme=dark'
+            : '/local/roamcore/trip_wrapped/latest.html';
 
-          // Close the modal (best-effort). If HA re-rendered it away already, this is a no-op.
-          try { close(); } catch (e) {}
+          if (statusEl) statusEl.innerHTML = `Done. Open: <a href="${url}" target="_blank" rel="noreferrer">latest.html</a>`;
+
+          // Refresh preview (best effort)
+          try {
+            const prev = this._root.querySelector('#rc-tripwrapped-preview');
+            if (prev) this._loadTripWrappedPreview(prev);
+          } catch (e) {}
+
+          const after = backdrop.querySelector('#rc-tripwrapped-after')?.value;
+          if (after === 'open_latest') {
+            try { window.open(url, '_blank'); } catch (e) {}
+          }
         } catch (e) {
           console.warn('trip wrapped generate failed', e);
           if (statusEl) statusEl.textContent = 'Generate failed (check Traccar credentials/config).';
-          // If we opened a placeholder tab, try to make it obvious something failed.
-          try {
-            if (reportWin && !reportWin.closed) {
-              reportWin.document.body.innerHTML = '<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px;">Trip Wrapped generation failed. Check Traccar credentials/config, then try again.</div>';
-            }
-          } catch (e2) {}
         } finally {
           try { genBtn.disabled = false; } catch (e) {}
         }
@@ -2706,9 +2485,6 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
     const demoMode = this._getState('input_boolean.rc_demo_mode');
     const demoOn = String(demoMode || '').toLowerCase() === 'on';
 
-    // Mode (scaffold)
-    const mode = this._getState('input_select.rc_mode');
-
     // Power details
     const backendOnline = this._isOn('binary_sensor.rc_system_power_backend_connected');
     const backendStatus = this._getState('sensor.rc_system_power_backend_status');
@@ -2762,19 +2538,6 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
               ok: demoOn ? false : true,
               sub: demoOn ? 'Demo mode is ON (some tiles may show demo values).' : 'Demo mode is OFF.',
               actionsHtml: `<button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="input_boolean.toggle" data-entity="input_boolean.rc_demo_mode">Toggle</button>`
-            })}
-
-            ${this._step({
-              label: 'Mode (optional)',
-              ok: null,
-              sub: `Current: <b>${(mode && !rcIsMissingState(mode)) ? rcCap(mode) : '—'}</b>`,
-              actionsHtml: `
-                <button class="rc-btn rc-btn-mini" data-more="input_select.rc_mode">Change</button>
-                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_auto">Auto</button>
-                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_travel">Travel</button>
-                <button class="rc-btn rc-btn-mini rc-btn-ghost" data-call="script.turn_on" data-entity="script.rc_mode_set_camp">Camp</button>
-                <button class="rc-btn rc-btn-mini" data-call="script.turn_on" data-entity="script.rc_mode_apply">Apply</button>
-              `
             })}
           </div>
         </div>
@@ -2993,989 +2756,8 @@ class RoamcoreSetupPage extends RoamcoreBasePage {
 }
 
 class RoamcoreSettingsPage extends RoamcoreBasePage {
-  constructor() {
-    super();
-    this._diag = null;
-    this._diagErr = null;
-    this._diagLoading = false;
-    this._diagFetchedAt = 0;
-  }
-
-  async _fetchDiagnostics({ force = false } = {}) {
-    try {
-      if (!this._hass) return;
-      if (this._diagLoading) return;
-
-      const age = Date.now() - (this._diagFetchedAt || 0);
-      if (!force && this._diag && age < 15000) return;
-
-      this._diagLoading = true;
-      this._diagErr = null;
-      this._render();
-
-      const data = await this._hass.callApi('get', 'roamcore/diagnostics');
-      this._diag = data;
-      this._diagFetchedAt = Date.now();
-    } catch (e) {
-      // Avoid unhelpful "[object Object]".
-      try {
-        if (e && typeof e === 'object') {
-          this._diagErr = String(e.message || e.error || '') || JSON.stringify(e);
-        } else {
-          this._diagErr = String(e || 'Diagnostics fetch failed');
-        }
-      } catch (e2) {
-        this._diagErr = 'Diagnostics fetch failed';
-      }
-    } finally {
-      this._diagLoading = false;
-      this._render();
-    }
-  }
-
-  _openOpenClawModal() {
-    try {
-      if (!this._root || !this._hass) return;
-
-      // Remove any existing modal.
-      try { this._root.querySelector('#rc-openclaw-backdrop')?.remove?.(); } catch (e) {}
-
-      const diag = this._diag || {};
-      const endpoints = diag?.endpoints || {};
-      const opts = diag?.roamcore?.config_entry?.options || {};
-      const base = endpoints.base_url || window.location.origin;
-      const summaryUrl = endpoints.openclaw_summary || (base.replace(/\/$/, '') + '/api/roamcore/openclaw/summary');
-      const skillUrl = endpoints.openclaw_skill || (base.replace(/\/$/, '') + '/api/roamcore/openclaw/skill');
-      const docsUrl = 'https://github.com/roamcore/RoamCore/blob/main/docs/reference/openclaw-json-api.md';
-
-      // Prefer helper-backed state (works in legacy YAML installs too).
-      const helperEnabled = this._hass?.states?.['input_boolean.rc_openclaw_api_enabled']?.state;
-      const helperAuth = this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth']?.state;
-      const enabled = (helperEnabled != null)
-        ? (String(helperEnabled).toLowerCase() === 'on')
-        : !!opts.openclaw_api_enabled;
-      const requiresAuth = (helperAuth != null)
-        ? (String(helperAuth).toLowerCase() === 'on')
-        : !!opts.openclaw_api_requires_auth;
-
-      const host = document.createElement('div');
-      host.innerHTML = `
-        <div class="rc-modal-backdrop" id="rc-openclaw-backdrop">
-          <div class="rc-modal" role="dialog" aria-modal="true">
-            <div class="rc-modal-head">
-              <div style="font-weight:900; font-size: 16px;">OpenClaw API</div>
-              <button class="rc-x" id="rc-openclaw-close" aria-label="Close">×</button>
-            </div>
-
-            <div class="rc-label" style="margin-top:8px;">Connect an OpenClaw agent to RoamCore using a stable JSON contract.</div>
-
-            <div style="margin-top:14px;">
-              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">1) Enable API</div>
-              <div class="rc-label" style="opacity:0.9;">Toggle on to expose <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">/api/roamcore/openclaw/*</span>.</div>
-              <div style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
-                <button class="rc-btn" id="rc-openclaw-enable">${enabled ? 'Disable' : 'Enable'}</button>
-                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
-                  <input id="rc-openclaw-requires-auth" type="checkbox" ${requiresAuth ? 'checked' : ''} />
-                  <span class="rc-label">Require HA auth (recommended)</span>
-                </label>
-              </div>
-              <div class="rc-label" style="margin-top:8px; opacity:0.85;">If you want to use this outside your LAN, create a Home Assistant Long-Lived Access Token and send it as <b>Authorization: Bearer</b>.</div>
-            </div>
-
-            <div style="margin-top:16px;">
-              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">2) Copy endpoints</div>
-              <div class="rc-label" style="opacity:0.9;">Base URL: <b>${this._esc(base)}</b></div>
-              <div style="height:8px"></div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="rc-btn rc-btn-ghost" id="rc-openclaw-copy-summary" style="text-align:left; justify-content:flex-start;">Copy summary URL</button>
-                <button class="rc-btn rc-btn-ghost" id="rc-openclaw-copy-skill" style="text-align:left; justify-content:flex-start;">Copy skill URL</button>
-              </div>
-            </div>
-
-            <div style="margin-top:16px;">
-              <div class="rc-label" style="font-weight:900; color: var(--rc-text); margin-bottom:8px;">3) Verify</div>
-              <div class="rc-label" style="opacity:0.9;">This test runs from your HA browser session (so it should work even when auth is required).</div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-                <button class="rc-btn" id="rc-openclaw-test">Test now</button>
-                <a class="rc-btn rc-btn-ghost" href="${this._esc(summaryUrl)}" target="_blank" rel="noreferrer">Open summary JSON</a>
-              </div>
-              <div id="rc-openclaw-status" class="rc-label" style="margin-top:10px;"></div>
-            </div>
-
-            <div class="rc-label" style="margin-top:16px; opacity:0.9;">
-              Docs: <a href="${docsUrl}" target="_blank" rel="noreferrer">openclaw-json-api.md</a>
-              · Quick config payload: <a href="${this._esc(skillUrl)}" target="_blank" rel="noreferrer">/skill</a>
-            </div>
-          </div>
-        </div>
-      `;
-
-      const backdrop = host.firstElementChild;
-      if (!backdrop) return;
-      this._root.appendChild(backdrop);
-
-      const close = () => { try { backdrop.remove(); } catch (e) {} };
-      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
-      const closeBtn = backdrop.querySelector('#rc-openclaw-close');
-      if (closeBtn) closeBtn.addEventListener('click', close);
-
-      const statusEl = backdrop.querySelector('#rc-openclaw-status');
-
-      const copy = async (text) => {
-        try {
-          const s = String(text || '');
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(s);
-            return true;
-          }
-          const ta = document.createElement('textarea');
-          ta.value = s;
-          ta.style.position = 'fixed';
-          ta.style.left = '-9999px';
-          ta.style.top = '0';
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          const ok = document.execCommand('copy');
-          document.body.removeChild(ta);
-          return !!ok;
-        } catch (e) {
-          return false;
-        }
-      };
-
-      const copySummaryBtn = backdrop.querySelector('#rc-openclaw-copy-summary');
-      if (copySummaryBtn) copySummaryBtn.addEventListener('click', async () => {
-        const ok = await copy(summaryUrl);
-        if (statusEl) statusEl.textContent = ok ? 'Copied summary URL.' : 'Copy failed.';
-      });
-      const copySkillBtn = backdrop.querySelector('#rc-openclaw-copy-skill');
-      if (copySkillBtn) copySkillBtn.addEventListener('click', async () => {
-        const ok = await copy(skillUrl);
-        if (statusEl) statusEl.textContent = ok ? 'Copied skill URL.' : 'Copy failed.';
-      });
-
-      const enableBtn = backdrop.querySelector('#rc-openclaw-enable');
-      const reqAuthEl = backdrop.querySelector('#rc-openclaw-requires-auth');
-      if (enableBtn) enableBtn.addEventListener('click', async () => {
-        try {
-          enableBtn.disabled = true;
-          if (statusEl) statusEl.textContent = 'Updating…';
-
-          // Hard check: if helpers are missing, tell the user exactly what to do.
-          const hasEnabledHelper = !!this._hass?.states?.['input_boolean.rc_openclaw_api_enabled'];
-          const hasAuthHelper = !!this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth'];
-          if (!hasEnabledHelper || !hasAuthHelper) {
-            if (statusEl) statusEl.textContent = 'OpenClaw helpers missing. Restart Home Assistant to load RoamCore packages (rc_openclaw_api_*).';
-            return;
-          }
-
-          // Most reliable approach: toggle helpers directly (built-in services).
-          // These helpers are created by RoamCore packages:
-          //   input_boolean.rc_openclaw_api_enabled
-          //   input_boolean.rc_openclaw_api_requires_auth
-          // This avoids dependency on custom service registration.
-          const nextEnabled = !enabled;
-          const nextAuth = !!reqAuthEl?.checked;
-          await this._hass.callService('input_boolean', nextEnabled ? 'turn_on' : 'turn_off', {
-            entity_id: 'input_boolean.rc_openclaw_api_enabled',
-          });
-          await this._hass.callService('input_boolean', nextAuth ? 'turn_on' : 'turn_off', {
-            entity_id: 'input_boolean.rc_openclaw_api_requires_auth',
-          });
-
-          // Wait briefly for state propagation; if it doesn't flip, surface a clear error.
-          const wantEnabled = nextEnabled ? 'on' : 'off';
-          const wantAuth = nextAuth ? 'on' : 'off';
-          const waitFor = async (eid, want, ms = 2000) => {
-            const start = Date.now();
-            while (Date.now() - start < ms) {
-              const cur = String(this._hass?.states?.[eid]?.state || '').toLowerCase();
-              if (cur === want) return true;
-              await new Promise(r => setTimeout(r, 150));
-            }
-            return false;
-          };
-          const ok1 = await waitFor('input_boolean.rc_openclaw_api_enabled', wantEnabled);
-          const ok2 = await waitFor('input_boolean.rc_openclaw_api_requires_auth', wantAuth);
-          if (!ok1 || !ok2) {
-            if (statusEl) statusEl.textContent = 'Enable toggle did not take effect. Check HA permissions and that helpers are writable.';
-            return;
-          }
-
-          // Best-effort: if the newer service exists, also persist options there.
-          // We explicitly check service presence to avoid the noisy "Action not found" toast.
-          try {
-            const hasSvc = !!(this._hass?.services?.roamcore?.options_set);
-            if (hasSvc) {
-              await this._hass.callService('roamcore', 'options_set', {
-                openclaw_api_enabled: nextEnabled,
-                openclaw_api_requires_auth: nextAuth,
-              });
-            }
-          } catch (e) {}
-
-          // Legacy best-effort: if legacy service exists, keep it in sync too.
-          try {
-            const hasLegacy = !!(this._hass?.services?.roamcore_openclaw_api?.options_set);
-            if (hasLegacy) {
-              await this._hass.callService('roamcore_openclaw_api', 'options_set', {
-                enabled: nextEnabled,
-                requires_auth: nextAuth,
-              });
-            }
-          } catch (e) {}
-          if (statusEl) statusEl.textContent = 'Updated. Refreshing…';
-          await this._fetchDiagnostics({ force: true });
-          // Re-open modal with fresh state.
-          try { close(); } catch (e) {}
-          this._openOpenClawModal();
-        } catch (e) {
-          if (statusEl) statusEl.textContent = `Update failed: ${String(e?.message || e)}`;
-        } finally {
-          try { enableBtn.disabled = false; } catch (e) {}
-        }
-      });
-
-      const testBtn = backdrop.querySelector('#rc-openclaw-test');
-      if (testBtn) testBtn.addEventListener('click', async () => {
-        try {
-          testBtn.disabled = true;
-          if (statusEl) statusEl.textContent = 'Testing…';
-          const r = await fetch(summaryUrl + '?v=' + Date.now(), { cache: 'no-store' });
-          if (!r.ok) {
-            if (statusEl) statusEl.textContent = `Test failed: HTTP ${r.status}`;
-            return;
-          }
-          const obj = await r.json().catch(() => null);
-          const c = obj?.contract?.name || '—';
-          if (statusEl) statusEl.textContent = `OK. Contract: ${c}`;
-        } catch (e) {
-          if (statusEl) statusEl.textContent = `Test failed: ${String(e?.message || e)}`;
-        } finally {
-          try { testBtn.disabled = false; } catch (e) {}
-        }
-      });
-    } catch (e) {
-      console.warn('open openclaw modal failed', e);
-    }
-  }
-
-  _automationDefs() {
-    // Keep these extremely safe: only set Mode helpers / call known scripts.
-    // If dependencies aren't present, the UI will lock the automation.
-    const defs = [
-      {
-        key: 'night_mode',
-        id: 'roamcore_night_mode_v01',
-        name: 'RoamCore - Night Mode',
-        description: 'At night, set Mode to Stealth; in the morning, set Mode back to Auto.',
-        requires: [
-          'script.rc_mode_set_stealth',
-          'script.rc_mode_set_auto',
-        ],
-        config: {
-          alias: 'RoamCore - Night Mode',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'time', at: '23:00:00' },
-            { platform: 'time', at: '07:00:00' },
-          ],
-          condition: [],
-          action: [
-            {
-              choose: [
-                {
-                  conditions: [
-                    { condition: 'time', after: '22:59:59', before: '23:59:59' },
-                  ],
-                  sequence: [
-                    { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_stealth' } },
-                  ],
-                },
-                {
-                  conditions: [
-                    { condition: 'time', after: '06:59:59', before: '07:59:59' },
-                  ],
-                  sequence: [
-                    { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_auto' } },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        key: 'auto_wan',
-        id: 'roamcore_auto_wan_preference_v01',
-        name: 'RoamCore - Auto Internet Failover',
-        description: 'If WAN health degrades, ask the router to re-evaluate WAN preference (auto).',
-        requires: [
-          'sensor.rc_net_wan_status',
-          'script.rc_openwrt_prefer_auto',
-        ],
-        config: {
-          alias: 'RoamCore - Auto Internet Failover',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'state',
-              entity_id: 'sensor.rc_net_wan_status',
-              to: 'bad',
-              for: '00:02:00',
-            },
-          ],
-          condition: [],
-          action: [
-            { service: 'script.turn_on', target: { entity_id: 'script.rc_openwrt_prefer_auto' } },
-          ],
-        },
-      },
-      {
-        key: 'low_battery',
-        id: 'roamcore_low_battery_mode_v01',
-        name: 'RoamCore - Low Battery Mode',
-        description: 'If SOC stays low while off-shore-power, switch Mode to Camp as a safety hint.',
-        requires: [
-          'sensor.rc_power_battery_soc',
-          'binary_sensor.rc_power_shore_connected',
-          'script.rc_mode_set_camp',
-        ],
-        config: {
-          alias: 'RoamCore - Low Battery Mode',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_power_battery_soc',
-              below: 20,
-              for: '00:10:00',
-            },
-          ],
-          condition: [
-            { condition: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', state: 'off' },
-          ],
-          action: [
-            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_camp' } },
-          ],
-        },
-      },
-
-      {
-        key: 'freeze_protection',
-        id: 'roamcore_freeze_protection_v01',
-        name: 'RoamCore - Freeze Protection',
-        description: 'If outside temperature stays near freezing, show an alert so you can protect water systems.',
-        requires: [
-          'sensor.rc_weather_temp_c',
-        ],
-        config: {
-          alias: 'RoamCore - Freeze Protection',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_weather_temp_c',
-              below: 2,
-              for: '00:10:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Freeze protection',
-                message: 'Outside temperature is near freezing. Consider protecting water systems and checking heating.',
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Freeze protection alert triggered (outside temp near freezing).',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'daily_trip_log',
-        id: 'roamcore_daily_trip_log_v01',
-        name: 'RoamCore - Daily Trip Log',
-        description: 'At the end of the day, write a simple trip summary to the logbook (distance + drive time).',
-        requires: [
-          'sensor.rc_trip_distance_today_mi',
-          'sensor.rc_trip_time_today',
-        ],
-        config: {
-          alias: 'RoamCore - Daily Trip Log',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'time', at: '23:59:00' },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Daily trip summary: {{ states('sensor.rc_trip_distance_today_mi') }} mi, {{ states('sensor.rc_trip_time_today') }} driving.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'battery_full',
-        id: 'roamcore_battery_full_alert_v01',
-        name: 'RoamCore - Battery Full Alert',
-        description: 'When the battery stays near full, send a notification so you can take advantage of surplus solar.',
-        requires: [
-          'sensor.rc_power_battery_soc',
-        ],
-        config: {
-          alias: 'RoamCore - Battery Full Alert',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_power_battery_soc',
-              above: 95,
-              for: '00:15:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Battery full',
-                message: 'Battery is near full. Consider running high-load tasks to use surplus solar.',
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Battery full alert triggered (SOC > 95%).',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'inverter_overtemp',
-        id: 'roamcore_inverter_overtemp_v01',
-        name: 'RoamCore - Inverter Overheat Alert',
-        description: 'If the inverter temperature stays high, alert you to reduce load / improve airflow.',
-        requires: [
-          'sensor.rc_power_inverter_temperature',
-        ],
-        config: {
-          alias: 'RoamCore - Inverter Overheat Alert',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_power_inverter_temperature',
-              above: 75,
-              for: '00:05:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Inverter hot',
-                message: "Inverter temperature is high ({{ states('sensor.rc_power_inverter_temperature') }} °C). Consider reducing load or improving airflow.",
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Inverter overtemp alert: {{ states('sensor.rc_power_inverter_temperature') }} °C.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'router_overtemp',
-        id: 'roamcore_router_overtemp_v01',
-        name: 'RoamCore - Router Overheat Alert',
-        description: 'If the router temperature stays high, alert you (hot routers can cause disconnects).',
-        requires: [
-          'sensor.rc_router_temperature',
-        ],
-        config: {
-          alias: 'RoamCore - Router Overheat Alert',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_router_temperature',
-              above: 70,
-              for: '00:10:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Router hot',
-                message: "Router temperature is high ({{ states('sensor.rc_router_temperature') }} °C). Consider improving ventilation.",
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Router overtemp alert: {{ states('sensor.rc_router_temperature') }} °C.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'shore_connected_notice',
-        id: 'roamcore_shore_power_connected_notice_v01',
-        name: 'RoamCore - Shore Power Connected',
-        description: 'When shore power connects, log it and notify you (useful to confirm hookup worked).',
-        requires: [
-          'binary_sensor.rc_power_shore_connected',
-        ],
-        config: {
-          alias: 'RoamCore - Shore Power Connected',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', to: 'on' },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Shore power connected',
-                message: 'Shore power is connected.',
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Shore power connected.',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'shore_disconnected_alert',
-        id: 'roamcore_shore_power_disconnected_alert_v01',
-        name: 'RoamCore - Shore Power Disconnected',
-        description: 'When shore power disconnects unexpectedly, alert you so you can avoid draining the battery.',
-        requires: [
-          'binary_sensor.rc_power_shore_connected',
-        ],
-        config: {
-          alias: 'RoamCore - Shore Power Disconnected',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'state', entity_id: 'binary_sensor.rc_power_shore_connected', to: 'off', for: '00:01:00' },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Shore power disconnected',
-                message: 'Shore power disconnected. Check your hookup/cable.',
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Shore power disconnected.',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'internet_recovery',
-        id: 'roamcore_internet_recovery_v01',
-        name: 'RoamCore - Internet Recovery',
-        description: 'If the internet becomes unreachable, restart the router network stack (best-effort).',
-        requires: [
-          'binary_sensor.rc_net_internet_reachable',
-          'script.rc_openwrt_restart_network',
-        ],
-        config: {
-          alias: 'RoamCore - Internet Recovery',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'state', entity_id: 'binary_sensor.rc_net_internet_reachable', to: 'off', for: '00:02:00' },
-          ],
-          condition: [],
-          action: [
-            { service: 'script.turn_on', target: { entity_id: 'script.rc_openwrt_restart_network' } },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Internet unreachable: restarted router network stack (best-effort).',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'arrive_at_camp',
-        id: 'roamcore_arrive_at_camp_v01',
-        name: 'RoamCore - Arrive at Camp',
-        description: 'When you stop moving in the evening, switch Mode to Camp (best-effort).',
-        requires: [
-          'sensor.rc_location_speed',
-          'script.rc_mode_set_camp',
-        ],
-        config: {
-          alias: 'RoamCore - Arrive at Camp',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_location_speed',
-              below: 1,
-              for: '00:15:00',
-            },
-          ],
-          condition: [
-            { condition: 'time', after: '18:00:00', before: '23:59:59' },
-          ],
-          action: [
-            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_camp' } },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Arrive at Camp: vehicle stationary in evening → set Mode to Camp.',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'depart_travel',
-        id: 'roamcore_depart_travel_v01',
-        name: 'RoamCore - Depart (Travel Mode)',
-        description: 'When you start driving, switch Mode to Travel (best-effort).',
-        requires: [
-          'sensor.rc_location_speed',
-          'script.rc_mode_set_travel',
-        ],
-        config: {
-          alias: 'RoamCore - Depart (Travel Mode)',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_location_speed',
-              above: 10,
-              for: '00:02:00',
-            },
-          ],
-          condition: [],
-          action: [
-            { service: 'script.turn_on', target: { entity_id: 'script.rc_mode_set_travel' } },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Depart: driving detected → set Mode to Travel.',
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'solar_wow',
-        id: 'roamcore_solar_wow_v01',
-        name: 'RoamCore - Solar is Crushing It',
-        description: 'When solar output is high, notify you (a quick “wow” moment).',
-        requires: [
-          'sensor.rc_power_solar_power',
-        ],
-        config: {
-          alias: 'RoamCore - Solar is Crushing It',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_power_solar_power',
-              above: 600,
-              for: '00:05:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Solar is crushing it',
-                message: "Solar is strong ({{ states('sensor.rc_power_solar_power') }} W). Great time to run high loads.",
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Solar output high: {{ states('sensor.rc_power_solar_power') }} W.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'battery_critical',
-        id: 'roamcore_battery_critical_v01',
-        name: 'RoamCore - Battery Critical Alert',
-        description: 'If SOC stays critically low, alert you so you can conserve power or find a charge source.',
-        requires: [
-          'sensor.rc_power_battery_soc',
-        ],
-        config: {
-          alias: 'RoamCore - Battery Critical Alert',
-          description: '',
-          mode: 'single',
-          trigger: [
-            {
-              platform: 'numeric_state',
-              entity_id: 'sensor.rc_power_battery_soc',
-              below: 10,
-              for: '00:05:00',
-            },
-          ],
-          condition: [],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Battery critical',
-                message: "Battery SOC is critically low ({{ states('sensor.rc_power_battery_soc') }}%). Consider reducing loads or finding charge.",
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Battery critical alert: {{ states('sensor.rc_power_battery_soc') }}%.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'bedtime_level_check',
-        id: 'roamcore_bedtime_level_check_v01',
-        name: 'RoamCore - Bedtime Level Check',
-        description: 'At bedtime, if you are not level, remind you before you settle in.',
-        requires: [
-          'binary_sensor.rc_level',
-          'sensor.rc_level_status',
-        ],
-        config: {
-          alias: 'RoamCore - Bedtime Level Check',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'time', at: '22:00:00' },
-          ],
-          condition: [
-            { condition: 'state', entity_id: 'binary_sensor.rc_level', state: 'off' },
-          ],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Not level',
-                message: "Van is not level ({{ states('sensor.rc_level_status') }}). Consider leveling before bed.",
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: "Bedtime level reminder: {{ states('sensor.rc_level_status') }}.",
-              },
-            },
-          ],
-        },
-      },
-
-      {
-        key: 'quiet_hours',
-        id: 'roamcore_quiet_hours_v01',
-        name: 'RoamCore - Quiet Hours Reminder',
-        description: 'At night, gently remind you to switch to Stealth mode (no device control; just a prompt).',
-        requires: [
-          'input_select.rc_mode',
-          'script.rc_mode_set_stealth',
-        ],
-        config: {
-          alias: 'RoamCore - Quiet Hours Reminder',
-          description: '',
-          mode: 'single',
-          trigger: [
-            { platform: 'time', at: '21:30:00' },
-          ],
-          condition: [
-            { condition: 'template', value_template: "{{ states('input_select.rc_mode') not in ['stealth','Stealth'] }}" },
-          ],
-          action: [
-            {
-              service: 'persistent_notification.create',
-              data: {
-                title: 'RoamCore: Quiet hours',
-                message: 'Quiet hours starting. Consider switching Mode to Stealth for a low-impact night.',
-              },
-            },
-            {
-              service: 'logbook.log',
-              data: {
-                name: 'RoamCore',
-                message: 'Quiet hours reminder issued.',
-              },
-            },
-          ],
-        },
-      },
-    ];
-
-    // Attach managed marker + hash into description.
-    for (const d of defs) {
-      try {
-        const core = {
-          trigger: d.config.trigger,
-          condition: d.config.condition,
-          action: d.config.action,
-          mode: d.config.mode,
-        };
-        const h = rcHashStr(rcStableJson(core));
-        d._hash = h;
-        d.config.description = `Managed by RoamCore Smart Automations v0.1\nkey=${d.key}\nhash=${h}\n(If you edit this automation in HA, RoamCore will stop updating it.)`;
-      } catch (e) {}
-    }
-    return defs;
-  }
-
-  _hasEntities(entityIds = []) {
-    try {
-      for (const eid of (entityIds || [])) {
-        const st = this._hass?.states?.[String(eid)];
-        if (!st) return false;
-        const s = String(st.state || '').toLowerCase();
-        if (!s || s === 'unknown' || s === 'unavailable' || s === 'none') return false;
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  async _haListAutomations() {
-    return await this._hass.callApi('get', 'config/automation/config');
-  }
-
-  async _haCreateAutomation(cfg) {
-    return await this._hass.callApi('post', 'config/automation/config', cfg);
-  }
-
-  async _haUpdateAutomation(id, cfg) {
-    return await this._hass.callApi('put', `config/automation/config/${encodeURIComponent(String(id))}`, cfg);
-  }
-
-  _isManagedAutomation(def, cfg) {
-    try {
-      const desc = String(cfg?.description || '');
-      if (!desc.includes('Managed by RoamCore Smart Automations')) return false;
-      if (!desc.includes(`key=${def.key}`)) return false;
-      if (!desc.includes(`hash=${def._hash}`)) return false;
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  async _ensureAutomation(def) {
-    const list = await this._haListAutomations();
-    const cur = Array.isArray(list) ? list.find(a => String(a?.id || '') === String(def.id)) : null;
-    if (!cur) {
-      const created = await this._haCreateAutomation({ id: def.id, ...def.config });
-      return { cfg: created || null, created: true };
-    }
-    return { cfg: cur, created: false };
-  }
-
-  async _setAutomationEnabled(def, enabled) {
-    const { cfg } = await this._ensureAutomation(def);
-    const cur = cfg || {};
-    const wasManaged = this._isManagedAutomation(def, cur);
-
-    // If user edited it (not managed anymore), we only flip enabled state.
-    // If managed, we also ensure it matches current template.
-    const nextCfg = wasManaged ? ({ id: def.id, ...def.config, enabled: !!enabled }) : ({ ...cur, enabled: !!enabled });
-    await this._haUpdateAutomation(def.id, nextCfg);
-  }
-
-  _openAutomationEdit(defId) {
-    // Best-effort deep link.
-    try {
-      // Many HA versions support /config/automation/edit/<id>
-      window.open(`/config/automation/edit/${encodeURIComponent(String(defId))}`, '_blank', 'noopener');
-    } catch (e) {
-      try { window.open('/config/automation', '_blank', 'noopener'); } catch (e2) {}
-    }
-  }
-
   _render() {
     if (!this._root || !this._hass) return;
-
-    // Kick off an initial diagnostics fetch once per mount.
-    if (!this._diag && !this._diagLoading && !this._diagErr) {
-      this._fetchDiagnostics({ force: false });
-    }
 
     const tracker = this._getState('input_text.rc_location_tracker_entity');
     const weather = this._getState('input_text.rc_weather_entity_id');
@@ -3988,45 +2770,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
     const victronReady = this._getState('binary_sensor.rc_setup_victron_ready');
 
     const demoMode = this._getState('input_boolean.rc_demo_mode');
-
-    const diag = this._diag || {};
-    const endpoints = diag?.endpoints || {};
-    const opts = diag?.roamcore?.config_entry?.options || {};
-    // Prefer helper-backed state so legacy YAML installs still work.
-    const helperEnabled = this._hass?.states?.['input_boolean.rc_openclaw_api_enabled']?.state;
-    const helperAuth = this._hass?.states?.['input_boolean.rc_openclaw_api_requires_auth']?.state;
-    const openclawEnabled = (helperEnabled != null)
-      ? (String(helperEnabled).toLowerCase() === 'on')
-      : !!opts.openclaw_api_enabled;
-    const openclawAuth = (helperAuth != null)
-      ? (String(helperAuth).toLowerCase() === 'on')
-      : !!opts.openclaw_api_requires_auth;
-    const openclawLast = this._getState('sensor.rc_openclaw_last_seen');
-    const openclawLastEp = this._hass?.states?.['sensor.rc_openclaw_last_seen']?.attributes?.endpoint;
-
-    const automations = this._automationDefs();
-    const autoRows = automations.map((a) => {
-      const available = this._hasEntities(a.requires);
-      const status = available ? 'ok' : 'inactive';
-      const hint = available ? 'Ready' : 'Connect system to unlock';
-      return `
-        <div class="rc-row" style="align-items:flex-start; gap: 12px;">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-weight: 900;">${this._esc(a.name)}</div>
-            <div class="rc-mini" style="margin-top: 4px; opacity: 0.85;">${this._esc(a.description)}</div>
-            <div class="rc-mini" style="margin-top: 6px; opacity: 0.75;">Deps: ${this._esc(a.requires.join(', '))}</div>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-            ${this._badge(hint, status)}
-            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-              <button class="rc-btn rc-btn-mini" data-auto-enable="${this._esc(a.key)}" ${available ? '' : 'disabled'}>Enable</button>
-              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-auto-disable="${this._esc(a.key)}" ${available ? '' : 'disabled'}>Disable</button>
-              <button class="rc-btn rc-btn-mini rc-btn-ghost" data-auto-edit="${this._esc(a.id)}">Edit</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
 
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
@@ -4073,44 +2816,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
               ${this._row('Time zone override', (tz && tz.trim()) ? tz : '—')}
             `
           })}
-
-          ${this._tile({
-            title: 'OpenClaw API',
-            icon: '🤖',
-            content: `
-              <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
-                ${this._badge(openclawEnabled ? 'Enabled' : 'Disabled', openclawEnabled ? 'good' : 'inactive')}
-                <div class="rc-label" style="text-align:right;">Auth: <b>${openclawAuth ? 'Required' : 'Not required'}</b></div>
-              </div>
-              <div class="rc-label" style="margin-top:10px; opacity:0.9;">Stable JSON contract for local agents.</div>
-              <div class="rc-row" style="gap:12px; align-items:flex-start;">
-                <div class="rc-label" style="min-width:140px; opacity:0.85;">Summary endpoint</div>
-                <div style="flex:1; text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:12px; color: rgba(255,255,255,0.80); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this._esc(endpoints.openclaw_summary || '/api/roamcore/openclaw/summary')}</div>
-              </div>
-
-              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-                <button class="rc-btn" id="rcOpenClawConnect" style="flex:1; min-width: 160px;">Connect / Setup</button>
-              </div>
-
-              <div class="rc-mini" style="margin-top:10px; opacity:0.8;">
-                Last seen: <b>${(openclawLast && openclawLast !== 'unknown' && openclawLast !== 'unavailable') ? this._esc(openclawLast) : '—'}</b>
-                ${openclawLastEp && String(openclawLastEp).trim() ? ` · endpoint: <b>${this._esc(String(openclawLastEp))}</b>` : ''}
-              </div>
-
-              ${this._diagErr ? `<div style="margin-top:10px; color: var(--rc-bad); font-weight:800;">${this._esc(this._diagErr)}</div>` : ''}
-            `
-          })}
-
-          ${this._tile({
-            title: 'Smart Automations',
-            icon: '🪄',
-            content: `
-              <div class="rc-label" style="opacity:0.9;">Prebuilt automations you can enable with one click. All are native HA automations and editable.</div>
-              <div style="height:10px"></div>
-              ${autoRows || '<div class="rc-mini">No automations available.</div>'}
-              <div id="rc-auto-status" class="rc-label" style="margin-top:10px;"></div>
-            `
-          })}
           ${this._tile({
             title: 'Advanced',
             icon: '🧰',
@@ -4125,62 +2830,6 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
-
-    // Wire OpenClaw modal
-    try {
-      const btn = this._root.querySelector('#rcOpenClawConnect');
-      if (btn) btn.addEventListener('click', () => this._openOpenClawModal());
-    } catch (e) {}
-
-    // Wire Smart Automations buttons
-    try {
-      const statusEl = this._root.querySelector('#rc-auto-status');
-      const byKey = {};
-      for (const a of this._automationDefs()) byKey[a.key] = a;
-
-      this._root.querySelectorAll('[data-auto-enable]').forEach((b) => {
-        b.addEventListener('click', async () => {
-          const k = b.getAttribute('data-auto-enable');
-          const def = byKey[k];
-          if (!def) return;
-          try {
-            b.disabled = true;
-            if (statusEl) statusEl.textContent = `Enabling: ${def.name}…`;
-            await this._setAutomationEnabled(def, true);
-            if (statusEl) statusEl.textContent = `Enabled: ${def.name}`;
-          } catch (e) {
-            if (statusEl) statusEl.textContent = `Enable failed: ${String(e?.message || e)}`;
-          } finally {
-            try { b.disabled = false; } catch (e) {}
-          }
-        });
-      });
-
-      this._root.querySelectorAll('[data-auto-disable]').forEach((b) => {
-        b.addEventListener('click', async () => {
-          const k = b.getAttribute('data-auto-disable');
-          const def = byKey[k];
-          if (!def) return;
-          try {
-            b.disabled = true;
-            if (statusEl) statusEl.textContent = `Disabling: ${def.name}…`;
-            await this._setAutomationEnabled(def, false);
-            if (statusEl) statusEl.textContent = `Disabled: ${def.name}`;
-          } catch (e) {
-            if (statusEl) statusEl.textContent = `Disable failed: ${String(e?.message || e)}`;
-          } finally {
-            try { b.disabled = false; } catch (e) {}
-          }
-        });
-      });
-
-      this._root.querySelectorAll('[data-auto-edit]').forEach((b) => {
-        b.addEventListener('click', () => {
-          const id = b.getAttribute('data-auto-edit');
-          if (id) this._openAutomationEdit(id);
-        });
-      });
-    } catch (e) {}
   }
 }
 
@@ -4219,6 +2868,16 @@ class RoamcoreDiagnosticsPage extends RoamcoreBasePage {
       .rc-btn2:hover { filter: brightness(1.06); }
       .rc-btn2:disabled { opacity: 0.6; cursor: not-allowed; }
     `;
+  }
+
+  _esc(s) {
+    const v = (s === null || s === undefined) ? '' : String(s);
+    return v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   _stateObj(entityId) {
