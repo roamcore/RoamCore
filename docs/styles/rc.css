@@ -32,6 +32,61 @@
   padding-bottom: 2.5rem;
 }
 
+/* Reduce clutter: remove the right-hand TOC sidebar (we integrate TOC into left nav) */
+.md-sidebar--secondary {
+  display: none;
+}
+
+/* Slightly widen main content since we removed the right sidebar */
+@media (min-width: 1220px) {
+  .md-grid {
+    max-width: 1100px;
+  }
+}
+
+/* Visual catalog cards */
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0 0;
+}
+
+@media (max-width: 900px) {
+  .rc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .rc-grid { grid-template-columns: 1fr; }
+}
+
+.rc-card {
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  text-decoration: none;
+  display: block;
+}
+
+.rc-card:hover {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+}
+
+.rc-card-title {
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.92);
+}
+
+.rc-card-sub {
+  margin-top: 6px;
+  color: rgba(255,255,255,0.70);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 /* Simple “install CTA button” style for links marked with .rc-cta */
 a.rc-cta {
   display: inline-flex;
