@@ -1,20 +1,20 @@
 {
   "version": 8,
-  "glyphs": "__ORIGIN__/local/roamcore/fonts/{fontstack}/{range}.pbf",
-  "sprite": "__ORIGIN__/local/roamcore/sprites/rc-sprite",
+  "glyphs": "/local/roamcore/fonts/{fontstack}/{range}.pbf",
+  "sprite": "/local/roamcore/sprites/rc-sprite",
   "sources": {
     "protomaps_low": {
       "type": "vector",
       "minzoom": 0,
       "maxzoom": 24,
-      "url": "pmtiles://__ORIGIN__/api/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles",
+      "url": "pmtiles:///local/roamcore/pmtiles/protomaps_planet_z0-8.pmtiles",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">\u00a9 OpenStreetMap contributors</a>"
     },
     "protomaps_hi": {
       "type": "vector",
       "minzoom": 9,
       "maxzoom": 11,
-      "url": "pmtiles://__ORIGIN__/api/roamcore/pmtiles/protomaps_europe_z9-11.pmtiles",
+      "url": "pmtiles:///local/roamcore/pmtiles/protomaps_europe_z9-11.pmtiles",
       "bounds": [
         -12.5,
         49.5,
@@ -27,7 +27,7 @@
       "type": "vector",
       "minzoom": 9,
       "maxzoom": 12,
-      "url": "pmtiles://__ORIGIN__/api/roamcore/pmtiles/protomaps_uk_z0-12.pmtiles",
+      "url": "pmtiles:///local/roamcore/pmtiles/protomaps_uk_z0-12.pmtiles",
       "bounds": [
         -12.5,
         49.5,
