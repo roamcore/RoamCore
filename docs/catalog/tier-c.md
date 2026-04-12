@@ -28,6 +28,10 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 - [Approach + underbody lights (welcome home)](lighting/approach-and-underbody-lights/) — Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you’re stepping and feel like the
 - [Motion‑based lighting (driving + arrival)](lighting/motion-based-lighting/) — Make lighting feel “automatic”:
 
+## Map
+
+- [Amenities overlay (nearby places)](map/amenities-overlay/) — See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and
+
 ## Networking
 
 - [Peplink (multi-WAN router for van internet)](networking/peplink/) — Peplink routers are popular in van life because they handle multi‑WAN setups (LTE/5G + Starlink + campground Wi‑Fi) and can do load‑balancin
