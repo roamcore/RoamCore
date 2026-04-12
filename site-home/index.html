@@ -201,8 +201,8 @@
 
     .social{ display:flex; align-items:center; gap:12px; }
     .icon{
-      width: 18px;
-      height: 18px;
+      width: 34px;
+      height: 34px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -215,7 +215,14 @@
       transition: transform .15s ease, border-color .15s ease;
     }
     .icon:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.18); }
-    .icon svg{ width: 18px; height: 18px; fill: currentColor; }
+    .icon svg{
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      min-height: 18px;
+      display: block;
+      fill: currentColor;
+    }
 
     @media (max-width: 540px){
       body{ overflow:auto; }
