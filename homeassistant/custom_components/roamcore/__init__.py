@@ -31,6 +31,8 @@ from .system_summary_view import RoamcoreSystemSummaryView
 from .update_view import RoamcoreUpdateView, fetch_latest_release_tag
 import aiohttp
 
+from .pmtiles_view import RoamcorePmtilesView
+
 from .provision import provision_from_github
 from .support_bundle import export_support_bundle
 
@@ -284,6 +286,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Always-on, authenticated update endpoint for the Settings UI.
     hass.http.register_view(RoamcoreUpdateView(hass, entry.entry_id))
+
+    # Always-on, authenticated PMTiles endpoint (Range-friendly) for MapLibre/PMTiles.
+    hass.http.register_view(RoamcorePmtilesView(hass))
 
     # Entities used for onboarding/verification (e.g. OpenClaw last-seen sensor).
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
