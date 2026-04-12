@@ -14,6 +14,7 @@ Mostly for development and demos—lets you test before relying on real tracking
 ## Install / best next step
 - See: `docs/guides/roamcore-dev-mocks.md`
 - HA packages: `homeassistant/packages/roamcore_mock_track.yaml`, `roamcore_mock_location_trail.yaml`
+- Dev helpers package: `homeassistant/packages/roamcore_dev_mocks.yaml`
 
 ## Links
 - (Add notes later)
