@@ -23,9 +23,9 @@ class RoamcorePmtilesView(HomeAssistantView):
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 
-    async def get(self, request: web.Request, filename: str):
+    async def get(self, request: web.Request):
         # Defensive: only allow .pmtiles under the expected directory.
-        fn = str(filename or "").strip()
+        fn = str(request.match_info.get("filename") or "").strip()
         if not fn.endswith(".pmtiles"):
             raise web.HTTPNotFound()
         if "/" in fn or "\\" in fn or ".." in fn:
@@ -37,4 +37,3 @@ class RoamcorePmtilesView(HomeAssistantView):
 
         # aiohttp's FileResponse supports Range requests.
         return web.FileResponse(path)
-
