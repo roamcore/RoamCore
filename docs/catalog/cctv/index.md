@@ -10,7 +10,7 @@ Cameras can help with security, parking checks, and peace of mind—especially w
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="frigate.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">CCTV with Frigate (spec + setup ideas)</div><div class="rc-feature-sub">A single-page spec for a low-CPU CCTV system using Frigate + go2rtc, designed for predictable storage and practical van use.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="frigate/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">CCTV with Frigate (spec + setup ideas)</div><div class="rc-feature-sub">A single-page spec for a low-CPU CCTV system using Frigate + go2rtc, designed for predictable storage and practical van use.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

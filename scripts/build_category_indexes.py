@@ -140,8 +140,9 @@ def main() -> int:
                 'title': title,
                 'tier': tier,
                 'summary': summary,
-                # Link relative to the category index page
-                'href': p.name,
+                # Link relative to the category index page.
+                # MkDocs pages render as /<stem>/ (directory), not .md.
+                'href': f"{p.stem}/",
             })
 
         # Keep index content but refresh feature list block (and strip repeated sections)

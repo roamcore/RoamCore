@@ -10,8 +10,8 @@ A bed lift can save space and make daily life smoother—if it’s reliable and 
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="diy-bedlift.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">DIY bed lift (actuators / motor + strap)</div><div class="rc-feature-sub">A DIY bed lift is usually either linear actuators or a winch/motor + strap system, controlled by a relay/driver and protected with limit switches.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="happijac.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">HappiJac bed lift</div><div class="rc-feature-sub">HappiJac bed lifts are a popular off-the-shelf system. The HA integration is usually custom because the stock controller is not designed as a smart-home device.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="diy-bedlift/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">DIY bed lift (actuators / motor + strap)</div><div class="rc-feature-sub">A DIY bed lift is usually either linear actuators or a winch/motor + strap system, controlled by a relay/driver and protected with limit switches.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="happijac/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">HappiJac bed lift</div><div class="rc-feature-sub">HappiJac bed lifts are a popular off-the-shelf system. The HA integration is usually custom because the stock controller is not designed as a smart-home device.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

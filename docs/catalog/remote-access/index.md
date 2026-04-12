@@ -10,7 +10,7 @@ Remote access lets you check on the van from anywhere: see sensor status, view c
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="tailscale.md" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Tailscale (secure remote access)</div><div class="rc-feature-sub">Tailscale is a simple, secure mesh VPN. It’s a great way to access Home Assistant remotely without opening ports or relying on complex networking.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
+  <a class="rc-feature" href="tailscale/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Tailscale (secure remote access)</div><div class="rc-feature-sub">Tailscale is a simple, secure mesh VPN. It’s a great way to access Home Assistant remotely without opening ports or relying on complex networking.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

@@ -126,7 +126,8 @@ def main() -> int:
                 "title": title,
                 "tier": tier,
                 "tags": tags,
-                "href": str(rel).replace("\\", "/"),
+                # MkDocs pages render as /<path-without-.md>/
+                "href": str(rel.with_suffix("")).replace("\\", "/") + "/",
                 "summary": summary,
             }
         )

@@ -10,7 +10,7 @@ Time-based helpers let you make the van feel “smart” without overcomplicatin
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="timezone-geolocator.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Time zone auto-detection (GeoLocator)</div><div class="rc-feature-sub">RoamCore includes notes for using GeoLocator to keep time zone correct based on location.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="timezone-geolocator/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Time zone auto-detection (GeoLocator)</div><div class="rc-feature-sub">RoamCore includes notes for using GeoLocator to keep time zone correct based on location.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

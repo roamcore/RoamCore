@@ -10,7 +10,7 @@ OBD data can turn your vehicle into a real-time dashboard: battery voltage, cool
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="wican-pro.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">MeatPi WiCAN Pro (OBD2 reader)</div><div class="rc-feature-sub">MeatPi WiCAN Pro is an OBD2 + CAN adapter (ESP32-based) that can bring vehicle telemetry into Home Assistant: voltage, coolant temp, fault codes, trip metrics, </div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="wican-pro/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">MeatPi WiCAN Pro (OBD2 reader)</div><div class="rc-feature-sub">MeatPi WiCAN Pro is an OBD2 + CAN adapter (ESP32-based) that can bring vehicle telemetry into Home Assistant: voltage, coolant temp, fault codes, trip metrics, </div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->
