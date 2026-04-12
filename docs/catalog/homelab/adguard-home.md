@@ -20,3 +20,4 @@ AdGuard Home is an alternative to Pi-hole: DNS-based ad/tracker blocking with a 
 ## Links
 - AdGuard Home: https://github.com/AdguardTeam/AdGuardHome
 - Home Assistant AdGuard Home: https://www.home-assistant.io/integrations/adguard/
+- AdGuard Home overview: https://adguard.com/adguard-home/overview.html

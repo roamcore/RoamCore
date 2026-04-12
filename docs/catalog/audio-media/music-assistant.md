@@ -19,3 +19,4 @@ Music Assistant is a powerful music system that can unify multiple speakers/targ
 ## Links
 - Home Assistant Music Assistant integration: https://www.home-assistant.io/integrations/music_assistant/
 - Music Assistant add-on repo: https://github.com/music-assistant/home-assistant-addon
+- Music Assistant project site/docs: https://www.music-assistant.io/

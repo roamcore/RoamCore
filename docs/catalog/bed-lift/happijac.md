@@ -21,3 +21,4 @@ Most setups:
 ## Links
 - ESPHome: https://esphome.io/
 - Home Assistant Cover: https://www.home-assistant.io/integrations/cover/
+- HappiJac support (manuals/tech info): https://support.lci1.com/happijac-support-happijac-beds

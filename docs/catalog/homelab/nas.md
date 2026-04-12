@@ -21,3 +21,4 @@ Common HA paths:
 ## Links
 - Home Assistant Synology DSM: https://www.home-assistant.io/integrations/synology_dsm/
 - Home Assistant SMB share (storage): https://www.home-assistant.io/common-tasks/os/#network-storage
+- Home Assistant backups overview: https://www.home-assistant.io/common-tasks/general/#backups

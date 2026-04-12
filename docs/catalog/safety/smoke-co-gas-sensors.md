@@ -23,3 +23,4 @@ Depends on sensor type:
 ## Links
 - Home Assistant ZHA (Zigbee): https://www.home-assistant.io/integrations/zha/
 - ESPHome (DIY sensors): https://esphome.io/
+- ESPHome ADC sensor (for MQ-series analog sensors): https://esphome.io/components/sensor/adc.html
