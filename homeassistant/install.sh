@@ -207,6 +207,9 @@ ensure_pmtiles() {
   pm_dir="$CONFIG_DIR/www/roamcore/pmtiles"
   mkdir -p "$pm_dir"
 
+  echo "PMTiles pack tag: $ROAMCORE_PMTILES_TAG"
+  echo "PMTiles dir:      $pm_dir"
+
   # Files referenced by homeassistant/www/roamcore/styles/rc-offline-protomaps-light.json
   # If any are missing, the PMTiles vector map will render as blank/grey.
   for f in protomaps_planet_z0-8.pmtiles protomaps_europe_z9-11.pmtiles protomaps_uk_z0-12.pmtiles; do
