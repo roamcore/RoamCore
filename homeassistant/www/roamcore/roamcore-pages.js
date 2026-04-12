@@ -1047,7 +1047,12 @@ class RoamcoreBasePage extends HTMLElement {
       }
 
       const L = window.L;
-      const m = L.map(el, { zoomControl: false, attributionControl: false });
+      // Zoom lock: avoid over-zooming beyond available offline tiles.
+      // If online tiles are configured, we can allow higher zoom; otherwise clamp.
+      const offlineMaxZ = this._offlineMaxZoom();
+      const onlineUrl = this._onlineTileUrl();
+      const maxZ = onlineUrl ? 19 : offlineMaxZ;
+      const m = L.map(el, { zoomControl: false, attributionControl: false, maxZoom: maxZ });
       el._rcMap = m;
 
       // If we don't have a live HA tracker fix, poll Traccar periodically and
@@ -1087,10 +1092,8 @@ class RoamcoreBasePage extends HTMLElement {
       } catch (e) {}
 
       // Hybrid tile setup: local offline tiles + online fallback for higher zooms.
-      // Local tiles serve z0–offlineMaxZoom (default 6); online tiles fill in above that.
-      const offlineMaxZ = this._offlineMaxZoom();
+      // Local tiles serve z0–offlineMaxZoom; online tiles fill in above that (if configured).
       const localUrl = this._tileUrl();
-      const onlineUrl = this._onlineTileUrl();
 
       // Base layer: local offline tiles (always available, even without internet)
       const localLayer = L.tileLayer(localUrl, {
@@ -1100,6 +1103,16 @@ class RoamcoreBasePage extends HTMLElement {
         keepBuffer: 4,
       });
       localLayer.addTo(m);
+
+      // Hard clamp in case mobile pinch-zoom overshoots.
+      try {
+        m.on('zoomend', () => {
+          try {
+            const z = m.getZoom();
+            if (Number.isFinite(z) && z > maxZ) m.setZoom(maxZ);
+          } catch (e) {}
+        });
+      } catch (e) {}
 
       // If the local tile endpoint is missing/misconfigured, Leaflet will quietly render grey.
       // Detect repeated tile errors and fall back to online tiles (if configured) to avoid a
