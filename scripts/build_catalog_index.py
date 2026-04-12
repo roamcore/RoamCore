@@ -56,7 +56,13 @@ def first_summary(txt: str) -> str:
             j += 1
 
     if j < len(lines):
-        return lines[j].strip()
+        # Skip sub-headings like "## What this is"; we want a human sentence.
+        while j < len(lines) and lines[j].strip().startswith('##'):
+            j += 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+        if j < len(lines):
+            return lines[j].strip()
     return ""
 
 

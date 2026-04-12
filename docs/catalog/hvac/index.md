@@ -29,7 +29,7 @@ Every page should include:
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="catalog/hvac/hvac-basics.md" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">HVAC control (heating/cooling foundations)</div><div class="rc-feature-sub">## What this is</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+  <a class="rc-feature" href="hvac-basics.md" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">HVAC control (heating/cooling foundations)</div><div class="rc-feature-sub">RoamCore includes scaffolding and patterns for HVAC-related controls/tiles (temperature, comfort, alerts). Specific heater/AC hardware integrations vary.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

@@ -29,7 +29,7 @@ Every page should include:
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="catalog/water/water-tanks.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh/grey) monitoring</div><div class="rc-feature-sub">## What this is</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+  <a class="rc-feature" href="water-tanks.md" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh/grey) monitoring</div><div class="rc-feature-sub">A placeholder for common water monitoring approaches (fresh/grey tank levels, pump runtime, leak sensors). RoamCore doesn’t ship a single mandated hardware solu</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

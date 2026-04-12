@@ -47,6 +47,11 @@ def first_summary(txt: str) -> str:
         j += 1
         while j < len(lines) and not lines[j].strip():
             j += 1
+    # Skip sub-headings like "## What this is"; we want a human sentence.
+    while j < len(lines) and lines[j].strip().startswith('##'):
+        j += 1
+        while j < len(lines) and not lines[j].strip():
+            j += 1
     return lines[j].strip() if j < len(lines) else ""
 
 
@@ -99,12 +104,12 @@ def main() -> int:
             title = first_h1(txt, p.stem)
             tier = parse_tier(txt)
             summary = first_summary(txt)[:160]
-            rel = p.relative_to(DOCS)
             items.append({
                 'title': title,
                 'tier': tier,
                 'summary': summary,
-                'href': str(rel).replace('\\','/'),
+                # Link relative to the category index page
+                'href': p.name,
             })
 
         # Keep index content but refresh feature list block
