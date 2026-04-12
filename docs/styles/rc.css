@@ -151,6 +151,7 @@
   border: 1px solid rgba(255,255,255,0.10);
   background: rgba(255,255,255,0.03);
   text-decoration: none;
+  color: rgba(255,255,255,0.90);
 }
 
 .rc-feature:hover {
@@ -160,6 +161,11 @@
 
 .rc-feature-title { font-weight: 950; color: rgba(255,255,255,0.92); }
 .rc-feature-sub { margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.70); line-height: 1.35; }
+
+.rc-feature .rc-tier { flex: 0 0 auto; }
+
+/* Prevent markdown from adding underline styles inside our feature bubbles */
+.rc-feature * { text-decoration: none !important; }
 
 .rc-feature-right { display:flex; align-items:center; }
 
