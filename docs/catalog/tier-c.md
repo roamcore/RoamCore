@@ -26,6 +26,7 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 ## Lighting
 
 - [Approach + underbody lights (welcome home)](lighting/approach-and-underbody-lights/) — Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you’re stepping and feel like the
+- [Motion‑based lighting (driving + arrival)](lighting/motion-based-lighting/) — Make lighting feel “automatic”:
 
 ## Networking
 
@@ -48,6 +49,7 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 
 ## Vehicle Obd
 
+- [In‑cab dashboard (driving tablet)](vehicle-obd/in-cab-tablet-dashboard/) — Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving: exterior lighting, compressor,
 - [MeatPi WiCAN Pro (OBD2 reader)](vehicle-obd/wican-pro/) — MeatPi WiCAN Pro is an OBD2 + CAN adapter (ESP32-based) that can bring vehicle telemetry into Home Assistant: voltage, coolant temp, fault c
 
 ## Water
