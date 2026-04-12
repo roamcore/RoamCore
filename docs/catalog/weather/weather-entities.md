@@ -15,6 +15,7 @@ A curated list of weather integrations that pair well with van life (forecast, a
 ## Install / best next step
 - Start with Home Assistant’s weather integration of choice, then set the RoamCore helper to point at it.
 - RoamCore helper: `input_text.rc_weather_entity_id`
+- HA package: `homeassistant/packages/roamcore_weather_time.yaml`
 
 ## Links
 - (Add best integrations + vanlife weather resources here)

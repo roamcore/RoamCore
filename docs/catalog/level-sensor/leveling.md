@@ -15,6 +15,7 @@ RoamCore defines a levelling contract (`rc_level_*`) and supports pitch/roll sen
 ## Install / best next step
 - Guide: `docs/guides/leveling-ha-esphome.md`
 - HA package: `homeassistant/packages/roamcore_level.yaml`
+- System-level helpers: `homeassistant/packages/roamcore_system_level.yaml`
 
 ## Links
 - (Add recommended sensors + ESPHome boards)

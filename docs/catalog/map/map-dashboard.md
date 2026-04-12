@@ -13,7 +13,10 @@ RoamCore provides a map experience inside Home Assistant, including current loca
 - None if you already have a `device_tracker` or location source
 
 ## Install / best next step
-- Configure location helpers/entities (see `homeassistant/packages/roamcore_location.yaml`)
+- Core packages:
+  - `homeassistant/packages/roamcore_map.yaml`
+  - `homeassistant/packages/roamcore_map_route.yaml`
+  - `homeassistant/packages/roamcore_location.yaml`
 - If using Traccar, see the Traccar pages in this catalog
 
 ## Links

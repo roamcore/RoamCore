@@ -17,6 +17,9 @@ RoamCore includes a Victron integration path that turns your Victron GX + batter
 ## Install / best next step
 - See: `docs/runbooks/victron-integration.md`
 - See: `docs/guides/victron-connect-flow.md`
+- HA packages:
+  - `homeassistant/packages/roamcore_power.yaml`
+  - `homeassistant/packages/roamcore_victron_health.yaml`
 
 ## Links
 - (Add Victron docs / MQTT notes / videos here later)

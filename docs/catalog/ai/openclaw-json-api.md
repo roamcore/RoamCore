@@ -15,6 +15,8 @@ RoamCore exposes stable JSON endpoints for local agents (system summary + skill 
 ## Install / best next step
 - See: `docs/reference/openclaw-json-api.md`
 - See: `docs/howto/openclaw-roamcore-skill.md`
+- Custom component: `homeassistant/custom_components/roamcore_openclaw_api`
+- HA package toggles/controls: `homeassistant/packages/roamcore_openclaw_api_controls.yaml`
 
 ## Links
 - (Add OpenClaw resources here later)

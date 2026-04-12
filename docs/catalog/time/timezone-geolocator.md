@@ -13,6 +13,7 @@ RoamCore includes notes for using GeoLocator to keep time zone correct based on 
 
 ## Install / best next step
 - See: `docs/howto/geolocator-timezone.md`
+- RoamCore time helpers package: `homeassistant/packages/roamcore_weather_time.yaml`
 
 ## Links
 - GeoLocator project: https://github.com/SmartyVan/hass-geolocator

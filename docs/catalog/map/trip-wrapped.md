@@ -15,6 +15,7 @@ Trip Wrapped generates a shareable, beautiful HTML report of a trip/route.
 ## Install / best next step
 - See existing notes in `homeassistant/tools/trip_wrapped/`
 - RoamCore also exposes `/local/roamcore/trip_wrapped/latest.html` when configured
+- HA package: `homeassistant/packages/roamcore_trip_wrapped.yaml`
 
 ## Links
 - (Add Traccar docs/videos and RoamCore how-to links)
