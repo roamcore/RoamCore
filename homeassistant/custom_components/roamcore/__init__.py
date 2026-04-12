@@ -54,7 +54,7 @@ RESTART_MARKER_NAME = "restart_required.marker"
 
 # Bump this when shipped /config/www assets (dashboard JS/CSS/etc) should be
 # refreshed automatically for users.
-ASSET_BUILD_ID = "2026-04-12T19:50Z"
+ASSET_BUILD_ID = "2026-04-12T20:12Z"
 
 
 def _secrets_path(hass: HomeAssistant) -> str:

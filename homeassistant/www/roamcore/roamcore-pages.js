@@ -2088,6 +2088,10 @@ class RoamcoreMapPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
+    // Hard guard: Map page should never render "nothing". If anything throws,
+    // surface a visible error with build marker so we can debug from screenshots.
+    try {
+
     const loc = this._getState('sensor.rc_map_location');
     const lat = this._num('sensor.rc_location_lat', null);
     const lon = this._num('sensor.rc_location_lon', null);
@@ -2203,6 +2207,24 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
+    // Add a tiny always-visible build marker + runtime info.
+    try {
+      const inner = this._root.querySelector('#rc-map-inner');
+      if (inner && !this._root.querySelector('#rc-map-debug')) {
+        const dbg = document.createElement('div');
+        dbg.id = 'rc-map-debug';
+        dbg.className = 'rc-label';
+        dbg.style.cssText = 'margin:6px 0 10px; opacity:0.75; font-size:12px;';
+        const s = [
+          `build=${RC_PAGES_BUILD}`,
+          `style=${this._mapStyleUrl()}`,
+        ].join(' · ');
+        // Insert above map container.
+        inner.parentElement?.insertBefore(dbg, inner);
+        dbg.textContent = s;
+      }
+    } catch (e) {}
+
     // Ensure the JS bundle itself isn't stuck in cache: re-inject self once per session.
     // (HA serves /local with long cache headers.)
     try {
@@ -2261,6 +2283,22 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       const btn = this._root.querySelector('#rc-tripwrapped-open');
       if (btn) btn.addEventListener('click', () => this._openTripWrappedModal());
     } catch (e) {}
+
+    } catch (err) {
+      try {
+        const msg = (err && (err.stack || err.message)) ? String(err.stack || err.message) : String(err || 'unknown');
+        this._root.innerHTML = `
+          <div class="rc-page">
+            ${this._header('Map')}
+            <div class="rc-tile">
+              <div class="rc-label" style="font-weight:900; color: var(--rc-bad)">Map render failed</div>
+              <div class="rc-label" style="margin-top:6px; opacity:0.85">build=${this._esc(RC_PAGES_BUILD)}</div>
+              <pre style="white-space:pre-wrap; font-size:12px; opacity:0.85; margin-top:10px;">${this._esc(msg).slice(0, 2000)}</pre>
+            </div>
+          </div>
+        `;
+      } catch (e2) {}
+    }
   }
 
   async _loadTripWrappedPreview(el) {
