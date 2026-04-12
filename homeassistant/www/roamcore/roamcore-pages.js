@@ -1332,14 +1332,14 @@ class RoamcoreBasePage extends HTMLElement {
         try { return window.location.origin; } catch (e) { return ''; }
       })();
 
-      const minimalRasterStyle = () => ({
+      const minimalRasterStyle = (tileUrl) => ({
         version: 8,
         glyphs: `${origin}/local/roamcore/fonts/{fontstack}/{range}.pbf`,
         sprite: `${origin}/local/roamcore/sprites/rc-sprite`,
         sources: {
           rc_raster: {
             type: 'raster',
-            tiles: ['/rc-tiles/{z}/{x}/{y}.png'],
+            tiles: [tileUrl || '/rc-tiles/{z}/{x}/{y}.png'],
             tileSize: 256,
             maxzoom: 18,
           },
@@ -1349,6 +1349,20 @@ class RoamcoreBasePage extends HTMLElement {
           { id: 'rc_raster', type: 'raster', source: 'rc_raster', paint: { 'raster-opacity': 1.0 } },
         ],
       });
+
+      const pickRasterTilesUrl = async () => {
+        // Prefer offline local tiles if present; otherwise fall back to a public raster source.
+        // This ensures the Map page is never blank even on first install.
+        try {
+          const r = await fetch('/rc-tiles/health', { cache: 'no-cache' }).catch(() => null);
+          if (r && r.ok) {
+            const j = await r.json().catch(() => null);
+            if (j && j.ok) return '/rc-tiles/{z}/{x}/{y}.png';
+          }
+        } catch (e) {}
+        // Online fallback (best-effort).
+        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+      };
 
       const assetExists = async (url) => {
         try {
@@ -1380,7 +1394,8 @@ class RoamcoreBasePage extends HTMLElement {
         }
       } catch (e) {
         console.warn('failed to load/patch style json; falling back to raster-only style', e);
-        style = minimalRasterStyle();
+        const tilesUrl = await pickRasterTilesUrl();
+        style = minimalRasterStyle(tilesUrl);
       }
 
       // If PMTiles archives are missing on /local, the vector style will render blank/grey.
@@ -1391,7 +1406,8 @@ class RoamcoreBasePage extends HTMLElement {
           const okPm = await assetExists(pm);
           if (!okPm) {
             console.warn('PMTiles archive missing; falling back to raster tiles', pm);
-            style = minimalRasterStyle();
+            const tilesUrl = await pickRasterTilesUrl();
+            style = minimalRasterStyle(tilesUrl);
           }
         }
       } catch (e) {}
@@ -1425,7 +1441,9 @@ class RoamcoreBasePage extends HTMLElement {
               if (!isVectorFailure) return;
               el._rcMapLibreDidFallback = true;
               console.warn('maplibre vector style failed; switching to raster-only style', msg);
-              m.setStyle(minimalRasterStyle());
+              Promise.resolve(pickRasterTilesUrl()).then((tilesUrl) => {
+                try { m.setStyle(minimalRasterStyle(tilesUrl)); } catch (e) {}
+              });
             } catch (e) {}
           });
         }

@@ -52,6 +52,10 @@ RESTART_NOTIFICATION_ID = "roamcore_restart_required"
 PROVISIONED_MARKER_NAME = "provisioned.marker"
 RESTART_MARKER_NAME = "restart_required.marker"
 
+# Bump this when shipped /config/www assets (dashboard JS/CSS/etc) should be
+# refreshed automatically for users.
+ASSET_BUILD_ID = "2026-04-12T19:50Z"
+
 
 def _secrets_path(hass: HomeAssistant) -> str:
     # HA config dir secrets.yaml
@@ -162,14 +166,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if options != dict(entry.options):
         hass.config_entries.async_update_entry(entry, options=options)
 
-    # HACS-first: auto-provision RoamCore assets into /config on first setup.
+    # HACS-first: auto-provision RoamCore assets into /config.
     # We guard with a marker file so this is idempotent and never loops.
+    # Additionally, we re-provision when ASSET_BUILD_ID changes so critical
+    # frontend fixes roll out without requiring the user to manually call
+    # roamcore.provision_assets.
     try:
         auto = bool(options.get(CONF_AUTO_PROVISION_ASSETS, DEFAULT_AUTO_PROVISION_ASSETS))
         ref = str(options.get(CONF_PROVISION_REF, DEFAULT_PROVISION_REF) or DEFAULT_PROVISION_REF)
         marker = hass.config.path(".roamcore", PROVISIONED_MARKER_NAME)
         restart_marker = hass.config.path(".roamcore", RESTART_MARKER_NAME)
-        if auto and not os.path.exists(marker):
+        marker_txt = ""
+        try:
+            if os.path.exists(marker):
+                marker_txt = await hass.async_add_executor_job(lambda: open(marker, "r", encoding="utf-8").read())
+        except Exception:
+            marker_txt = ""
+
+        needs = (not os.path.exists(marker)) or (f"asset_build={ASSET_BUILD_ID}" not in marker_txt)
+
+        if auto and needs:
             try:
                 async with aiohttp.ClientSession() as session:
                     result = await provision_from_github(
@@ -182,7 +198,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
                 await _async_write_text_atomic(
                     marker,
-                    f"provisioned_at={datetime.now().isoformat()}\nref={ref}\n",
+                    f"provisioned_at={datetime.now().isoformat()}\nref={ref}\nasset_build={ASSET_BUILD_ID}\n",
                 )
                 await _async_write_text_atomic(
                     restart_marker,
@@ -509,7 +525,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             await _async_write_text_atomic(
                 marker,
-                f"provisioned_at={datetime.now().isoformat()}\nrepo={repo}\nref={ref}\n",
+                f"provisioned_at={datetime.now().isoformat()}\nrepo={repo}\nref={ref}\nasset_build={ASSET_BUILD_ID}\n",
             )
         except Exception:
             pass
