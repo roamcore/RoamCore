@@ -644,10 +644,9 @@ class RoamcoreDashboardCard extends HTMLElement {
     const v = this._getState('input_text.rc_map_style_url');
     if (v && v !== 'unknown' && v !== 'unavailable' && String(v).trim()) return String(v).trim();
     // Default: keep MapLibre OFF for maximum reliability.
-    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states
-    // if MapLibre/PMTiles assets are not present on the HA host.
+    // The raster tile fallback (Leaflet) is deterministic and avoids grey/loading states.
     // To enable MapLibre, set input_text.rc_map_style_url explicitly (e.g. to the
-    // offline style at /local/roamcore/styles/rc-offline-protomaps-light.json).
+    // online style at /local/roamcore/styles/rc-online-carto-light.json).
     return '';
   }
 
@@ -728,7 +727,7 @@ class RoamcoreDashboardCard extends HTMLElement {
     }
   }
 
-  // NOTE: PMTiles support removed for Beta.
+  // NOTE: Offline PMTiles support removed for Beta.
 
   async _loadJson(url) {
     const res = await fetch(url, { cache: 'no-cache' });
@@ -874,7 +873,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       }
 
       if (mode.mode === 'maplibre') {
-        // Ensure PMTiles protocol is registered.
+        // MapLibre overview.
         this._ensurePmtilesProtocol();
 
         // MapLibre overview (simple marker).

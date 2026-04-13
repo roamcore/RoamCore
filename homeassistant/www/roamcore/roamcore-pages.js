@@ -359,7 +359,7 @@ class RoamcoreBasePage extends HTMLElement {
     return { mode: 'leaflet', tileUrl: this._tileUrl() };
   }
 
-  // NOTE: PMTiles max-zoom clamping removed for Beta online-only map.
+  // NOTE: Offline PMTiles support removed for Beta (online-only map).
 
   _onlineTileUrl() {
     // Optional online tile URL for detailed view when internet is available.
@@ -1198,7 +1198,7 @@ class RoamcoreBasePage extends HTMLElement {
         return;
       }
 
-      // Beta: no PMTiles.
+      // Beta: online-only map.
 
       // MapLibre wants a dedicated container node.
       el.innerHTML = '';
@@ -1256,15 +1256,14 @@ class RoamcoreBasePage extends HTMLElement {
       }
 
       // If a remote style URL is configured and fails later, MapLibre will emit an error.
-      // RoamCore prefers a single, consistent vector basemap (PMTiles). Only fall back to
-      // raster/Leaflet as an absolute last resort.
+      // RoamCore prefers a consistent basemap. Fall back to Leaflet only if MapLibre fails.
 
       const m = new maplibregl.Map({
         container,
         style,
         center: [centerLon, centerLat],
         zoom,
-        // Clamp to shipped PMTiles max zoom for current location (prevents blanks/grey).
+        // Keep zoom sane for mobile.
         maxZoom: this._maplibreMaxZoom(styleUrl, centerLat, centerLon),
         attributionControl: false,
       });
@@ -1328,7 +1327,7 @@ class RoamcoreBasePage extends HTMLElement {
       } catch (e) {}
 
       // Intentionally NO always-on raster fallback layer.
-      // If PMTiles fail to load, we'll handle it by switching to Leaflet only when needed.
+      // If MapLibre fails to load tiles, fall back to Leaflet when needed.
 
       // Ensure marker exists and is updated on every render tick.
       const ensureMarker = () => {
