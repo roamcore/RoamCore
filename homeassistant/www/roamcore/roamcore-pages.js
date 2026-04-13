@@ -1072,6 +1072,14 @@ class RoamcoreBasePage extends HTMLElement {
       const m = L.map(el, { zoomControl: false, attributionControl: false, maxZoom: maxZ });
       el._rcMap = m;
 
+      // If the user pans/zooms, never auto-recenter again.
+      try {
+        el._rcUserMoved = false;
+        const markMoved = () => { try { el._rcUserMoved = true; } catch (e) {} };
+        m.on('movestart', markMoved);
+        m.on('zoomstart', markMoved);
+      } catch (e) {}
+
       // If we don't have a live HA tracker fix, poll Traccar periodically and
       // update the view + marker. This makes live GPS work even when the HA
       // device_tracker isn't configured yet.
@@ -1098,7 +1106,8 @@ class RoamcoreBasePage extends HTMLElement {
               } catch (e) {}
               // If we were on fallback center, gently follow once.
               try {
-                if (!el._rcTraccarDidCenter) {
+                const saved = this._loadSavedMapView();
+                if (!el._rcTraccarDidCenter && !saved && !el._rcUserMoved) {
                   el._rcTraccarDidCenter = true;
                   m.setView(ll, Math.min(m.getZoom() || 8, 10), { animate: false });
                 }
