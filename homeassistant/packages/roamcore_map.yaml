@@ -3,7 +3,10 @@
 input_text:
   rc_map_tile_url:
     name: "RC Map Tile URL"
-    initial: "/rc-tiles/{z}/{x}/{y}.png"
+    # Default (beta): online tiles.
+    # NOTE: we intentionally avoid tile.openstreetmap.org (OSM volunteer tiles)
+    # to prevent 403 / referer-block issues.
+    initial: "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
     max: 255
 
   rc_map_tile_url_online:
@@ -13,13 +16,11 @@ input_text:
 
   rc_map_style_url:
     name: "RC Map Style URL (MapLibre Vector)"
-    # Default to RoamCore's offline PMTiles MapLibre style.
-    # This is resolved client-side and uses local PMTiles archives.
-    initial: "/local/roamcore/styles/rc-offline-protomaps-light.json"
+    # Default (beta): RoamCore online MapLibre style.
+    initial: "/local/roamcore/styles/rc-online-carto-light.json"
     max: 255
 
-# How far the offline MBTiles currently goes. Once we finish building z8,
-# bump this to 8 to allow deeper zoom without blank tiles.
+# Max zoom used by the Leaflet raster fallback.
 input_number:
   rc_map_offline_max_zoom:
     name: "RC Map Offline Max Zoom"
@@ -27,4 +28,4 @@ input_number:
     max: 19
     step: 1
     mode: box
-    initial: 8
+    initial: 19
