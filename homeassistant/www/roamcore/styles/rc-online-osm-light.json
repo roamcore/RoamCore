@@ -3,14 +3,14 @@
   "glyphs": "/local/roamcore/fonts/{fontstack}/{range}.pbf",
   "sprite": "/local/roamcore/sprites/rc-sprite",
   "sources": {
-    "osm": {
+    "basemap": {
       "type": "raster",
       "tiles": [
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "maxzoom": 19,
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">© OpenStreetMap contributors</a>"
+      "attribution": "© <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">OpenStreetMap</a> contributors © <a href=\"https://carto.com/attributions\" target=\"_blank\">CARTO</a>"
     }
   },
   "layers": [
@@ -22,9 +22,9 @@
       }
     },
     {
-      "id": "osm",
+      "id": "basemap",
       "type": "raster",
-      "source": "osm",
+      "source": "basemap",
       "paint": {
         "raster-opacity": 1.0,
         "raster-contrast": 0.02,
