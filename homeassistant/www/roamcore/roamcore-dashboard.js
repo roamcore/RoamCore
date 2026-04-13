@@ -1145,7 +1145,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         background: linear-gradient(180deg, var(--rc-card), var(--rc-card2));
         border: 1px solid var(--rc-border);
         border-radius: 14px;
-        padding: 14px;
+        /* Less padding so the map preview dominates the tile. */
+        padding: 10px;
         /* Slightly taller overall so the overview doesn't feel squashed */
         min-height: 190px;
         /* Prevent grid items from expanding the column due to min-content sizing */
@@ -1153,7 +1154,7 @@ class RoamcoreDashboardCard extends HTMLElement {
         box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       }
 
-      .rc-tile-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; }
+      .rc-tile-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; }
       .rc-tile-title { font-size:13px; color:var(--rc-muted); font-weight:700; }
       .rc-tile-sub { font-size:12px; color:var(--rc-muted); font-weight:600; }
 
@@ -1184,9 +1185,9 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-van-svg { width:110px; height:52px; }
       .rc-deg { font-size:20px; font-weight:900; }
 
-      /* Make the map preview dominate the tile (~70-80% of tile body). */
-      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:10px; height: 150px; }
-      .rc-map-box { width: 100%; height: 125px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
+      /* Make the map preview dominate the tile. */
+      .rc-map-main { display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px; height: 176px; }
+      .rc-map-box { width: 100%; height: 148px; border-radius: 12px; overflow:hidden; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-width: 0; }
       .rc-map-iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
       .rc-map-leaflet { width: 100%; height: 100%; }
       /* MapLibre sometimes sets an explicit canvas width that can force grid columns to grow. */
@@ -1195,7 +1196,7 @@ class RoamcoreDashboardCard extends HTMLElement {
       .rc-map-svg { width:100%; height:100%; }
       .rc-map-loc { display:flex; gap:6px; align-items:center; font-size:13px; max-width:100%; }
       .rc-trunc { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .rc-map-stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+      .rc-map-stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
 
       @media (min-width: 1280px) {
         .rc-grid { grid-template-columns: repeat(4, 1fr); }
@@ -1208,8 +1209,8 @@ class RoamcoreDashboardCard extends HTMLElement {
         .rc-grid { grid-template-columns: 1fr; }
         .rc-tile { min-height: 220px; }
         .rc-level-main { height: 140px; }
-        .rc-map-main { height: 190px; }
-        .rc-map-box { height: 160px; }
+        .rc-map-main { height: 240px; }
+        .rc-map-box { height: 200px; }
       }
     `;
   }
