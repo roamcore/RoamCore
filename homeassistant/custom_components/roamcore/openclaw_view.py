@@ -20,6 +20,8 @@ from .const import (
 
 from aiohttp import web
 
+from .automation_intents import INTENT_CONTRACT, SUPPORTED_INTENTS, validate_intent
+
 
 def _openclaw_enabled(hass: HomeAssistant, entry_id: str) -> bool:
     try:
@@ -536,3 +538,84 @@ class OpenClawTimeSeriesView(HomeAssistantView):
             "events": events,
         }
         return self.json(payload)
+
+
+class OpenClawAutomationIntentsView(HomeAssistantView):
+    """Read-only automation intent schema + validator.
+
+    This endpoint is intentionally non-destructive.
+    """
+
+    url = "/api/roamcore/openclaw/automation/intents"
+    name = "api:roamcore_openclaw_automation_intents"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "automation_intents")
+        return self.json(
+            {
+                "contract": INTENT_CONTRACT,
+                "generated_at": _iso_now(),
+                "supported_intents": SUPPORTED_INTENTS,
+                "validate": {
+                    "method": "POST",
+                    "url": "/api/roamcore/openclaw/automation/validate",
+                    "payload_shape": {"type": "<intent_type>", "params": {}},
+                },
+            }
+        )
+
+    async def post(self, request):
+        """Validate a JSON payload.
+
+        Accepts either:
+        - {"type": ..., "params": ...}
+        - {"intent": {"type": ..., "params": ...}}
+        """
+
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "automation_validate")
+
+        try:
+            data = await request.json()
+        except Exception:
+            return self.json({"ok": False, "error": "invalid_json"})
+
+        intent = data.get("intent") if isinstance(data, dict) else None
+        if intent is None:
+            intent = data
+
+        res = validate_intent(intent)
+        return self.json({"contract": INTENT_CONTRACT, "generated_at": _iso_now(), **res.to_dict()})
+
+
+class OpenClawAutomationValidateView(OpenClawAutomationIntentsView):
+    """Alias endpoint to keep URLs semantically clean."""
+
+    url = "/api/roamcore/openclaw/automation/validate"
+    name = "api:roamcore_openclaw_automation_validate"
+
+    async def get(self, request):
+        # Redirect-ish hint (we don't want to deal with actual redirects in some clients)
+        return self.json(
+            {
+                "ok": False,
+                "error": "use_post",
+                "hint": "POST JSON to this endpoint, or GET /api/roamcore/openclaw/automation/intents for schema.",
+            }
+        )
