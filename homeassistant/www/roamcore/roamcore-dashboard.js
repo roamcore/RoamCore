@@ -701,7 +701,6 @@ class RoamcoreDashboardCard extends HTMLElement {
       if (window.maplibregl && window.maplibregl.Map) return true;
       const cssId = 'rc-maplibre-css';
       const jsId = 'rc-maplibre-js';
-      const pmtilesId = 'rc-pmtiles-js';
       // IMPORTANT: this card uses shadow DOM; ensure CSS is available inside shadow root.
       if (!this.shadowRoot?.getElementById?.(cssId)) {
         const link = document.createElement('link');
@@ -718,37 +717,18 @@ class RoamcoreDashboardCard extends HTMLElement {
         s.async = true;
         document.head.appendChild(s);
       }
-      if (!document.getElementById(pmtilesId)) {
-        const s = document.createElement('script');
-        s.id = pmtilesId;
-        s.src = '/local/roamcore/vendor/pmtiles/pmtiles.js';
-        s.async = true;
-        document.head.appendChild(s);
-      }
       const start = Date.now();
       while (Date.now() - start < 4000) {
-        if (window.maplibregl && window.maplibregl.Map && window.pmtiles) return true;
+        if (window.maplibregl && window.maplibregl.Map) return true;
         await new Promise(r => setTimeout(r, 50));
       }
-      return !!(window.maplibregl && window.maplibregl.Map && window.pmtiles);
+      return !!(window.maplibregl && window.maplibregl.Map);
     } catch (e) {
       return false;
     }
   }
 
-  _ensurePmtilesProtocol() {
-    try {
-      if (!window.maplibregl || !window.pmtiles) return false;
-      if (window.__rcPmtilesProtocol) return true;
-      const protocol = new window.pmtiles.Protocol();
-      window.maplibregl.addProtocol('pmtiles', protocol.tile);
-      window.__rcPmtilesProtocol = protocol;
-      return true;
-    } catch (e) {
-      console.warn('pmtiles protocol init failed', e);
-      return false;
-    }
-  }
+  // NOTE: PMTiles support removed for Beta.
 
   async _loadJson(url) {
     const res = await fetch(url, { cache: 'no-cache' });

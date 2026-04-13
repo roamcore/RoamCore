@@ -347,14 +347,7 @@ class RoamcoreBasePage extends HTMLElement {
   }
 
   _maplibreMaxZoom(styleUrl, lat, lon) {
-    // PMTiles packs have limited max zoom; clamp to avoid grey tiles.
-    // Online raster/vector sources can go higher.
-    try {
-      const s = String(styleUrl || '');
-      if (s.includes('pmtiles') || s.includes('rc-offline-protomaps')) {
-        return this._vectorMaxZoomFor(lat, lon);
-      }
-    } catch (e) {}
+    // Beta: online-only style.
     return 19;
   }
 
@@ -366,26 +359,7 @@ class RoamcoreBasePage extends HTMLElement {
     return { mode: 'leaflet', tileUrl: this._tileUrl() };
   }
 
-  _vectorMaxZoomFor(lat, lon) {
-    // Global offline base is z0-8.
-    // Regional overlays extend higher; clamp zoom so we never show grey/blank tiles.
-    // These bounds match the shipped PMTiles files in /local/roamcore/pmtiles.
-    const inBounds = (b) => {
-      const [w, s, e, n] = b;
-      return lon >= w && lon <= e && lat >= s && lat <= n;
-    };
-
-    // UK overlay (protomaps_uk_z0-12.pmtiles)
-    const UK = [-12.5, 49.5, 3.5, 61.5];
-    // Europe overlay (protomaps_europe_z9-11.pmtiles) (same bounds as currently in style JSON)
-    const EU = [-12.5, 49.5, 3.5, 61.5];
-
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      if (inBounds(UK)) return 12;
-      if (inBounds(EU)) return 11;
-    }
-    return 8;
-  }
+  // NOTE: PMTiles max-zoom clamping removed for Beta online-only map.
 
   _onlineTileUrl() {
     // Optional online tile URL for detailed view when internet is available.
@@ -682,10 +656,8 @@ class RoamcoreBasePage extends HTMLElement {
 
       const jsId = 'rc-maplibre-js';
       const cssId = 'rc-maplibre-css';
-      const pmtilesId = 'rc-pmtiles-js';
       const jsUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.js';
       const cssUrl = '/local/roamcore/vendor/maplibre-gl/maplibre-gl.css';
-      const pmtilesUrl = '/local/roamcore/vendor/pmtiles/pmtiles.js';
 
       // IMPORTANT: MapLibre CSS must be available inside this component's shadow root.
       if (!this.shadowRoot?.getElementById?.(cssId)) {
@@ -716,42 +688,9 @@ class RoamcoreBasePage extends HTMLElement {
         });
       }
 
-      // PMTiles is OPTIONAL.
-      // Beta ships an online-only style, so we only load pmtiles.js if the style
-      // URL hints it is required.
-      try {
-        const styleUrl = this._mapStyleUrl();
-        const needsPmtiles = !!(styleUrl && String(styleUrl).includes('pmtiles'));
-        if (needsPmtiles && !document.getElementById(pmtilesId)) {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.id = pmtilesId;
-            s.src = pmtilesUrl;
-            s.async = true;
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-      } catch (e) {}
-
       return !!(window.maplibregl && window.maplibregl.Map);
     } catch (e) {
       console.warn('maplibre load failed', e);
-      return false;
-    }
-  }
-
-  _ensurePmtilesProtocol() {
-    try {
-      if (!window.maplibregl || !window.pmtiles) return false;
-      if (window.__rcPmtilesProtocol) return true;
-      const protocol = new window.pmtiles.Protocol();
-      window.maplibregl.addProtocol('pmtiles', protocol.tile);
-      window.__rcPmtilesProtocol = protocol;
-      return true;
-    } catch (e) {
-      console.warn('pmtiles protocol init failed', e);
       return false;
     }
   }
@@ -1259,11 +1198,7 @@ class RoamcoreBasePage extends HTMLElement {
         return;
       }
 
-      // Register PMTiles protocol only when the style requires it.
-      // Beta: online-only styles do not use pmtiles.
-      try {
-        if (String(styleUrl).includes('pmtiles')) this._ensurePmtilesProtocol();
-      } catch (e) {}
+      // Beta: no PMTiles.
 
       // MapLibre wants a dedicated container node.
       el.innerHTML = '';
@@ -2866,6 +2801,13 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
 
     const demoMode = this._getState('input_boolean.rc_demo_mode');
 
+    // Traccar / Trip tracking
+    const trBase = this._getState('input_text.rc_traccar_base_url');
+    const trDev = this._getState('input_number.rc_traccar_device_id');
+    const trTokenPresent = this._getState('binary_sensor.rc_setup_traccar_user_token_present');
+    const trUiReachable = this._getState('binary_sensor.rc_traccar_ui_reachable');
+    const twStatus = this._getState('sensor.rc_trip_wrapped_latest_status');
+
     const isOn = (v) => String(v || '').toLowerCase() === 'on';
     const badge = (label, ok) => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); font-weight: 800; font-size: 12px; color: ${ok ? 'var(--rc-good)' : 'rgba(255,255,255,0.55)'}">${ok ? '✓' : '•'} ${label}</span>`;
 
@@ -2911,6 +2853,47 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
               ${this._row('Time zone override', (tz && tz.trim()) ? tz : '—')}
             `
           })}
+
+          ${this._tile({
+            title: 'Traccar (Trip tracking)',
+            icon: '📍',
+            content: `
+              <div class="rc-label" style="margin-bottom:10px;">If the route/Trip Wrapped stops updating, follow the reconnect steps below.</div>
+              ${this._row('Base URL', (trBase && trBase !== 'unknown' && trBase !== 'unavailable') ? trBase : '—')}
+              ${this._row('Device ID', (trDev && trDev !== 'unknown' && trDev !== 'unavailable') ? trDev : '—')}
+              ${this._row('User token saved', isOn(trTokenPresent) ? 'Yes' : 'No')}
+              ${this._row('UI reachable', isOn(trUiReachable) ? 'Yes' : 'No')}
+              ${this._row('Trip Wrapped status', (twStatus && twStatus !== 'unknown' && twStatus !== 'unavailable') ? twStatus : '—')}
+
+              <details class="rc-details" open>
+                <summary>Reconnect steps (copy/paste friendly)</summary>
+                <div class="rc-details-body">
+                  <div class="rc-label">1) Confirm the Traccar server URL + device id.</div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    <button class="rc-btn" data-more="input_text.rc_traccar_base_url">Edit base URL</button>
+                    <button class="rc-btn" data-more="input_number.rc_traccar_device_id">Edit device id</button>
+                  </div>
+
+                  <div class="rc-label" style="margin-top:12px;">2) Refresh your Traccar user token (recommended) and save it securely.</div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    <button class="rc-btn" data-more="input_text.rc_setup_traccar_user_token">Paste new token</button>
+                    <button class="rc-btn" data-call="script.turn_on" data-entity="script.rc_setup_save_traccar_user_token">Save token</button>
+                  </div>
+                  <div class="rc-label" style="margin-top:10px;">3) Generate a test report.</div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    <button class="rc-btn" data-call="script.turn_on" data-entity="script.rc_trip_wrapped_run_today">Generate (Today)</button>
+                    <a class="rc-btn rc-btn-ghost" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noopener">Open latest</a>
+                  </div>
+                  <div class="rc-label" style="margin-top:10px;">If it still fails: open Setup → Map → Trip Wrapped to recheck each input.</div>
+                  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    <button class="rc-btn rc-btn-ghost" data-nav="${this._basePath()}/setup">Open setup wizard</button>
+                    <a class="rc-btn rc-btn-ghost" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar UI</a>
+                  </div>
+                </div>
+              </details>
+            `
+          })}
+
           ${this._tile({
             title: 'Advanced',
             icon: '🧰',

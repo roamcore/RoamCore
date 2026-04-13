@@ -28,7 +28,6 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 ## Map
 
 - [Mock location + tracks (dev/demo)](map/mock-location-and-tracks/) — RoamCore includes developer/demo mocks for location trails and tracks, useful for testing map and Trip Wrapped flows without real driving da
-- [Offline maps / Tile server (PMTiles)](map/offline-tileserver/) — RoamCore includes a local tile server path so maps can render reliably without depending on third-party map providers.
 - [RoamCore Map (dashboard + route)](map/map-dashboard/) — RoamCore provides a map experience inside Home Assistant, including current location and route/trip context.
 - [RoamCore TileServer add-on](map/roamcore-tileserver-addon/) — A Home Assistant add-on that serves map tiles locally for reliable map rendering.
 - [Traccar (GPS tracking) integration](map/traccar/) — RoamCore ships Traccar support via its own proxy/init components so you can use Traccar as a reliable location history source in Home Assist
