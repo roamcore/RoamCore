@@ -146,6 +146,42 @@ views:
           - entity: sensor.rc_network_wan
             name: Active WAN
 
+  - path: modes
+    title: Modes
+    icon: mdi:toggle-switch
+    cards:
+      - type: markdown
+        content: |
+          # Modes (MVP)
+          This is a minimal UI for the **Mode / automation builder** scaffold.
+
+          - Select a mode using `input_select.rc_mode`.
+          - Tap **Apply** to run the current scaffold (currently logs to Logbook).
+
+      - type: entities
+        title: Current mode
+        entities:
+          - entity: input_select.rc_mode
+            name: Mode
+          - entity: sensor.rc_mode_current
+            name: Current (sensor)
+
+      - type: entities
+        title: Quick actions
+        entities:
+          - entity: script.rc_mode_apply
+            name: Apply selected mode
+          - entity: script.rc_mode_set_auto
+            name: Set Auto
+          - entity: script.rc_mode_set_travel
+            name: Set Travel
+          - entity: script.rc_mode_set_camp
+            name: Set Camp
+          - entity: script.rc_mode_set_stealth
+            name: Set Stealth
+          - entity: script.rc_mode_set_off
+            name: Set Off
+
   - path: automations
     title: Weather & Time
     icon: mdi:weather-partly-cloudy
@@ -195,4 +231,3 @@ views:
             name: System status
           - entity: sensor.rc_system_version
             name: Version
-
