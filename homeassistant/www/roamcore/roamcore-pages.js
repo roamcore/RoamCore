@@ -1490,9 +1490,17 @@ class RoamcoreBasePage extends HTMLElement {
                 });
               }
 
-              // Auto-fit to the route once, so the demo immediately looks like a trip.
+              // Auto-fit to the route once (first-run only).
+              // IMPORTANT: never override a user-restored view.
+              // - If we loaded a saved view from localStorage, keep it.
+              // - If the user already panned/zoomed, keep it.
+              // - Persist the "did fit" flag on the *element*, not the page instance,
+              //   so HA re-renders don't cause repeated snapping.
               try {
-                if (!this._rcRouteFitDone) {
+                const alreadyFit = !!el._rcRouteFitDone;
+                const userMoved = !!el._rcUserMoved;
+                const hasSaved = !!saved;
+                if (!alreadyFit && !userMoved && !hasSaved) {
                   const bounds = new maplibregl.LngLatBounds();
                   const addCoord = (c) => { if (c && c.length >= 2) bounds.extend([c[0], c[1]]); };
                   if (gj.geometry.type === 'LineString') {
@@ -1502,7 +1510,7 @@ class RoamcoreBasePage extends HTMLElement {
                   }
                   if (!bounds.isEmpty()) {
                     m.fitBounds(bounds, { padding: 40, duration: 0, maxZoom: 8 });
-                    this._rcRouteFitDone = true;
+                    el._rcRouteFitDone = true;
                   }
                 }
               } catch (e) {}
@@ -2070,7 +2078,7 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      <div class="rc-label" style="margin-top: 6px;">RoamCore map (PMTiles vector) with route overlay.</div>
+      
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
