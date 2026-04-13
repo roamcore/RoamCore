@@ -716,19 +716,26 @@ class RoamcoreBasePage extends HTMLElement {
         });
       }
 
-      if (!document.getElementById(pmtilesId)) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.id = pmtilesId;
-          s.src = pmtilesUrl;
-          s.async = true;
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
+      // PMTiles is OPTIONAL.
+      // Beta ships an online-only style, so we only load pmtiles.js if the style
+      // URL hints it is required.
+      try {
+        const styleUrl = this._mapStyleUrl();
+        const needsPmtiles = !!(styleUrl && String(styleUrl).includes('pmtiles'));
+        if (needsPmtiles && !document.getElementById(pmtilesId)) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.id = pmtilesId;
+            s.src = pmtilesUrl;
+            s.async = true;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+      } catch (e) {}
 
-      return !!(window.maplibregl && window.maplibregl.Map && window.pmtiles);
+      return !!(window.maplibregl && window.maplibregl.Map);
     } catch (e) {
       console.warn('maplibre load failed', e);
       return false;
@@ -1243,8 +1250,11 @@ class RoamcoreBasePage extends HTMLElement {
         return;
       }
 
-      // Register PMTiles protocol (once) so styles can reference pmtiles:// URLs.
-      this._ensurePmtilesProtocol();
+      // Register PMTiles protocol only when the style requires it.
+      // Beta: online-only styles do not use pmtiles.
+      try {
+        if (String(styleUrl).includes('pmtiles')) this._ensurePmtilesProtocol();
+      } catch (e) {}
 
       // MapLibre wants a dedicated container node.
       el.innerHTML = '';
