@@ -107,6 +107,7 @@ Top-level fields:
   "generated_at": "2026-01-01T00:00:00+00:00",
   "power": { /* ... */ },
   "map": { /* ... */ },
+  "mode": { /* ... */ },
   "level": { /* ... */ },
   "debug": { "entities": { /* ... */ } }
 }
@@ -161,6 +162,15 @@ Fields:
 - `is_level`
 - `status`
 - `hint`
+
+### `mode`
+
+Derived from `homeassistant/packages/roamcore_mode.yaml`.
+
+Fields:
+
+- `selected` (current value of `input_select.rc_mode`)
+- `current` (value of `sensor.rc_mode_current`; currently mirrors `selected`)
 
 ## Implementation
 

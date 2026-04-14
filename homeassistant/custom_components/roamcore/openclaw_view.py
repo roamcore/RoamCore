@@ -156,6 +156,10 @@ class OpenClawSummaryView(HomeAssistantView):
                 "tile_url_online": "input_text.rc_map_tile_url_online",
                 "offline_max_zoom": "input_number.rc_map_offline_max_zoom",
             },
+            "mode": {
+                "selected": "input_select.rc_mode",
+                "current": "sensor.rc_mode_current",
+            },
         }
 
         payload: dict[str, Any] = {
@@ -178,6 +182,10 @@ class OpenClawSummaryView(HomeAssistantView):
                 "tile_url": _state_value(hass, src["map"]["tile_url"]),
                 "tile_url_online": _state_value(hass, src["map"]["tile_url_online"]),
                 "offline_max_zoom": _state_float(hass, src["map"]["offline_max_zoom"]),
+            },
+            "mode": {
+                "selected": _state_value(hass, src["mode"]["selected"]),
+                "current": _state_value(hass, src["mode"]["current"]),
             },
             "level": {
                 "pitch_deg": _state_float(hass, src["level"]["pitch_deg"]),
