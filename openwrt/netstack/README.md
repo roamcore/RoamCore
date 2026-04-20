@@ -37,3 +37,5 @@ vi vars.env
 ## Adding auth later
 
 The API is LAN-only for MVP. The implementation is designed so we can add an optional header token later (e.g. `X-RoamCore-Token`) without breaking existing HA configs.
+
+The `verify.sh` script supports this: set `RC_API_TOKEN` and it will include the required header in its `wget` calls.

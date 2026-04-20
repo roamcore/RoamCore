@@ -10,6 +10,13 @@ rc_log "Verifying OpenWrt netstack"
 # a non-LAN context (e.g. temporary mgmt/WAN mode on vmbr0).
 API_HOST="${RC_API_HOST:-${RC_OPENWRT_HOST:-${RC_LAN_IP}}}"
 API_PORT="${RC_API_PORT:-8080}"
+API_TOKEN="${RC_API_TOKEN:-}"
+
+# Optional header auth (matches api.py behavior).
+WGET_HDR=""
+if [ -n "$API_TOKEN" ]; then
+  WGET_HDR="--header=X-RoamCore-Token: $API_TOKEN"
+fi
 
 rc_log "Interfaces (ubus):"
 ubus call network.interface.lan status | head -c 400 || true
@@ -25,15 +32,15 @@ fi
 
 rc_log "API status endpoint (if running):"
 if command -v wget >/dev/null 2>&1; then
-  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/status" || true
+  wget $WGET_HDR -qO- "http://${API_HOST}:${API_PORT}/api/v1/status" || true
   echo
-  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/wan" || true
+  wget $WGET_HDR -qO- "http://${API_HOST}:${API_PORT}/api/v1/wan" || true
   echo
-  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/system" || true
+  wget $WGET_HDR -qO- "http://${API_HOST}:${API_PORT}/api/v1/system" || true
   echo
-  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/wifi" || true
+  wget $WGET_HDR -qO- "http://${API_HOST}:${API_PORT}/api/v1/wifi" || true
   echo
-  wget -qO- "http://${API_HOST}:${API_PORT}/api/v1/lte" || true
+  wget $WGET_HDR -qO- "http://${API_HOST}:${API_PORT}/api/v1/lte" || true
   echo
 fi
 
