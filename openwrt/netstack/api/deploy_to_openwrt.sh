@@ -20,6 +20,7 @@ OPENWRT_SSH_KEY="${OPENWRT_SSH_KEY:-}"
 OPENWRT_PORT="${OPENWRT_PORT:-22}"
 
 API_PORT="${RC_API_PORT:-8080}"
+API_TOKEN="${RC_API_TOKEN:-}"
 
 # When true, we temporarily stop mwan3 during opkg operations. This helps on some
 # multi-WAN setups where policy routing can break downloads.
@@ -121,6 +122,13 @@ EOF'
 # Keep it idempotent: replace any existing RC_API_PORT= lines.
 remote "sed -i '/^RC_API_PORT=/d' /etc/roamcore-api.env 2>/dev/null || true; echo 'RC_API_PORT=${API_PORT}' >> /etc/roamcore-api.env"
 
+# If an API token is provided at deploy time, write it into the env file.
+# Keep it idempotent: replace any existing RC_API_TOKEN= lines.
+if [[ -n "$API_TOKEN" ]]; then
+  step "Configure RC_API_TOKEN (from deploy env)"
+  remote "sed -i '/^RC_API_TOKEN=/d' /etc/roamcore-api.env 2>/dev/null || true; echo 'RC_API_TOKEN=${API_TOKEN}' >> /etc/roamcore-api.env"
+fi
+
 step "Permissions + enable service"
 remote 'chmod +x /opt/roamcore/api.py /etc/init.d/roamcore-api; /etc/init.d/roamcore-api enable'
 
@@ -147,8 +155,12 @@ step "Restart service"
 remote "/etc/init.d/roamcore-api restart || /etc/init.d/roamcore-api start"
 
 step "Verify local endpoints"
-remote "wget -qO- -T 3 http://127.0.0.1:${API_PORT}/api/v1/status; echo"
-remote "wget -qO- -T 3 http://127.0.0.1:${API_PORT}/api/v1/wan; echo"
+HDR=""
+if [[ -n "$API_TOKEN" ]]; then
+  HDR="--header=X-RoamCore-Token: $API_TOKEN"
+fi
+remote "wget $HDR -qO- -T 3 http://127.0.0.1:${API_PORT}/api/v1/status; echo"
+remote "wget $HDR -qO- -T 3 http://127.0.0.1:${API_PORT}/api/v1/wan; echo"
 
 step "Verify from deploy host"
 if command -v curl >/dev/null 2>&1; then
