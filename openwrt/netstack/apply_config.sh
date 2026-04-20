@@ -6,6 +6,18 @@ rc_load_vars
 
 rc_log "Applying UCI config (parameterised)"
 
+# --- Safety: refuse known-insecure Wi‑Fi defaults unless explicitly allowed ---
+# This prevents "ship it with roamcore-default" accidents.
+# Set RC_ALLOW_INSECURE_DEFAULTS=1 only for lab/dev images.
+ALLOW_INSECURE_DEFAULTS="${RC_ALLOW_INSECURE_DEFAULTS:-0}"
+if [ "$ALLOW_INSECURE_DEFAULTS" != "1" ]; then
+  if [ "${RC_WIFI_KEY}" = "roamcore-default" ]; then
+    rc_log "ERROR: RC_WIFI_KEY is still the default ('roamcore-default')."
+    rc_log "Set RC_WIFI_KEY to a unique strong password (or set RC_ALLOW_INSECURE_DEFAULTS=1 for dev)."
+    exit 3
+  fi
+fi
+
 # If DRY_RUN=1, print what would be executed and exit.
 DRY_RUN="${DRY_RUN:-0}"
 if [ "$DRY_RUN" = "1" ]; then

@@ -8,6 +8,12 @@ This folder contains the **OpenWrt-side** configuration and scripts for the Roam
 - **Idempotent**: scripts should be safe to re-run.
 - **No secrets in git**: no SIM PINs, Wi‑Fi passwords (beyond default placeholders), tokens, or API credentials.
 
+## Safety guardrails
+
+- `apply_config.sh` will **refuse to apply** if `RC_WIFI_KEY` is still the default (`roamcore-default`).
+  - This prevents accidental production installs with a known password.
+  - For lab/dev images only, you can override with `RC_ALLOW_INSECURE_DEFAULTS=1`.
+
 ## Files
 
 - `vars.example.env` — example variables you can copy to `vars.env` (not committed) to override defaults.
@@ -31,4 +37,3 @@ vi vars.env
 ## Adding auth later
 
 The API is LAN-only for MVP. The implementation is designed so we can add an optional header token later (e.g. `X-RoamCore-Token`) without breaking existing HA configs.
-
