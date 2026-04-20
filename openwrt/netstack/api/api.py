@@ -629,21 +629,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-def cpu_percent_sample(sample_s: float = 0.2) -> float:
-    def read_cpu() -> tuple[int, int]:
-        line = read_first("/proc/stat", "").splitlines()[0]
-        parts = line.split()
-        if len(parts) < 5:
-            return (0, 0)
-        nums = [int(x) for x in parts[1:]]
-        idle = nums[3] + (nums[4] if len(nums) > 4 else 0)
-        total = sum(nums)
-        return (idle, total)
-
-    i1, t1 = read_cpu()
-    time.sleep(sample_s)
-    i2, t2 = read_cpu()
-    idle = max(i2 - i1, 0)
-    total = max(t2 - t1, 1)
-    used = max(total - idle, 0)
-    return used / total * 100.0

@@ -32,6 +32,14 @@ curl -s http://192.168.1.250:8080/api/v1/wifi
 curl -s http://192.168.1.250:8080/api/v1/data_usage
 ```
 
+### Optional auth token
+
+If you set `RC_API_TOKEN` (via `/etc/roamcore-api.env`), requests must include:
+
+```bash
+curl -s -H "X-RoamCore-Token: <token>" http://192.168.1.250:8080/api/v1/status
+```
+
 ## 3) Home Assistant wiring (package)
 File:
 - `homeassistant/packages/roamcore_openwrt_api.yaml`
