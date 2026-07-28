@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RoamCore PWA icon, 192x192. The user-facing app icon that the OS shows
+  on the home screen and in the install splash. Matches the dark navy
+  base + teal/cyan radial glow of assets/banner.png with a bold geometric
+  "RC" wordmark. Pure SVG — no raster, no build step.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <radialGradient id="rc-glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#7CFFB2" stop-opacity="0.55"/>
+      <stop offset="45%" stop-color="#5BE3FF" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#5BE3FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rc-base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B0F16"/>
+      <stop offset="100%" stop-color="#070A0F"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="32" ry="32" fill="url(#rc-base)"/>
+  <rect width="192" height="192" rx="32" ry="32" fill="url(#rc-glow)"/>
+  <text x="96" y="118"
+        font-family="'Roboto Mono', 'JetBrains Mono', 'Menlo', monospace"
+        font-weight="900"
+        font-size="86"
+        letter-spacing="-2"
+        text-anchor="middle"
+        fill="#E8FBFF">RC</text>
+</svg>

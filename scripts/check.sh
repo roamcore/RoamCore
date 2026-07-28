@@ -119,6 +119,38 @@ else
     run_skip "Connections: unit tests" "connections/ not present yet"
 fi
 
+# 5b. PWA manifest — runs in both core-only and full mode. If a manifest
+# exists at any of the canonical locations, it must be valid JSON with
+# all required fields + a 192 and 512 icon. A broken manifest now FAILS
+# the check (previously was just a yellow finding). No manifest at all is
+# a SKIP, not a FAIL, so the check stays green for repos that haven't
+# started the PWA scaffold yet.
+PWA_MANIFEST=""
+for manifest in dashboard/Frontend/Setup\ Wizard/manifest.json \
+               dashboard/Frontend/manifest.json \
+               dashboard/manifest.json \
+               public/manifest.json; do
+    if [ -f "$manifest" ]; then
+        PWA_MANIFEST="$manifest"
+        break
+    fi
+done
+if [ -n "$PWA_MANIFEST" ]; then
+    run_check "PWA: manifest valid ($PWA_MANIFEST)" \
+        "python3 -c 'import json,sys
+m=json.load(open(\"$PWA_MANIFEST\"))
+for k in [\"name\",\"short_name\",\"start_url\",\"display\",\"icons\",\"theme_color\",\"background_color\"]:
+    assert k in m, \"missing \"+k
+assert m[\"display\"] in (\"standalone\",\"fullscreen\",\"minimal-ui\"), \"bad display: \"+str(m[\"display\"])
+assert isinstance(m[\"icons\"],list) and m[\"icons\"], \"icons must be non-empty list\"
+sizes=\" \".join(str(i.get(\"sizes\",\"\")) for i in m[\"icons\"]).lower()
+assert \"192x192\" in sizes, \"missing 192x192 icon\"
+assert \"512x512\" in sizes, \"missing 512x512 icon\"
+print(\"OK:\", m[\"name\"])'"
+else
+    run_skip "PWA: manifest present" "no manifest at dashboard/Frontend/Setup Wizard/manifest.json"
+fi
+
 if [ $CORE_ONLY -eq 0 ]; then
     # 6. MkDocs site builds. Use `python3 -m mkdocs` so it works whether or not
     # the `mkdocs` binary is on PATH (it's installed via pip as a module).
@@ -143,24 +175,7 @@ if [ $CORE_ONLY -eq 0 ]; then
         run_skip "Add-on Docker builds" "docker not available"
     fi
 
-    # 8. PWA manifest — if it exists, it must be valid JSON with required fields.
-    for manifest in dashboard/Frontend/Setup\ Wizard/manifest.json \
-                   dashboard/Frontend/manifest.json \
-                   dashboard/manifest.json \
-                   public/manifest.json; do
-        if [ -f "$manifest" ]; then
-            run_check "PWA: $manifest valid" \
-                "python3 -c 'import json, sys; m=json.load(open(\"$manifest\")); assert \"name\" in m, \"missing name\"; assert \"start_url\" in m, \"missing start_url\"; assert \"display\" in m, \"missing display\"; print(\"OK:\", m[\"name\"])'"
-        fi
-    done
-    # If no PWA manifest exists at all, surface that as a finding (don't fail).
-    if [ ! -f "dashboard/Frontend/Setup Wizard/manifest.json" ] \
-       && [ ! -f "dashboard/Frontend/manifest.json" ] \
-       && [ ! -f "dashboard/manifest.json" ] \
-       && [ ! -f "public/manifest.json" ]; then
-        echo -e "  ${YELLOW}⚠ FINDING${NC} — No PWA manifest.json found. PWA scaffold not yet built."
     fi
-fi
 
 echo ""
 echo -e "${BOLD}Summary${NC}"

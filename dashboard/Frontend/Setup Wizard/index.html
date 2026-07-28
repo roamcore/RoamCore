@@ -1,0 +1,231 @@
+<!doctype html>
+<!--
+  RoamCore PWA entry. Servable as a static file. Loads the manifest,
+  registers the service worker for offline-first shell caching, and
+  renders the dark slate / teal-accent / monospace shell. Real tile data
+  comes from Home Assistant later; this is the scaffold.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070A0F">
+  <title>RoamCore</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.svg">
+  <style>
+    :root {
+      --rc-bg: #070A0F;
+      --rc-bg-elev: #0B0F16;
+      --rc-fg: rgba(255, 255, 255, 0.92);
+      --rc-fg-dim: rgba(255, 255, 255, 0.65);
+      --rc-accent: #5BE3FF;
+      --rc-accent-2: #7CFFB2;
+      --rc-border: rgba(255, 255, 255, 0.10);
+      --rc-mono: 'Roboto Mono', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--rc-bg);
+      color: var(--rc-fg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .rc-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header.rc-header {
+      background: rgba(7, 10, 15, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--rc-border);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .rc-logo {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--rc-accent-2), var(--rc-accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      color: var(--rc-bg);
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+    h1.rc-title {
+      margin: 0;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+    .rc-tag {
+      margin-left: auto;
+      font-family: var(--rc-mono);
+      font-size: 11px;
+      color: var(--rc-fg-dim);
+      padding: 3px 8px;
+      border: 1px solid var(--rc-border);
+      border-radius: 999px;
+    }
+    main.rc-main {
+      flex: 1;
+      padding: 22px 18px;
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .rc-loading {
+      text-align: center;
+      padding: 48px 0;
+    }
+    .rc-loading-mark {
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--rc-accent-2), var(--rc-accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 14px;
+    }
+    .rc-loading-text {
+      font-family: var(--rc-mono);
+      font-size: 13px;
+      color: var(--rc-fg-dim);
+      animation: rc-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes rc-pulse {
+      0%, 100% { opacity: 0.5; }
+      50%      { opacity: 1.0; }
+    }
+    .rc-card {
+      border: 1px solid var(--rc-border);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .rc-card h2 {
+      margin: 0 0 6px;
+      font-family: var(--rc-mono);
+      font-size: 14px;
+      color: var(--rc-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rc-card p {
+      margin: 0;
+      color: var(--rc-fg-dim);
+      font-size: 14px;
+    }
+    footer.rc-footer {
+      border-top: 1px solid var(--rc-border);
+      padding: 14px 18px;
+      font-family: var(--rc-mono);
+      font-size: 11px;
+      color: var(--rc-fg-dim);
+      text-align: center;
+    }
+    footer.rc-footer a { color: var(--rc-accent); text-decoration: none; }
+    .rc-status-ok { color: var(--rc-accent-2); }
+    .rc-status-offline { color: #FFD275; }
+  </style>
+</head>
+<body>
+  <div class="rc-shell">
+    <header class="rc-header">
+      <div class="rc-logo" aria-hidden="true">RC</div>
+      <h1 class="rc-title">RoamCore</h1>
+      <span class="rc-tag" id="rc-conn">offline</span>
+    </header>
+
+    <main class="rc-main">
+      <section class="rc-loading" id="rc-loading">
+        <div class="rc-loading-mark">RoamCore</div>
+        <div class="rc-loading-text">Loading RoamCore&hellip;</div>
+      </section>
+
+      <section class="rc-card" id="rc-ready" hidden>
+        <h2>Shell ready</h2>
+        <p>
+          This is the Day&nbsp;1 scaffold. Tile data, the setup wizard, and
+          the OpenClaw bridge arrive in subsequent slices. The service worker
+          has cached this page so it works offline.
+        </p>
+      </section>
+    </main>
+
+    <footer class="rc-footer">
+      <span id="rc-sw-state">SW: registering&hellip;</span>
+      &nbsp;&middot;&nbsp;
+      <a href="https://roamcore.co.uk/docs/">docs</a>
+    </footer>
+  </div>
+
+  <script>
+    // Register the service worker for offline-first shell caching.
+    // Browsers that don't support SW (rare) just skip this and the page
+    // still works; the cache is a progressive enhancement.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          const el = document.getElementById('rc-sw-state');
+          if (el) el.textContent = 'SW: registered (' + RC_CACHE_VERSION_SHOW() + ')';
+        }).catch((err) => {
+          const el = document.getElementById('rc-sw-state');
+          if (el) el.textContent = 'SW: failed (' + err.message + ')';
+        });
+      });
+    } else {
+      const el = document.getElementById('rc-sw-state');
+      if (el) el.textContent = 'SW: unsupported';
+    }
+
+    // The service worker hard-codes the cache name; mirror it here so the
+    // footer shows what version is live without a separate manifest call.
+    function RC_CACHE_VERSION_SHOW() { return 'rc-shell-v1'; }
+
+    // Once the SW has had a chance to install + claim, swap the loading
+    // screen for the ready card. Tiny delay keeps the pulse visible long
+    // enough to feel intentional on slow devices.
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loading = document.getElementById('rc-loading');
+        const ready = document.getElementById('rc-ready');
+        if (loading) loading.hidden = true;
+        if (ready) ready.hidden = false;
+      }, 400);
+    });
+
+    // Tiny connectivity indicator — purely cosmetic for the scaffold,
+    // real status comes from HA once tiles wire up.
+    function rcUpdateConn() {
+      const el = document.getElementById('rc-conn');
+      if (!el) return;
+      const online = navigator.onLine;
+      el.textContent = online ? 'online' : 'offline';
+      el.classList.toggle('rc-status-ok', online);
+      el.classList.toggle('rc-status-offline', !online);
+    }
+    window.addEventListener('online', rcUpdateConn);
+    window.addEventListener('offline', rcUpdateConn);
+    rcUpdateConn();
+  </script>
+</body>
+</html>
