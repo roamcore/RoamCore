@@ -30,8 +30,9 @@ permissions:
   pull-requests: write
 
 env:
-  # Set to "true" to actually block. Day 1 ships with "false".
-  enforce: "false"
+  # Set to "true" to actually block. Day 1 shipped with "false" (advisory);
+  # flipped to "true" on Day 4 once one cron cycle proved the rule holds.
+  enforce: "true"
 
 jobs:
   boundary:

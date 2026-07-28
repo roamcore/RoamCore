@@ -26,6 +26,9 @@ Now:
 - `.github/workflows/connection-boundary.yml` refuses to merge a
   connection PR that touches anything outside its own folder.
 
+> **The boundary CI is now blocking.** PRs that touch anything outside
+> their own connection folder will fail.
+
 The result: the wizard on a user's HA install renders from the same
 file as the docs site, and you can ship a new connection in one PR.
 
