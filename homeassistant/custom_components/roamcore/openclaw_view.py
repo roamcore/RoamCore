@@ -62,6 +62,39 @@ except ImportError:
     safe_float = _mod.safe_float
 
 
+# time_primitives follows the same pattern as weather_primitives above.
+# Pure-Python helpers, no HA imports, mirrored at homeassistant/roamcore_time_primitives.py
+# so they can be unit-tested without the HA runtime. The dual import here
+# (relative + fallback) keeps the view usable in both HACS and test contexts.
+try:
+    from .time_primitives import (  # type: ignore
+        RC_TIME_STATUSES,
+        RC_TIMEZONE_SOURCES,
+        normalize_time_payload,
+        safe_isoformat,
+    )
+except ImportError:
+    import importlib.util as _ilu
+    import os as _os
+
+    _tp_path = _os.path.abspath(
+        _os.path.join(
+            _os.path.dirname(__file__),
+            "..",
+            "..",
+            "..",
+            "roamcore_time_primitives.py",
+        )
+    )
+    _tp_spec = _ilu.spec_from_file_location("roamcore_time_primitives", _tp_path)
+    _tp_mod = _ilu.module_from_spec(_tp_spec)
+    _tp_spec.loader.exec_module(_tp_mod)
+    RC_TIME_STATUSES = _tp_mod.RC_TIME_STATUSES
+    RC_TIMEZONE_SOURCES = _tp_mod.RC_TIMEZONE_SOURCES
+    normalize_time_payload = _tp_mod.normalize_time_payload
+    safe_isoformat = _tp_mod.safe_isoformat
+
+
 def _openclaw_enabled(hass: HomeAssistant, entry_id: str) -> bool:
     try:
         entry: Optional[ConfigEntry] = hass.config_entries.async_get_entry(entry_id)
@@ -806,6 +839,123 @@ class OpenClawWeatherView(HomeAssistantView):
             "contract": {"name": "roamcore_openclaw_weather", "version": 1},
             "generated_at": _iso_now(),
             "weather": payload,
+            "debug": {"entities": debug_entities},
+        }
+        return self.json(body)
+
+
+# --- Time contract entities ---------------------------------------------------
+# Each key maps to a Home Assistant entity_id. Values are null in the JSON
+# response when the entity is missing or unknown — never raises.
+TIME_CONTRACT_ENTITIES: dict[str, str] = {
+    "now_iso": "sensor.rc_time_now_iso",
+    "timezone": "sensor.rc_time_zone",
+    "source": "sensor.rc_time_source",
+    "utc_offset_minutes": "sensor.rc_time_utc_offset_minutes",
+    "is_dst": "binary_sensor.rc_time_is_dst",
+}
+
+
+class OpenClawTimeView(HomeAssistantView):
+    """Read-only time + timezone primitives for OpenClaw agents.
+
+    Returns a deterministic JSON payload derived from the
+    `rc_time_*` contract entities (see
+    `homeassistant/packages/roamcore_weather_time.yaml`). The contract
+    values are stable even when HA's configured timezone changes.
+
+    Auth follows the integration option
+    `openclaw_api_requires_auth` (same as the other OpenClaw views).
+    The endpoint returns HTTP 404 when the OpenClaw API is disabled.
+    """
+
+    url = "/api/roamcore/openclaw/time"
+    name = "api:roamcore_openclaw_time"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(
+            entry.options.get(
+                CONF_OPENCLAW_API_REQUIRES_AUTH,
+                DEFAULT_OPENCLAW_API_REQUIRES_AUTH,
+            )
+        )
+
+    async def get(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "time")
+        hass = self._hass
+
+        # Build the raw payload from rc_* contract sensors.
+        # `now_iso` is a HA timestamp sensor (device_class: timestamp) so
+        # `_state_value` returns the ISO string. `utc_offset_minutes` is a
+        # plain integer sensor, and `is_dst` is a binary_sensor (on/off).
+        # `timezone` and `source` are enum-like strings; `status` is the
+        # canonical sync-status enum emitted by the YAML template.
+        raw_payload: dict[str, Any] = {
+            "now_iso": _state_value(hass, TIME_CONTRACT_ENTITIES["now_iso"]),
+            "timezone": _state_value(hass, TIME_CONTRACT_ENTITIES["timezone"]),
+            "source": _state_value(hass, TIME_CONTRACT_ENTITIES["source"]),
+            "utc_offset_minutes": _state_float(
+                hass, TIME_CONTRACT_ENTITIES["utc_offset_minutes"]
+            ),
+            "is_dst": _state_bool(hass, TIME_CONTRACT_ENTITIES["is_dst"]),
+            "status": _state_value(hass, "sensor.rc_time_status"),
+            "reason": "ok" if _state_value(hass, "sensor.rc_time_status") else "unknown",
+        }
+
+        # Normalize / canonicalize (pure function).
+        payload = normalize_time_payload(raw_payload)
+
+        # If the contract sensor is missing/unknown, synthesize a sensible
+        # reason so the agent can branch on it without inspecting state.
+        try:
+            if not payload.get("status"):
+                payload["status"] = "unknown"
+            if not payload.get("source"):
+                payload["source"] = "unknown"
+            if not payload.get("reason") or payload.get("reason") == "unknown":
+                if payload.get("timezone") is None:
+                    payload["reason"] = "ha_unconfigured"
+                else:
+                    payload["reason"] = "ok"
+        except Exception:
+            # Never crash the API.
+            pass
+
+        # Debug block: entity existence + availability (mirrors /weather).
+        reg = async_get_entity_registry(hass)
+        debug_entities: dict[str, Any] = {}
+        for key, eid in TIME_CONTRACT_ENTITIES.items():
+            st = hass.states.get(eid)
+            debug_entities[key] = {
+                "entity_id": eid,
+                "exists": st is not None,
+                "state": None if st is None else st.state,
+                "registry": eid in reg.entities,
+            }
+        # Also surface rc_time_status in the debug block.
+        st = hass.states.get("sensor.rc_time_status")
+        debug_entities["status"] = {
+            "entity_id": "sensor.rc_time_status",
+            "exists": st is not None,
+            "state": None if st is None else st.state,
+            "registry": "sensor.rc_time_status" in reg.entities,
+        }
+
+        body: dict[str, Any] = {
+            "contract": {"name": "roamcore_openclaw_time", "version": 1},
+            "generated_at": _iso_now(),
+            "time": payload,
             "debug": {"entities": debug_entities},
         }
         return self.json(body)

@@ -45,7 +45,7 @@ Legend:
 ## Weather / Time
 
 - [x] Weather primitives that are reliable for automations
-- [ ] Time + timezone sync that’s reliable for automations
+- [x] Time + timezone sync that’s reliable for automations
 
 ---
 

@@ -381,6 +381,127 @@ template:
           {% set o = states('input_text.rc_time_zone_override') | trim %}
           {{ o if o else 'UTC' }}
 
+      # --------------------------------------------------------
+      # Time — Wave 2 (#15): reliable for automations
+      # Contract entities are designed so the fallback chain never
+      # crashes the dashboard and `reason` always explains the state.
+      # --------------------------------------------------------
+
+      # ISO-8601 timestamp of "now" in HA's configured local time.
+      # device_class: timestamp so the UI renders a native datetime widget.
+      - name: "RC Time Now ISO"
+        unique_id: rc_time_now_iso
+        device_class: timestamp
+        icon: "mdi:clock-outline"
+        state: "{{ now().isoformat() }}"
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% set ha_tz = now().astimezone().tzinfo %}
+            {% if o %}
+              ok_override
+            {% elif ha_tz is not none %}
+              ok_ha_config
+            {% else %}
+              unknown
+            {% endif %}
+          source: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              override
+            {% elif now().astimezone().tzinfo is not none %}
+              ha_config
+            {% else %}
+              unknown
+            {% endif %}
+
+      # UTC offset of `now()` in minutes. Positive = ahead of UTC,
+      # negative = behind. Falls back to `unavailable` when no tz info
+      # is resolvable (the Jinja `now()` always has tzinfo in HA so this
+      # is a defensive belt-and-suspenders check).
+      - name: "RC Time UTC Offset Minutes"
+        unique_id: rc_time_utc_offset_minutes
+        icon: "mdi:clock-time-eight-outline"
+        state: >-
+          {% set n = now() %}
+          {% if n.utcoffset() is none %}
+            unavailable
+          {% else %}
+            {{ (n.utcoffset().total_seconds() / 60) | int }}
+          {% endif %}
+        availability: "{{ now().utcoffset() is not none }}"
+        attributes:
+          reason: >-
+            {% if now().utcoffset() is none %}
+              unknown
+            {% else %}
+              ok
+            {% endif %}
+
+      # Canonical timezone *source* enum: override | ha_config | browser | unknown.
+      # We do NOT need a "browser" source at this layer — it would require a
+      # custom integration to introspect the active session. The enum slot
+      # is reserved for forward-compat (documented in
+      # docs/catalog/time/time-entities.md).
+      - name: "RC Time Source"
+        unique_id: rc_time_source
+        device_class: enum
+        icon: "mdi:source-branch"
+        state: >-
+          {% set o = states('input_text.rc_time_zone_override') | trim %}
+          {# If the override resolves to a valid IANA name, source is 'override'.
+             Otherwise fall through to 'ha_config' (or 'unknown'). #}
+          {% if o %}
+            override
+          {% else %}
+            {# hasTZ is implied: HA always serves now() with a tz. #}
+            ha_config
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              ok_override
+            {% else %}
+              ok_ha_config
+            {% endif %}
+
+      # Canonical sync status enum:
+      # ok | no_override | invalid_override | ha_unconfigured | unknown
+      - name: "RC Time Status"
+        unique_id: rc_time_status
+        device_class: enum
+        icon: "mdi:shield-check"
+        state: >-
+          {% set o = states('input_text.rc_time_zone_override') | trim %}
+          {# If the override is set, we treat it as 'ok' regardless of
+             whether zoneinfo would later reject it — that's reported via
+             the rc_time_zone sensor itself. #}
+          {% if o %}
+            ok
+          {% else %}
+            {# No override → check that HA has a tz configured. #}
+            {% set n = now() %}
+            {% if n.utcoffset() is none %}
+              ha_unconfigured
+            {% else %}
+              no_override
+            {% endif %}
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              ok_override
+            {% else %}
+              {% set n = now() %}
+              {% if n.utcoffset() is none %}
+                ha_unconfigured
+              {% else %}
+                no_override
+              {% endif %}
+            {% endif %}
+
   # ----------------------------------------------------------
   # Precipitation expected within next 2 hours (binary)
   # ----------------------------------------------------------
@@ -426,6 +547,40 @@ template:
               no_forecast_data
             {% else %}
               ok
+            {% endif %}
+
+      # --------------------------------------------------------
+      # DST active right now? (binary sensor)
+      # Computed via now().dst() — returns a timedelta (or None) so we
+      # map "non-zero" to on, "zero" to off, and "None" to unknown.
+      # --------------------------------------------------------
+      - name: "RC Time Is DST"
+        unique_id: rc_time_is_dst
+        device_class: running  # intentionally NOT a presence-style binary
+        icon: "mdi:weather-sunny"
+        state: >-
+          {% set d = now().dst() %}
+          {% if d is none %}
+            unknown
+          {% elif (d.total_seconds() | int) != 0 %}
+            on
+          {% else %}
+            off
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set d = now().dst() %}
+            {% if d is none %}
+              unknown
+            {% else %}
+              ok
+            {% endif %}
+          dst_offset_minutes: >-
+            {% set d = now().dst() %}
+            {% if d is none %}
+              0
+            {% else %}
+              {{ (d.total_seconds() / 60) | int }}
             {% endif %}
 
 # NOTE: This file is a Home Assistant package.

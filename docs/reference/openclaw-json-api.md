@@ -145,6 +145,57 @@ Implementation:
 - View: `homeassistant/custom_components/roamcore/openclaw_view.py`
   → `OpenClawWeatherView`
 
+## Time (snapshot)
+
+- **GET** `/api/roamcore/openclaw/time`
+
+Returns the RoamCore time + timezone contract as a single, deterministic
+JSON snapshot — derived from the `rc_time_*` entities. Designed so an
+OpenClaw agent can answer questions like “what timezone are we in?” or
+“are we currently in DST?” without having to call `/rc_dump` and parse
+the full entity graph.
+
+Response shape:
+
+```json
+{
+  "contract": { "name": "roamcore_openclaw_time", "version": 1 },
+  "generated_at": "2026-07-28T23:00:00+00:00",
+  "time": {
+    "now_iso": "2026-07-28T23:00:00+00:00",
+    "timezone": "Europe/London",
+    "source": "ha_config",
+    "utc_offset_minutes": 60,
+    "is_dst": true,
+    "status": "ok",
+    "reason": "ok"
+  }
+}
+```
+
+Notes:
+
+- All fields are nullable (`null` when the source entity is missing or
+  `unknown`/`unavailable`).
+- `source` is one of the canonical enum: `override`, `ha_config`,
+  `browser`, `unknown` (the `browser` slot is reserved for
+  forward-compat).
+- `status` is one of the canonical enum: `ok`, `no_override`,
+  `invalid_override`, `ha_unconfigured`, `unknown`.
+- `utc_offset_minutes` is an integer (positive = ahead of UTC,
+  negative = behind).
+- `is_dst` is a boolean.
+- `reason` mirrors the most relevant cause so older clients can keep
+  working.
+- Auth follows the same rules as `/summary`, `/skill`, and `/weather`.
+
+Implementation:
+
+- Pure-Python helpers (testable without a live HA):
+  `homeassistant/roamcore_time_primitives.py`
+- View: `homeassistant/custom_components/roamcore/openclaw_view.py`
+  → `OpenClawTimeView`
+
 ## Contract
 
 Top-level fields:

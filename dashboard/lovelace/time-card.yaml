@@ -1,0 +1,77 @@
+# RoamCore — Time card (Lovelace snippet, native YAML)
+#
+# Renders the RoamCore contract time + timezone primitives in a novice-first
+# layout. Naming follows: docs/reference/rc-entity-naming.md
+#   (pattern: `<domain>.rc_<subsystem>_<object>_<metric>`)
+#
+# This file is a snippet — drop it into a Lovelace dashboard as a view or as
+# a `vertical-stack` inside an existing view. Built entirely from built-in HA
+# cards so it needs zero custom JS / no install beyond RoamCore packages.
+#
+# Included primitives (from `homeassistant/packages/roamcore_weather_time.yaml`):
+#   - sensor.rc_time_local             (legacy, unchanged)
+#   - sensor.rc_time_zone              (legacy, unchanged)
+#   - sensor.rc_time_now_iso           (Wave 2 #15)
+#   - sensor.rc_time_utc_offset_minutes (Wave 2 #15)
+#   - sensor.rc_time_source            (Wave 2 #15)
+#   - sensor.rc_time_status            (Wave 2 #15)
+#   - binary_sensor.rc_time_is_dst     (Wave 2 #15)
+#
+# All entities report `unavailable` (sensors) or `unknown` (binary_sensors)
+# with a `reason` attribute when sources are missing — the cards below render
+# that gracefully without crashing the dashboard.
+
+title: RoamCore — Time
+views:
+  - path: time
+    title: Time
+    icon: mdi:clock-outline
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              # Time
+              A glanceable, automation-grade time + timezone summary. All
+              values come from RoamCore contract entities — the underlying
+              source can change without breaking your dashboard or
+              automations.
+
+              If everything shows "Unavailable", set
+              `input_text.rc_time_zone_override` to a valid IANA name
+              (e.g. `Europe/London`). Leave it blank to follow HA's
+              configured timezone.
+
+          # ---- Top glance: local time + zone + status ----
+          - type: glance
+            title: Now
+            columns: 3
+            show_state: true
+            entities:
+              - entity: sensor.rc_time_local
+                name: Local
+              - entity: sensor.rc_time_zone
+                name: Zone
+              - entity: sensor.rc_time_status
+                name: Status
+
+          # ---- Detail row: ISO timestamp + UTC offset + DST ----
+          - type: entities
+            title: Details
+            entities:
+              - entity: sensor.rc_time_now_iso
+                name: ISO timestamp
+              - entity: sensor.rc_time_utc_offset_minutes
+                name: UTC offset (min)
+              - entity: binary_sensor.rc_time_is_dst
+                name: DST active
+              - entity: sensor.rc_time_source
+                name: Source
+
+          # ---- Configuration reference (kept short, novice-friendly) ----
+          - type: markdown
+            content: |
+              ## Configuration
+              - **Timezone override:** `input_text.rc_time_zone_override` (leave blank to use HA's configured timezone)
+
+              See `docs/catalog/time/time-entities.md` for details.
