@@ -1,0 +1,56 @@
+name: Check
+
+# The standing rule: every push to main + every PR must pass `scripts/check.sh`.
+# If it fails, the merge is blocked and the cron (roamcore-warden) gets kicked
+# into action immediately. This is the "always working" guarantee.
+#
+# Add new checks to scripts/check.sh — they will run here automatically.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '**'
+      - '.github/workflows/check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: scripts/check.sh
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck rsync
+          pip install --quiet --upgrade pip
+          pip install --quiet --break-system-packages mkdocs mkdocs-material pyyaml jsonschema pytest
+
+      - name: Install shellcheck (no sudo on ubuntu-latest by default)
+        run: |
+          sudo apt-get install -y -qq shellcheck || true
+
+      - name: Run check.sh
+        run: |
+          bash scripts/check.sh --core-only
+
+      - name: Upload audit report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-failure-logs
+          path: |
+            docs/connections/audit-report.md
+            public/docs/
+          if-no-files-found: ignore
