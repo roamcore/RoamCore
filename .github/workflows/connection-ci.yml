@@ -1,0 +1,120 @@
+name: Connection CI
+
+# Runs on every PR that touches connections/** or scripts/audit_connections.py.
+# 1. Audits every connection.yml against the schema + tier reality checks.
+# 2. Detects which connection(s) were changed in the PR.
+# 3. Runs that connection's pytest suite (one job per connection).
+
+on:
+  pull_request:
+    paths:
+      - 'connections/**'
+      - 'scripts/audit_connections.py'
+      - 'scripts/build_catalog.py'
+      - 'connections/_schema/**'
+      - '.github/workflows/connection-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'connections/**'
+      - 'scripts/audit_connections.py'
+      - 'connections/_schema/**'
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect changed connections
+    runs-on: ubuntu-latest
+    outputs:
+      connections: ${{ steps.scan.outputs.connections }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scan
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+          else
+            BASE="HEAD~1"
+            HEAD="HEAD"
+          fi
+          CHANGED=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" \
+            | grep -E '^connections/[^_]+/connection\.yml$' \
+            | awk -F/ '{print $2}' \
+            | sort -u)
+          if [ -z "$CHANGED" ]; then
+            echo "No connection.yml files changed."
+            echo "connections=[]" >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(echo "$CHANGED" | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
+            echo "connections=$JSON" >> "$GITHUB_OUTPUT"
+          fi
+
+  audit:
+    name: Audit connections
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install audit dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml jsonschema
+
+      - name: Run audit (strict on PRs)
+        run: |
+          python scripts/audit_connections.py --strict
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: docs/connections/audit-report.md
+
+  connection-tests:
+    name: Tests for ${{ matrix.connection }}
+    needs: [detect, audit]
+    if: needs.detect.outputs.connections != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        connection: ${{ fromJSON(needs.detect.outputs.connections) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml jsonschema
+
+      - name: Run tests for ${{ matrix.connection }}
+        run: |
+          if [ -d "connections/${{ matrix.connection }}/tests" ]; then
+            cd "connections/${{ matrix.connection }}"
+            # Day 1: tests are advisory. Flip RC_REQUIRE_CONNECTION_TESTS=1 to make them blocking.
+            if [ "${RC_REQUIRE_CONNECTION_TESTS}" = "1" ]; then
+              python -m pytest tests/ -v --tb=short
+            else
+              echo "::notice::RC_REQUIRE_CONNECTION_TESTS not set; running tests as advisory only."
+              python -m pytest tests/ -v --tb=short || true
+            fi
+          else
+            echo "No tests/ folder for ${{ matrix.connection }} — skipping."
+          fi

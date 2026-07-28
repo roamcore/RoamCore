@@ -1,0 +1,102 @@
+# Traccar — GPS / trip tracking for RoamCore
+#
+# HONEST TIER ASSESSMENT (see tier_warnings below):
+#   This connection is filed as tier: b because the existing
+#   `roamcore_traccar_proxy` integration is an `async_setup`-only
+#   integration (no config_flow, no config_entry). The user must:
+#     1. install the upstream Traccar server add-on manually,
+#     2. install the RoamCore Traccar Init add-on (first-boot credentials),
+#     3. install the RoamCore Traccar Proxy add-on (same-origin iframe),
+#     4. restart Home Assistant.
+#   That is a recipe + manual add-on install — that is tier-b by the audit's
+#   definition. The audit will reject any attempt to claim tier-a without
+#   a working config_flow + integration tests. Promoted only when one lands.
+#
+# Do NOT change `tier: b` to `tier: a` unless `install.config_flow: true`
+# AND a real `tests/test_config_flow.py` exists that exercises HA's
+# config_flow machinery end-to-end.
+id: traccar
+name: Traccar (GPS / trip tracking)
+tier: b
+category: map
+status: shipped
+version: 0.1.0
+description: |
+  Self-hosted Traccar GPS tracker with a same-origin reverse proxy so the
+  Traccar web UI can be embedded in Home Assistant without mobile
+  local-network iframe blocks. Drives location history, route lines,
+  and Trip Wrapped on the RoamCore map page.
+icon: traccar
+codeowners:
+  - "@bernardc"
+tags:
+  - traccar
+  - gps
+  - location
+  - trips
+  - map
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~5 min"
+  requires_reboot: true
+  setup_notes: |
+    This is a recipe install, not a one-tap. You will install three
+    add-ons in order (Traccar server, RoamCore Traccar Init, RoamCore
+    Traccar Proxy), then restart Home Assistant. After that the Traccar
+    UI is embedded on the RoamCore map page.
+
+install:
+  ha_integration_domain: roamcore_traccar_proxy
+  config_flow: false
+  hacs: false
+  ha_addon: roamcore-traccar-proxy
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - starts_addon
+    - adds_dashboard_card
+
+dashboard:
+  # Traccar renders inside the map page (iframe via the proxy), not as
+  # Lovelace tiles. Honest: no tiles contributed. The map page itself
+  # is /lovelace/map and shows the Traccar embed via the proxy.
+  tiles: []
+
+openclaw:
+  queries:
+    - "where am I?"
+    - "where did I park?"
+    - "show last trip"
+    - "how far did I drive today?"
+    - "summarize yesterday's trip"
+  summary_keys:
+    - lat
+    - lon
+    - speed
+    - bearing
+    - last_fix_at
+    - device_id
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+  - no_manual_yaml_required
+
+tier_warnings:
+  - "promotion_blocker: no config_flow in homeassistant/custom_components/roamcore_traccar_proxy/__init__.py (uses async_setup only)"
+  - "promotion_blocker: requires manual install of upstream Traccar server add-on (a0d7b954_traccar) — one-tap not possible while the upstream add-on is a separate install"
+  - "promotion_blocker: requires HA restart after add-on install (requires_reboot: true)"
+  - "promote_to_tier_a_when: config_flow + config_entry added to roamcore_traccar_proxy AND integration tests cover the config_flow end-to-end"
+
+links:
+  official:
+    - https://www.traccar.org/
+  docs:
+    - https://www.traccar.org/documentation/
+  repo:
+    - https://github.com/traccar/traccar
