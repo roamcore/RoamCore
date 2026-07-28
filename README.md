@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white"/>
   </a>
   <a href="https://roamcore.co.uk/docs/">
-    <img src="https://img.shields.io/badge/Docs-Read-2EA44F?style=for-the-badge&logo=readthedocs&logoColor=white"/>
+    <img src="https://img.shields.io/badge/Docs-Read-2EA44F?style=for-the-badge&logo=readthedocs&logoColor=readthedocs"/>
   </a>
   <a href="https://buymeacoffee.com/bernardc">
     <img src="https://img.shields.io/badge/Donate-Support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black"/>
@@ -22,51 +22,51 @@
   Built on Home Assistant, OpenWrt, and Proxmox.
 </p>
 
+---
 
-You chose vanlife for the freedom. The freedom to go anywhere, live on your own terms, and not answer to anyone. The software that runs your van should reflect that — not tie you to a subscription, a cloud service, or a vendor that decides what you can and can't do with your own vehicle.
+## ⚡ One-line install
 
-You spent months building the van. The electrics are dialled. The plumbing works. The insulation is perfect. But when it comes to actually *managing* all of it — checking your batteries, staying connected, tracking where you've been — you're juggling five apps, three dashboards, and a spreadsheet. Each one owned by a different company, each one another dependency.
+Already running Home Assistant? Install everything — packages, custom component, dashboard, JSON API — in one command:
 
-RoamCore fixes that.
+```sh
+curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh
+```
 
-One system. One dashboard. Everything in your van — power, connectivity, navigation, climate, water — visible and controllable from a single interface on your phone. It runs locally on your hardware, it works offline, and it belongs to you. No subscriptions. No cloud lock-in. No one else's terms and conditions.
+What this does: downloads the repo, copies `homeassistant/packages/*`, `custom_components/*`, `www/roamcore/*`, `lovelace/*`, and `tools/*` into your HA `/config`, writes a manifest to `/config/.roamcore/`, and backs up any files it overwrites. Restart Home Assistant when it's done. Uninstall with `uninstall.sh`.
 
-We're building the operating system that van conversions have been missing — one that's as free as the lifestyle itself.
+**Prefer HACS?** Add `https://github.com/roamcore/RoamCore` as a **Custom Repository** (category: Integration) and the integration auto-provisions the rest. Details: [`docs/howto/hacs-custom-repo-install.md`](docs/howto/hacs-custom-repo-install.md).
 
 ---
 
-## Table of Contents
+## What you get
 
-- [What You Get](#what-you-get)
-- [Why Open Source](#why-open-source)
-- [Getting Started](#getting-started)
-  - [RoamCore Dashboard](#roamcore-dashboard)
-  - [HACS install (beta: Custom Repository)](#hacs-install-beta-custom-repository)
-  - [RoamCore OS](#roamcore-os)
-- [Current Status](#current-status)
-- [Design Philosophy (why follow this project)](#design-philosophy-why-follow-this-project)
-- [OpenClaw API (conversational interface)](#openclaw-api-conversational-interface)
-  - [5 surprisingly useful things to ask your van](#5-surprisingly-useful-things-to-ask-your-van)
-- [HACS (planned)](#hacs-planned)
-- [Repo Structure](#repo-structure)
-- [Extensible By Design](#extensible-by-design)
-- [Who It's For](#who-its-for)
-- [Contributing](#contributing)
+| Feature | What it does |
+|---|---|
+| **One mobile dashboard** | Battery, solar, water, GPS, connectivity, lighting, mode — one page, works offline, lives inside your existing Home Assistant. |
+| **Honest integrations** | Tier A (one-tap, config_flow, tests), Tier B (recipe), Tier C (external link). The audit script enforces the badges — no marketing fluff. |
+| **OpenClaw JSON API** | Stable, versioned `/api/roamcore/openclaw/summary` endpoint so local agents can read your van's state and answer questions in plain English. |
+| **Trip Wrapped** | Self-hosted trip recap from local Traccar data — no cloud, no upload. |
+| **Traccar + Wicann Pro recipes** | Step-by-step recipe installs for GPS tracking and OBD2 telemetry. No one-tap yet, but the docs work. |
 
-## What You Get
+---
 
-RoamCore gives you a clean, mobile-first dashboard that makes your van's systems feel as polished as the build itself:
+## Status
 
-- **Power** — battery state of charge, solar input, load consumption, charging status. See your energy situation at a glance and stop doing mental maths.
-- **Navigation** — automatic GPS trip logging, route history, distance and stop tracking. Generate shareable trip summaries of where you've been.
-- **Connectivity** — LTE, Starlink, Wi-Fi — managed and monitored from one place, with automatic failover so you stay connected.
-- **Level** — a visual spirit level on your dashboard. Park, tap calibrate, done.
-- **Weather & Time** — conditions, forecasts, and automatic timezone updates as you travel. Useful on its own, powerful when tied to automations.
-- **Automations** — schedule routines, create modes, and let the system handle the repetitive stuff.
+**Beta — what's working, what's WIP.**
 
-Simple enough for anyone. But underneath, it's the full Home Assistant stack — if you want to go deep, there's no ceiling.
+| Status | Feature |
+|---|---|
+| ✅ Shipped | One-line installer + uninstaller, HACS custom-repo install, RoamCore dashboard, native YAML dashboard, OpenClaw JSON API, Map page (with raster fallback), Trip Wrapped HTML export, Setup wizard (built-in Lovelace cards), support bundle exporter. |
+| ✅ Honest tier-A | **Victron Energy (GX / Cerbo / MQTT)** — config_flow, one-tap, integration tests. |
+| ✅ Honest tier-B | **Traccar** (GPS / trip tracking) and **MeatPi WiCAN Pro** (OBD2) — recipe installs, all blockers documented. |
+| 🧪 In progress | Registry-driven setup wizard (today it's a hand-written YAML dashboard), VP2430 install E2E proof in CI, marketing-site install CTA, HACS default-store listing. |
+| ❌ Not yet | A downloadable RoamCore OS image for the VP2430, a second tier-A connection. |
 
-## Why Open Source
+The full audit with blockers, go/no-go criteria, and what we'd need to ship a beta or a public launch is in [`docs/marketing/launch-checklist.md`](docs/marketing/launch-checklist.md).
+
+---
+
+## Why open source
 
 You didn't build a van to be dependent on someone else's platform. The software that runs your home — even a home on wheels — should be transparent, extensible, and entirely in your control. That's why every layer of RoamCore is open source, built on foundations the community has already proven at scale:
 
@@ -76,180 +76,78 @@ You didn't build a van to be dependent on someone else's platform. The software 
 
 No proprietary protocols. No locked-down firmware. No features held hostage behind a monthly fee. Every layer is open, documented, and replaceable. If RoamCore ever disappears, your system still works. That's the point.
 
----
+You chose vanlife for the freedom. The software that runs your van should reflect that — not tie you to a subscription, a cloud service, or a vendor that decides what you can and can't do with your own vehicle.
 
-## Getting Started
+You spent months building the van. The electrics are dialled. The plumbing works. The insulation is perfect. But when it comes to actually *managing* all of it — checking your batteries, staying connected, tracking where you've been — you're juggling five apps, three dashboards, and a spreadsheet. Each one owned by a different company, each one another dependency.
 
-There are two ways to use RoamCore:
+RoamCore fixes that.
 
-### RoamCore Dashboard
-
-If you already run Home Assistant in your van, you can install the RoamCore dashboard and configuration onto your existing setup. This gives you the pre-built dashboard, integrations, and automations without replacing your current infrastructure.
-
-The `homeassistant/` directory contains everything you need.
-
-#### HA-only beta: one-line install (recommended)
-
-**Prerequisites:** you already have **Home Assistant** running (HAOS recommended) and can access the `/config` filesystem (e.g. via the **Terminal & SSH** add-on).
-
-Install:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh
-```
-
-Uninstall:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/uninstall.sh | sh
-```
-
-Details + verification checklist: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md)
-
-#### First-run setup + Demo Mode
-
-- **Setup wizard:** open `/roamcore/setup` (or click **Open setup wizard** from the banner / Settings page). A persistent **“Setup not complete”** banner will stay visible on the RoamCore dashboard until the `rc_setup_*` readiness checks are green.
-- **Demo Mode (optional):** toggle `input_boolean.rc_demo_mode` (**RC Demo Mode**) to preview the dashboard even if critical sensors are missing. When enabled, demo values appear **only** for missing/unknown/unavailable entities.
-
-Recommended add-ons/integrations (reuse-first):
-- Timezone-from-GPS: [`docs/howto/geolocator-timezone.md`](docs/howto/geolocator-timezone.md)
-- Run OpenClaw in HAOS: [`docs/howto/openclaw-techartdev.md`](docs/howto/openclaw-techartdev.md)
-
-OpenClaw + RoamCore overview:
-- [`openclaw/README.md`](openclaw/README.md)
-
-### HACS install (beta: Custom Repository)
-
-If you want installs/updates through the Home Assistant UI, you can add RoamCore as a **HACS Custom Repository** (beta path):
-
-1) Install HACS (if you haven’t already): https://hacs.xyz/
-2) In Home Assistant: **HACS → Integrations → ⋮ → Custom repositories**
-3) Add the repository:
-   - URL: `https://github.com/roamcore/RoamCore`
-   - Category: **Integration**
-4) Install **RoamCore** from HACS, then restart Home Assistant.
-
-Docs: [`docs/howto/hacs-custom-repo-install.md`](docs/howto/hacs-custom-repo-install.md)
-
-### RoamCore OS
-
-The full experience. A pre-configured Proxmox image running Home Assistant OS and OpenWrt as VMs on supported hardware (Protectli VP2430). Integrated cellular connectivity, WAN failover, modem GPS — all pre-configured.
-
-See [`docs/`](docs/) for setup instructions.
+One system. One dashboard. Everything in your van — power, connectivity, navigation, climate, water — visible and controllable from a single interface on your phone. It runs locally on your hardware, it works offline, and it belongs to you. No subscriptions. No cloud lock-in. No one else's terms and conditions.
 
 ---
 
-## Current Status
+## Getting started
 
-**RoamCore is in beta.** The core features are being built and tested. The software is usable but expect rough edges, breaking changes, and gaps in documentation.
+### HA-only install (recommended)
 
-We're releasing early because we believe in building in the open. The long-term goal is a polished, novice-friendly product — but right now, this is best suited for technical users who are comfortable with Home Assistant and happy to provide feedback.
+If you already run Home Assistant, the one-line install above is the fastest path. Full walkthrough: [`docs/howto/homeassistant-installer.md`](docs/howto/homeassistant-installer.md).
 
-See the [roadmap](ROADMAP.md) for what's being built and where the project is heading.
+### HACS install (beta)
 
-## Design Philosophy (why follow this project)
+Add `https://github.com/roamcore/RoamCore` as a HACS custom repository (category: Integration), install RoamCore, restart HA. Details: [`docs/howto/hacs-custom-repo-install.md`](docs/howto/hacs-custom-repo-install.md).
 
-RoamCore is built around a few non-negotiables:
+### First-run setup
 
-- **Local-first:** core functionality works offline.
-- **No subscriptions for essentials:** your battery and dashboard should never be paywalled.
-- **Contract-first:** the UI is built on stable `rc_*` entities so we can swap vendors behind the scenes without breaking dashboards or automations.
-- **Extensible by default:** everything is just Home Assistant under the hood — templates, automations, ESPHome, and integrations all compose naturally.
+- Open `/roamcore/setup` (or click **Open setup wizard** from the dashboard banner). A **"Setup not complete"** banner stays visible until the `rc_setup_*` readiness checks are green.
+- Optional: toggle `input_boolean.rc_demo_mode` to preview the dashboard with safe demo values when sensors are missing.
 
-If you like software that’s pragmatic, inspectable, and built to last, you’ll like where RoamCore is going.
+### RoamCore OS (hardware: Protectli VP2430)
 
-More detail: [`docs/philosophy.md`](docs/philosophy.md)
-
-Project status at a glance: [`docs/feature-checklist.md`](docs/feature-checklist.md)
-
-## Resources (inspiration + community)
-
-A growing list of useful projects and communities for upgrading your van/off-grid system:
-
-- [`docs/resources.md`](docs/resources.md)
-
-## OpenClaw API (conversational interface)
-
-RoamCore includes an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van’s state.
-That unlocks a new interface: once you connect it to a local agent, you can *ask your van questions* in natural language and get context-heavy answers (power, location, levelling, trip context) without hunting through multiple apps.
-
-Docs: [`docs/reference/openclaw-json-api.md`](docs/reference/openclaw-json-api.md)
-
-### 5 surprisingly useful things to ask your van
-
-These are examples of the kind of questions that become possible once an agent can see your van’s full state (snapshot + time series). They’re written for the “tired vanlifer” reality: you want answers without crawling under the bed or juggling six apps.
-
-1) **“Can I make it through tonight on power if I work for 4 hours, cook once, and run the heater fan?”**
-   - The agent uses recent power drain trends + current battery SOC to give a practical forecast (and what to turn down first).
-
-2) **“Do I have enough water to last until tomorrow afternoon? And how urgent is it?”**
-   - When tank sensors exist, the agent turns a confusing level into “~X days left at your current use”. If sensors don’t exist yet, it tells you exactly what’s missing.
-
-3) **“Find me a legal-ish place to sleep within 30 minutes that won’t kill my internet.”**
-   - Combines location context + connectivity status (and later, campsite/amenity overlays) to suggest where to aim *tonight*.
-
-4) **“What’s my internet situation right now—Starlink/LTE/Wi‑Fi—and is it getting worse?”**
-   - Instead of a tiny icon, you get a plain-English diagnosis: current link, stability, and whether your recent signal/usage trend suggests trouble.
-
-5) **“I’m in bed—show me what’s going on outside and tell me if anything looks wrong.”**
-   - Pulls together cameras/sensors into one calm “night watch” summary (so you don’t get up to check screens).
-
-## HACS (planned)
-
-For beta, install is via the one-line script above.
-Longer-term we intend to publish a **HACS** integration so users can install RoamCore from the HA UI and have the dashboard + resources created automatically.
+The full stack — Proxmox + OpenWrt + HAOS + App CT on a Protectli VP2430 — is documented in [`docs/engineering/plans/SoftwareOverview.md`](docs/engineering/plans/SoftwareOverview.md). A pre-built image is not yet shipped; today you build it yourself from the docs.
 
 ---
 
-## Repo Structure
+## OpenClaw JSON API
+
+RoamCore ships an optional OpenClaw-oriented JSON API that exposes a stable, versioned snapshot of your van's state. Once you connect it to a local agent, you can ask your van questions in natural language and get context-heavy answers (power, location, levelling, trip context) without hunting through multiple apps.
+
+- Docs: [`docs/reference/openclaw-json-api.md`](docs/reference/openclaw-json-api.md)
+- Endpoint: `/api/roamcore/openclaw/summary`
+
+**5 surprisingly useful things to ask your van:**
+
+1. *"Can I make it through tonight on power if I work for 4 hours, cook once, and run the heater fan?"* — recent power drain + battery SOC → practical forecast.
+2. *"Do I have enough water to last until tomorrow afternoon?"* — turns level sensors into "X days at your current use".
+3. *"Find me a legal-ish place to sleep within 30 minutes that won't kill my internet."* — location + connectivity + (later) campsite overlays.
+4. *"What's my internet situation right now — Starlink/LTE/Wi-Fi — and is it getting worse?"* — plain-English diagnosis, not an icon.
+5. *"I'm in bed — show me what I'm parked near and tell me if anything looks wrong."* — cameras + sensors into a calm "night watch" summary.
+
+---
+
+## Repo structure
 
 ```
 roamcore/
 ├── dashboard/       # Dashboard UI prototypes and design assets
-├── docs/            # Documentation and guides
+├── docs/            # User docs (MkDocs) + engineering plans
+├── homeassistant/   # HA packages, custom components, www, lovelace, tools
 ├── hardware/        # Hardware specifications and reference configs
-├── homeassistant/   # Home Assistant configuration, dashboards, automations
 ├── openwrt/         # OpenWrt networking configuration
 ├── proxmox/         # Proxmox VM setup and provisioning
-├── scripts/         # Utility and setup scripts
-├── ROADMAP.md       # Project direction and feature roadmap
+├── connections/     # Single source of truth for catalog connections
+├── scripts/         # Audit, build, install, check scripts
+├── ROADMAP.md       # Project direction
 ├── CONTRIBUTING.md  # How to contribute
 └── LICENSE          # MIT License
 ```
 
 ---
 
-## Extensible By Design
-
-Start with the essentials, then grow into a complete control system:
-
-- **Power** — solar, batteries, charging sources, inverters
-- **Water** — tank levels, pumps, flow monitoring
-- **Climate** — heaters, fans, AC, temperature sensors
-- **Safety & Security** — cameras, gas and smoke detection, motion sensors
-- **Navigation** — GPS tracking, trip history, levelling
-- **Vehicle** — OBD-II diagnostics, fuel monitoring
-- **Remote Access** — secure access from anywhere
-
-This is one of the strengths of building on open source — the community can keep expanding what's possible.
-
----
-
-## Who It's For
-
-**Everyday users** who want a reliable system that just works.
-
-**Builders and integrators** who want full control without starting from scratch.
-
-**Home Assistant enthusiasts** who want a mobile-first, cohesive platform that saves weeks of configuration.
-
----
-
 ## Contributing
 
-RoamCore is fully open source under the [MIT License](LICENSE). If you care about independence, clarity, and building systems that last, you're in the right place.
+RoamCore is fully open source under the [MIT License](LICENSE). Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to get started.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+If you want to add a new supported connection, the catalog pipeline (see [`connections/README.md`](connections/README.md)) is the entry point: one `connection.yml` per integration, validated by `scripts/audit_connections.py`, rendered onto the wizard and the docs site automatically.
 
 ---
 
