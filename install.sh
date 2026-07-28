@@ -47,7 +47,19 @@ repo_slug() {
 }
 
 SLUG="$(repo_slug)"
-RAW_URL="https://raw.githubusercontent.com/${SLUG}/${ROAMCORE_REF}/homeassistant/install.sh"
+
+# ROAMCORE_REPO may point at a local checkout via file:// (used for testing
+# and for offline/air-gapped installs). In that case, source the inner
+# installer directly from the local path instead of going through GitHub.
+case "$ROAMCORE_REPO" in
+  file://*)
+    LOCAL_REPO_PATH="${ROAMCORE_REPO#file://}"
+    RAW_URL="file://${LOCAL_REPO_PATH}/homeassistant/install.sh"
+    ;;
+  *)
+    RAW_URL="https://raw.githubusercontent.com/${SLUG}/${ROAMCORE_REF}/homeassistant/install.sh"
+    ;;
+esac
 
 WORK_BASE="${WORK_BASE:-}"
 if [ -z "${WORK_BASE}" ]; then
