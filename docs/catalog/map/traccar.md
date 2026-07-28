@@ -1,6 +1,15 @@
 # Traccar (GPS tracking) integration
 
-**Support tier:** A (RoamCore native)
+**Support tier:** B (recipe + manual add-on install)
+
+> **Tier B note:** this connection is a recipe install, not a one-tap.
+> The user installs the upstream Traccar server add-on plus the RoamCore
+> Traccar Init + Proxy add-ons, then restarts Home Assistant. There is
+> no config_flow yet in the `roamcore_traccar_proxy` integration (it
+> uses `async_setup` only), so the audit correctly classifies this as
+> tier-b. Promotion to tier-a requires a config_flow + integration
+> tests; see `connections/traccar/connection.yml` for the
+> `promotion_blocker` notes.
 
 ## What this is
 RoamCore ships Traccar support via its own proxy/init components so you can use Traccar as a reliable location history source in Home Assistant.
