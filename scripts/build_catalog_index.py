@@ -127,8 +127,12 @@ def main() -> int:
                 "title": title,
                 "tier": tier,
                 "tags": tags,
-                # MkDocs pages render as /<path-without-.md>/
+                # Two URL forms:
+                # - `href`: MkDocs HTML URL (with trailing slash). Used by the HTML catalog.
+                # - `href_md`: Markdown link form (relative .md path). MkDocs strict mode
+                #   accepts this and avoids "unrecognized relative link" warnings.
                 "href": str(rel.with_suffix("")).replace("\\", "/") + "/",
+                "href_md": str(rel).replace("\\", "/"),
                 "summary": summary,
                 "category": (rel.parts[1] if len(rel.parts) >= 3 else ""),
             }
@@ -192,9 +196,10 @@ def main() -> int:
                 continue
             md.append(f"## {pretty_category(cat)}\n\n")
             for it in items2:
-                # tier pages live at docs/catalog/<this-file>, so link to category pages relatively
-                # (strip the leading 'catalog/' prefix).
-                href = it["href"].replace("catalog/", "", 1)
+                # Use the .md-relative form (href_md) so MkDocs strict mode accepts it
+                # without "unrecognized relative link" warnings. Strip the leading
+                # 'catalog/' prefix because tier-{a,b,c}.md lives inside docs/catalog/.
+                href = it["href_md"].replace("catalog/", "", 1)
                 md.append(f"- [{it['title']}]({href}) — {it['summary']}\n")
             md.append("\n")
 
