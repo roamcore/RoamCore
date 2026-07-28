@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # Back-compat wrapper.
 #
 # The canonical HAOS installer lives at:

@@ -57,7 +57,23 @@ repo_slug() {
 }
 
 SLUG="$(repo_slug)"
-ARCHIVE_URL="https://github.com/${SLUG}/archive/${ROAMCORE_REF}.tar.gz"
+
+# ROAMCORE_REPO may point at a local checkout via file:// (used for testing
+# and for offline/air-gapped installs). In that case we build a tarball
+# locally instead of downloading from GitHub. Layout must match what the
+# GitHub archive would produce: a single top-level directory that contains
+# the homeassistant/ subtree.
+case "$ROAMCORE_REPO" in
+  file://*)
+    LOCAL_REPO_PATH="${ROAMCORE_REPO#file://}"
+    ARCHIVE_URL="local:${LOCAL_REPO_PATH}"
+    LOCAL_REPO=1
+    ;;
+  *)
+    ARCHIVE_URL="https://github.com/${SLUG}/archive/${ROAMCORE_REF}.tar.gz"
+    LOCAL_REPO=
+    ;;
+esac
 
 
 
@@ -96,7 +112,21 @@ echo "URL:  $ARCHIVE_URL"
 echo "Dest: $CONFIG_DIR"
 
 echo "Downloading…"
-fetch "$ARCHIVE_URL" "$ARCHIVE"
+if [ -n "${LOCAL_REPO:-}" ]; then
+  if [ ! -d "$LOCAL_REPO_PATH" ]; then
+    echo "ERROR: local repo path does not exist: $LOCAL_REPO_PATH" >&2
+    exit 1
+  fi
+  # Pack the local checkout into a tarball whose layout matches a GitHub
+  # archive: one top-level directory containing the full repo. We use the
+  # directory's basename so find() below still locates it the same way.
+  LOCAL_TOP="$(basename "$LOCAL_REPO_PATH")"
+  # Exclude .git so live checkouts don't fail with "file changed as we read it"
+  # during the tar, and so we never ship the .git history into /config.
+  (cd "$(dirname "$LOCAL_REPO_PATH")" && tar --exclude='.git' -czf "$ARCHIVE" "$LOCAL_TOP")
+else
+  fetch "$ARCHIVE_URL" "$ARCHIVE"
+fi
 
 echo "Extracting…"
 tar -xzf "$ARCHIVE" -C "$SRC_ROOT"
@@ -172,17 +202,28 @@ install_dir_children() {
   ddir="$2"
   [ -d "$sdir" ] || return 0
   mkdir -p "$ddir"
-  # Find regular files only (ignore .gitkeep).
+  # Find regular files only. Ignore:
+  #   .gitkeep     — placeholder only meaningful in the repo
+  #   __pycache__  — Python bytecode cache, never ship into /config
+  #   *.pyc        — same; avoids pulling in mismatched Python versions
   if command -v sort >/dev/null 2>&1; then
-    find "$sdir" -type f ! -name '.gitkeep' | sort | while IFS= read -r f; do
-      rel="${f#"$sdir"/}"
-      install_file "$f" "$ddir/$rel"
-    done
+    find "$sdir" -type f \
+      ! -name '.gitkeep' \
+      ! -name '*.pyc' \
+      ! -path '*/__pycache__/*' \
+      | sort | while IFS= read -r f; do
+        rel="${f#"$sdir"/}"
+        install_file "$f" "$ddir/$rel"
+      done
   else
-    find "$sdir" -type f ! -name '.gitkeep' | while IFS= read -r f; do
-    rel="${f#"$sdir"/}"
-    install_file "$f" "$ddir/$rel"
-    done
+    find "$sdir" -type f \
+      ! -name '.gitkeep' \
+      ! -name '*.pyc' \
+      ! -path '*/__pycache__/*' \
+      | while IFS= read -r f; do
+        rel="${f#"$sdir"/}"
+        install_file "$f" "$ddir/$rel"
+      done
   fi
 }
 
