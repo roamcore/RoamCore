@@ -99,10 +99,9 @@ jobs:
             ALLOWED_REGEX="${ALLOWED_REGEX}|^connections/_schema/connection\.schema\.json$"
             ALLOWED_REGEX="${ALLOWED_REGEX}|^scripts/audit_connections\.py$"
             ALLOWED_REGEX="${ALLOWED_REGEX}|^scripts/build_catalog\.py$"
-            ALLOWED_REGEX="${ALLOWED_REGEX|^tests/integration/${CID}/"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^tests/integration/${CID}/"
             ALLOWED_REGEX="${ALLOWED_REGEX}|^connections/README\.md$"
-            ALLOWED_REGEX="${ALLOWED_REGEX|^\.github/workflows/connection-(ci|boundary|catalog)\.yml$"
-            ALLOWED_REGEX="${ALLOWED_REGEX|^\.github/workflows/connection-(ci|boundary|catalog)\.yml$"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^\.github/workflows/connection-(ci|boundary|catalog)\.yml$"
 
             VIOLATIONS=$(echo "$ALL" | grep -vE "$ALLOWED_REGEX" || true)
             echo "allowed=$ALLOWED_REGEX" >> "$GITHUB_OUTPUT"
