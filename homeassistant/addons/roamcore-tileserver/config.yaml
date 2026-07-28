@@ -20,5 +20,4 @@ options:
 schema:
   mbtiles_path: str
   default_tile: list(transparent|404)
-"""
 

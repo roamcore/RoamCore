@@ -82,3 +82,9 @@ nav:
       - Support bundle: howto/support-bundle.md
       - Entity naming: reference/rc-entity-naming.md
       - OpenClaw JSON API: reference/openclaw-json-api.md
+
+# Exclude files that aren't docs (e.g. the public homepage HTML).
+exclude_docs: |
+  index.html
+  about.md
+  README.md
