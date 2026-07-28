@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/roamcore/RoamCore/connections/_schema/connection.schema.json",
+  "title": "RoamCore Connection Manifest",
+  "description": "Declarative single source of truth for a RoamCore connection. Drives the audit robot, the catalog generator, the wizard UI, and the install recipe.",
+  "type": "object",
+  "required": ["id", "name", "tier", "category", "status", "wizard", "install"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable kebab-case id. Used as folder name, HA integration domain, wizard row id, registry entry id.",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$",
+      "maxLength": 64
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name. Shown in the wizard.",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["a", "b", "c"],
+      "description": "Support tier. A = native + config_flow + tests. B = recipe + howto. C = external link only."
+    },
+    "category": {
+      "type": "string",
+      "description": "Catalog category. Must match docs/catalog/<category>/ folder.",
+      "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["shipped", "beta", "wip", "planned", "deprecated"],
+      "description": "Implementation status. Drives tier verification + audit."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver of this connection implementation.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z-]+)?$"
+    },
+    "description": {
+      "type": "string",
+      "description": "One- or two-sentence description. Used in the catalog page summary + wizard subtitle.",
+      "maxLength": 500
+    },
+    "icon": {
+      "type": "string",
+      "description": "Icon name from assets/icons/. Falls back to category icon."
+    },
+    "codeowners": {
+      "type": "array",
+      "description": "GitHub handles responsible for this connection.",
+      "items": { "type": "string", "pattern": "^@?[a-zA-Z0-9-]+$" }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Free-form tags for search + filtering.",
+      "items": { "type": "string", "maxLength": 32 }
+    },
+    "wizard": {
+      "type": "object",
+      "description": "Wizard UI config. Drives /roamcore/setup rendering.",
+      "required": ["connection_kind"],
+      "additionalProperties": false,
+      "properties": {
+        "connection_kind": {
+          "type": "string",
+          "enum": ["mqtt", "api-key", "oauth", "bonjour", "http", "serial", "recipe", "manual", "external"],
+          "description": "How the connection is established. Recipe + external = tier-b/c. The rest = tier-a candidates."
+        },
+        "one_tap": {
+          "type": "boolean",
+          "description": "True if the wizard can complete the connection with one tap. Required for tier-a."
+        },
+        "auto_discover": {
+          "type": "boolean",
+          "description": "True if the integration auto-discovers devices on the LAN (mDNS / Bonjour / scan)."
+        },
+        "estimated_time": {
+          "type": "string",
+          "description": "Human-readable estimate shown in the wizard. e.g. '30s', '~2 min'.",
+          "pattern": "^[~]?[0-9]+(\\.[0-9]+)?\\s*(s|sec|secs|seconds|m|min|mins|minutes)$"
+        },
+        "requires_reboot": {
+          "type": "boolean",
+          "description": "True if a Home Assistant restart is required to fully activate the connection."
+        },
+        "setup_notes": {
+          "type": "string",
+          "description": "Plain-English note shown to the user before they tap Connect.",
+          "maxLength": 500
+        }
+      }
+    },
+    "install": {
+      "type": "object",
+      "description": "Install contract. Drives install.sh / HACS / setup wizard steps.",
+      "required": ["ha_integration_domain"],
+      "additionalProperties": false,
+      "properties": {
+        "ha_integration_domain": {
+          "type": "string",
+          "description": "Home Assistant integration domain. e.g. 'victron', 'mqtt'.",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "config_flow": {
+          "type": "boolean",
+          "description": "True if HA has a config_flow for this integration. Required for tier-a."
+        },
+        "hacs": {
+          "type": "boolean",
+          "description": "True if available via HACS (default repo or custom repo)."
+        },
+        "python_requirements": {
+          "type": "array",
+          "description": "Python pip requirements.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ha_addon": {
+          "type": "string",
+          "description": "HA add-on slug if the connection requires a sidecar addon (e.g. 'traccar').",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "min_ha_version": {
+          "type": "string",
+          "description": "Minimum HA core version.",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "side_effects": {
+          "type": "array",
+          "description": "Things the install will do besides dropping the integration. e.g. ['configures_mqtt', 'adds_dashboard_card'].",
+          "items": {
+            "type": "string",
+            "enum": [
+              "configures_mqtt",
+              "adds_dashboard_card",
+              "creates_input_boolean",
+              "creates_input_select",
+              "registers_service",
+              "starts_addon",
+              "modifies_firewall"
+            ]
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "description": "Dashboard tiles this connection contributes. Optional.",
+      "additionalProperties": false,
+      "properties": {
+        "tiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "source"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^rc_[a-z][a-z0-9_]{2,63}$",
+                "description": "Tile id. Must follow rc_entity_naming.md convention."
+              },
+              "label": { "type": "string", "maxLength": 48 },
+              "unit": { "type": "string", "maxLength": 8 },
+              "source": {
+                "type": "string",
+                "description": "HA entity id this tile reads from.",
+                "pattern": "^(sensor|input_boolean|input_select|switch|button|binary_sensor|device_tracker|person)\\.[a-z0-9_]+$"
+              },
+              "icon": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "openclaw": {
+      "type": "object",
+      "description": "OpenClaw API surface — what the agent can ask the van.",
+      "additionalProperties": false,
+      "properties": {
+        "queries": {
+          "type": "array",
+          "description": "Example natural-language queries that should succeed against this connection.",
+          "items": { "type": "string", "maxLength": 200 }
+        },
+        "summary_keys": {
+          "type": "array",
+          "description": "Top-level keys this connection contributes to the system_summary JSON.",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$" }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "description": "Test files (relative to connections/<id>/) that must pass before tier-a.",
+      "items": { "type": "string", "pattern": "^(tests/)?[a-zA-Z0-9_/\\-]+\\.py$" }
+    },
+    "tier_requirements": {
+      "type": "array",
+      "description": "What must be true for this connection to qualify as tier-a. Audit verifies.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "working_config_flow",
+          "auto_discovery_works",
+          "integration_test_passes",
+          "dashboard_tiles_render",
+          "openclaw_summary_includes",
+          "docs_recipe_published",
+          "no_manual_yaml_required"
+        ]
+      }
+    },
+    "tier_warnings": {
+      "type": "array",
+      "description": "Known issues that block tier-a promotion.",
+      "items": { "type": "string", "maxLength": 200 }
+    },
+    "links": {
+      "type": "object",
+      "description": "External links shown in the docs page.",
+      "additionalProperties": false,
+      "properties": {
+        "official": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        },
+        "docs": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        },
+        "repo": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        },
+        "buy": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "Affiliates / hardware purchase links. Optional."
+        }
+      }
+    },
+    "deprecated_by": {
+      "type": "string",
+      "description": "Connection id that supersedes this one. Only valid when status: deprecated.",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    }
+  },
+  "allOf": [
+    {
+      "description": "Tier-a requires config_flow + one_tap + tests + tier_requirements entries.",
+      "if": { "properties": { "tier": { "const": "a" } } },
+      "then": {
+        "required": ["tests", "tier_requirements"],
+        "properties": {
+          "wizard": {
+            "required": ["one_tap"]
+          },
+          "install": {
+            "required": ["config_flow"]
+          }
+        }
+      }
+    },
+    {
+      "description": "Tier-b requires docs_recipe_published in tier_requirements.",
+      "if": { "properties": { "tier": { "const": "b" } } },
+      "then": {
+        "properties": {
+          "tier_requirements": {
+            "contains": { "const": "docs_recipe_published" }
+          }
+        }
+      }
+    },
+    {
+      "description": "Status shipped requires tests present.",
+      "if": { "properties": { "status": { "const": "shipped" } } },
+      "then": { "required": ["tests"] }
+    },
+    {
+      "description": "Deprecated must reference deprecated_by.",
+      "if": { "properties": { "status": { "const": "deprecated" } } },
+      "then": { "required": ["deprecated_by"] }
+    }
+  ]
+}

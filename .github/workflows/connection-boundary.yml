@@ -1,0 +1,168 @@
+name: Connection boundary
+
+# The isolation robot. Refuses to merge a PR that touches anything outside
+# its own connections/<id>/ folder (plus a small set of allow-listed paths).
+#
+# Why: a connection branch must NEVER edit core/ install paths / sibling
+# connections. If we let that through, the wizard breaks in production
+# without warning.
+#
+# Tier-a connections follow the strict rule below.
+# Files prefixed with [core-change] in the PR title may touch core; this
+# requires explicit Bernard sign-off via PR review.
+#
+# Day 1: ADVISORY only. The workflow reports violations but does not block.
+# Day 2: Becomes BLOCKING after one cron cycle proves the rule is correctly
+# calibrated. Flip the `enforce` env var below.
+
+on:
+  pull_request:
+    paths:
+      - 'connections/**'
+      - 'core/**'
+      - 'homeassistant/**'
+      - 'docs/**'
+      - 'scripts/**'
+      - '.github/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # Set to "true" to actually block. Day 1 shipped with "false" (advisory);
+  # flipped to "true" on Day 4 once one cron cycle proved the rule holds.
+  enforce: "true"
+
+jobs:
+  boundary:
+    name: Boundary check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed connection id
+        id: cid
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          CHANGED=$(git diff --name-only --diff-filter=AM "$BASE" "$HEAD" \
+            | grep -E '^connections/[^_]+/connection\.yml$' \
+            | awk -F/ '{print $2}' \
+            | sort -u)
+          COUNT=$(echo "$CHANGED" | grep -c . || true)
+          if [ "$COUNT" -gt 1 ]; then
+            echo "::error::PR touches multiple connections ($CHANGED). One connection per PR, please."
+            echo "multi=1" >> "$GITHUB_OUTPUT"
+            echo "cid=$CHANGED" >> "$GITHUB_OUTPUT"
+          elif [ "$COUNT" -eq 1 ]; then
+            echo "cid=$CHANGED" >> "$GITHUB_OUTPUT"
+            echo "multi=0" >> "$GITHUB_OUTPUT"
+          else
+            # No connection.yml touched — could be a [core-change] or [schema]
+            # update or a pure test fix. Allow, but require the PR title to
+            # declare intent.
+            echo "cid=" >> "$GITHUB_OUTPUT"
+            echo "multi=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Classify PR
+        id: classify
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          CID="${{ steps.cid.outputs.cid }}"
+          if echo "$TITLE" | grep -qE '^\[(core-change|schema|tools|docs-only)\]'; then
+            echo "kind=exempt" >> "$GITHUB_OUTPUT"
+          elif [ -n "$CID" ]; then
+            echo "kind=connection" >> "$GITHUB_OUTPUT"
+            echo "connection=$CID" >> "$GITHUB_OUTPUT"
+          else
+            echo "kind=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute violations
+        id: diff
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          CID="${{ steps.cid.outputs.cid }}"
+          KIND="${{ steps.classify.outputs.kind }}"
+          ALL=$(git diff --name-only --diff-filter=ACMR "$BASE" "$HEAD")
+          echo "all_changed<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$ALL" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          if [ "$KIND" = "connection" ]; then
+            # Allowed paths for a connection PR
+            ALLOWED_REGEX="^connections/${CID}/"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^connections/_schema/connection\.schema\.json$"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^scripts/audit_connections\.py$"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^scripts/build_catalog\.py$"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^tests/integration/${CID}/"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^connections/README\.md$"
+            ALLOWED_REGEX="${ALLOWED_REGEX}|^\.github/workflows/connection-(ci|boundary|catalog)\.yml$"
+
+            VIOLATIONS=$(echo "$ALL" | grep -vE "$ALLOWED_REGEX" || true)
+            echo "allowed=$ALLOWED_REGEX" >> "$GITHUB_OUTPUT"
+            echo "violations<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$VIOLATIONS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            if [ -n "$VIOLATIONS" ]; then
+              echo "has_violations=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_violations=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "has_violations=false" >> "$GITHUB_OUTPUT"
+            echo "violations=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report
+        if: steps.diff.outputs.has_violations == 'true'
+        run: |
+          echo "### ❌ Connection boundary violations" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR claimed connection: \`${{ steps.cid.outputs.cid }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Files outside the allowed boundary:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.diff.outputs.violations }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR
+        if: steps.diff.outputs.has_violations == 'true' && env.enforce == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              '### ❌ Connection boundary violation',
+              '',
+              'This PR claims to ship connection `${{ steps.cid.outputs.cid }}` but also touches files outside its allowed boundary.',
+              '',
+              '**Violations:**',
+              '',
+              '```',
+              `${{ steps.diff.outputs.violations }}`,
+              '```',
+              '',
+              'A connection PR may only edit:',
+              '- `connections/<id>/*`',
+              '- `tests/integration/<id>/*`',
+              '- the shared audit/build scripts (if explicitly required)',
+              '- the connection CI / boundary / catalog workflows',
+              '',
+              'If you genuinely need to change core code, prefix the PR title with `[core-change]` and request Bernard review.'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Fail when enforcing
+        if: steps.diff.outputs.has_violations == 'true' && env.enforce == 'true'
+        run: |
+          echo "::error::Connection boundary violation — see summary for details."
+          exit 1
