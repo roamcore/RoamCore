@@ -1,0 +1,83 @@
+# RoamCore — Weather card (Lovelace snippet, native YAML)
+#
+# Renders the RoamCore contract weather primitives in a novice-first layout.
+# Naming follows: docs/reference/rc-entity-naming.md
+#   (pattern: `<domain>.rc_<subsystem>_<object>_<metric>`)
+#
+# This file is a snippet — drop it into a Lovelace dashboard as a view or as
+# a `vertical-stack` inside an existing view. Built entirely from built-in HA
+# cards so it needs zero custom JS / no install beyond RoamCore packages.
+#
+# Included primitives (from `homeassistant/packages/roamcore_weather_time.yaml`):
+#   - sensor.rc_weather_outdoor_temperature
+#   - sensor.rc_weather_outdoor_humidity
+#   - sensor.rc_weather_forecast_condition
+#   - sensor.rc_weather_forecast_high_temp_24h
+#   - sensor.rc_weather_forecast_low_temp_24h
+#   - binary_sensor.rc_weather_precipitation_expected_2h
+#   - sensor.rc_weather_sun_next_event
+#
+# All entities report `unavailable` (sensors) or `unknown` (binary_sensors)
+# with a `reason` attribute when no weather integration is configured —
+# the cards below render that gracefully without crashing the dashboard.
+
+title: RoamCore — Weather
+views:
+  - path: weather
+    title: Weather
+    icon: mdi:weather-partly-cloudy
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              # Weather
+              A glanceable, automation-grade weather summary. All values come
+              from RoamCore contract entities — the underlying weather
+              integration can change without breaking your dashboard or
+              automations.
+
+              If everything shows "Unavailable", set
+              `input_text.rc_weather_entity_id` to your weather entity
+              (default `weather.home` — the built-in Met.no integration).
+
+          # ---- Top glance: temperature + forecast condition + precip ----
+          - type: glance
+            title: Now
+            columns: 3
+            show_state: true
+            entities:
+              - entity: sensor.rc_weather_outdoor_temperature
+                name: Temp
+              - entity: sensor.rc_weather_forecast_condition
+                name: Forecast
+              - entity: binary_sensor.rc_weather_precipitation_expected_2h
+                name: Rain (2h)
+
+          # ---- Forecast high/low (24h) ----
+          - type: entities
+            title: Forecast (next 24h)
+            entities:
+              - entity: sensor.rc_weather_forecast_high_temp_24h
+                name: High
+              - entity: sensor.rc_weather_forecast_low_temp_24h
+                name: Low
+
+          # ---- Detail row: humidity + sun event ----
+          - type: entities
+            title: Details
+            entities:
+              - entity: sensor.rc_weather_outdoor_humidity
+                name: Humidity
+              - entity: sensor.rc_weather_sun_next_event
+                name: Next sun event
+
+          # ---- Configuration reference (kept short, novice-friendly) ----
+          - type: markdown
+            content: |
+              ## Configuration
+              - **Weather entity:** `input_text.rc_weather_entity_id` (default `weather.home`)
+              - **Override outdoor temperature:** `input_text.rc_weather_outdoor_temperature_entity`
+              - **Override outdoor humidity:** `input_text.rc_weather_outdoor_humidity_entity`
+
+              See `docs/catalog/weather/weather-entities.md` for details.

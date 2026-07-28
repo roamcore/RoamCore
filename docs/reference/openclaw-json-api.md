@@ -97,6 +97,54 @@ Notes:
 - This endpoint is designed for **agent-side analysis**.
 - Keep requests small: fetch only the keys you need.
 
+## Weather (snapshot)
+
+- **GET** `/api/roamcore/openclaw/weather`
+
+Returns the RoamCore weather contract as a single, deterministic JSON
+snapshot — derived from the `rc_weather_*` entities, never from raw
+vendor integrations. Designed so an OpenClaw agent can answer questions
+like “is it going to rain soon?” or “how cold is it outside?” without
+having to call `/rc_dump` and parse the full entity graph.
+
+Response shape:
+
+```json
+{
+  "contract": { "name": "roamcore_openclaw_weather", "version": 1 },
+  "generated_at": "2026-01-01T00:00:00+00:00",
+  "weather": {
+    "outdoor_temperature_c": 12.4,
+    "outdoor_humidity_pct": 75.0,
+    "forecast_condition": "cloudy",
+    "forecast_high_temp_24h_c": 18.0,
+    "forecast_low_temp_24h_c": 7.0,
+    "precipitation_expected_2h": false,
+    "sun_next_event": "2026-01-02T16:00:00+00:00",
+    "weather_entity_id": "weather.home",
+    "reason": "ok"
+  }
+}
+```
+
+Notes:
+
+- All fields are nullable (`null` when the source entity is missing or
+  `unknown`/`unavailable`).
+- `forecast_condition` is one of: `clear`, `cloudy`, `rain`, `snow`,
+  `storm`, `fog`, `unknown` — the canonical RoamCore enum (not the raw
+  Met.no / OpenWeatherMap string).
+- `reason` is `ok`, `no_weather_integration`,
+  `weather_integration_unavailable`, or `no_forecast_data`.
+- Auth follows the same rules as `/summary` and `/skill`.
+
+Implementation:
+
+- Pure-Python helpers (testable without a live HA):
+  `homeassistant/roamcore_weather_primitives.py`
+- View: `homeassistant/custom_components/roamcore/openclaw_view.py`
+  → `OpenClawWeatherView`
+
 ## Contract
 
 Top-level fields:
