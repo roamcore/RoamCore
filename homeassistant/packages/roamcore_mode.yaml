@@ -18,6 +18,42 @@ input_select:
     initial: auto
     icon: mdi:route
 
+input_text:
+  rc_mode_rules_json:
+    name: "RC Mode Rules (JSON)"
+    # Two seed rules so the user sees something useful on first install.
+    # Schema (one when-clause per rule; future slices may add AND/OR):
+    #   [
+    #     {
+    #       "id": "rule_<uuid>",
+    #       "name": "When battery < 20%, switch to stealth",
+    #       "when": { "entity": "sensor.rc_battery_soc", "op": "<", "value": 20 },
+    #       "then": "stealth",
+    #       "enabled": true,
+    #       "cooldownMin": 15
+    #     },
+    #     ...
+    #   ]
+    initial: >-
+      [
+        {
+          "id": "rule_seed_battery_low",
+          "name": "When battery is low, switch to stealth",
+          "when": { "entity": "sensor.rc_battery_soc", "op": "<", "value": 20 },
+          "then": "stealth",
+          "enabled": true,
+          "cooldownMin": 15
+        },
+        {
+          "id": "rule_seed_motion_camp",
+          "name": "When motion stays on for 5 min, switch to camp",
+          "when": { "entity": "binary_sensor.rc_motion_active", "op": "==", "value": "on" },
+          "then": "camp",
+          "enabled": true,
+          "cooldownMin": 10
+        }
+      ]
+
 template:
   - sensor:
       - name: "RC Mode Current"
@@ -135,3 +171,119 @@ script:
         data:
           name: RoamCore
           message: "Mode apply (scaffold): off"
+
+automation:
+  # Apply the rule set when the current mode changes OR when the
+  # rules JSON is edited.
+  #
+  # Per spec (slice #23): for each rule where
+  #   enabled == true
+  #   then   == current_mode
+  #   cooldownMin has elapsed
+  # read `when.entity` state; if (state op value) compares True AND
+  # the cooldown has elapsed, "fire" the rule by calling
+  # input_select.select_option with the `then` mode (idempotent: same
+  # as the current mode) and write the per-rule last-fired timestamp.
+  #
+  # Note: this slice is intentionally NOT polling-based. Rules are
+  # evaluated once per mode/rules-list change. A future slice will add
+  # polling triggers so rules fire even when the underlying entity
+  # changes while staying in the same mode. See
+  # docs/setup/mode-builder.md for the polling-trigger roadmap.
+  - id: rc_mode_apply_rules
+    alias: "RC Mode: Apply rules"
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_mode
+      - platform: state
+        entity_id: input_text.rc_mode_rules_json
+    condition: []
+    action:
+      - variables:
+          current_mode: "{{ states('input_select.rc_mode') }}"
+          rules_json: "{{ states('input_text.rc_mode_rules_json') }}"
+          valid_modes: ["auto", "travel", "camp", "stealth", "off"]
+          valid_ops: ["<", ">", "<=", ">=", "==", "!="]
+      - choose:
+          - conditions:
+              - "{{ current_mode in valid_modes }}"
+            sequence:
+              - repeat:
+                  for_each: >-
+                    {% set raw = rules_json | default('[]', true) %}
+                    {% if raw.startswith('[') %}
+                      {{ raw | from_json }}
+                    {% else %}
+                      []
+                    {% endif %}
+                  sequence:
+                    - variables:
+                        rule_id: "{{ repeat.item.id | default('') }}"
+                        rule_enabled: "{{ repeat.item.enabled | default(true) }}"
+                        rule_then: "{{ repeat.item.then | default('') }}"
+                        rule_op: "{{ repeat.item.when.op | default('==') }}"
+                        rule_value: "{{ repeat.item.when.value | default('') }}"
+                        rule_entity: "{{ repeat.item.when.entity | default('') }}"
+                        rule_cooldown: "{{ repeat.item.cooldownMin | default(15) }}"
+                        cooldown_entity: "{{ 'input_datetime.rc_mode_rule_' ~ rule_id ~ '_last_fired' }}"
+                        entity_state: "{{ states(rule_entity) }}"
+                        # Parse lhs/rhs as floats when both sides look numeric,
+                        # else fall back to string compare.
+                        lhs_num: >-
+                          {% set s = entity_state | string %}
+                          {{ s | float(0) if s is string and s | regex_match('^-?\\d+(\\.\\d+)?$') else None }}
+                        rhs_num: >-
+                          {% set s = rule_value | string %}
+                          {{ s | float(0) if s is string and s | regex_match('^-?\\d+(\\.\\d+)?$') else None }}
+                        # Compute the boolean comparison separately so the
+                        # final conjunction stays a single-line boolean
+                        # expression that HA's Jinja2 reliably evaluates.
+                        compare_result: >-
+                          {% set lhs = entity_state | string %}
+                          {% set rhs = rule_value | string %}
+                          {% set op = rule_op %}
+                          {% set numeric = (lhs_num is not none and rhs_num is not none) %}
+                          {% if numeric %}
+                            {% if op == '<' %}  {{ lhs_num <  rhs_num }}
+                            {% elif op == '>' %}  {{ lhs_num >  rhs_num }}
+                            {% elif op == '<=' %} {{ lhs_num <= rhs_num }}
+                            {% elif op == '>=' %} {{ lhs_num >= rhs_num }}
+                            {% elif op == '==' %} {{ lhs_num == rhs_num }}
+                            {% elif op == '!=' %} {{ lhs_num != rhs_num }}
+                            {% else %} false
+                            {% endif %}
+                          {% else %}
+                            {% if op == '==' %} {{ lhs == rhs }}
+                            {% elif op == '!=' %} {{ lhs != rhs }}
+                            {% elif op == '<' %} {{ lhs < rhs }}
+                            {% elif op == '<=' %} {{ lhs <= rhs }}
+                            {% elif op == '>' %} {{ lhs > rhs }}
+                            {% elif op == '>=' %} {{ lhs >= rhs }}
+                            {% else %} false
+                            {% endif %}
+                          {% endif %}
+                        cooldown_ok: >-
+                          {% if cooldown_entity not in states %}
+                            true
+                          {% else %}
+                            {{ (now() - states(cooldown_entity) | as_datetime).total_seconds() / 60 >= rule_cooldown }}
+                          {% endif %}
+                        should_fire: >-
+                          {{ (rule_enabled | bool) and (rule_then == current_mode) and (rule_op in valid_ops) and (rule_entity | length > 0) and (compare_result | bool) and (cooldown_ok | bool) }}
+                    - choose:
+                        - conditions: "{{ should_fire | bool }}"
+                          sequence:
+                            # Idempotent: re-select the current mode.
+                            - service: input_select.select_option
+                              data:
+                                entity_id: input_select.rc_mode
+                                option: "{{ current_mode }}"
+                            # Persist the per-rule last-fired timestamp. Use
+                            # input_datetime.set_datetime so the entity is
+                            # created on first fire if it does not exist.
+                            - service: input_datetime.set_datetime
+                              data:
+                                entity_id: "{{ cooldown_entity }}"
+                                datetime: "{{ now().isoformat() }}"
