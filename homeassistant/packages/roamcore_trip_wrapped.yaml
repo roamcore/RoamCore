@@ -2,10 +2,34 @@
 #
 # This package wires a dashboard button -> script -> shell_command that
 # generates `/config/www/roamcore/trip_wrapped/latest.html`.
+#
+# Slice #21 adds the "seamless USP flow": two input_booleans track whether
+# the operator has configured Traccar yet, and an automation turns ON the
+# demo seed (and writes `latest.json`) so a brand-new install can show a
+# fully-rendered Trip Wrapped with one tap.
+#   - input_boolean.rc_trip_wrapped_demo  : ON by default (first-run demo).
+#   - input_boolean.rc_trip_wrapped_real  : OFF until Traccar is configured.
+# When rc_trip_wrapped_real flips ON, rc_trip_wrapped_demo is turned OFF.
 
 # Ensure the custom component reverse-proxy is loaded so we can embed Traccar
 # without local-network iframe blocks and without requiring the user to log in.
 roamcore_traccar_proxy:
+
+# --- Slice #21: Trip Wrapped seamless USP flow ---
+# These two booleans gate whether the dashboard shows a "demo trip" CTA
+# (default ON) or a "use my real trips" CTA (default OFF until Traccar is
+# configured). The companion automation below keeps them mutually exclusive.
+input_boolean:
+  rc_trip_wrapped_demo:
+    name: "RC Trip Wrapped — Show Demo"
+    icon: mdi:movie-open-star
+    # Default ON so the first-run UX always shows a fully-rendered report.
+    initial: true
+  rc_trip_wrapped_real:
+    name: "RC Trip Wrapped — Use Real Trips"
+    icon: mdi:car-connected
+    # Default OFF until the operator configures Traccar.
+    initial: false
 
 input_text:
   rc_owner_name:
@@ -15,6 +39,9 @@ input_text:
   rc_traccar_base_url:
     name: "RC Traccar Base URL"
     initial: "http://localhost:8082"  # adjust for your Traccar add-on/external URL
+    # PRIVACY: loopback default (local Traccar add-on); change to a
+    # non-local host only after adding it to input_text.rc_trip_opt_in_domains
+    # AND setting input_boolean.rc_trip_local_only to OFF.
   rc_traccar_username:
     name: "RC Traccar Username"
   rc_traccar_password:
@@ -103,6 +130,13 @@ shell_command:
     --out-json /config/www/roamcore/trip_wrapped/today.json
     --out-html /config/www/roamcore/trip_wrapped/today.html
 
+  # --- Slice #21: demo seed generator ---
+  # Writes a fully-local demo Trip Wrapped JSON to `latest.json`.
+  # Stdlib-only, no outbound HTTP (map URL points at local tileserver).
+  rc_trip_wrapped_demo_seed: >-
+    python3 /config/tools/trip_wrapped/demo_seed.py
+    --out /config/www/roamcore/trip_wrapped/latest.json
+
 script:
   rc_trip_wrapped_run:
     alias: "RC: Generate Trip Wrapped"
@@ -120,6 +154,20 @@ script:
     sequence:
       - service: shell_command.rc_trip_wrapped_export_today
 
+  # --- Slice #21: one-tap demo seed ---
+  # Writes a fully-local demo Trip Wrapped JSON to `latest.json` so the
+  # first-run Map → Trip Wrapped UI has something to render immediately.
+  # No Traccar, no outbound HTTP — see demo_seed.py + privacy contract.
+  rc_trip_wrapped_demo_seed:
+    alias: "RC: Generate Trip Wrapped (Demo Seed)"
+    mode: single
+    sequence:
+      - service: shell_command.rc_trip_wrapped_demo_seed
+      - service: persistent_notification.create
+        data:
+          title: "Trip Wrapped demo ready"
+          message: "Open: /local/roamcore/trip_wrapped/latest.json (demo)"
+
 automation:
   - id: rc_trip_wrapped_auto_today
     alias: "RC: Auto-generate Trip Wrapped (Today)"
@@ -130,6 +178,34 @@ automation:
     condition: []
     action:
       - service: script.rc_trip_wrapped_run_today
+
+  # --- Slice #21: keep demo/real booleans mutually exclusive ---
+  # When the operator flips "use real trips" ON (after configuring Traccar),
+  # the demo flag is turned OFF so the dashboard stops showing the demo CTA.
+  - id: rc_trip_wrapped_real_turns_off_demo
+    alias: "RC: Real trips ON → demo OFF"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_trip_wrapped_real
+        to: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_trip_wrapped_demo
+
+  # When the operator flips the demo flag back ON (or installs a fresh
+  # image where it defaults to ON), regenerate latest.json from the seed
+  # so the dashboard can render the demo immediately on next load.
+  - id: rc_trip_wrapped_demo_turns_on_seed
+    alias: "RC: Demo ON → regenerate seed"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_trip_wrapped_demo
+        to: "on"
+    action:
+      - service: script.rc_trip_wrapped_demo_seed
 
 sensor:
   # Latest export status sensors (read from generated JSON).

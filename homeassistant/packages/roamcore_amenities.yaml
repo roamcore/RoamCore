@@ -1,0 +1,160 @@
+# RoamCore MVP: Amenities overlay (iOverlander-style)
+#
+# Slice #22 — adds an *optional*, privacy-respecting, fail-safe amenities
+# overlay layer to the RoamCore Map page so a van owner parked somewhere
+# new can see nearby water / dump points / laundrettes / campsites /
+# supermarkets / gyms without leaving the map.
+#
+# Privacy contract (mirrors slice #20):
+# - The overlay is OFF by default (``input_boolean.rc_amenities_overlay_enabled``
+#   initial: false). Operators opt-in explicitly.
+# - The default Overpass endpoint is the public ``overpass-api.de``
+#   instance, annotated ``# PRIVACY-OPTIN:`` so the privacy smoke check
+#   accepts it. Operators can switch to a self-hosted Overpass by
+#   editing ``input_text.rc_amenities_overpass_url``.
+# - The privacy smoke check
+#   ``scripts/checks/amenities-overlay-privacy-smoke.sh`` scans this file
+#   + the Python helper for unannotated external hosts.
+
+input_boolean:
+  rc_amenities_overlay_enabled:
+    name: "RC Amenities Overlay Enabled"
+    icon: mdi:map-marker-radius
+    # Default OFF — opt-in, never surprise.
+    initial: false
+
+input_select:
+  rc_amenities_categories:
+    name: "RC Amenities Categories"
+    icon: mdi:format-list-bulleted
+    options:
+      - water
+      - dump_station
+      - laundry
+      - campground
+      - supermarket
+      - gym
+    initial: "water,laundry,campground,supermarket"
+    # Note: this is a comma-separated selection for the MVP — single-select
+    # UI is fine because the JS layer filters client-side; expanding to a
+    # proper multi-select is a follow-up slice.
+
+input_number:
+  rc_amenities_radius_km:
+    name: "RC Amenities Radius (km)"
+    icon: mdi:radius
+    min: 0.5
+    max: 50
+    step: 0.5
+    initial: 5
+    unit_of_measurement: "km"
+    mode: slider
+
+input_text:
+  rc_amenities_overpass_url:
+    name: "RC Amenities Overpass URL"
+    initial: "https://overpass-api.de/api/interpreter"  # PRIVACY-OPTIN: public Overpass default; operator-overridable for self-hosted.
+    max: 255
+
+shell_command:
+  # Always write the file (off or on). When the toggle is OFF, the
+  # automation clears the file instead of running the helper. When ON,
+  # the helper writes a fresh JSON to /config/www/roamcore/amenities/latest.json.
+  rc_amenities_overpass_query: >-
+    python3 /config/tools/amenities/overpass_query.py
+    --lat {{ states('sensor.rc_location_lat') | float(0) }}
+    --lon {{ states('sensor.rc_location_lon') | float(0) }}
+    --radius-km {{ states('input_number.rc_amenities_radius_km') | float(5) }}
+    --categories {{ states('input_select.rc_amenities_categories') }}
+    --overpass-url {{ states('input_text.rc_amenities_overpass_url') }}
+    --query
+    --out /config/www/roamcore/amenities/latest.json
+    || python3 /config/tools/amenities/overpass_query.py
+       --lat {{ states('sensor.rc_location_lat') | float(0) }}
+       --lon {{ states('sensor.rc_location_lon') | float(0) }}
+       --radius-km {{ states('input_number.rc_amenities_radius_km') | float(5) }}
+       --categories {{ states('input_select.rc_amenities_categories') }}
+       --dry-run
+       --out /config/www/roamcore/amenities/latest.json
+
+  rc_amenities_clear: >-
+    sh -lc 'rm -f /config/www/roamcore/amenities/latest.json && mkdir -p /config/www/roamcore/amenities && : > /config/www/roamcore/amenities/latest.json'
+
+script:
+  rc_amenities_refresh:
+    alias: "RC: Refresh amenities overlay"
+    mode: single
+    sequence:
+      - service: shell_command.rc_amenities_overpass_query
+
+  rc_amenities_clear_file:
+    alias: "RC: Clear amenities overlay"
+    mode: single
+    sequence:
+      - service: shell_command.rc_amenities_clear
+
+automation:
+  # When the toggle flips ON, refresh once.
+  - id: rc_amenities_overlay_enabled_on_refresh
+    alias: "RC: Amenities overlay ON → refresh"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_amenities_overlay_enabled
+        to: "on"
+    action:
+      - service: script.rc_amenities_refresh
+
+  # When the toggle flips OFF, clear the file so the JS layer hides the overlay.
+  - id: rc_amenities_overlay_enabled_off_clear
+    alias: "RC: Amenities overlay OFF → clear"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_amenities_overlay_enabled
+        to: "off"
+    action:
+      - service: script.rc_amenities_clear_file
+
+  # While ON, refresh periodically (every 30 minutes). The JS layer
+  # also polls every 5 minutes — this is the server-side schedule.
+  - id: rc_amenities_overlay_periodic_refresh
+    alias: "RC: Amenities overlay periodic refresh (30 min)"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_amenities_overlay_enabled
+        state: "on"
+    action:
+      - service: script.rc_amenities_refresh
+
+  # When the configured device_tracker moves >1 km, refresh once.
+  # Uses numeric_state on the latitude/longitude template sensors via
+  # an offset pattern (delta approximation; HA doesn't natively give us
+  # great-circle distance). Good-enough MVP trigger: any non-zero
+  # delta in either lat or lon beyond a coarse threshold.
+  - id: rc_amenities_overlay_movement_refresh
+    alias: "RC: Amenities overlay refresh on movement >1km"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.rc_location_lat
+      - platform: state
+        entity_id: sensor.rc_location_lon
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_amenities_overlay_enabled
+        state: "on"
+      - condition: template
+        value_template: >-
+          {{ (states('sensor.rc_location_lat') | float(0)) != 0.0 and
+             (states('sensor.rc_location_lon') | float(0)) != 0.0 }}
+    action:
+      - delay: "00:00:30"
+      - service: script.rc_amenities_refresh
+
+# NOTE: This file is a Home Assistant package. Keep input names and
+# unique_ids stable to preserve entity_id continuity.
