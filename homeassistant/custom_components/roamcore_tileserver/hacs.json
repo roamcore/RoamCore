@@ -1,0 +1,9 @@
+{
+  "name": "RoamCore Tile Server",
+  "country": "ALL",
+  "render_readme": true,
+  "category": "integration",
+  "domains": [
+    "roamcore_tileserver"
+  ]
+}

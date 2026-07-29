@@ -1,12 +1,9 @@
 {
-  "name": "RoamCore",
-  "content_in_root": false,
+  "name": "RoamCore Traccar Proxy",
   "country": "ALL",
   "render_readme": true,
   "category": "integration",
   "domains": [
-    "roamcore",
-    "roamcore_tileserver",
     "roamcore_traccar_proxy"
   ]
 }
