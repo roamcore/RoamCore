@@ -25,3 +25,37 @@ lovelace:
       icon: mdi:van-utility
       show_in_sidebar: true
       filename: lovelace/roamcore-dashboard.yaml
+
+# ---------------------------------------------------------------------------
+# Traccar Server integration (YAML, optional pre-stage)
+# ---------------------------------------------------------------------------
+#
+# RoamCore wires your location via the **traccar_server** integration (built
+# into Home Assistant; no HACS needed). RoamCore's first philosophy is
+# UI-first / HACS-friendly, so this block is **commented out by default**.
+#
+# To use it:
+#   1. Add the integration via Settings -> Devices & services -> Add
+#      Integration -> "Traccar Server" first (or remove the leading `# ` on
+#      the block below *and* also keep the UI integration enabled).
+#   2. Make sure your Traccar server has at least one device + user.
+#   3. Drop the uncommented block into your own configuration.yaml.
+#   4. Restart Home Assistant.
+#
+# input_text.rc_location_tracker_entity (set up by the package
+# homeassistant/packages/roamcore_location.yaml) is auto-filled on
+# homeassistant_started by automation.rc_location_autofill_tracker_entity —
+# no manual entity_id copy/paste needed on first install.
+#
+# device_tracker:
+#   - platform: traccar
+#     host: 192.168.1.66        # Traccar server host (use 'homeassistant.local' on HAOS)
+#     port: 8082
+#     username: !secret roamcore_traccar_admin_email
+#     password: !secret roamcore_traccar_admin_password
+#     # ssl: false             # uncomment + set true if Traccar is behind TLS
+#     # verify_ssl: true
+#     # timeout: 60             # network timeout in seconds
+#     # username_parameter: "user"
+#
+# ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-07-29
 
 This is an internal status page for the remaining MVP feature build-out.
 
@@ -33,21 +33,34 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Traccar install + integration in HAOS (Wave 2 #17)
+  - `homeassistant/packages/roamcore_location.yaml`
+    - auto-fill automation `automation.rc_location_autofill_tracker_entity`
+      runs on `homeassistant_started` + every `entity_registry_updated` to
+      write the first `device_tracker.traccar_*` entity_id into
+      `input_text.rc_location_tracker_entity`.
+  - `docs/setup/traccar.md` §"Step 1: Configure the Home Assistant Traccar
+    integration" walks users through the built-in `traccar_server`
+    integration (no HACS) and both the auto-fill (Path A) and manual
+    `input_text.set_value` (Path B) wiring paths.
+  - `scripts/install/ha/install.sh` exposes `--with-traccar` to print the
+    integration setup steps + soft-verify via `ha integrations list`.
+  - `homeassistant/configuration_addon.yaml` ships a commented-out
+    `device_tracker:` → `platform: traccar` YAML pre-stage block for
+    advanced users (default-off, HACS-first principle preserved).
+  - `scripts/checks/traccar-integration-smoke.sh` (Wave 2 #17 smoke),
+    wired into `scripts/check.sh`.
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
    - Add a Lovelace dashboard YAML for setup flow.
    - Wire stubs to OpenWrt API + Victron connect UI.
 
-2) **Traccar install + integration in HAOS**
-   - Install Traccar add-on (or point to external).
-   - Configure HA Traccar integration so `device_tracker.*` exists.
-   - Set `input_text.rc_location_tracker_entity` to the correct entity.
-
-3) **Trip stats (rc_trip_*) from real Traccar data**
+2) **Trip stats (rc_trip_*) from real Traccar data**
    - MVP still uses mocks for distance/time/stops.
    - Implement: odometer-based + utility_meter or periodic report pulls.
 
-4) **HACS packaging (planned)**
+3) **HACS packaging (planned)**
    - Publish a HACS integration to install RoamCore from the HA UI.
    - Auto-create dashboard + resources.
