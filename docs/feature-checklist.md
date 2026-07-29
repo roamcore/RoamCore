@@ -70,7 +70,7 @@ Legend:
 - [ ] Remote access
 - [x] OTA updates (GitHub-based channel, rollback-aware) — Wave 2 #30 (slice shipped)
 - [ ] Additional hardware support (OBD, lighting, etc)
-- [ ] Hardware auto-discovery + setup flows
+- [x] Hardware auto-discovery + setup flows — Wave 2 #31 (slice shipped)
 
 ---
 

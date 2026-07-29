@@ -781,6 +781,80 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=None,
     )
 
+    # --- Hardware auto-discovery setup prompt (Wave 2 #31) ---
+    # The Setup Wizard's hardware card calls this service per add-on.
+    # We flip the corresponding `input_boolean.rc_hardware_setup_<addon>_pending`
+    # to ON and write a human-readable pill to
+    # `input_text.rc_hardware_setup_<addon>_message`. The actual setup
+    # workflow itself lives outside this slice — see docs/setup/<addon>.md.
+    HARDWARE_SETUP_ADDONS = (
+        "openwrt",
+        "tileserver",
+        "traccar",
+        "victron",
+        "ota",
+    )
+
+    async def _svc_hardware_setup_prompt(call):
+        addon = str(call.data.get("addon") or "").strip()
+        if addon not in HARDWARE_SETUP_ADDONS:
+            raise ValueError(
+                f"unknown addon: {addon!r}; expected one of {HARDWARE_SETUP_ADDONS}"
+            )
+
+        message = str(
+            call.data.get("message")
+            or "Ready to set up — open the corresponding setup guide."
+        )
+
+        pending_entity = f"input_boolean.rc_hardware_setup_{addon}_pending"
+        message_entity = f"input_text.rc_hardware_setup_{addon}_message"
+
+        # Flip the per-add-on pending helper ON.
+        try:
+            await hass.services.async_call(
+                "input_boolean",
+                "turn_on",
+                {"entity_id": pending_entity},
+                blocking=True,
+            )
+        except Exception:
+            # The helper may not exist yet on a fresh install — log via
+            # logbook and continue. The wizard will re-surface the CTA.
+            try:
+                await hass.services.async_call(
+                    "logbook",
+                    "log",
+                    {
+                        "name": "RoamCore Hardware Discovery",
+                        "message": (
+                            f"Setup prompt for {addon}: pending helper "
+                            f"{pending_entity} not present."
+                        ),
+                    },
+                    blocking=False,
+                )
+            except Exception:
+                pass
+
+        # Write the human-readable pill to the message helper.
+        try:
+            await hass.services.async_call(
+                "input_text",
+                "set_value",
+                {"entity_id": message_entity, "value": message},
+                blocking=True,
+            )
+        except Exception:
+            pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "hardware_setup_prompt",
+        _svc_hardware_setup_prompt,
+        schema=None,
+    )
+
     return True
 
 

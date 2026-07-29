@@ -13,7 +13,8 @@
 #   ▶ HA-only beta: smoke check
 #   ▶ Networking controls (OpenWrt API): smoke check   (slice #28 — sibling branch)
 #   ▶ Remote access (Tailscale contract): smoke check   (slice #29 — sibling branch)
-#   ▶ OTA updates (GitHub channel + rollback-aware): smoke check   (slice #30 — this commit)
+#   ▶ OTA updates (GitHub channel + rollback-aware): smoke check   (slice #30 — sibling branch)
+#   ▶ Hardware auto-discovery + setup flows: smoke check   (slice #31 — this commit)
 #
 # Note: this branch was forked from main before the Wave 2 #23-#27 stack
 # landed upstream; we ship a minimal chain here. Each slice's PR is expected
@@ -72,10 +73,17 @@ run_if_present "scripts/checks/openwrt-controls-smoke.sh" \
 run_if_present "scripts/checks/remote-access-tailscale-smoke.sh" \
   "Remote access (Tailscale contract): smoke check"
 
-# OTA updates (GitHub channel + rollback-aware) smoke ships with this
-# slice (#30). Run unconditionally on this branch.
+# OTA updates (GitHub channel + rollback-aware) smoke ships with the
+# slice #30 sibling branch (forwarded here as part of the #31 chore
+# commit). Run unconditionally — the smoke and its dependencies are
+# present on this branch.
 banner "OTA updates (GitHub channel + rollback-aware): smoke check"
 bash scripts/checks/ota-smoke.sh
+
+# Hardware auto-discovery + setup flows smoke ships with this slice
+# (#31). Run unconditionally on this branch.
+banner "Hardware auto-discovery + setup flows: smoke check"
+bash scripts/checks/hardware-auto-discovery-smoke.sh
 
 # Wave 2 #23-#27 smokes live on their own stacked branches. We probe for
 # the well-known names so the chain stays portable; once those PRs land

@@ -1,0 +1,254 @@
+# RoamCore — Hardware auto-discovery contract layer
+#
+# Slice Wave 2 #31 (tier-b): surveys the local LAN for each known RoamCore
+# add-on and exposes a `binary_sensor.rc_hardware_<addon>_available` per
+# add-on, plus two summary sensors
+# (`sensor.rc_hardware_discovered_count` + `sensor.rc_hardware_setup_pending_count`)
+# for the setup wizard.
+#
+# All probing is local (loopback / RFC1918 / local filesystem only). The
+# probe helper lives at `homeassistant/tools/hardware_discovery/probe.py`
+# and is stdlib-only. See `docs/setup/hardware-auto-discovery.md` for the
+# full operator guide and `homeassistant/tools/hardware_discovery/README.md`
+# for the helper's internals.
+#
+# Privacy invariant (enforced by scripts/checks/hardware-auto-discovery-smoke.sh):
+# no probe target is ever a public IP, DNS name, or non-RFC1918 host.
+#
+# Per-add-on entity IDs follow docs/reference/rc-entity-naming.md:
+#   binary_sensor.rc_hardware_<addon>_available
+#   input_boolean.rc_hardware_setup_<addon>_pending
+#   input_text.rc_hardware_setup_<addon>_message
+#
+# Master switch: input_boolean.rc_hardware_discovery_enabled (default ON).
+# When OFF, all binary_sensors report `unavailable` (never `unknown`).
+#
+# Setup CTA layer: the wizard renders a card (see
+# homeassistant/packages/roamcore_setup_wizard_hardware_discovery.yaml) that
+# calls `roamcore.hardware_setup_prompt` per row. The service flips the
+# per-add-on `pending` helper ON and writes a "ready to set up" message to
+# `input_text.rc_hardware_setup_<addon>_message`. The actual setup flow
+# itself is owned by the corresponding RoamCore setup docs (e.g.
+# docs/setup/traccar.md, docs/setup/ota.md) — this slice is the discovery +
+# prompt only.
+
+# ----------------------------- helpers -----------------------------
+input_boolean:
+  rc_hardware_discovery_enabled:
+    name: "RC Hardware Auto-Discovery Enabled"
+    initial: true
+    icon: mdi:magnify-scan
+
+  # Per-add-on setup-prompt flags. Each is flipped ON by the
+  # roamcore.hardware_setup_prompt service when an operator taps
+  # "Set up" in the wizard card. The actual setup workflow lives
+  # outside this slice (see docs/setup/* for each add-on).
+  rc_hardware_setup_openwrt_pending:
+    name: "RC Hardware Setup — OpenWrt Pending"
+    initial: false
+    icon: mdi:router-wireless
+  rc_hardware_setup_tileserver_pending:
+    name: "RC Hardware Setup — Tileserver Pending"
+    initial: false
+    icon: mdi:map
+  rc_hardware_setup_traccar_pending:
+    name: "RC Hardware Setup — Traccar Pending"
+    initial: false
+    icon: mdi:crosshairs-gps
+  rc_hardware_setup_victron_pending:
+    name: "RC Hardware Setup — Victron Pending"
+    initial: false
+    icon: mdi:lightning-bolt
+  rc_hardware_setup_ota_pending:
+    name: "RC Hardware Setup — OTA Pending"
+    initial: false
+    icon: mdi:package-up
+
+# Operator-overridable probe targets. Defaults are RFC1918 + loopback
+# only; the probe helper validates before connecting (see probe.py).
+input_text:
+  rc_hardware_openwrt_host:
+    name: "RC Hardware OpenWrt Host"
+    initial: "192.168.1.1"
+    icon: mdi:ip
+    # Sentinel — operators can paste any RFC1918 host here. The probe
+    # helper refuses anything else.
+  rc_hardware_victron_host:
+    name: "RC Hardware Victron Host"
+    initial: "192.168.1.100"
+    icon: mdi:ip
+  rc_hardware_setup_openwrt_message:
+    name: "RC Hardware Setup — OpenWrt Message"
+    initial: ""
+  rc_hardware_setup_tileserver_message:
+    name: "RC Hardware Setup — Tileserver Message"
+    initial: ""
+  rc_hardware_setup_traccar_message:
+    name: "RC Hardware Setup — Traccar Message"
+    initial: ""
+  rc_hardware_setup_victron_message:
+    name: "RC Hardware Setup — Victron Message"
+    initial: ""
+  rc_hardware_setup_ota_message:
+    name: "RC Hardware Setup — OTA Message"
+    initial: ""
+
+# ----------------------- per-add-on probes -------------------------
+# One `command_line` sensor per add-on, each running probe.py for the
+# single add-on. HA polls these on a 5-minute cadence. We parse the
+# probe's JSON stdout with a JSON filter template.
+#
+# Probe targets in the `command:` blocks below are loopback or RFC1918
+# literals; the smoke check enforces that no probe ever targets a public
+# IP or DNS name.
+command_line:
+  - sensor:
+      name: "RC Hardware OpenWrt Probe"
+      unique_id: rc_hardware_openwrt_probe
+      scan_interval: 300
+      icon: "mdi:router-wireless"
+      command: >-
+        python3 /config/tools/hardware_discovery/probe.py --addon openwrt
+      value_template: "{{ value_json.available | default(false) }}"
+      json_attributes:
+        - latency_ms
+        - error
+
+  - sensor:
+      name: "RC Hardware Tileserver Probe"
+      unique_id: rc_hardware_tileserver_probe
+      scan_interval: 300
+      icon: "mdi:map"
+      command: >-
+        python3 /config/tools/hardware_discovery/probe.py --addon tileserver
+      value_template: "{{ value_json.available | default(false) }}"
+      json_attributes:
+        - latency_ms
+        - error
+
+  - sensor:
+      name: "RC Hardware Traccar Probe"
+      unique_id: rc_hardware_traccar_probe
+      scan_interval: 300
+      icon: "mdi:crosshairs-gps"
+      command: >-
+        python3 /config/tools/hardware_discovery/probe.py --addon traccar
+      value_template: "{{ value_json.available | default(false) }}"
+      json_attributes:
+        - latency_ms
+        - error
+
+  - sensor:
+      name: "RC Hardware Victron Probe"
+      unique_id: rc_hardware_victron_probe
+      scan_interval: 300
+      icon: "mdi:lightning-bolt"
+      command: >-
+        python3 /config/tools/hardware_discovery/probe.py --addon victron
+      value_template: "{{ value_json.available | default(false) }}"
+      json_attributes:
+        - latency_ms
+        - error
+
+  - sensor:
+      name: "RC Hardware OTA Probe"
+      unique_id: rc_hardware_ota_probe
+      scan_interval: 300
+      icon: "mdi:package-up"
+      command: >-
+        python3 /config/tools/hardware_discovery/probe.py --addon ota
+      value_template: "{{ value_json.available | default(false) }}"
+      json_attributes:
+        - latency_ms
+        - error
+
+# ----------------------- contract entities --------------------------
+# One binary_sensor per add-on that the wizard / dashboard reads.
+# Each is gated on the master switch: when OFF, the entity reports
+# `unavailable` (NEVER `unknown`).
+#
+# We map the `command_line` sensor's boolean `state` (parsed from JSON)
+# into the binary_sensor. When the master switch is OFF, availability
+# returns false so HA marks the entity `unavailable`.
+template:
+  - binary_sensor:
+      - name: "RC Hardware OpenWrt Available"
+        unique_id: rc_hardware_openwrt_available
+        device_class: connectivity
+        icon: "mdi:router-wireless"
+        state: "{{ states('sensor.rc_hardware_openwrt_probe') }}"
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on')
+             and states('sensor.rc_hardware_openwrt_probe') not in ['unknown', 'unavailable', 'none', 'None'] }}
+
+      - name: "RC Hardware Tileserver Available"
+        unique_id: rc_hardware_tileserver_available
+        device_class: connectivity
+        icon: "mdi:map"
+        state: "{{ states('sensor.rc_hardware_tileserver_probe') }}"
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on')
+             and states('sensor.rc_hardware_tileserver_probe') not in ['unknown', 'unavailable', 'none', 'None'] }}
+
+      - name: "RC Hardware Traccar Available"
+        unique_id: rc_hardware_traccar_available
+        device_class: connectivity
+        icon: "mdi:crosshairs-gps"
+        state: "{{ states('sensor.rc_hardware_traccar_probe') }}"
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on')
+             and states('sensor.rc_hardware_traccar_probe') not in ['unknown', 'unavailable', 'none', 'None'] }}
+
+      - name: "RC Hardware Victron Available"
+        unique_id: rc_hardware_victron_available
+        device_class: connectivity
+        icon: "mdi:lightning-bolt"
+        state: "{{ states('sensor.rc_hardware_victron_probe') }}"
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on')
+             and states('sensor.rc_hardware_victron_probe') not in ['unknown', 'unavailable', 'none', 'None'] }}
+
+      - name: "RC Hardware OTA Available"
+        unique_id: rc_hardware_ota_available
+        device_class: connectivity
+        icon: "mdi:package-up"
+        state: "{{ states('sensor.rc_hardware_ota_probe') }}"
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on')
+             and states('sensor.rc_hardware_ota_probe') not in ['unknown', 'unavailable', 'none', 'None'] }}
+
+  # Summary sensors consumed by the wizard card.
+  - sensor:
+      - name: "RC Hardware Discovered Count"
+        unique_id: rc_hardware_discovered_count
+        icon: "mdi:magnify-scan"
+        unit_of_measurement: "add-ons"
+        state: >-
+          {{ expand([
+              'binary_sensor.rc_hardware_openwrt_available',
+              'binary_sensor.rc_hardware_tileserver_available',
+              'binary_sensor.rc_hardware_traccar_available',
+              'binary_sensor.rc_hardware_victron_available',
+              'binary_sensor.rc_hardware_ota_available',
+             ])
+             | selectattr('state', 'eq', 'on')
+             | list | length }}
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on') }}
+
+      - name: "RC Hardware Setup Pending Count"
+        unique_id: rc_hardware_setup_pending_count
+        icon: "mdi:clipboard-list-outline"
+        unit_of_measurement: "prompts"
+        state: >-
+          {{ expand([
+              'input_boolean.rc_hardware_setup_openwrt_pending',
+              'input_boolean.rc_hardware_setup_tileserver_pending',
+              'input_boolean.rc_hardware_setup_traccar_pending',
+              'input_boolean.rc_hardware_setup_victron_pending',
+              'input_boolean.rc_hardware_setup_ota_pending',
+             ])
+             | selectattr('state', 'eq', 'on')
+             | list | length }}
+        availability: >-
+          {{ is_state('input_boolean.rc_hardware_discovery_enabled', 'on') }}

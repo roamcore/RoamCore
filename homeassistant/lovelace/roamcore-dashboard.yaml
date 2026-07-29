@@ -162,3 +162,42 @@ views:
   #     - entity: script.rc_ota_apply
   #     - entity: script.rc_ota_rollback
   # ---------------------------------------------------------------
+
+  # ---------------------------------------------------------------
+  # Setup-wizard Hardware auto-discovery card snippet (Wave 2 #31 — commented by default)
+  #
+  # The Setup Wizard exposes this snippet on demand at the "Hardware"
+  # stage. It is NOT auto-injected so the platform-level card does
+  # not surprise users who haven't opted in. Uncomment + move into
+  # any view's `cards:` list to surface it on the dashboard.
+  #
+  # - type: markdown
+  #   title: "Hardware auto-discovered"
+  #   content: |
+  #     # Hardware auto-discovered
+  #     RoamCore found **{{ states('sensor.rc_hardware_discovered_count') }} / 5**
+  #     supported add-ons on your network. Pending setup prompts: **{{ states('sensor.rc_hardware_setup_pending_count') }}**.
+  #     Discovery is **local only** — RoamCore never leaves your network to look for hardware.
+  # - type: glance
+  #   title: "Discovery summary"
+  #   entities:
+  #     - entity: binary_sensor.rc_hardware_openwrt_available
+  #       name: OpenWrt
+  #     - entity: binary_sensor.rc_hardware_tileserver_available
+  #       name: Tileserver
+  #     - entity: binary_sensor.rc_hardware_traccar_available
+  #       name: Traccar
+  #     - entity: binary_sensor.rc_hardware_victron_available
+  #       name: Victron
+  #     - entity: binary_sensor.rc_hardware_ota_available
+  #       name: OTA
+  # - type: entities
+  #   title: "Discovery controls"
+  #   entities:
+  #     - entity: input_boolean.rc_hardware_discovery_enabled
+  #     - entity: script.rc_hardware_setup_prompt_openwrt
+  #     - entity: script.rc_hardware_setup_prompt_tileserver
+  #     - entity: script.rc_hardware_setup_prompt_traccar
+  #     - entity: script.rc_hardware_setup_prompt_victron
+  #     - entity: script.rc_hardware_setup_prompt_ota
+  # ---------------------------------------------------------------

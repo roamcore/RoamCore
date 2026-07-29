@@ -110,3 +110,37 @@ backup_update:
       required: false
       selector:
         text: {}
+
+hardware_setup_prompt:
+  name: Prompt setup for a discovered RoamCore add-on
+  description: >-
+    Flip the per-add-on setup-prompt helper ON and write a "ready to set
+    up" message to the corresponding input_text. Called by the Setup
+    Wizard hardware card (Wave 2 #31) when an operator taps a "Set up"
+    CTA next to a discovered add-on. The actual setup workflow lives
+    outside this service — see docs/setup/<addon>.md for the per-add-on
+    guide.
+  fields:
+    addon:
+      name: Add-on
+      description: Which RoamCore add-on to prompt setup for.
+      required: true
+      example: openwrt
+      selector:
+        select:
+          options:
+            - openwrt
+            - tileserver
+            - traccar
+            - victron
+            - ota
+    message:
+      name: Message
+      description: >-
+        Human-readable pill text written to
+        input_text.rc_hardware_setup_<addon>_message. Defaults to a
+        generic "ready to set up" string.
+      required: false
+      default: "Ready to set up — open the corresponding setup guide."
+      selector:
+        text: {}

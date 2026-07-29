@@ -6,6 +6,17 @@ This is an internal status page for the remaining MVP feature build-out.
 
 ## Shipped (repo)
 
+- Hardware auto-discovery + setup flows — Wave 2 #31 (slice shipped)
+  - Contract package: `homeassistant/packages/roamcore_hardware_discovery.yaml` (5 add-on binary_sensors + 2 summary sensors + master switch + per-add-on setup helpers)
+  - Wizard snippet: `homeassistant/packages/roamcore_setup_wizard_hardware_discovery.yaml` (markdown + glance + entities card with one-tap "Set up" CTA per row)
+  - Probe helper: `homeassistant/tools/hardware_discovery/probe.py` (stdlib-only Python; one TCP-connect / filesystem probe per add-on)
+  - Helper README: `homeassistant/tools/hardware_discovery/README.md`
+  - Setup doc: `docs/setup/hardware-auto-discovery.md` (privacy + per-add-on enable/disable + troubleshooting + what's next)
+  - Custom service: `roamcore.hardware_setup_prompt(addon=...)` declared in `homeassistant/custom_components/roamcore/services.yaml` + handler in `__init__.py` (flips `input_boolean.rc_hardware_setup_<addon>_pending` ON + writes a "ready to set up" pill to `input_text.rc_hardware_setup_<addon>_message`)
+  - Smoke check: `scripts/checks/hardware-auto-discovery-smoke.sh` wired into `scripts/check.sh --core-only` (39 assertions incl. privacy invariant)
+  - Privacy: every probe target is loopback / RFC1918 / link-local / RFC4193 unique-local IPv6 / local filesystem — no public IP, no DNS, no WAN. The smoke grep asserts this across the package + helper and fails the build on any violation.
+  - Tier-b: well-scoped, documented, smoke-verified; foundation for the follow-up Additional hardware support slice (Row #304, line 74 in `docs/feature-checklist.md`).
+
 - OTA updates (GitHub channel + rollback-aware) — Wave 2 #30 (slice shipped)
   - Add-on: `homeassistant/addons/roamcore_ota/` (poller + 3-snapshot history at `/share/roamcore/snapshots/`)
   - Contract package: `homeassistant/packages/roamcore_ota.yaml` (sensors + helpers + auto-apply scheduler at 03:00 local)
