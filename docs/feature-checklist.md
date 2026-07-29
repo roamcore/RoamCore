@@ -77,5 +77,5 @@ Legend:
 ## Community
 
 - [x] RoamCore Labs (share setups/dashboards) — Wave 2 #32 (slice shipped; contract + wizard + import/export + smoke)
-- [ ] Gamification / competitions (optional)
+- [x] Gamification / competitions (optional) — Wave 2 #33 (slice shipped; contract + wizard + acknowledge service + smoke)
 

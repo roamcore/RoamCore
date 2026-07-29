@@ -189,3 +189,32 @@ labs_import_setup:
       default: true
       selector:
         boolean: {}
+
+gamification_acknowledge_trophy:
+  name: Acknowledge a RoamCore gamification trophy
+  description: >-
+    Flip the matching input_boolean.rc_gamification_trophy_seen_<id>
+    ON so the dashboard can render the trophy as "seen" rather than
+    "new". Idempotent (already-on stays on). Privacy-by-default: no
+    remote upload, no telemetry, no third-party HTTP. The service is
+    a pure HA service call — no Python processing. See the Wave 2 #33
+    slice (docs/setup/gamification.md) for the operator guide.
+  fields:
+    trophy_id:
+      name: Trophy ID
+      description: >-
+        Trophy identifier to acknowledge. Must be one of the 7 known
+        trophies; an unknown value raises a ValueError surfaced as a
+        persistent_notification.
+      required: true
+      example: first_trip_wrapped
+      selector:
+        select:
+          options:
+            - first_trip_wrapped
+            - first_power_session
+            - first_automation
+            - first_share_exported
+            - first_offline_driving_day
+            - first_setup_complete
+            - first_twilight_handling

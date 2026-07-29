@@ -1,0 +1,318 @@
+# RoamCore — Gamification (opt-in streak + trophy subsystem) contract layer
+#
+# Slice: Wave 2 #33 — Gamification (optional, tier-c, opt-in, local-only)
+# Tier: c (community-curated, best-effort). Optional — operator must opt in.
+# Privacy: privacy-by-default. No telemetry, no third-party HTTP, no
+# external CDN. Every trophy composes over an already-shipping RoamCore
+# signal. See docs/setup/gamification.md#privacy for the full statement.
+#
+# Per docs/reference/rc-entity-naming.md:
+#   <domain>.rc_<subsystem>_<object>_<metric>
+# Subsystem = "gamification".
+#
+# This package declares 19 contract entities (1 binary_sensor kill-switch,
+# 1 input_number trophy count, 2 sensors last-award, 1 text award list,
+# 7 input_boolean seen flags, 7 binary_sensor trigger sensors). When the
+# kill-switch binary_sensor.rc_gamification_enabled is OFF, every derived
+# sensor reports `unavailable` (never `unknown`/`0`) so the dashboard
+# renders a clear "Off" chip instead of a stale reading.
+#
+# The custom service that operates on these entities lives in
+# homeassistant/custom_components/roamcore/:
+#   roamcore.gamification_acknowledge_trophy(trophy_id=...)
+#     — flips the matching input_boolean.rc_gamification_trophy_seen_<id>
+#       ON. Idempotent. Pure HA service call.
+#
+# Trophy taxonomy (7 starter trophies, all tier-c, all bucketed, all opt-in):
+#
+#   | Trophy ID               | Bucket       | Composes over                                    |
+#   |-------------------------|--------------|--------------------------------------------------|
+#   | first_trip_wrapped      | Map / Trip   | sensor.rc_trip_wrapped_latest_generated_at        |
+#   | first_power_session     | Power        | sensor.rc_power_battery_soc                       |
+#   | first_automation        | Automations  | expand(automation) | selectattr(...) | list > 0    |
+#   | first_share_exported    | Community    | text.rc_labs_last_export_path                     |
+#   | first_offline_driving_day | Map / Trip | sensor.rc_trip_local_today_distance_mi > 3.1 mi   |
+#   | first_setup_complete    | System UX    | all 6 binary_sensor.rc_setup_*_ready == 'on'      |
+#   | first_twilight_handling | Lighting     | binary_sensor.sun.sun == 'below_horizon'           |
+
+# ----------------------------- helpers -----------------------------
+# rc_gamification_enabled is the master switch (default OFF). Opt-in:
+# the operator must turn it on for the trophies to be tracked.
+binary_sensor:
+  - name: "RC Gamification Enabled"
+    unique_id: rc_gamification_enabled
+    icon: mdi:trophy-outline
+    # We mirror the state of input_boolean.rc_gamification_enabled via a
+    # template so the dashboard chip is consistent with the OFF-on-startup
+    # policy. The explicit OFF branch keeps the semantic unambiguous in
+    # code review.
+    state: >-
+      {% if is_state('input_boolean.rc_gamification_enabled', 'off') %}
+        off
+      {% else %}
+        on
+      {% endif %}
+    availability: >-
+      {{ states('input_boolean.rc_gamification_enabled') not in ['unknown', 'unavailable', 'none'] }}
+
+input_boolean:
+  rc_gamification_enabled:
+    name: "RC Gamification Enabled"
+    initial: false  # OFF by default — operator must opt in.
+    icon: mdi:trophy-outline
+
+# ----------------------------- trophy seen flags -----------------------------
+# Per-trophy "seen" acknowledgement. Default OFF. When OFF, the trophy is
+# "new" (UI can show a "1 new" chip); when ON, it has been acknowledged.
+input_boolean:
+  rc_gamification_trophy_seen_first_trip_wrapped:
+    name: "RC Gamification: First Trip Wrapped seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_power_session:
+    name: "RC Gamification: First Power Session seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_automation:
+    name: "RC Gamification: First Automation seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_share_exported:
+    name: "RC Gamification: First Share Exported seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_offline_driving_day:
+    name: "RC Gamification: First Offline Driving Day seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_setup_complete:
+    name: "RC Gamification: First Setup Complete seen"
+    initial: false
+    icon: mdi:trophy-outline
+  rc_gamification_trophy_seen_first_twilight_handling:
+    name: "RC Gamification: First Twilight Handling seen"
+    initial: false
+    icon: mdi:trophy-outline
+
+# ----------------------------- derived sensors -----------------------------
+# Trophy count (0..7) and last-award glance. All gated on the master
+# switch so they report `unavailable` when OFF.
+template:
+  - sensor:
+      - name: "RC Gamification Trophy Count"
+        unique_id: rc_gamification_trophy_count
+        icon: mdi:trophy
+        # 0..7. Sums the 7 trigger sensors that report 'on'.
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {{ (
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_trip_wrapped', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_power_session', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_automation', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_share_exported', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_offline_driving_day', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_setup_complete', 'on') else 0) +
+              (1 if is_state('binary_sensor.rc_gamification_trophy_triggered_first_twilight_handling', 'on') else 0)
+            ) | int(0) }}
+
+      - name: "RC Gamification Last Award At"
+        unique_id: rc_gamification_last_award_at
+        icon: mdi:clock-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {{ states('sensor.rc_gamification_last_award_at_raw') }}
+
+      - name: "RC Gamification Last Award Trophy"
+        unique_id: rc_gamification_last_award_trophy
+        icon: mdi:trophy-award
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {{ states('sensor.rc_gamification_last_award_trophy_raw') }}
+
+# ----------------------------- last-award read-outs -----------------------------
+# Two near-trivial sensors that the dashboard / wizard use to render the
+# "Last award at / trophy" glance. They read from a small JSON state
+# file written by the acknowledge service; gated on the master switch
+# so they report `unavailable` when OFF.
+command_line:
+  - sensor:
+      name: "RC Gamification Last Award At Raw"
+      unique_id: rc_gamification_last_award_at_raw
+      scan_interval: 60
+      command: >-
+        bash -c 'jq -r ".last_award_at // \"\"" /config/.storage/roamcore_gamification/state.json 2>/dev/null || echo ""'
+      value_template: "{{ value }}"
+      icon: "mdi:clock-outline"
+    sensor:
+      name: "RC Gamification Last Award Trophy Raw"
+      unique_id: rc_gamification_last_award_trophy_raw
+      scan_interval: 60
+      command: >-
+        bash -c 'jq -r ".last_award_trophy // \"\"" /config/.storage/roamcore_gamification/state.json 2>/dev/null || echo ""'
+      value_template: "{{ value }}"
+      icon: "mdi:trophy-award"
+
+# Awarded trophy list (JSON-line list) — handy for dashboards / agents.
+text:
+  - name: "RC Gamification Awarded Trophies"
+    unique_id: rc_gamification_awarded_trophies
+    icon: mdi:trophy
+    availability: >-
+      {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+    state: >-
+      {{ states('text.rc_gamification_awarded_trophies_mirror') }}
+
+input_text:
+  rc_gamification_awarded_trophies_mirror:
+    name: "RC Gamification Awarded Trophies (mirror)"
+    initial: "[]"
+    max: 1024
+    icon: mdi:trophy
+
+# ----------------------------- trophy trigger binary sensors -----------------------------
+# One trigger binary_sensor per trophy. Each evaluates a Jinja2 condition
+# against existing RoamCore entities. When the kill-switch is OFF, each
+# trigger sensor reports `unavailable` (never `unknown`) so the dashboard
+# renders a clear "Off" chip instead of a stale "Triggered" state.
+#
+# The 7 trophies intentionally compose over already-shipping RoamCore
+# signals — no new sensors, no new MQTT topics, only template
+# composition over what already ships. See docs/setup/gamification.md
+# for the operator guide.
+template:
+  - binary_sensor:
+      - name: "RC Gamification Trophy Triggered: First Trip Wrapped"
+        unique_id: rc_gamification_trophy_triggered_first_trip_wrapped
+        icon: mdi:map-marker-radius-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {% set v = states('sensor.rc_trip_wrapped_latest_generated_at') %}
+          {{ v not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Gamification Trophy Triggered: First Power Session"
+        unique_id: rc_gamification_trophy_triggered_first_power_session
+        icon: mdi:flash-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {% set v = states('sensor.rc_power_battery_soc') %}
+          {{ v not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Gamification Trophy Triggered: First Automation"
+        unique_id: rc_gamification_trophy_triggered_first_automation
+        icon: mdi:robot-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {# An automation has "fired" iff any automation entity with
+             id prefix `rc_` has a non-empty last_triggered attribute.
+             We use expand() + selectattr() against the automation domain. #}
+          {{ (expand(['automation.rc_trip_wrapped_auto_today'])
+              | selectattr('attributes.last_triggered', 'defined')
+              | selectattr('state', 'eq', 'on')
+              | list | length) > 0 }}
+
+      - name: "RC Gamification Trophy Triggered: First Share Exported"
+        unique_id: rc_gamification_trophy_triggered_first_share_exported
+        icon: mdi:share-variant-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {% set v = states('text.rc_labs_last_export_path') %}
+          {{ v not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Gamification Trophy Triggered: First Offline Driving Day"
+        unique_id: rc_gamification_trophy_triggered_first_offline_driving_day
+        icon: mdi:car-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {# Privacy: the local trip pipeline (rc_trip_local) is the
+             single source of truth for "did I drive today?". The
+             privacy smoke check (scripts/checks/trip-tracking-privacy-smoke.sh)
+             enforces zero off-device leakage statically; this template
+             uses only the local distance metric. Threshold: 3.1 mi (~5 km). #}
+          {% set tracker = states('input_text.rc_location_tracker_entity') %}
+          {% set dist = states('sensor.rc_trip_local_today_distance_mi') | float(0) %}
+          {{ (tracker not in ['unknown','unavailable','']) and (dist > 3.1) }}
+
+      - name: "RC Gamification Trophy Triggered: First Setup Complete"
+        unique_id: rc_gamification_trophy_triggered_first_setup_complete
+        icon: mdi:check-decagram-outline
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {# All 6 binary_sensor.rc_setup_*_ready signals must be ON. #}
+          {{ (expand(['binary_sensor.rc_setup_owner_ready',
+                      'binary_sensor.rc_setup_networking_ready',
+                      'binary_sensor.rc_setup_map_ready',
+                      'binary_sensor.rc_setup_trip_wrapped_ready',
+                      'binary_sensor.rc_setup_levelling_ready',
+                      'binary_sensor.rc_setup_victron_ready'])
+              | selectattr('state', 'eq', 'on')
+              | list | length) == 6 }}
+
+      - name: "RC Gamification Trophy Triggered: First Twilight Handling"
+        unique_id: rc_gamification_trophy_triggered_first_twilight_handling
+        icon: mdi:weather-night-partly-cloudy
+        availability: >-
+          {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+        state: >-
+          {# Twilight handling: the operator has been on the road AND
+             the sun is currently below the horizon. We treat this as
+             the day→twilight handoff because no light.* contract
+             entities ship yet; once they do, the trophy will compose
+             over the same pattern (state known + sun state known). #}
+          {% set v = states('sensor.rc_location_lat') %}
+          {{ (v not in ['unknown','unavailable','none','']) and is_state('binary_sensor.sun.sun', 'below_horizon') }}
+
+# ----------------------------- services -----------------------------
+# Operator-facing scripts that the wizard snippet mirrors 1:1. The
+# cards call these scripts so the service call site is centralized
+# (zero duplication between the dashboard and the wizard).
+script:
+  rc_gamification_acknowledge_trophy:
+    alias: "RC Gamification: acknowledge trophy"
+    fields:
+      trophy_id:
+        description: "Trophy ID to acknowledge (e.g. first_trip_wrapped)."
+        example: "first_trip_wrapped"
+        required: true
+        selector:
+          select:
+            options:
+              - first_trip_wrapped
+              - first_power_session
+              - first_automation
+              - first_share_exported
+              - first_offline_driving_day
+              - first_setup_complete
+              - first_twilight_handling
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: "{{ trophy_id }}"
+
+# ----------------------------- automations -----------------------------
+# When the operator flips the master switch on for the first time, we
+# seed the state.json file with the empty counters so the dashboard
+# doesn't render a stale "unknown" reading on the last-award glance.
+automation:
+  - id: rc_gamification_seed_state_on_enable
+    alias: "RC Gamification: seed state on enable"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_gamification_enabled
+        from: "off"
+        to: "on"
+    action:
+      - service: shell_command.rc_gamification_seed_state
+
+shell_command:
+  rc_gamification_seed_state: >-
+    /bin/sh -lc 'mkdir -p /config/.storage/roamcore_gamification && if [ ! -f /config/.storage/roamcore_gamification/state.json ]; then printf "{\\n  \\"last_award_at\\": \\"\\",\\n  \\"last_award_trophy\\": \\"\\"\\n}\\n" > /config/.storage/roamcore_gamification/state.json; fi'

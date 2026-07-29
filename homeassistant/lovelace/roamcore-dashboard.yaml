@@ -200,3 +200,65 @@ views:
   #     - entity: script.rc_labs_wizard_set_enabled
   #     - entity: script.rc_labs_wizard_set_disabled
   # ---------------------------------------------------------------
+  # ---------------------------------------------------------------
+  #
+  # To enable Gamification, uncomment the block below:
+  #
+  # Privacy: the markdown card reinforces the privacy-by-default
+  # statement. The footer link points back to docs/setup/gamification.md#privacy.
+  #
+  # - type: markdown
+  #   title: "RoamCore Gamification"
+  #   content: |
+  #     # RoamCore Gamification
+  #     Track small wins as you build your RoamCore setup. **Optional, opt-in, local-only.**
+  #     Gamification is **{{ 'On' if is_state('input_boolean.rc_gamification_enabled', 'on') else 'Off' }}**.
+  #     Trophies: **{{ states('sensor.rc_gamification_trophy_count') }} / 7**.
+  #     Last award at: `{{ states('sensor.rc_gamification_last_award_at') }}`.
+  #     Last award trophy: **{{ states('sensor.rc_gamification_last_award_trophy') }}**.
+  #     ---
+  #     **Privacy:** RoamCore never uploads trophy state. The counter is local.
+  #     See [docs/setup/gamification.md#privacy](../../setup/gamification.md#privacy).
+  # - type: entities
+  #   title: "Trophies (first 7)"
+  #   entities:
+  #     - entity: input_boolean.rc_gamification_enabled
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_trip_wrapped
+  #       name: "First Trip Wrapped"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_power_session
+  #       name: "First Power Session"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_automation
+  #       name: "First Automation"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_share_exported
+  #       name: "First Share Exported"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_offline_driving_day
+  #       name: "First Offline Driving Day"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_setup_complete
+  #       name: "First Setup Complete"
+  #       secondary_info: last-changed
+  #     - entity: binary_sensor.rc_gamification_trophy_triggered_first_twilight_handling
+  #       name: "First Twilight Handling"
+  #       secondary_info: last-changed
+  #     - entity: script.rc_gamification_wizard_set_enabled
+  #       name: "Acknowledge: enable gamification"
+  #     - entity: script.rc_gamification_wizard_set_disabled
+  #       name: "Acknowledge: disable gamification"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_trip_wrapped
+  #       name: "Acknowledge: First Trip Wrapped"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_power_session
+  #       name: "Acknowledge: First Power Session"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_automation
+  #       name: "Acknowledge: First Automation"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_share_exported
+  #       name: "Acknowledge: First Share Exported"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_offline_driving_day
+  #       name: "Acknowledge: First Offline Driving Day"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_setup_complete
+  #       name: "Acknowledge: First Setup Complete"
+  #     - entity: script.rc_gamification_wizard_acknowledge_first_twilight_handling
+  #       name: "Acknowledge: First Twilight Handling"

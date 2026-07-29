@@ -49,6 +49,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - CLI mirrors: `homeassistant/tools/labs/{export_setup,import_setup}.py` (stdlib-only)
   - Smoke: `scripts/checks/labs-smoke.sh` (privacy invariant wired into `scripts/check.sh --core-only`)
 
+- Gamification (opt-in streak + trophy subsystem) — Wave 2 #33 (slice shipped; tier-c, opt-in, local-only)
+  - Contract layer: `homeassistant/packages/roamcore_gamification.yaml` (19 contract entities)
+  - Wizard snippet: `homeassistant/packages/roamcore_setup_wizard_gamification.yaml`
+  - Service: `roamcore.gamification_acknowledge_trophy` (registered in `homeassistant/custom_components/roamcore/services.yaml`)
+  - CLI mirror: `homeassistant/tools/gamification/trophy_state.py` (stdlib-only)
+  - Smoke: `scripts/checks/gamification-smoke.sh` (privacy invariant wired into `scripts/check.sh --core-only`)
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

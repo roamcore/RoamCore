@@ -92,6 +92,11 @@ run_if_present "scripts/checks/mode-builder-smoke.sh"      "Mode builder: smoke 
 banner "RoamCore Labs (share setups/dashboards): smoke check"
 bash scripts/checks/labs-smoke.sh
 
+# RoamCore Gamification (opt-in streak + trophy subsystem) smoke ships
+# with this slice (#33). Run unconditionally on this branch.
+banner "RoamCore Gamification (opt-in streak + trophy subsystem): smoke check"
+bash scripts/checks/gamification-smoke.sh
+
 # Hardware auto-discovery smoke ships with the slice #31 branch. Until
 # that PR merges, probe so this branch's chain stays green on main.
 run_if_present "scripts/checks/hardware-auto-discovery-smoke.sh" \

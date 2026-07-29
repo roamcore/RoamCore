@@ -1,0 +1,137 @@
+# RoamCore — Setup Wizard snippet for the Gamification (opt-in streak +
+# trophy subsystem) stage
+#
+# Slice: Wave 2 #33 — Gamification (optional, tier-c, opt-in, local-only)
+# Tier: c (community-curated, best-effort). Optional — operator must opt in.
+#
+# This package is a *wizard-stage* snippet: the Setup Wizard renders it
+# at the "Gamification (optional)" stage when the operator has finished
+# the Privacy check. It is already shipped via the contract package (see
+# homeassistant/packages/roamcore_gamification.yaml) so the entities are
+# guaranteed to exist. The wizard drops the markdown + glance + entities
+# block into the active dashboard on demand.
+#
+# Privacy: the markdown card reinforces the privacy-by-default statement.
+# The footer link points back to docs/setup/gamification.md#privacy.
+
+# ----------------------------- status pill -----------------------------
+# Wizard-side status refresh button. The contract has its own service
+# (roamcore.gamification_acknowledge_trophy); this wizard-side helper is
+# named with the rc_gamification_wizard_* prefix so the unique_id space
+# is disjoint (no YAML load conflicts).
+button:
+  - name: "RC Gamification Wizard Status Refresh"
+    unique_id: rc_gamification_wizard_status_refresh
+    icon: mdi:refresh
+    availability: >-
+      {{ is_state('input_boolean.rc_gamification_enabled', 'on') }}
+    press:
+      - service: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.rc_gamification_trophy_count
+            - sensor.rc_gamification_last_award_at
+            - sensor.rc_gamification_last_award_trophy
+            - text.rc_gamification_awarded_trophies
+            - binary_sensor.rc_gamification_trophy_triggered_first_trip_wrapped
+            - binary_sensor.rc_gamification_trophy_triggered_first_power_session
+            - binary_sensor.rc_gamification_trophy_triggered_first_automation
+            - binary_sensor.rc_gamification_trophy_triggered_first_share_exported
+            - binary_sensor.rc_gamification_trophy_triggered_first_offline_driving_day
+            - binary_sensor.rc_gamification_trophy_triggered_first_setup_complete
+            - binary_sensor.rc_gamification_trophy_triggered_first_twilight_handling
+      - event: roamcore_gamification_status_refreshed
+        event_data:
+          at: "{{ now().isoformat() }}"
+
+# ----------------------------- wizard scripts -----------------------------
+# Wizard scripts that the dashboard card wires to. Each script is
+# named with the rc_gamification_wizard_* prefix; the press actions target
+# the contract entities (input_boolean.rc_gamification_enabled,
+# input_boolean.rc_gamification_trophy_seen_*, etc.) so the wizard chip
+# gets the same state picture as the contract.
+script:
+  rc_gamification_wizard_set_enabled:
+    alias: "RC Gamification wizard: enable"
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.rc_gamification_enabled
+  rc_gamification_wizard_set_disabled:
+    alias: "RC Gamification wizard: disable"
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_gamification_enabled
+  rc_gamification_wizard_acknowledge_first_trip_wrapped:
+    alias: "RC Gamification wizard: acknowledge First Trip Wrapped"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_trip_wrapped
+  rc_gamification_wizard_acknowledge_first_power_session:
+    alias: "RC Gamification wizard: acknowledge First Power Session"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_power_session
+  rc_gamification_wizard_acknowledge_first_automation:
+    alias: "RC Gamification wizard: acknowledge First Automation"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_automation
+  rc_gamification_wizard_acknowledge_first_share_exported:
+    alias: "RC Gamification wizard: acknowledge First Share Exported"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_share_exported
+  rc_gamification_wizard_acknowledge_first_offline_driving_day:
+    alias: "RC Gamification wizard: acknowledge First Offline Driving Day"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_offline_driving_day
+  rc_gamification_wizard_acknowledge_first_setup_complete:
+    alias: "RC Gamification wizard: acknowledge First Setup Complete"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_setup_complete
+  rc_gamification_wizard_acknowledge_first_twilight_handling:
+    alias: "RC Gamification wizard: acknowledge First Twilight Handling"
+    sequence:
+      - service: roamcore.gamification_acknowledge_trophy
+        data:
+          trophy_id: first_twilight_handling
+  rc_gamification_wizard_refresh_readouts:
+    alias: "RC Gamification wizard: refresh read-out chips"
+    sequence:
+      - event: roamcore_gamification_wizard_refresh
+        event_data:
+          at: "{{ now().isoformat() }}"
+
+# ----------------------------- read-out mirrors -----------------------------
+# The wizard sometimes needs to render the contract read-out sensors
+# in a glance card. We add a glance card snippet as a template so the
+# dashboard picks it up without a custom card.
+template:
+  - sensor:
+      - name: "RC Gamification Wizard Trophy Count"
+        unique_id: rc_gamification_wizard_trophy_count
+        icon: mdi:trophy
+        state: >-
+          {{ states('sensor.rc_gamification_trophy_count') }}
+
+      - name: "RC Gamification Wizard Last Award At"
+        unique_id: rc_gamification_wizard_last_award_at
+        icon: mdi:clock-outline
+        state: >-
+          {{ states('sensor.rc_gamification_last_award_at') }}
+
+      - name: "RC Gamification Wizard Last Award Trophy"
+        unique_id: rc_gamification_wizard_last_award_trophy
+        icon: mdi:trophy-award
+        state: >-
+          {{ states('sensor.rc_gamification_last_award_trophy') }}

@@ -952,6 +952,95 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=None,
     )
 
+    # ------------------------------------------------------------------
+    # RoamCore Gamification (opt-in streak + trophy subsystem) — Wave 2 #33
+    # ------------------------------------------------------------------
+    # Privacy: pure HA service call. No outbound HTTP, no telemetry,
+    # no third-party imports. The trophy service is intentionally
+    # boring: it just flips an input_boolean ON so the dashboard can
+    # render the trophy as "seen" rather than "new". Idempotent.
+    # ------------------------------------------------------------------
+
+    KNOWN_TROPHIES = frozenset({
+        "first_trip_wrapped",
+        "first_power_session",
+        "first_automation",
+        "first_share_exported",
+        "first_offline_driving_day",
+        "first_setup_complete",
+        "first_twilight_handling",
+    })
+
+    async def _svc_gamification_acknowledge_trophy(call):
+        """Flip the matching input_boolean.rc_gamification_trophy_seen_<id> ON.
+
+        The kill-switch (``input_boolean.rc_gamification_enabled``) is
+        intentionally NOT consulted here: acknowledging a trophy is a
+        pure UI operation and should not be blocked by the master
+        switch. The trigger sensors are the ones that gate on the
+        master switch; this service is the read-only acknowledgement
+        path.
+
+        Raises ``ValueError`` on invalid trophy_id. The error is
+        surfaced via ``hass.components.persistent_notification`` so the
+        operator can see the message without digging into logs.
+        """
+        trophy_id = str(call.data.get("trophy_id") or "").strip()
+        if trophy_id not in KNOWN_TROPHIES:
+            try:
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "RoamCore gamification: unknown trophy_id",
+                        "message": (
+                            f"trophy_id {trophy_id!r} is not in the known set: "
+                            f"{sorted(KNOWN_TROPHIES)}"
+                        ),
+                        "notification_id": "roamcore_gamification_unknown_trophy",
+                    },
+                    blocking=False,
+                )
+            except Exception:
+                pass
+            raise ValueError(
+                f"unknown trophy_id: {trophy_id!r}"
+            )
+
+        entity_id = f"input_boolean.rc_gamification_trophy_seen_{trophy_id}"
+        try:
+            await hass.services.async_call(
+                "input_boolean",
+                "turn_on",
+                {"entity_id": entity_id},
+                blocking=True,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"gamification acknowledge failed: {type(exc).__name__}: {exc}"
+            )
+
+        # Best-effort: log the acknowledgement in the logbook.
+        try:
+            await hass.services.async_call(
+                "logbook",
+                "log",
+                {
+                    "name": "RoamCore Gamification",
+                    "message": f"Acknowledged trophy {trophy_id}",
+                },
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "gamification_acknowledge_trophy",
+        _svc_gamification_acknowledge_trophy,
+        schema=None,
+    )
+
     return True
 
 
