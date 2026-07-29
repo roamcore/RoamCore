@@ -95,6 +95,61 @@ by default (we follow the HACS-friendly / UI-first principle — see
 GOLDEN.md §HACS-friendly layout) but the snippet is there for advanced
 users.
 
+## Trip stats (Wave 2 #18)
+
+Once the Traccar integration is wired (Step 1 above) and
+`input_text.rc_location_tracker_entity` points at a healthy
+`device_tracker.traccar_<device>` entity, the RoamCore contract sensors
+stop returning mocks and start returning **real** Traccar-derived values:
+
+- `sensor.rc_trip_distance_today_mi` / `sensor.rc_trip_distance_total_mi`
+- `sensor.rc_trip_time_today` / `sensor.rc_trip_time_total`
+- `sensor.rc_trip_segments` / `sensor.rc_trip_stops`
+
+### How it works
+
+`homeassistant/packages/roamcore_trip_local.yaml` ships:
+
+- `shell_command.rc_trip_stats_poll` — runs
+  `homeassistant/tools/trip_wrapped/traccar_trip_stats.py` (stdlib-only
+  Python, no extra dependencies).
+- `automation.rc_trip_stats_poll` — triggers on
+  `homeassistant_started`, every 5 minutes (`time_pattern: /5`), and on
+  every `entity_registry_updated` create event so a freshly-added
+  device_tracker.traccar_* entity is picked up immediately.
+- Six `command_line` sensors that read the rolling JSON file under
+  HA's `/config/.storage/roamcore_trip_stats.json`:
+  `rc_trip_stats_today_distance`, `rc_trip_stats_total_distance`,
+  `rc_trip_stats_today_drive_time`, `rc_trip_stats_total_drive_time`,
+  `rc_trip_stats_today_segments`, `rc_trip_stats_today_stops`.
+
+The template sensors in `roamcore_location.yaml` prefer those first and
+fall back to the existing `rc_trip_wrapped_*` → `rc_trip_local_*` →
+`rc_mock_*` chain when the live tracker is unavailable.
+
+### Polling cadence and accuracy
+
+- **Cadence**: 5 minutes by default (`time_pattern: /5`). Override
+  per-instance with `shell_command.rc_trip_stats_poll`'s
+  `--min-interval-s` flag.
+- **Distance**: haversine delta of consecutive tracker positions,
+  credited only when the move exceeds 50 m **and** the gap stays under
+  50 km (sanity cap to ignore teleport / lost-GPS events).
+- **Drive time**: cumulative seconds where `speed > 0`, attributed at
+  the configured poll interval.
+- **Segments / stops**: a movement beyond 50 m starts a new segment;
+  stationary for >= 5 minutes (10 polls at the default 30 s
+  `--min-interval-s`, 1 poll at the 5-minute HA cadence) counts as a
+  stop.
+
+### Local-only by default
+
+The rolling JSON state file is written under HA's `/config/.storage/`
+path and is **never** sent off-host by this slice. The Trip Wrapped
+HTML export (`/local/roamcore/trip_wrapped/latest.html`) remains an
+opt-in, manually-triggered step that uses the same Traccar credentials
+(see `docs/setup/traccar.md` §"Reconnect steps").
+
 ## ⚠️ Security note (read this)
 
 Do **not** commit real credentials to git.

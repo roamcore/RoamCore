@@ -13,6 +13,16 @@ shell_command:
     --day today
     --out-json /config/www/roamcore/trip_local/today.json
 
+  # Wave 2 #18 — Trip stats from real Traccar data.
+  # Polls the configured `device_tracker.traccar_*` entity and writes
+  # distance/time/segments/stops to a rolling JSON file under HA's
+  # `/config/.storage/`. The matching `command_line` sensors below read
+  # that file. `input_text.rc_location_tracker_entity` is auto-filled by
+  # Wave 2 #17's `rc_location_autofill_tracker_entity` automation.
+  rc_trip_stats_poll: >-
+    python3 /config/tools/trip_wrapped/traccar_trip_stats.py
+    --min-interval-s 300
+
 automation:
   - id: rc_trip_local_today_exporter
     alias: "RC: Export local trip metrics (today)"
@@ -22,6 +32,30 @@ automation:
         minutes: "/15"
     action:
       - service: shell_command.rc_trip_local_today_export
+
+  # Wave 2 #18 — poll Traccar trip stats every 5 min + on HA start.
+  # We trigger on:
+  #   - `homeassistant_started` so the first poll runs after the auto-fill
+  #     automation from Wave 2 #17 has had a chance to write
+  #     `input_text.rc_location_tracker_entity` (PR #20).
+  #   - every 5 minutes via `time_pattern` so distance/time/stops stay
+  #     current while the van is moving.
+  #   - on `entity_registry_updated` create events so a freshly-added
+  #     device_tracker.traccar_* entity is picked up immediately.
+  - id: rc_trip_stats_poll
+    alias: "RC: Poll Traccar trip stats"
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/5"
+      - platform: event
+        event_type: entity_registry_updated
+        event_data:
+          action: create
+    action:
+      - service: shell_command.rc_trip_stats_poll
 
 sensor:
   - platform: command_line
@@ -76,3 +110,143 @@ sensor:
       PY'
     scan_interval: 60
 
+  # ---- Wave 2 #18 — Trip stats from real Traccar data -------------------
+  # These sensors read the rolling JSON written by
+  # `shell_command.rc_trip_stats_poll` (see automation above). They each
+  # print `unknown` if the file is missing / corrupt / unavailable so the
+  # template sensors in `roamcore_location.yaml` can fall through to the
+  # `rc_trip_wrapped_*` / `rc_trip_local_*` / mock fallback chain.
+
+  - platform: command_line
+    name: "RC Trip Stats Today Distance"
+    unique_id: rc_trip_stats_today_distance_mi
+    unit_of_measurement: "mi"
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        mi=float(o.get("today",{}).get("distance_mi") or 0)
+        print(round(mi,2))
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Stats Total Distance"
+    unique_id: rc_trip_stats_total_distance_mi
+    unit_of_measurement: "mi"
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        mi=float(o.get("total_distance_mi") or 0)
+        print(round(mi,2))
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Stats Today Drive Time"
+    unique_id: rc_trip_stats_today_drive_time
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        hms=o.get("today_drive_time_hms") or "0h 00m"
+        print(hms)
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Stats Total Drive Time"
+    unique_id: rc_trip_stats_total_drive_time
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        hms=o.get("total_drive_time_hms") or "0h 00m"
+        print(hms)
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Stats Today Segments"
+    unique_id: rc_trip_stats_today_segments
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        n=int(o.get("today",{}).get("segments") or 0)
+        print(n)
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
+
+  - platform: command_line
+    name: "RC Trip Stats Today Stops"
+    unique_id: rc_trip_stats_today_stops
+    command: >-
+      sh -lc 'python3 - <<"PY"
+      import json, os
+      candidates=(
+        "/config/.storage/roamcore_trip_stats.json",
+        "/homeassistant/.storage/roamcore_trip_stats.json",
+        "/tmp/roamcore_trip_stats.json",
+      )
+      p=next((x for x in candidates if os.path.exists(x)), "")
+      try:
+        o=json.load(open(p,"r"))
+        if not o.get("tracker_available"): raise SystemExit("unavail")
+        n=int(o.get("today",{}).get("stops") or 0)
+        print(n)
+      except Exception:
+        print("unknown")
+      PY'
+    scan_interval: 60
