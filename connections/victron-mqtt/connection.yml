@@ -1,0 +1,95 @@
+# Smoke-test connection (Day 1). Will be replaced by the real Victron
+# migration on Day 2 when the actual integration code moves into
+# connections/victron-mqtt/.
+id: victron-mqtt
+name: Victron Energy (GX / Cerbo / MQTT)
+tier: a
+category: power
+status: shipped
+version: 0.1.0
+description: |
+  Connects to a Victron GX device (Cerbo, Color Control GX, Venus GX) on
+  the local network via MQTT. Auto-discovers the device and exposes
+  battery, solar, and inverter telemetry as RoamCore entities.
+icon: victron
+codeowners:
+  - "@bernardc"
+tags:
+  - victron
+  - mqtt
+  - power
+  - solar
+  - batteries
+
+wizard:
+  connection_kind: mqtt
+  one_tap: true
+  auto_discover: true
+  estimated_time: 30s
+  requires_reboot: false
+  setup_notes: |
+    Make sure your GX device is on the same network as Home Assistant.
+    The wizard will scan the LAN for the device automatically.
+
+install:
+  ha_integration_domain: victron
+  config_flow: true
+  hacs: true
+  python_requirements:
+    - pymodbus>=3.5
+  min_ha_version: "2024.8"
+  side_effects:
+    - configures_mqtt
+    - adds_dashboard_card
+
+dashboard:
+  tiles:
+    - id: rc_power_battery_soc
+      label: Battery
+      unit: "%"
+      source: sensor.victron_battery_soc
+    - id: rc_power_solar_input
+      label: Solar Input
+      unit: "W"
+      source: sensor.victron_pv_power
+    - id: rc_power_load
+      label: Load
+      unit: "W"
+      source: sensor.victron_load_power
+
+openclaw:
+  queries:
+    - "how much battery do I have left?"
+    - "is the solar charging right now?"
+    - "what's pulling power?"
+    - "can I run the kettle on battery?"
+  summary_keys:
+    - battery_soc
+    - solar_input_w
+    - load_w
+    - battery_voltage
+
+tests:
+  - tests/test_config_flow.py
+  - tests/test_mqtt_discovery.py
+  - tests/test_dashboard_tiles.py
+
+tier_requirements:
+  - working_config_flow
+  - auto_discovery_works
+  - integration_test_passes
+  - dashboard_tiles_render
+  - openclaw_summary_includes
+  - docs_recipe_published
+  - no_manual_yaml_required
+
+tier_warnings:
+  - vendor_api_flaky_on_firmware_below_2.80
+
+links:
+  official:
+    - https://www.victronenergy.com/
+  docs:
+    - https://www.victronenergy.com/live/
+  repo:
+    - https://github.com/victronenergy/venus-html5-app
