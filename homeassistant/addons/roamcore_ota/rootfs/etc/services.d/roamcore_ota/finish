@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bashio
+# s6 finish script — bring the whole add-on down if the daemon exits unexpectedly.
+bashio::log.warning "RoamCore OTA daemon exited with code ${1:-?}; halting add-on."
+exec /run/s6/basedir/bin/halt
