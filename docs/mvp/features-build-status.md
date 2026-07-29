@@ -33,6 +33,16 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- AI chat (slice #27 — opt-in scaffold + privacy contract)
+  - endpoint: `POST /api/roamcore/ai_chat/message` (contract v1.0.0; OFF-by-default, fail-closed)
+  - package: `homeassistant/packages/roamcore_ai_chat.yaml`
+    (declares `input_boolean.rc_ai_chat_enabled` = OFF, plus provider/model/api-key/max-history helpers)
+  - view: `homeassistant/custom_components/roamcore_ai_chat/view.py`
+  - UI card: `homeassistant/www/roamcore/roamcore-ai-chat.js` (off / setup / active states)
+  - docs: `docs/setup/ai-chat.md`
+  - catalog: `docs/catalog/ai/ai-chat.md`
+  - smoke: `scripts/checks/ai-chat-smoke.sh` (privacy contract + class + url + JS card + docs)
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
