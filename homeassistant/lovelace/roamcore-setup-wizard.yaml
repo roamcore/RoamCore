@@ -2,6 +2,16 @@
 #
 # A guided setup view built using only built-in Lovelace cards + RoamCore helpers.
 # This is intentionally simple and resilient. It can be revisited at any time.
+#
+# Wave 2 #16 — stage-aware collapse:
+# - The top "Progress" card always lists every stage with its readiness state.
+# - The detail cards below are gated with `conditional:` Jinja templates so only
+#   the current `input_select.rc_setup_stage` step's cards render in detail.
+# - A "Next step" button (input_button.rc_setup_advance_stage) advances the
+#   stage as soon as the current step is ready. A "Previous" button
+#   (input_button.rc_setup_regress_stage) lets the user rewind without losing
+#   the values they already entered. The actual selection logic lives in
+#   `homeassistant/packages/roamcore_setup_wizard.yaml`.
 
 title: RoamCore Setup
 views:
@@ -9,12 +19,19 @@ views:
     title: Setup
     icon: mdi:magic-staff
     cards:
+      # ----------------------------------------------------------------------
+      # Always-visible intro
+      # ----------------------------------------------------------------------
       - type: markdown
         content: |
           # RoamCore Setup
           This wizard guides the first basic setup.
           You can rerun it any time.
 
+      # ----------------------------------------------------------------------
+      # Always-visible progress (every stage + its readiness, regardless of
+      # which one is "current"). This is the novice-first overview.
+      # ----------------------------------------------------------------------
       - type: entities
         title: Progress
         entities:
@@ -22,88 +39,188 @@ views:
             name: Completed
           - entity: input_select.rc_setup_stage
             name: Current step
+          - type: divider
           - entity: binary_sensor.rc_setup_owner_ready
+            name: ✓ Owner
+          - entity: binary_sensor.rc_setup_networking_ready
+            name: ✓ Networking
           - entity: binary_sensor.rc_setup_map_ready
+            name: ✓ Map / Location
           - entity: binary_sensor.rc_setup_trip_wrapped_ready
+            name: ✓ Trip Wrapped (Traccar)
+          - entity: binary_sensor.rc_setup_levelling_ready
+            name: ✓ Levelling
           - entity: binary_sensor.rc_setup_victron_ready
+            name: ✓ Victron
 
-      - type: markdown
-        content: |
-          ## 1) Owner
+      # ----------------------------------------------------------------------
+      # Detail cards per stage — each block is gated on input_select.rc_setup_stage
+      # so only the current step renders its full UI. The other steps show only
+      # the summary row above. Use 'is_state' on the input_select options.
+      # ----------------------------------------------------------------------
 
+      # ----- 1) Owner --------------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: owner
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 1) Owner
+            - type: entities
+              title: Owner
+              entities:
+                - entity: input_text.rc_owner_name
+                  name: Owner name
+
+      # ----- 2) Networking ---------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: networking
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 2) Networking
+                RoamCore discovers your OpenWrt router and reports internet + active WAN.
+
+      # ----- 3) Map / Location ----------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: map
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 3) Map / Location
+                Set your tracker entity in Helpers if needed:
+                `input_text.rc_location_tracker_entity`
+            - type: entities
+              title: Map settings
+              entities:
+                - entity: input_text.rc_location_tracker_entity
+                - entity: input_text.rc_map_tile_url
+                - entity: input_text.rc_map_tile_url_online
+                - entity: input_text.rc_map_style_url
+                - entity: input_number.rc_map_offline_max_zoom
+            - type: map
+              hours_to_show: 6
+              default_zoom: 12
+              entities: []
+
+      # ----- 4) Trip Wrapped -------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: trip_wrapped
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 4) Trip Wrapped (Traccar)
+                **Recommended:** use a Traccar **user token** stored in `/config/secrets.yaml` as:
+                `roamcore_traccar_user_token:`
+            - type: entities
+              title: Traccar
+              entities:
+                - entity: input_text.rc_traccar_base_url
+                  name: Traccar base URL
+                - entity: input_number.rc_traccar_device_id
+                  name: Device ID
+                - entity: input_text.rc_traccar_ui_url
+                  name: Traccar UI (proxy)
+                - entity: input_text.rc_setup_traccar_user_token
+                  name: Paste Traccar user token
+                - entity: script.rc_setup_save_traccar_user_token
+                  name: Save token securely
+                - entity: script.rc_trip_wrapped_run_today
+                  name: Generate (Today)
+            - type: markdown
+              content: |
+                Latest report:
+                - [/local/roamcore/trip_wrapped/latest.html](/local/roamcore/trip_wrapped/latest.html)
+
+      # ----- 5) Levelling ----------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: levelling
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 5) Levelling
+                RoamCore will auto-discover ESPHome pitch/roll sensors and surface them on the dashboard.
+
+      # ----- 6) Victron ------------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: victron
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 6) Victron
+                Use the connect card to discover and connect.
+
+                Tip: you can also do pairing from the main RoamCore dashboard.
+            - type: custom:roamcore-victron-connect
+              title: Victron (Connect)
+            - type: entities
+              title: Victron backend health
+              entities:
+                - entity: binary_sensor.rc_system_power_backend_connected
+                - entity: sensor.rc_system_power_backend_status
+                - entity: sensor.rc_system_power_backend_snapshot_state
+                - entity: sensor.rc_system_power_backend_devices
+                - entity: sensor.rc_system_power_backend_topics
+
+      # ----- 7) Optional -----------------------------------------------------
+      - type: conditional
+        conditions:
+          - entity: input_select.rc_setup_stage
+            state: optional
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: |
+                ## 7) Optional
+                Anything else you'd like to enable. Open the main RoamCore dashboard to explore add-ons.
+
+      # ----------------------------------------------------------------------
+      # Stage navigation — Previous / Next step buttons.
+      # input_select.rc_setup_stage is referenced twice: once for the Current
+      # step entity above (so the user can always jump manually), and once
+      # implicitly via the conditional cards above. The two buttons below are
+      # always visible so the user can move forward / rewind.
+      # ----------------------------------------------------------------------
       - type: entities
-        title: Owner
+        title: Stage navigation
         entities:
-          - entity: input_text.rc_owner_name
-            name: Owner name
+          - entity: input_button.rc_setup_regress_stage
+            name: ◀ Previous step
+            icon: mdi:arrow-left-bold
+          - entity: input_button.rc_setup_advance_stage
+            name: Next step ▶
+            icon: mdi:arrow-right-bold
+          - entity: input_select.rc_setup_stage
+            name: Jump to step
 
-      - type: markdown
-        content: |
-          ## 2) Map / Location
-          Set your tracker entity in Helpers if needed:
-          `input_text.rc_location_tracker_entity`
-
-      - type: entities
-        title: Map settings
-        entities:
-          - entity: input_text.rc_location_tracker_entity
-          - entity: input_text.rc_map_tile_url
-          - entity: input_text.rc_map_tile_url_online
-          - entity: input_text.rc_map_style_url
-          - entity: input_number.rc_map_offline_max_zoom
-
-      - type: map
-        hours_to_show: 6
-        default_zoom: 12
-        entities: []
-
-      - type: markdown
-        content: |
-          ## 3) Trip Wrapped (Traccar)
-          **Recommended:** use a Traccar **user token** stored in `/config/secrets.yaml` as:
-          `roamcore_traccar_user_token:`
-
-      - type: entities
-        title: Traccar
-        entities:
-          - entity: input_text.rc_traccar_base_url
-            name: Traccar base URL
-          - entity: input_number.rc_traccar_device_id
-            name: Device ID
-          - entity: input_text.rc_traccar_ui_url
-            name: Traccar UI (proxy)
-          - entity: input_text.rc_setup_traccar_user_token
-            name: Paste Traccar user token
-          - entity: script.rc_setup_save_traccar_user_token
-            name: Save token securely
-          - entity: script.rc_trip_wrapped_run_today
-            name: Generate (Today)
-
-      - type: markdown
-        content: |
-          Latest report:
-          - [/local/roamcore/trip_wrapped/latest.html](/local/roamcore/trip_wrapped/latest.html)
-
-      - type: markdown
-        content: |
-          ## 4) Victron
-          Use the connect card to discover and connect.
-
-          Tip: you can also do pairing from the main RoamCore dashboard.
-
-      - type: vertical-stack
-        cards:
-          - type: custom:roamcore-victron-connect
-            title: Victron (Connect)
-          - type: entities
-            title: Victron backend health
-            entities:
-              - entity: binary_sensor.rc_system_power_backend_connected
-              - entity: sensor.rc_system_power_backend_status
-              - entity: sensor.rc_system_power_backend_snapshot_state
-              - entity: sensor.rc_system_power_backend_devices
-              - entity: sensor.rc_system_power_backend_topics
-
+      # ----------------------------------------------------------------------
+      # Done footer — always visible (final state has no extra UI).
+      # ----------------------------------------------------------------------
       - type: markdown
         content: |
           ## Finish
