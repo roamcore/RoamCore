@@ -119,5 +119,80 @@ template:
           {% set v2 = states('sensor.rc_trip_local_today_stops') %}
           {{ v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_stops')) }}
 
+# ---------------------------------------------------------------------------
+# Auto-fill rc_location_tracker_entity on first boot.
+#
+# Problem: RoamCore ships with the traccar_server integration (or HACS
+# traccar) which creates device_tracker.traccar_<name> entities. The user has
+# to manually set input_text.rc_location_tracker_entity so the rc_location_*
+# template sensors above have a source. We can't do that headlessly because
+# the entity_id depends on what the user named the device in Traccar.
+#
+# Solution: an automation triggered on `homeassistant_started` that:
+#   1. Inspects the entity registry for any `device_tracker.traccar_*`
+#      entity. If one (or more) exist, picks the first and writes its
+#      entity_id into input_text.rc_location_tracker_entity.
+#   2. Falls back to whatever the input_text is already set to (the
+#      bootstrap default `device_tracker.traccar_van`), so users who name
+#      their device `van` get the right thing on first install.
+#   3. Also re-runs whenever a new device_tracker.traccar_* entity is
+#      registered (e.g. user adds a second Traccar device). This handles
+#      the "I added the integration mid-session" case.
+#   4. If nothing matches and the input_text is blank, leaves it blank so
+#      the rc_location_* templates degrade to `unknown` (existing safe
+#      behaviour — no crashes).
+#
+# We use `event: homeassistant_started` + an entity_registry trigger so we
+# don't need to import the registry at template time. The registry is
+# resolved lazily inside the action template.
+# ---------------------------------------------------------------------------
+automation:
+  - id: rc_location_autofill_tracker_entity
+    alias: "RC: auto-fill rc_location_tracker_entity"
+    description: >-
+      On HA start and whenever a new device_tracker.traccar_* entity is
+      registered, write the first matching entity_id into
+      input_text.rc_location_tracker_entity so rc_location_* sensors resolve.
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: event
+        event_type: entity_registry_updated
+        event_data:
+          action: create
+    condition: []
+    action:
+      - variables:
+          traccar_trackers: >-
+            {% set entities = states.device_tracker
+                  | selectattr('entity_id', 'search', '^device_tracker\.traccar_')
+                  | map(attribute='entity_id')
+                  | list %}
+            {{ entities | first | default('', true) }}
+          current_entity: "{{ states('input_text.rc_location_tracker_entity') }}"
+      - choose:
+          # If we found a device_tracker.traccar_* entity and the input_text
+          # is empty or still the bootstrap default `device_tracker.traccar_van`
+          # (which may not exist yet on first boot), write it.
+          - conditions:
+              - "{{ traccar_trackers != '' }}"
+              - "{{ current_entity in ['unknown', 'unavailable', '', 'device_tracker.traccar_van'] }}"
+            action:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_location_tracker_entity
+                data:
+                  value: "{{ traccar_trackers }}"
+          # Otherwise, if the configured entity exists, leave it alone.
+          - conditions:
+              - "{{ current_entity not in ['unknown', 'unavailable', ''] }}"
+              - "{{ states(current_entity) not in ['unknown', 'unavailable'] }}"
+            action: []
+          # Otherwise, nothing to do — rc_location_* sensors degrade to
+          # `unknown` via the existing availability guards.
+          - conditions: []
+            action: []
+
 # NOTE: This file is a Home Assistant package.
 # Keep template entity names/unique_ids stable to preserve entity_id continuity.
