@@ -142,6 +142,12 @@ if [ -f scripts/checks/traccar-integration-smoke.sh ]; then
         "bash scripts/checks/traccar-integration-smoke.sh"
 fi
 
+# 4d. Trip stats from real Traccar data smoke check (Wave 2 #18).
+if [ -f scripts/checks/trip-stats-traccar-smoke.sh ]; then
+    run_check "Traccar: trip stats smoke check" \
+        "bash scripts/checks/trip-stats-traccar-smoke.sh"
+fi
+
 # 5b. Power: capability-driven page smoke (Wave 2 #13).
 if [ -f scripts/check_power_capabilities.py ]; then
     run_check "Power: capability-driven page smoke" \

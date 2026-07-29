@@ -81,43 +81,63 @@ template:
         unit_of_measurement: "m"
         state: "{{ states('input_number.rc_mock_map_elevation_m') }}"
 
+      # Trip distance / time / segments / stops (Wave 2 #18).
+      #
+      # Fallthrough order (newest first, mocks last):
+      #   1. `sensor.rc_trip_stats_*`     — live Traccar poll (Wave 2 #18).
+      #   2. `sensor.rc_trip_wrapped_*`   — Trip Wrapped HTML export source.
+      #   3. `sensor.rc_trip_local_*`     — local recorder-derived metrics.
+      #   4. `input_*text/number.rc_mock_*` — dev / demo mocks.
+      # The `unknown`/`unavailable`/empty-string guard preserves the
+      # existing fallthrough when the upstream sensor isn't healthy yet.
+
       - name: "RC Trip Distance Today"
         unique_id: rc_trip_distance_today_mi
         unit_of_measurement: "mi"
         state: >-
+          {% set s = states('sensor.rc_trip_stats_today_distance') %}
           {% set v = states('sensor.rc_trip_wrapped_today_distance') %}
           {% set v2 = states('sensor.rc_trip_local_today_distance') %}
           {{
-            v if v not in ['unknown','unavailable','']
-            else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_distance_today_mi'))
+            s if s not in ['unknown','unavailable','']
+            else (v if v not in ['unknown','unavailable','']
+            else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_distance_today_mi')))
           }}
 
       - name: "RC Trip Distance Total"
         unique_id: rc_trip_distance_total_mi
         unit_of_measurement: "mi"
-        state: "{{ states('input_number.rc_mock_trip_distance_total_mi') }}"
+        state: >-
+          {% set s = states('sensor.rc_trip_stats_total_distance') %}
+          {{ s if s not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_distance_total_mi') }}
 
       - name: "RC Trip Time Today"
         unique_id: rc_trip_time_today
         state: >-
+          {% set s = states('sensor.rc_trip_stats_today_drive_time') %}
           {% set v = states('sensor.rc_trip_wrapped_today_duration') %}
           {% set v2 = states('sensor.rc_trip_local_today_drive_time') %}
-          {{ v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_text.rc_mock_trip_time_today')) }}
+          {{ s if s not in ['unknown','unavailable',''] else (v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_text.rc_mock_trip_time_today'))) }}
 
       - name: "RC Trip Time Total"
         unique_id: rc_trip_time_total
-        state: "{{ states('input_text.rc_mock_trip_time_total') }}"
+        state: >-
+          {% set s = states('sensor.rc_trip_stats_total_drive_time') %}
+          {{ s if s not in ['unknown','unavailable',''] else states('input_text.rc_mock_trip_time_total') }}
 
       - name: "RC Trip Segments"
         unique_id: rc_trip_segments
-        state: "{{ states('input_number.rc_mock_trip_segments') }}"
+        state: >-
+          {% set s = states('sensor.rc_trip_stats_today_segments') %}
+          {{ s if s not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_segments') }}
 
       - name: "RC Trip Stops"
         unique_id: rc_trip_stops
         state: >-
+          {% set s = states('sensor.rc_trip_stats_today_stops') %}
           {% set v = states('sensor.rc_trip_wrapped_today_stops') %}
           {% set v2 = states('sensor.rc_trip_local_today_stops') %}
-          {{ v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_stops')) }}
+          {{ s if s not in ['unknown','unavailable',''] else (v if v not in ['unknown','unavailable',''] else (v2 if v2 not in ['unknown','unavailable',''] else states('input_number.rc_mock_trip_stops'))) }}
 
 # ---------------------------------------------------------------------------
 # Auto-fill rc_location_tracker_entity on first boot.
