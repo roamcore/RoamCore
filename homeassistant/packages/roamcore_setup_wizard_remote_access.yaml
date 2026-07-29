@@ -1,0 +1,75 @@
+# RoamCore Setup Wizard — Remote Access (Tailscale) snippet
+#
+# Purpose:
+# - Single Lovelace card snippet the setup wizard drops into the dashboard
+#   on demand during the "Remote access" step.
+# - Pure Lovelace (markdown + entities + glance) — no custom card, no JS.
+# - Renders: status chip (Active / Off / Not configured), tailnet URL
+#   preview, peer count, last-seen, and a one-tap CTA linking to the
+#   Tailscale integration config flow.
+#
+# Slice: Wave 2 #29 — Remote access (Tailscale contract layer)
+
+type: vertical-stack
+title: Remote access (Tailscale)
+cards:
+  # --- 1. Status chip --------------------------------------------------
+  - type: markdown
+    content: |
+      ## Remote access status
+      {% set active = is_state('binary_sensor.rc_remote_access_active', 'on') %}
+      {% set enabled = is_state('input_boolean.rc_remote_access_enabled', 'on') %}
+      {% set host = states('input_text.rc_remote_access_tailnet_host') | trim %}
+      {% if active %}
+        **🟢 Active** — your van is reachable on your tailnet.
+      {% elif enabled and host == '' %}
+        **⚪ Not configured** — enable is ON but you have not set a tailnet host yet.
+      {% elif enabled %}
+        **🟡 Off** — Tailscale integration is not reporting any devices.
+      {% else %}
+        **⚫ Off** — operator kill-switch is OFF.
+      {% endif %}
+
+  # --- 2. Quick glance (status + URL + peer count + last seen) ----------
+  - type: glance
+    title: Remote access
+    entities:
+      - entity: binary_sensor.rc_remote_access_active
+        name: Status
+      - entity: sensor.rc_remote_access_url
+        name: URL
+      - entity: sensor.rc_remote_access_peer_count
+        name: Peers
+      - entity: sensor.rc_remote_access_last_seen
+        name: Last seen
+
+  # --- 3. Operator controls -------------------------------------------
+  - type: entities
+    title: Operator controls
+    entities:
+      - entity: input_boolean.rc_remote_access_enabled
+        name: Enable remote access (kill-switch)
+      - entity: input_text.rc_remote_access_tailnet_host
+        name: Tailnet host (e.g. home-assistant)
+
+  # --- 4. CTA: open the Tailscale integration config flow --------------
+  # The well-known configurator URL pattern lets the wizard deep-link
+  # directly into the integration setup without knowing the entry id.
+  - type: markdown
+    content: |
+      ## Configure the Tailscale integration
+      Tailscale is the **only** Tailscale client RoamCore uses. The HA core
+      integration is shipped with Home Assistant — add it via *Settings →
+      Devices & Services → + Add Integration → Tailscale*.
+
+      Once installed, set your `Tailnet Host` above and flip the kill-switch.
+
+      [Open the integration config →](/config/integrations/integration/tailscale)
+
+  # --- 5. Privacy footer -----------------------------------------------
+  - type: markdown
+    content: |
+      > **Privacy:** RoamCore does not phone home. The Tailscale integration
+      > makes outbound API calls to `api.tailscale.com` only when enabled;
+      > all tailnet device traffic goes directly between your devices and
+      > Tailscale's coordination server.

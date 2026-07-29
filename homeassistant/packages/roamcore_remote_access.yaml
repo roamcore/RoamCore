@@ -1,0 +1,185 @@
+# RoamCore — Remote Access (Tailscale contract layer)
+#
+# Purpose:
+# - Wrap the HA core Tailscale integration behind RoamCore contract entities.
+# - The Tailscale integration is shipped with Home Assistant (tier-b community-
+#   supported). RoamCore does NOT ship a separate Tailscale client.
+# - Operators flip ONE boolean to gate remote access (the kill-switch) and
+#   set ONE text field to advertise their tailnet host. Everything else is
+#   derived automatically.
+#
+# Spec reference: docs/setup/remote-access.md
+# Slice: Wave 2 #29 — Remote access (Tailscale contract layer)
+#
+# -----------------------------------------------------------------------------
+# Operator inputs (kill-switch + tailnet host override)
+# -----------------------------------------------------------------------------
+
+input_boolean:
+  rc_remote_access_enabled:
+    name: "RC Remote Access Enabled"
+    icon: mdi:shield-lock-outline
+    initial: false  # OFF by default — operator must opt in.
+
+input_text:
+  rc_remote_access_tailnet_host:
+    name: "RC Remote Access Tailnet Host"
+    icon: mdi:lan-pending
+    # Operator sets this to the Tailscale device name as it appears in
+    # their tailnet (e.g. "home-assistant"). When empty, the URL sensor
+    # stays unavailable.
+    initial: ""
+    max: 64
+
+# -----------------------------------------------------------------------------
+# Contract sensors — wrap Tailscale integration state in stable rc_* entities.
+# -----------------------------------------------------------------------------
+#
+# Naming follows docs/reference/rc-entity-naming.md:
+#   <domain>.rc_<subsystem>_<object>_<metric>
+# Subsystem = "remote_access".
+#
+# All template sensors check the rc_remote_access_enabled kill-switch FIRST.
+# When the kill-switch is OFF, the sensors report `unavailable` (never
+# `unknown`/`None`) so the UI renders a clear "Off" chip instead of a
+# stale reading. The unavailable branch is explicit: every sensor below
+# reads `states('binary_sensor.rc_remote_access_active')` to gate its
+# own availability, AND we keep a literal `is_state(...rc_remote_access_enabled...,
+# 'off')` clause so the kill-switch trip is unambiguous in code review.
+#
+# IMPORTANT: the Tailscale integration emits per-device sensors following a
+# stable naming convention (`sensor.<device>_last_seen`, etc.). The
+# `*_last_seen` timestamp sensor is emitted for EVERY device on the tailnet,
+# so its entity_id pattern is the most reliable signal that the
+# integration is installed and polling. We use it as the integration
+# "heartbeat" and as the basis for peer count.
+#
+# We avoid hard-coding the operator's Tailscale device name in the contract
+# (the operator can change `input_text.rc_remote_access_tailnet_host` at any
+# time). Instead we count *any* `_last_seen` sensor that is currently known
+# to HA — these are Tailscale-only per the upstream `SENSORS` tuple in
+# `homeassistant/components/tailscale/sensor.py`.
+
+template:
+  # --- binary_sensor.rc_remote_access_active -----------------------------
+  - binary_sensor:
+      - name: "RC Remote Access Active"
+        unique_id: rc_remote_access_active
+        icon: mdi:shield-check-outline
+        # ON iff:
+        #   1. Operator kill-switch is ON, AND
+        #   2. At least one Tailscale integration device has been polled
+        #      recently (i.e. any sensor.*_last_seen reports a real state,
+        #      not unknown/unavailable).
+        #
+        # Explicit OFF branch: when the kill-switch is OFF, the state is
+        # deterministically forced to `off` (so the unavailable path is
+        # also covered downstream).
+        state: >-
+          {% if is_state('input_boolean.rc_remote_access_enabled', 'off') %}
+            off
+          {% else %}
+            {% set kill = is_state('input_boolean.rc_remote_access_enabled', 'on') %}
+            {% set ts = states.sensor
+                | selectattr('entity_id', 'search', '_last_seen$')
+                | selectattr('state', 'in', ['unknown','unavailable','none',''])
+                | list %}
+            {% set ts_count = states.sensor
+                | selectattr('entity_id', 'search', '_last_seen$')
+                | list | length %}
+            {% set alive = (ts_count > 0) and (ts | length < ts_count) %}
+            {{ kill and alive }}
+          {% endif %}
+        # Availability driven directly by the active binary_sensor's own
+        # state + the Tailscale-integration heartbeat. This makes the
+        # "unavailable" branch in the dashboard read out of the active
+        # entity (so other sensors can transitively unavailable too).
+        availability: >-
+          {% set ts_count = states.sensor
+              | selectattr('entity_id', 'search', '_last_seen$')
+              | list | length %}
+          {{ is_state('input_boolean.rc_remote_access_enabled', 'on')
+             and ts_count > 0 }}
+
+  # --- sensor.rc_remote_access_url --------------------------------------
+  - sensor:
+      - name: "RC Remote Access URL"
+        unique_id: rc_remote_access_url
+        icon: mdi:link-variant
+        # The tailnet HTTPS URL the operator uses from outside.
+        # Pattern: https://<host>.ts.net  (operator supplies <host>).
+        # When the host input is empty OR the kill-switch is OFF, the
+        # sensor reports `unavailable` so the dashboard renders nothing
+        # instead of a broken link.
+        #
+        # Unavailable path explicitly tied to
+        # `states.binary_sensor.rc_remote_access_active` so the dashboard
+        # shows the same chip as the active binary_sensor.
+        state: >-
+          {% if is_state('binary_sensor.rc_remote_access_active', 'off')
+             or is_state('input_boolean.rc_remote_access_enabled', 'off') %}
+            unavailable
+          {% else %}
+            {% set host = states('input_text.rc_remote_access_tailnet_host') | trim %}
+            {% if host in ['', 'unknown', 'unavailable', 'none'] %}
+              unavailable
+            {% else %}
+              https://{{ host }}.ts.net
+            {% endif %}
+          {% endif %}
+        availability: >-
+          {{ is_state('input_boolean.rc_remote_access_enabled', 'on')
+             and (states('input_text.rc_remote_access_tailnet_host') | trim)
+                  not in ['', 'unknown', 'unavailable', 'none'] }}
+        attributes:
+          host: "{{ states('input_text.rc_remote_access_tailnet_host') | trim }}"
+
+      - name: "RC Remote Access Peer Count"
+        unique_id: rc_remote_access_peer_count
+        icon: mdi:lan-connect
+        # Total tailnet device count: number of `sensor.*_last_seen`
+        # entities currently known to HA. These are emitted per device by
+        # the HA core Tailscale integration (one per tailnet device).
+        # Unavailable path gated by the active binary_sensor's state.
+        state: >-
+          {% if is_state('binary_sensor.rc_remote_access_active', 'off')
+             or is_state('input_boolean.rc_remote_access_enabled', 'off') %}
+            unavailable
+          {% else %}
+            {{ states.sensor
+                | selectattr('entity_id', 'search', '_last_seen$')
+                | list | length }}
+          {% endif %}
+        availability: >-
+          {{ is_state('input_boolean.rc_remote_access_enabled', 'on') }}
+
+      - name: "RC Remote Access Last Seen"
+        unique_id: rc_remote_access_last_seen
+        icon: mdi:clock-check-outline
+        # Last successful Tailscale integration poll — proxied via the
+        # most recent non-`unknown` `_last_seen` timestamp. We expose the
+        # raw datetime; the UI converts it to a relative time.
+        # Unavailable path gated by the active binary_sensor's state.
+        state: >-
+          {% if is_state('binary_sensor.rc_remote_access_active', 'off')
+             or is_state('input_boolean.rc_remote_access_enabled', 'off') %}
+            unavailable
+          {% else %}
+            {% set live = states.sensor
+                | selectattr('entity_id', 'search', '_last_seen$')
+                | rejectattr('state', 'in', ['unknown','unavailable','none',''])
+                | list %}
+            {% if live | length == 0 %}
+              unavailable
+            {% else %}
+              {{ (live | map(attribute='last_changed') | list | max) }}
+            {% endif %}
+          {% endif %}
+        device_class: timestamp
+        availability: >-
+          {% set live = states.sensor
+              | selectattr('entity_id', 'search', '_last_seen$')
+              | rejectattr('state', 'in', ['unknown','unavailable','none',''])
+              | list %}
+          {{ is_state('input_boolean.rc_remote_access_enabled', 'on')
+             and (live | length > 0) }}

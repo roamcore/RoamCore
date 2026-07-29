@@ -122,3 +122,18 @@ views:
           - entity: sensor.rc_net_jitter
           - entity: sensor.rc_net_uptime
           - entity: sensor.rc_net_last_disconnect
+
+  # -----------------------------------------------------------------------
+  # Remote access (Tailscale contract layer) — slice #29
+  #
+  # The setup wizard drops the card snippet from
+  # `homeassistant/packages/roamcore_setup_wizard_remote_access.yaml` into
+  # the wizard view on the "Remote access" step (no auto-inject here).
+  # Contract entities surfaced by that card:
+  #   - binary_sensor.rc_remote_access_active   (kill-switch + integration heartbeat)
+  #   - sensor.rc_remote_access_url            (https://<host>.ts.net)
+  #   - sensor.rc_remote_access_peer_count     (tailnet device count)
+  #   - sensor.rc_remote_access_last_seen      (last successful Tailscale API poll)
+  #   - input_boolean.rc_remote_access_enabled (operator kill-switch, default OFF)
+  #   - input_text.rc_remote_access_tailnet_host (operator-provided host, e.g. "home-assistant")
+  # -----------------------------------------------------------------------
