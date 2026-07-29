@@ -108,6 +108,12 @@ PY"
 run_check "Shell: install scripts have valid syntax" \
     "sh -n install.sh && sh -n homeassistant/install.sh && sh -n scripts/install/ha/install.sh"
 
+# 4b. Victron pairing wizard smoke check (JS parses + state machine OK).
+if [ -f scripts/checks/victron-wizard-smoke.sh ]; then
+    run_check "Victron: pairing wizard smoke check" \
+        "bash scripts/checks/victron-wizard-smoke.sh"
+fi
+
 # 5. Connections audit — the pipeline I shipped in PR #5.
 if [ -d connections/_schema ]; then
     run_check "Connections: audit script" \

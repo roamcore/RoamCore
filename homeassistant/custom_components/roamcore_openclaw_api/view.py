@@ -94,6 +94,16 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
         e_shore = "binary_sensor.rc_power_shore_connected"
         e_inv = "sensor.rc_power_inverter_status"
 
+        # Power backend pairing health (already declared as rc_* contract
+        # entities in homeassistant/packages/roamcore_victron_health.yaml).
+        # These let OpenClaw answer "is Victron paired?" without scraping
+        # the add-on.
+        e_backend_connected = "binary_sensor.rc_system_power_backend_connected"
+        e_backend_status = "sensor.rc_system_power_backend_status"
+        e_backend_snapshot_state = "sensor.rc_system_power_backend_snapshot_state"
+        e_backend_devices = "sensor.rc_system_power_backend_devices"
+        e_backend_topics = "sensor.rc_system_power_backend_topics"
+
         # Map / location
         e_lat = "sensor.rc_location_lat"
         e_lon = "sensor.rc_location_lon"
@@ -118,6 +128,11 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
             e_ac_out_w,
             e_shore,
             e_inv,
+            e_backend_connected,
+            e_backend_status,
+            e_backend_snapshot_state,
+            e_backend_devices,
+            e_backend_topics,
             e_lat,
             e_lon,
             e_acc,
@@ -158,6 +173,16 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
                 "ac_out_power_w": _float_or_none(hass, e_ac_out_w),
                 "shore_connected": _bool_or_none(hass, e_shore),
                 "inverter_status": _state_or_none(hass, e_inv),
+            },
+            # Power pairing status — lets OpenClaw answer "is Victron paired?"
+            # and surface a one-line next action when it isn't.
+            # See docs/guides/victron-connect-flow.md for the wizard flow.
+            "pairing": {
+                "victron_paired": _bool_or_none(hass, e_backend_connected),
+                "backend_status": _state_or_none(hass, e_backend_status),
+                "snapshot_state": _state_or_none(hass, e_backend_snapshot_state),
+                "devices_count": _float_or_none(hass, e_backend_devices),
+                "topics_count": _float_or_none(hass, e_backend_topics),
             },
             "map": {
                 "lat": _float_or_none(hass, e_lat),
