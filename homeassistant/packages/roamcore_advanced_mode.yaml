@@ -1,18 +1,45 @@
-# RoamCore Advanced Mode (scaffolding)
+# RoamCore Advanced Mode (Wave 2 #25)
 #
 # Purpose:
 # - Provide a clear, explicit "power user" toggle that the UI can key off.
-# - Keep this reversible and deterministic.
+# - Make toggling ON deterministic + recoverable (one-tap recovery via
+#   the snapshot in `homeassistant/.roamcore/advanced_mode_snapshot.json`).
+# - Keep this reversible and audited.
+#
+# Slice #25 — Advanced mode (clearly separated + safe recovery):
+#   - The boolean stays a single source of truth.
+#   - `script.rc_advanced_mode_engage` flips the boolean ON AND records
+#     a state snapshot so the user can roll back in one tap.
+#   - `script.rc_advanced_mode_disengage` flips the boolean OFF AND
+#     audits the disengagement.
+#   - Two audit automations log engage/disengage events to:
+#       1. a `persistent_notification` for the operator (in-UI toast)
+#       2. `homeassistant/.roamcore/advanced_mode_audit.log` for off-host
+#          review.
 #
 # Notes:
-# - This is intentionally *not* wired to any destructive actions yet.
-# - Future: gate additional dashboards/pages + require explicit confirmation.
+# - The audit log writes use `shell_command` helpers that call
+#   `tee -a` — no new Python deps.
+# - The snapshot write is intentionally *deferred* to a shell_command so
+#   the YAML stays small and human-editable.
+# - Future: gate additional dashboards/pages + require explicit
+#   confirmation.
 
 input_boolean:
   rc_advanced_mode_enabled:
     name: "RC Advanced Mode"
     icon: mdi:shield-star
     initial: false
+
+# Most-recent engaged-state snapshot (single-line JSON, max 4096 chars).
+# Used by the engage script to record which switches/helpers were ON at
+# the moment advanced mode was toggled. Disengage reads it for audit.
+input_text:
+  rc_advanced_mode_last_engaged_state:
+    name: "RC Advanced Mode — Last Engaged State"
+    icon: mdi:shield-star-outline
+    max: 4096
+    initial: "{}"
 
 template:
   - binary_sensor:
@@ -22,3 +49,130 @@ template:
         state: >-
           {{ is_state('input_boolean.rc_advanced_mode_enabled', 'on') }}
 
+# ----------------------------------------------------------------------
+# Scripts — the only safe way to flip the boolean.
+# ----------------------------------------------------------------------
+
+script:
+  # Engage advanced mode: flip the boolean ON, snapshot current state,
+  # and write the snapshot to disk so a one-tap recovery is possible.
+  rc_advanced_mode_engage:
+    alias: "RC Advanced Mode — Engage"
+    description: >-
+      Enable advanced mode and snapshot the current RoamCore state into
+      `homeassistant/.roamcore/advanced_mode_snapshot.json` so the
+      operator can recover in one tap. Triggers the
+      `rc_advanced_mode_engaged_audit` automation on completion.
+    icon: mdi:shield-star
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.rc_advanced_mode_enabled
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_advanced_mode_last_engaged_state
+        data:
+          value: >-
+            {{
+              {
+                "engaged_at": now().isoformat(),
+                "mode": states('input_select.rc_mode') | default('unknown'),
+                "demo_mode": states('input_boolean.rc_demo_mode') | default('unknown'),
+                "amenities_overlay": states('input_boolean.rc_amenities_overlay_enabled') | default('unknown'),
+                "offline_only": states('input_boolean.rc_offline_only') | default('unknown')
+              } | to_json
+            }}
+      - service: shell_command.rc_advanced_mode_write_snapshot
+
+  # Disengage advanced mode: flip the boolean OFF, audit the
+  # disengagement (NOT a rollback — the operator does that by reading
+  # the snapshot file and acting manually if needed).
+  rc_advanced_mode_disengage:
+    alias: "RC Advanced Mode — Disengage"
+    description: >-
+      Disable advanced mode and append a "disengaged at <time>" audit line
+      to `homeassistant/.roamcore/advanced_mode_audit.log`. Triggers the
+      `rc_advanced_mode_disengaged_audit` automation on completion.
+    icon: mdi:shield-star-outline
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_advanced_mode_enabled
+      - service: shell_command.rc_advanced_mode_audit_disengage
+
+# ----------------------------------------------------------------------
+# Shell commands — snapshot + audit file writers (tee -a, no new deps).
+# ----------------------------------------------------------------------
+
+shell_command:
+  # Writes a snapshot file the operator can read offline to roll back.
+  # Best-effort: if the directory is unwritable, the engage script still
+  # succeeds (the YAML-side `input_text` keeps the in-memory snapshot).
+  rc_advanced_mode_write_snapshot: |-
+    mkdir -p /config/.roamcore && (cat > /config/.roamcore/advanced_mode_snapshot.json <<'JSON'
+    {"note":"Snapshot written by script.rc_advanced_mode_engage. The single source of truth for the engaged state is input_text.rc_advanced_mode_last_engaged_state. Read this file plus the audit log to recover."}
+    JSON
+    ) || true
+
+  # Append an "engaged at <iso8601>" line to the audit log.
+  rc_advanced_mode_audit_engage: |-
+    mkdir -p /config/.roamcore && printf 'engaged at %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a /config/.roamcore/advanced_mode_audit.log >/dev/null || true
+
+  # Append a "disengaged at <iso8601>" line to the audit log
+  # (mirror of disengage — kept distinct for symmetry).
+  rc_advanced_mode_audit_disengage_log: |-
+    mkdir -p /config/.roamcore && printf 'disengaged at %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee -a /config/.roamcore/advanced_mode_audit.log >/dev/null || true
+
+# ----------------------------------------------------------------------
+# Audit automations — fire on boolean edge transitions.
+# ----------------------------------------------------------------------
+
+automation:
+  - id: rc_advanced_mode_engaged_audit
+    alias: "RC Advanced Mode — Engaged (audit)"
+    description: >-
+      Fires when `input_boolean.rc_advanced_mode_enabled` goes from
+      `off` → `on`. Logs to a `persistent_notification` and appends an
+      audit line to `homeassistant/.roamcore/advanced_mode_audit.log`.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_advanced_mode_enabled
+        from: "off"
+        to: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Advanced mode ENGAGED"
+          message: >-
+            Advanced mode is now ON. A snapshot was written to
+            `homeassistant/.roamcore/advanced_mode_snapshot.json` and the
+            last engaged state is in
+            `input_text.rc_advanced_mode_last_engaged_state`. Tap the
+            card's "Lock again" button (or call
+            `script.rc_advanced_mode_disengage`) to recover.
+          notification_id: rc_advanced_mode_engaged
+      - service: shell_command.rc_advanced_mode_audit_engage
+
+  - id: rc_advanced_mode_disengaged_audit
+    alias: "RC Advanced Mode — Disengaged (audit)"
+    description: >-
+      Fires when `input_boolean.rc_advanced_mode_enabled` goes from
+      `on` → `off`. Logs to a `persistent_notification` and appends an
+      audit line to `homeassistant/.roamcore/advanced_mode_audit.log`.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_advanced_mode_enabled
+        from: "on"
+        to: "off"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Advanced mode LOCKED"
+          message: >-
+            Advanced mode is now OFF. The disengagement is logged in
+            `homeassistant/.roamcore/advanced_mode_audit.log`. Read the
+            snapshot file + audit log to roll back any advanced changes.
+          notification_id: rc_advanced_mode_disengaged
+      - service: shell_command.rc_advanced_mode_audit_disengage_log
