@@ -1,0 +1,128 @@
+# RoamCore — Setup Wizard: Hardware auto-discovery card snippet
+#
+# Slice Wave 2 #31 (tier-b). Drop-in Lovelace card the wizard renders at
+# the "Hardware" stage. References ONLY contract entities
+# (see docs/reference/rc-entity-naming.md) so the card survives vendor
+# swaps. Each row surfaces `binary_sensor.rc_hardware_<addon>_available`
+# plus a one-tap "Set up" CTA that calls the
+# `roamcore.hardware_setup_prompt(addon=...)` service.
+#
+# The card itself is NOT auto-injected into
+# homeassistant/lovelace/roamcore-dashboard.yaml. The wizard's
+# "Hardware" stage surfaces a copy-this-yaml CTA (mirrored at the bottom
+# of this file) so users opt in explicitly.
+#
+# Contract entities referenced (declared in
+# homeassistant/packages/roamcore_hardware_discovery.yaml):
+#   - binary_sensor.rc_hardware_openwrt_available
+#   - binary_sensor.rc_hardware_tileserver_available
+#   - binary_sensor.rc_hardware_traccar_available
+#   - binary_sensor.rc_hardware_victron_available
+#   - binary_sensor.rc_hardware_ota_available
+#   - sensor.rc_hardware_discovered_count
+#   - sensor.rc_hardware_setup_pending_count
+#   - input_boolean.rc_hardware_discovery_enabled
+#   - input_boolean.rc_hardware_setup_<addon>_pending   (per add-on)
+#   - input_text.rc_hardware_setup_<addon>_message      (per add-on)
+#
+# Card composition:
+#   1. Markdown intro: privacy footer + headline ("Hardware auto-discovered")
+#      with a count chip and master-switch state.
+#   2. Glance: discovered count + setup-pending count.
+#   3. Entities (rows): per-add-on availability + master switch + setup-prompt
+#      inputs.
+#   4. Buttons: per-add-on "Set up" CTAs that call
+#      `roamcore.hardware_setup_prompt` with the add-on name.
+#   5. Markdown: privacy note + link to docs/setup/hardware-auto-discovery.md.
+
+# ----------------------------- helpers -----------------------------
+# Mirror the contract-layer entities so the card renders live data when
+# the wizard previews it inside a Markdown card.
+button:
+  - entity: script.rc_hardware_setup_prompt_openwrt
+    name: "Set up OpenWrt"
+    icon: mdi:router-wireless
+  - entity: script.rc_hardware_setup_prompt_tileserver
+    name: "Set up Tileserver"
+    icon: mdi:map
+  - entity: script.rc_hardware_setup_prompt_traccar
+    name: "Set up Traccar"
+    icon: mdi:crosshairs-gps
+  - entity: script.rc_hardware_setup_prompt_victron
+    name: "Set up Victron"
+    icon: mdi:lightning-bolt
+  - entity: script.rc_hardware_setup_prompt_ota
+    name: "Set up OTA"
+    icon: mdi:package-up
+
+# Per-add-on setup-prompt scripts. Each one is a thin wrapper around the
+# `roamcore.hardware_setup_prompt` service so the wizard card can use
+# native Lovelace buttons instead of raw service-call rows.
+#
+# Defined in this file rather than the contract package so the wizard
+# can ship standalone before the contract layer is fully wired.
+script:
+  rc_hardware_setup_prompt_openwrt:
+    alias: "RC Hardware Setup Prompt — OpenWrt"
+    sequence:
+      - service: roamcore.hardware_setup_prompt
+        data:
+          addon: openwrt
+  rc_hardware_setup_prompt_tileserver:
+    alias: "RC Hardware Setup Prompt — Tileserver"
+    sequence:
+      - service: roamcore.hardware_setup_prompt
+        data:
+          addon: tileserver
+  rc_hardware_setup_prompt_traccar:
+    alias: "RC Hardware Setup Prompt — Traccar"
+    sequence:
+      - service: roamcore.hardware_setup_prompt
+        data:
+          addon: traccar
+  rc_hardware_setup_prompt_victron:
+    alias: "RC Hardware Setup Prompt — Victron"
+    sequence:
+      - service: roamcore.hardware_setup_prompt
+        data:
+          addon: victron
+  rc_hardware_setup_prompt_ota:
+    alias: "RC Hardware Setup Prompt — OTA"
+    sequence:
+      - service: roamcore.hardware_setup_prompt
+        data:
+          addon: ota
+
+# Paste-this-yaml block lives in docs/setup/hardware-auto-discovery.md
+# (the wizard renders the same content live using the entities declared
+# in homeassistant/packages/roamcore_hardware_discovery.yaml):
+#
+#   - type: markdown
+#     title: "Hardware auto-discovered"
+#     content: |
+#       # Hardware auto-discovered
+#       RoamCore found **{{ states('sensor.rc_hardware_discovered_count') }} / 5**
+#       supported add-ons on your network. Pending setup prompts: **{{ states('sensor.rc_hardware_setup_pending_count') }}**.
+#       Discovery is **local only** — RoamCore never leaves your network to look for hardware.
+#   - type: glance
+#     title: "Discovery summary"
+#     entities:
+#       - entity: binary_sensor.rc_hardware_openwrt_available
+#         name: OpenWrt
+#       - entity: binary_sensor.rc_hardware_tileserver_available
+#         name: Tileserver
+#       - entity: binary_sensor.rc_hardware_traccar_available
+#         name: Traccar
+#       - entity: binary_sensor.rc_hardware_victron_available
+#         name: Victron
+#       - entity: binary_sensor.rc_hardware_ota_available
+#         name: OTA
+#   - type: entities
+#     title: "Discovery controls"
+#     entities:
+#       - entity: input_boolean.rc_hardware_discovery_enabled
+#       - entity: binary_sensor.rc_hardware_openwrt_available
+#       - entity: binary_sensor.rc_hardware_tileserver_available
+#       - entity: binary_sensor.rc_hardware_traccar_available
+#       - entity: binary_sensor.rc_hardware_victron_available
+#       - entity: binary_sensor.rc_hardware_ota_available

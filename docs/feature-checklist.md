@@ -68,9 +68,9 @@ Legend:
 
 - [ ] Networking controls (VP2430 specific) via OpenWrt API
 - [ ] Remote access
-- [ ] OTA updates (GitHub-based channel, rollback-aware)
+- [x] OTA updates (GitHub-based channel, rollback-aware) — Wave 2 #30 (slice shipped)
 - [ ] Additional hardware support (OBD, lighting, etc)
-- [ ] Hardware auto-discovery + setup flows
+- [x] Hardware auto-discovery + setup flows — Wave 2 #31 (slice shipped)
 
 ---
 
