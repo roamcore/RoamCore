@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bashio
+# RoamCore OTA s6 service runner (base image is hassio-addons/base — bashio is available).
+set -e
+
+bashio::log.info "Starting RoamCore OTA daemon..."
+exec /usr/bin/roamcore-otad

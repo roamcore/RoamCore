@@ -1,0 +1,43 @@
+name: "RoamCore OTA"
+version: "0.1.0"
+slug: "roamcore_ota"
+description: "GitHub-based OTA update channel for RoamCore with rollback-aware snapshot history (stable / beta / nightly)."
+url: "https://github.com/roamcore/RoamCore"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+  - armhf
+startup: services
+boot: auto
+init: false
+hassio_api: true
+hassio_role: default
+homeassistant_api: true
+auth_api: false
+host_network: false
+map:
+  - config:rw
+  - share:rw
+options:
+  repo: "roamcore/RoamCore"
+  channel: "stable"
+  poll_minutes: 360
+  github_token: ""
+  snapshot_keep: 3
+  snapshot_dir: "/share/roamcore/snapshots"
+  log_path: "/share/roamcore/ota.log"
+  mqtt_discovery_prefix: "homeassistant"
+  mqtt_base_topic: "roamcore/ota/roamcore-ota"
+  user_agent: "roamcore-ota-addon/0.1"
+schema:
+  repo: str
+  channel: list(stable|beta|nightly)
+  poll_minutes: int(15,10080)
+  github_token: password?
+  snapshot_keep: int(2,10)
+  snapshot_dir: str
+  log_path: str
+  mqtt_discovery_prefix: str
+  mqtt_base_topic: str
+  user_agent: str
