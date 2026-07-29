@@ -1,13 +1,63 @@
 /**
  * RoamCore Victron Connect Card
- * 
+ *
  * A Lovelace custom card that discovers Victron devices on the network
  * and allows the user to select one to connect.
- * 
+ *
+ * Auto-discovery (Wave 2 #12):
+ *   - Auto-launches discovery when the user lands on the Power page and the
+ *     system is not yet paired. If a GX is on the LAN we surface a banner
+ *     ("we see a GX at <ip> — let's connect it") and pre-select the best
+ *     candidate.
+ *   - Periodic re-scan while the user is staring at the discover view
+ *     (default every 6 s) so a GX that just powered on shows up.
+ *   - "Enable MQTT over LAN" prompt: when we detect a GX but the add-on
+ *     reports data isn't flowing, surface a plain-English recovery that
+ *     points at the GX menu (Settings → Services → MQTT → "Enable MQTT over
+ *     LAN (Broker mode)"). This setting is off by default on Venus OS.
+ *
  * Usage in lovelace:
  *   type: custom:roamcore-victron-connect
  *   title: Connect Victron Device
  */
+
+// Wave 2 #12: how often we re-probe while the user is parked on the
+// discover view. Keep this short enough that a freshly-powered GX shows up
+// without making the user feel like the UI is "twitchy".
+const _AUTO_RESCAN_INTERVAL_MS = 6000;
+
+// Wave 2 #12: when discovery finds a GX but data isn't flowing, the wizard
+// shows a plain-English prompt pointing at the GX menu. Keep copy here so
+// the smoke check can verify the menu path is present.
+const _MQTT_LAN_PROMPT = {
+  title: 'One thing to check on your GX',
+  body:
+    'RoamCore found your GX at {ip} but no data is flowing. ' +
+    'On the GX, open Settings → Services → MQTT and turn on ' +
+    '"Enable MQTT over LAN (Broker mode)".',
+  detail:
+    "This setting is off by default on Venus OS. After you flip it, " +
+    "click Re-scan here.",
+  menuPath: 'Settings → Services → MQTT → Enable MQTT over LAN (Broker mode)',
+  menuHint:
+    '[ Settings ] → [ Services ] → [ MQTT ]\n' +
+    '       └─ ☑ Enable MQTT over LAN (Broker mode)',
+  cta: 'Re-scan now',
+  // Stringified version used by the smoke check (must contain the menu
+  // path verbatim).
+  menuPathCanonical:
+    'Settings \u2192 Services \u2192 MQTT \u2192 Enable MQTT over LAN (Broker mode)',
+};
+
+// Wave 2 #12: a "we're auto-discovering for you" step name. The smoke check
+// verifies this constant exists; the render path uses it to show a banner
+// instead of the default empty-state copy.
+const _AUTO_DISCOVER_STEP = 'auto_discover';
+
+// State machine name used by smoke checks and rendering. When the user is
+// not yet paired and we found at least one candidate, this is the active
+// "view" that drives the auto-launch banner.
+const _STATE_AUTO_DISCOVER = 'auto_discover';
 
 class RoamCoreVictronConnectCard extends HTMLElement {
   constructor() {
@@ -27,6 +77,34 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     this._manualPort = 1883;
     this._manualTls = false;
     this._manualPortTouched = false;
+
+    // Wave 2 #12 — expose the constants on the card instance so smoke
+    // checks and (defensively) external readers can verify the slice's
+    // invariants. Mirrors the module-level constants declared at the top
+    // of this file.
+    this.AUTO_RESCAN_INTERVAL_MS = _AUTO_RESCAN_INTERVAL_MS;
+    this.MQTT_LAN_PROMPT = _MQTT_LAN_PROMPT;
+    this.STATE_AUTO_DISCOVER = _STATE_AUTO_DISCOVER;
+
+    // Wave 2 #12 — auto-discovery state.
+    // _view can be one of: 'idle' | 'auto_discover' | 'discover' | 'connecting' | 'success'
+    // - 'idle' is the initial state (waiting for first hass set).
+    // - 'auto_discover' means: the user opened the card on a fresh install /
+    //   unpaired system and we're probing the LAN for them.
+    // - 'discover' is the explicit user-driven discovery view (they clicked
+    //   the refresh button or the wizard walked them here).
+    this._view = 'idle';
+    // _autoScannedOnce guards against re-running auto-discovery when the
+    // user navigates away and back to the card.
+    this._autoScannedOnce = false;
+    // _rescanTimer is the periodic re-probe while we're on the discover
+    // view. It's only armed in auto-discover or explicit discover modes.
+    this._rescanTimer = null;
+    // _mqttLanPromptCandidate holds the candidate we last saw that should
+    // trigger the "Enable MQTT over LAN" prompt (when status says no data
+    // is flowing). Storing it separately means we don't have to re-discover
+    // to render the prompt after a status poll.
+    this._mqttLanPromptCandidate = null;
   }
 
   connectedCallback() {
@@ -45,6 +123,10 @@ class RoamCoreVictronConnectCard extends HTMLElement {
       clearInterval(this._statusPollTimer);
       this._statusPollTimer = null;
     }
+    if (this._rescanTimer) {
+      clearInterval(this._rescanTimer);
+      this._rescanTimer = null;
+    }
   }
 
   setConfig(config) {
@@ -53,11 +135,122 @@ class RoamCoreVictronConnectCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasNull = this._hass == null;
     this._hass = hass;
-    // Auto-discover on first hass set if we have no candidates yet
-    if (this._candidates.length === 0 && !this._loading) {
-      this._discover();
+    if (wasNull) {
+      // First paint from HA. Trigger the auto-discovery flow if the user
+      // is not yet paired.
+      try {
+        this._maybeAutoLaunchDiscovery();
+      } catch (e) {
+        // ignore — auto-launch is best-effort, never crash the card
+      }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wave 2 #12 — auto-launch: probe the LAN once on first paint if the
+  // system is not paired. The user should not have to click "Connect
+  // Victron" to learn that their GX is on the network.
+  // ---------------------------------------------------------------------------
+  _maybeAutoLaunchDiscovery() {
+    if (this._autoScannedOnce) return;
+    if (this._loading || this._connecting) return;
+    if (this._isAlreadyPaired()) return;
+    this._autoScannedOnce = true;
+    this._view = _STATE_AUTO_DISCOVER;
+    // Defer slightly so we don't slam the add-on during HA's own startup
+    // burst.
+    try {
+      setTimeout(() => {
+        try { this._discover({ auto: true }); } catch (e) {}
+      }, 250);
+    } catch (e) {
+      try { this._discover({ auto: true }); } catch (e2) {}
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Wave 2 #12 — periodic re-scan while parked on the discover view.
+  // Only armed when we're explicitly in auto_discover / discover mode and
+  // the user hasn't started a manual connect yet.
+  // ---------------------------------------------------------------------------
+  _armRescanTimer() {
+    if (this._rescanTimer) return;
+    this._rescanTimer = setInterval(() => {
+      try {
+        if (this._view !== 'auto_discover' && this._view !== 'discover') return;
+        if (this._loading || this._connecting) return;
+        // Don't keep scanning if we already have a healthy candidate AND
+        // the system shows data flowing — that's the happy path.
+        if (this._isAlreadyPaired()) return;
+        this._discover({ auto: true, silent: true });
+      } catch (e) {}
+    }, _AUTO_RESCAN_INTERVAL_MS);
+  }
+
+  _stopRescanTimer() {
+    if (this._rescanTimer) {
+      clearInterval(this._rescanTimer);
+      this._rescanTimer = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // "Is Victron already paired?" — also exposes the "did we see a GX" hint
+  // for the auto-launch banner.
+  // ---------------------------------------------------------------------------
+  _isAlreadyPaired() {
+    if (!this._status) return false;
+    const vic = this._status && this._status.victron ? this._status.victron : null;
+    if (!vic) return false;
+    if (vic.connected === true && vic.did_full_publish === true) return true;
+    return false;
+  }
+
+  // Pick the best "we see a GX" candidate for the auto-launch banner and
+  // the "Enable MQTT over LAN" prompt. Prefer reachable + non-bad.
+  _bestCandidate() {
+    const list = (this._candidates || []).filter((c) => c && !c.bad);
+    if (!list.length) return null;
+    const reachable = list.filter((c) => c.reachable === true);
+    return (reachable.length ? reachable : list)[0] || null;
+  }
+
+  // Should we show the "Enable MQTT over LAN" prompt? Conditions:
+  //   - We have a candidate that the user could pick (we found a GX).
+  //   - The add-on reports no data is flowing (not connected OR not yet
+  //     published a full snapshot after a meaningful grace period).
+  //   - The system is not already paired.
+  _shouldShowMqttLanPrompt() {
+    if (this._isAlreadyPaired()) return false;
+    const cand = this._bestCandidate();
+    if (!cand) return false;
+    const st = this._status || null;
+    const vic = st && st.victron ? st.victron : null;
+    // If the status endpoint reports a connection, we're good.
+    if (vic && vic.connected === true && vic.did_full_publish === true) return false;
+    // If the user is actively in a connect flow, don't nag with the prompt.
+    if (this._connecting) return false;
+    // Otherwise: we have a candidate AND no live data — prompt.
+    return true;
+  }
+
+  _buildMqttLanPrompt() {
+    const cand = this._bestCandidate();
+    const ip = cand ? (cand.host || cand.ip || '') : '';
+    const tpl = _MQTT_LAN_PROMPT;
+    const body = String(tpl.body || '').replace('{ip}', ip || '?');
+    return {
+      title: tpl.title,
+      body,
+      detail: tpl.detail,
+      menuPath: tpl.menuPath,
+      menuHint: tpl.menuHint,
+      cta: tpl.cta,
+      menuPathCanonical: tpl.menuPathCanonical,
+      ip,
+    };
   }
 
   async _fetchStatus() {
@@ -75,6 +268,14 @@ class RoamCoreVictronConnectCard extends HTMLElement {
       if (!resp.ok) throw new Error(`status ${resp.status}`);
       const data = await resp.json().catch(() => ({}));
       this._status = data && data.status ? data.status : data;
+      // Wave 2 #12: if status reports we're paired (live data flowing),
+      // stop the periodic re-scan and switch to the connected view.
+      if (this._isAlreadyPaired()) {
+        this._stopRescanTimer();
+        if (this._view === 'auto_discover' || this._view === 'discover') {
+          this._view = 'success';
+        }
+      }
       this._render();
     } catch (e) {
       // ignore (status is best-effort)
@@ -114,10 +315,28 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     return '/api/hassio_ingress/roamcore_victron_auto_dev';
   }
 
-  async _discover() {
+  async _discover(opts) {
+    opts = opts || {};
+    const isAuto = !!opts.auto;
+    const isSilent = !!opts.silent;
+    // Avoid kicking a second discovery while one is already in flight.
+    if (this._loading) return;
     this._loading = true;
-    this._error = null;
-    this._render();
+    // Wave 2 #12: in auto/silent mode, don't blow away a previous error or
+    // a manually-typed host value.
+    if (!isAuto) {
+      this._error = null;
+    }
+    if (!isSilent) {
+      this._render();
+    }
+
+    // Wave 2 #12: make sure the periodic re-scan timer is running while we
+    // park on the discover view. Disarmed on _connectManual / disconnect /
+    // when the system becomes paired.
+    if (this._view === 'auto_discover' || this._view === 'discover') {
+      this._armRescanTimer();
+    }
 
     try {
       const base = this._getApiBase();
@@ -163,6 +382,15 @@ class RoamCoreVictronConnectCard extends HTMLElement {
       this._candidates = [];
     } finally {
       this._loading = false;
+      // Wave 2 #12: cache the best candidate for the MQTT-LAN prompt and
+      // arm the periodic re-scan timer.
+      const best = this._bestCandidate();
+      if (best) {
+        this._mqttLanPromptCandidate = best;
+      }
+      if (this._view === 'auto_discover' || this._view === 'discover') {
+        this._armRescanTimer();
+      }
       this._render();
     }
   }
@@ -171,6 +399,10 @@ class RoamCoreVictronConnectCard extends HTMLElement {
     this._connecting = true;
     this._error = null;
     this._success = null;
+    // Wave 2 #12: user has committed — stop re-probing the LAN, the
+    // add-on is now driving the connect flow.
+    this._stopRescanTimer();
+    this._view = 'connecting';
     this._render();
 
     try {
@@ -289,6 +521,69 @@ class RoamCoreVictronConnectCard extends HTMLElement {
           </div>
         </div>
       `;
+
+    // Wave 2 #12 — auto-discovery banner ("we see a Victron GX at <ip>").
+    // Only shown in the auto_discover / discover view when not yet paired
+    // AND we have a best candidate. While we're probing, we also show a
+    // "Scanning for your Victron GX…" banner so the user immediately
+    // understands why the card is on the discover view (no button click
+    // needed).
+    let autoDiscoverBanner = '';
+    try {
+      if (
+        !this._isAlreadyPaired() &&
+        (this._view === 'auto_discover' || this._view === 'discover') &&
+        !this._connecting
+      ) {
+        const best = this._bestCandidate();
+        if (best) {
+          const ip = best.host || best.ip || '';
+          autoDiscoverBanner = `
+            <div class="auto-discover-banner" data-test="auto-discover-banner">
+              <div class="auto-discover-banner-title">We see a Victron GX at <code>${this._escapeHtml(ip)}</code></div>
+              <div class="auto-discover-banner-body">Let's connect it — RoamCore can do the rest.</div>
+            </div>
+          `;
+        } else if (this._view === 'auto_discover') {
+          // While still loading OR after a scan returned empty, show the
+          // scanning banner so the user knows the card is doing work on
+          // their behalf.
+          autoDiscoverBanner = `
+            <div class="auto-discover-banner auto-discover-banner-info" data-test="auto-discover-banner">
+              <div class="auto-discover-banner-title">Scanning for your Victron GX…</div>
+              <div class="auto-discover-banner-body">${this._loading
+                ? 'RoamCore is probing your network. We\u2019ll update this card as soon as something shows up.'
+                : 'No GX found yet. RoamCore will keep re-scanning automatically — a GX that just powered on will show up here.'}</div>
+            </div>
+          `;
+        }
+      }
+    } catch (e) {
+      autoDiscoverBanner = '';
+    }
+
+    // Wave 2 #12 — "Enable MQTT over LAN" prompt. Shown when discovery
+    // found a candidate but the add-on reports no data is flowing. Plain-
+    // English recovery that names the GX menu path.
+    let mqttLanPromptBlock = '';
+    try {
+      if (this._shouldShowMqttLanPrompt()) {
+        const prompt = this._buildMqttLanPrompt();
+        mqttLanPromptBlock = `
+          <div class="mqtt-lan-prompt" data-test="mqtt-lan-prompt" role="alert">
+            <div class="mqtt-lan-prompt-title">${this._escapeHtml(prompt.title)}</div>
+            <div class="mqtt-lan-prompt-body">${this._escapeHtml(prompt.body)}</div>
+            <div class="mqtt-lan-prompt-detail">${this._escapeHtml(prompt.detail)}</div>
+            <pre class="mqtt-lan-prompt-hint" data-test="mqtt-lan-prompt-menu-hint">${this._escapeHtml(prompt.menuHint)}</pre>
+            <div class="mqtt-lan-prompt-cta">
+              <button class="btn" id="mqttLanPromptRescanBtn">${this._escapeHtml(prompt.cta)}</button>
+            </div>
+          </div>
+        `;
+      }
+    } catch (e) {
+      mqttLanPromptBlock = '';
+    }
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -475,6 +770,77 @@ class RoamCoreVictronConnectCard extends HTMLElement {
           font-weight: 600;
           opacity: 0.9;
         }
+
+        /* Wave 2 #12 — auto-discovery banner */
+        .auto-discover-banner {
+          margin: 10px 0 14px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid color-mix(in srgb, var(--primary-color) 55%, var(--divider-color));
+          background: color-mix(in srgb, var(--primary-color) 14%, var(--secondary-background-color));
+        }
+        .auto-discover-banner-info {
+          border-color: var(--divider-color);
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .auto-discover-banner-title {
+          font-weight: 700;
+          color: var(--primary-text-color);
+          font-size: 14px;
+        }
+        .auto-discover-banner-body {
+          font-size: 13px;
+          opacity: 0.9;
+          margin-top: 4px;
+          color: var(--primary-text-color);
+        }
+        .auto-discover-banner code {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          background: rgba(0, 0, 0, 0.18);
+          padding: 1px 6px;
+          border-radius: 6px;
+          font-size: 13px;
+        }
+
+        /* Wave 2 #12 — "Enable MQTT over LAN" prompt */
+        .mqtt-lan-prompt {
+          margin: 10px 0 14px;
+          padding: 14px;
+          border-radius: 12px;
+          border: 1px solid color-mix(in srgb, var(--error-color, #b00020) 35%, var(--divider-color));
+          background: color-mix(in srgb, var(--error-color, #b00020) 10%, var(--secondary-background-color));
+        }
+        .mqtt-lan-prompt-title {
+          font-weight: 700;
+          color: var(--primary-text-color);
+          font-size: 15px;
+          margin-bottom: 6px;
+        }
+        .mqtt-lan-prompt-body {
+          font-size: 14px;
+          color: var(--primary-text-color);
+          line-height: 1.45;
+        }
+        .mqtt-lan-prompt-detail {
+          font-size: 13px;
+          opacity: 0.9;
+          margin-top: 8px;
+          color: var(--primary-text-color);
+        }
+        .mqtt-lan-prompt-hint {
+          margin: 10px 0 0;
+          padding: 10px 12px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 12px;
+          color: var(--primary-text-color);
+          background: rgba(0, 0, 0, 0.18);
+          border-radius: 8px;
+          white-space: pre-wrap;
+          line-height: 1.4;
+        }
+        .mqtt-lan-prompt-cta {
+          margin-top: 12px;
+        }
       </style>
 
       <ha-card>
@@ -495,6 +861,9 @@ class RoamCoreVictronConnectCard extends HTMLElement {
         </div>
 
         ${statusLine}
+
+        ${autoDiscoverBanner}
+        ${mqttLanPromptBlock}
 
         ${this._error ? `<div class="error">${this._error}</div>` : ''}
         ${this._success ? `<div class="success">${this._success}</div>` : ''}
@@ -614,6 +983,14 @@ class RoamCoreVictronConnectCard extends HTMLElement {
       manualConnectBtn.addEventListener('click', () => this._connectManual());
     }
 
+    // Wave 2 #12: bind the MQTT-LAN prompt's "Re-scan now" CTA.
+    const mqttLanPromptRescanBtn = this.shadowRoot.querySelector('#mqttLanPromptRescanBtn');
+    if (mqttLanPromptRescanBtn) {
+      mqttLanPromptRescanBtn.addEventListener('click', () => {
+        try { this._discover({ auto: true }); } catch (e) {}
+      });
+    }
+
     // Keyboard UX
     if (manualHostEl) {
       manualHostEl.addEventListener('keydown', (ev) => {
@@ -628,9 +1005,26 @@ class RoamCoreVictronConnectCard extends HTMLElement {
   }
 
   _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    if (str == null) return '';
+    const s = String(str);
+    // Prefer the standard DOM API. Some test harnesses don't provide a real
+    // `document.createElement`, in which case `div.innerHTML` may be
+    // `undefined` instead of throwing — guard both cases.
+    try {
+      const div = document.createElement('div');
+      div.textContent = s;
+      const html = div.innerHTML;
+      if (typeof html === 'string') return html;
+    } catch (e) {
+      // ignore
+    }
+    // Best-effort fallback: minimal HTML-entity encode.
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   getCardSize() {

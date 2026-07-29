@@ -159,6 +159,41 @@ class RoamCoreOpenClawSummaryView(HomeAssistantView):
                 "shore_connected": _bool_or_none(hass, e_shore),
                 "inverter_status": _state_or_none(hass, e_inv),
             },
+            # Power pairing status — lets OpenClaw answer "is Victron paired?"
+            # and surface a one-line next action when it isn't.
+            # See docs/guides/victron-connect-flow.md for the wizard flow.
+            #
+            # Wave 2 #12 (auto-discovery): OpenClaw should be able to answer
+            # "is there a GX on the network?" without scraping the add-on.
+            # The add-on's discovery probe runs only in the wizard (live LAN
+            # mDNS/DNS probes), so from the OpenClaw summary alone we cannot
+            # know whether a GX is *physically present but not yet paired*.
+            # The only honest derivation available from contract entities is:
+            #   - victron_paired == true  → gx_detected is True (we're talking
+            #     to one).
+            #   - victron_paired == false → gx_detected is null (we genuinely
+            #     do not know; the wizard's LAN probe is the source of truth).
+            # We deliberately do NOT lie by reporting gx_detected=true when
+            # the system is unpaired.
+            "pairing": {
+                "victron_paired": _bool_or_none(hass, e_backend_connected),
+                "backend_status": _state_or_none(hass, e_backend_status),
+                "snapshot_state": _state_or_none(hass, e_backend_snapshot_state),
+                "devices_count": _float_or_none(hass, e_backend_devices),
+                "topics_count": _float_or_none(hass, e_backend_topics),
+                # Wave 2 #12 — see comment above.
+                "gx_detected": True
+                if _bool_or_none(hass, e_backend_connected) is True
+                else None,
+                "gx_detected_source": (
+                    "binary_sensor.rc_system_power_backend_connected"
+                ),
+                "gx_detected_note": (
+                    "Reflects an actively-paired Victron system. "
+                    "When unpaired, the wizard's LAN probe is the source of "
+                    "truth (mDNS / DNS venus.local)."
+                ),
+            },
             "map": {
                 "lat": _float_or_none(hass, e_lat),
                 "lon": _float_or_none(hass, e_lon),
