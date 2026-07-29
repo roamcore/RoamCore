@@ -11,6 +11,8 @@
 #
 # Slice #20 (trip tracking — local/private) added:
 #   ▶ Trip tracking privacy: smoke check
+# Slice #21 (trip wrapped — seamless USP flow) added:
+#   ▶ Trip wrapped seamless: smoke check
 
 set -euo pipefail
 
@@ -39,6 +41,9 @@ bash scripts/checks/ha-beta-smoke.sh
 
 banner "Trip tracking privacy: smoke check"
 bash scripts/checks/trip-tracking-privacy-smoke.sh
+
+banner "Trip wrapped seamless: smoke check"
+bash scripts/checks/trip-wrapped-seamless-smoke.sh
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "Victron: mapping plan"

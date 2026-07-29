@@ -37,6 +37,7 @@ roamcore_traccar_admin_password: "..."
 
 - If Traccar credentials are missing, the exporter still generates HTML/JSON and shows a clear setup notice (`meta.dataStatus = needs_setup`).
 - If Traccar is reachable but no trips/routes exist for the chosen range/device, the exporter shows a helpful no-data notice (`meta.dataStatus = no_data`) instead of a blank report.
+- **First-run demo path (slice #21):** `demo_seed.py` writes a fully-local demo Trip Wrapped JSON (`mode: "demo"`) so a brand-new install can render the report with one tap, before Traccar is configured. Stdlib-only, no outbound HTTP; the map URL always points at the local tileserver (`http://localhost:8000/...`). Called by the `roamcore.trip_wrapped_demo` custom-component service. Smoke check: `scripts/checks/trip-wrapped-seamless-smoke.sh`.
 
 ## PNG exporter notes
 

@@ -2219,6 +2219,15 @@ class RoamcoreMapPage extends RoamcoreBasePage {
 
           <div class="rc-label" style="margin-top:12px;">Metrics come from Traccar (reports/trips/route/etc). RoamCore only renders the results.</div>
 
+          <!-- Slice #21: one-tap demo CTA when no latest.json exists yet. -->
+          <div id="rc-tripwrapped-demo-cta" style="margin-top:12px; padding:10px 12px; border:1px dashed rgba(110,231,255,0.35); border-radius:10px; background: rgba(110,231,255,0.05); display:none;">
+            <div class="rc-label" style="margin-bottom:8px;">No Trip Wrapped generated yet. Want to see it in action?</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="rc-btn rc-btn-primary" id="rc-tripwrapped-generate-demo">Generate demo trip</button>
+              <span class="rc-label">Generates a fully-local demo (no Traccar needed). Configure Traccar later for your real trips.</span>
+            </div>
+          </div>
+
           <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="rc-btn" id="rc-tripwrapped-generate">Generate</button>
             <a class="rc-btn" href="/local/roamcore/trip_wrapped/latest.html" target="_blank" rel="noreferrer">Open latest</a>
@@ -2274,6 +2283,38 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       if (d7Btn) d7Btn.addEventListener('click', () => setRange(new Date(Date.now()-7*24*3600*1000), new Date()));
       const d30Btn = backdrop.querySelector('#rc-tripwrapped-preset-30d');
       if (d30Btn) d30Btn.addEventListener('click', () => setRange(new Date(Date.now()-30*24*3600*1000), new Date()));
+
+      // --- Slice #21: one-tap demo CTA visibility + handler ---
+      // Show the CTA when no latest.json exists yet (first-run UX).
+      const demoCta = backdrop.querySelector('#rc-tripwrapped-demo-cta');
+      const showDemoCta = () => {
+        if (!demoCta) return;
+        const twStatus = this._getState('sensor.rc_trip_wrapped_latest_status');
+        const missing = !twStatus || twStatus === 'unknown' || twStatus === 'unavailable' || twStatus === 'missing';
+        try { demoCta.style.display = missing ? 'block' : 'none'; } catch (e) {}
+      };
+      showDemoCta();
+
+      const demoBtn = backdrop.querySelector('#rc-tripwrapped-generate-demo');
+      if (demoBtn) demoBtn.addEventListener('click', async () => {
+        try {
+          demoBtn.disabled = true;
+          if (statusEl) statusEl.textContent = 'Generating demo trip…';
+          await this._hass.callService('roamcore', 'trip_wrapped_demo', {});
+          if (statusEl) statusEl.innerHTML = 'Demo ready. <a href="/local/roamcore/trip_wrapped/latest.json" target="_blank" rel="noreferrer">Open latest.json</a>';
+          // Re-check visibility + refresh preview.
+          showDemoCta();
+          try {
+            const prev = this._root.querySelector('#rc-tripwrapped-preview');
+            if (prev) this._loadTripWrappedPreview(prev);
+          } catch (e) {}
+        } catch (e) {
+          console.warn('trip wrapped demo seed failed', e);
+          if (statusEl) statusEl.textContent = 'Demo seed failed (check the RoamCore logs).';
+        } finally {
+          try { demoBtn.disabled = false; } catch (e) {}
+        }
+      });
 
       const genBtn = backdrop.querySelector('#rc-tripwrapped-generate');
       if (genBtn) genBtn.addEventListener('click', async () => {

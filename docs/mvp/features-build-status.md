@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-07-29
 
 This is an internal status page for the remaining MVP feature build-out.
 
@@ -45,6 +45,18 @@ This is an internal status page for the remaining MVP feature build-out.
     `scripts/checks/trip-tracking-privacy-smoke.sh` (wired into
     `scripts/check.sh --core-only`).
   - Trip Wrapped HTML gets a privacy banner: "Generated locally · no data sent off-device".
+
+- RoamCore Wrapped — seamless USP flow (slice #21)
+  - Demo seed generator: `homeassistant/tools/trip_wrapped/demo_seed.py` (stdlib-only, no outbound HTTP; map URL points at local tileserver `http://localhost:8000/...`).
+  - HA wiring: `homeassistant/packages/roamcore_trip_wrapped.yaml`
+    - new `input_boolean.rc_trip_wrapped_demo` (default ON)
+    - new `input_boolean.rc_trip_wrapped_real` (default OFF)
+    - shell_command `rc_trip_wrapped_demo_seed` + script `rc_trip_wrapped_demo_seed` + 2 automations (`rc_trip_wrapped_real_turns_off_demo`, `rc_trip_wrapped_demo_turns_on_seed`).
+  - Custom-component service: `roamcore.trip_wrapped_demo` (declared in `homeassistant/custom_components/roamcore/services.yaml`, registered in `__init__.py`).
+  - UI one-tap CTA in the Map → Trip Wrapped modal (`homeassistant/www/roamcore/roamcore-pages.js`): shown only when no `latest.json` exists; calls the new service.
+  - Smoke check: `scripts/checks/trip-wrapped-seamless-smoke.sh` (wired into `scripts/check.sh --core-only`).
+  - Files touched: `homeassistant/tools/trip_wrapped/demo_seed.py` (new), `homeassistant/packages/roamcore_trip_wrapped.yaml`, `homeassistant/custom_components/roamcore/services.yaml`, `homeassistant/custom_components/roamcore/__init__.py`, `homeassistant/www/roamcore/roamcore-pages.js`, `scripts/checks/trip-wrapped-seamless-smoke.sh` (new), `scripts/check.sh`, `docs/feature-checklist.md`, `docs/mvp/features-build-status.md`, `docs/howto/trip-wrapped.md` (new).
+  - Smoke check: `bash scripts/checks/trip-wrapped-seamless-smoke.sh` ✓
 
 ## Next steps (needs HAOS setup / UI wiring)
 
