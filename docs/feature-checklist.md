@@ -68,7 +68,7 @@ Legend:
 
 - [ ] Networking controls (VP2430 specific) via OpenWrt API
 - [ ] Remote access
-- [ ] OTA updates (GitHub-based channel, rollback-aware)
+- [x] OTA updates (GitHub-based channel, rollback-aware) — Wave 2 #30 (slice shipped)
 - [ ] Additional hardware support (OBD, lighting, etc)
 - [ ] Hardware auto-discovery + setup flows
 
@@ -76,6 +76,6 @@ Legend:
 
 ## Community
 
-- [ ] RoamCore Labs (share setups/dashboards)
-- [ ] Gamification / competitions (optional)
+- [x] RoamCore Labs (share setups/dashboards) — Wave 2 #32 (slice shipped; contract + wizard + import/export + smoke)
+- [x] Gamification / competitions (optional) — Wave 2 #33 (slice shipped; contract + wizard + acknowledge service + smoke)
 

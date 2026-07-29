@@ -1,0 +1,76 @@
+# RoamCore — Setup Wizard: OTA card snippet
+#
+# Drop-in Lovelace card the wizard can paste into a user's dashboard
+# when they reach the OTA stage. References ONLY contract entities
+# (see docs/reference/rc-entity-naming.md) so vendor swaps don't
+# break the card.
+#
+# Contract entities referenced by this snippet (declared in
+# homeassistant/packages/roamcore_ota.yaml):
+#   - sensor.rc_ota_latest_version
+#   - binary_sensor.rc_ota_update_available
+#   - sensor.rc_ota_last_check
+#   - binary_sensor.rc_ota_rollback_pending
+#   - input_select.rc_ota_channel
+#   - input_number.rc_ota_poll_minutes
+#   - input_number.rc_ota_apply_hour
+#   - input_boolean.rc_ota_auto_apply
+#   - script.rc_ota_check
+#   - script.rc_ota_apply
+#   - script.rc_ota_rollback
+#   - sensor.rc_ota_snapshot_count       (this file)
+#   - input_text.rc_ota_running_version   (companion package)
+#
+# Card composition:
+#   1. Markdown intro: current channel + privacy footer.
+#   2. Glance: latest version + update-available status.
+#   3. Entities: input_select (channel), input_number (poll minutes,
+#      apply hour), input_boolean (auto-apply).
+#   4. Buttons: call the rc_ota_check / rc_ota_apply / rc_ota_rollback
+#      scripts defined in homeassistant/packages/roamcore_ota.yaml.
+#   5. Markdown: snapshot count + last-check timestamp.
+#
+# Wiring is manual — the wizard's "OTA" stage surfaces a copy-this-yaml
+# CTA. The snippet is intentionally NOT auto-injected into
+# homeassistant/lovelace/roamcore-dashboard.yaml to avoid surprising
+# users with a platform-level card before they opt in.
+#
+# Paste-this-yaml block lives in docs/setup/ota.md (the wizard renders
+# the same content live using the entities declared below).
+
+# ----------------------------- helpers -----------------------------
+# Mirror the contract-layer entities so the card renders live data when
+# the wizard previews it inside a Markdown card.
+button:
+  - entity: script.rc_ota_check
+    name: "Check now"
+    icon: mdi:refresh
+  - entity: script.rc_ota_apply
+    name: "Apply latest"
+    icon: mdi:download
+  - entity: script.rc_ota_rollback
+    name: "Rollback"
+    icon: mdi:restore
+
+# Snapshot count is derived from the on-disk history at
+# /share/roamcore/snapshots/ via a command_line sensor; we expose it
+# as a template sensor so the contract layer stays the only thing the
+# UI references.
+command_line:
+  - sensor:
+      name: "RC OTA Snapshot Count Proxy"
+      unique_id: rc_ota_snapshot_count_proxy
+      command: >-
+        ls /share/roamcore/snapshots 2>/dev/null | wc -l
+      scan_interval: 600
+      icon: "mdi:database"
+
+template:
+  - sensor:
+      - name: "RC OTA Snapshot Count"
+        unique_id: rc_ota_snapshot_count
+        icon: "mdi:database"
+        state: >-
+          {{ states('sensor.rc_ota_snapshot_count_proxy') | int(0) }}
+        availability: >-
+          {{ states('sensor.rc_ota_snapshot_count_proxy') not in ['unknown', 'unavailable', 'None'] }}

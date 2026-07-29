@@ -781,6 +781,266 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=None,
     )
 
+    # ------------------------------------------------------------------
+    # RoamCore Labs (share setups/dashboards) — Wave 2 #32
+    # ------------------------------------------------------------------
+    # Privacy: the helpers use only the stdlib (tarfile, json, pathlib).
+    # No HTTP, no third-party imports, no telemetry. The bundle is a
+    # local file the owner shares by whatever channel they trust.
+    # ------------------------------------------------------------------
+
+    async def _svc_labs_export_setup(call):
+        """Bundle the active RoamCore setup as a local tar.gz."""
+        target_path = call.data.get("target_path") or None
+        dashboard_file = call.data.get("dashboard_file") or None
+        packages_dir = call.data.get("packages_dir") or None
+
+        # Lazy import so the helper is only pulled in when the service
+        # is actually called. We resolve the helper path relative to
+        # this file so the install path (e.g. /config/custom_components/roamcore/)
+        # does not break the lookup.
+        import os
+        import sys as _sys
+        _HERE = os.path.dirname(os.path.abspath(__file__))
+        _TOOLS = os.path.abspath(os.path.join(_HERE, "..", "..", "tools"))
+        if _TOOLS not in _sys.path:
+            _sys.path.insert(0, _TOOLS)
+        try:
+            from labs import common as _labs_common  # noqa: WPS433
+        except Exception as exc:
+            raise RuntimeError(
+                f"roamcore.labs_export_setup: cannot import labs.common: {exc}"
+            )
+
+        try:
+            result = await hass.async_add_executor_job(
+                _labs_common.build_export,
+                target_path=target_path,
+                dashboard_file=dashboard_file,
+                packages_dir=packages_dir,
+                dry_run=False,
+            )
+        except _labs_common.BundleError as exc:
+            raise RuntimeError(f"labs export failed: {exc}")
+        except OSError as exc:
+            raise RuntimeError(f"labs export filesystem error: {exc}")
+
+        # Mirror the values into the wizard's read-out helpers so the
+        # dashboard chip refreshes on the next render. We use HA
+        # services directly so the contract entities stay in sync.
+        last_path = result.get("path") or ""
+        try:
+            await hass.services.async_call(
+                "input_text",
+                "set_value",
+                {"entity_id": "input_text.rc_labs_last_export_path",
+                 "value": last_path},
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+        try:
+            await hass.services.async_call(
+                "logbook",
+                "log",
+                {
+                    "name": "RoamCore Labs",
+                    "message": (
+                        f"Exported setup bundle to {last_path} "
+                        f"(packages={len(result.get('manifest', {}).get('packages', []))})"
+                    ),
+                },
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+    async def _svc_labs_import_setup(call):
+        """Stage a RoamCore Labs bundle for apply-on-next-reload.
+
+        dry_run defaults to true (the operator can opt in to a real
+        extract by passing dry_run=false). The bundle is unpacked into
+        /config/.storage/roamcore_labs/imports/<stem>_<timestamp>/ and
+        the path is reflected into input_text.rc_labs_pending_import so
+        the wizard can render the pending-import pill.
+        """
+        bundle_path = (call.data.get("bundle_path") or "").strip()
+        if not bundle_path:
+            raise RuntimeError("bundle_path is required")
+
+        apply_flag = bool(call.data.get("apply") or False)
+        # Default dry_run to true so a slip-up doesn't extract.
+        dry_run = bool(call.data.get("dry_run", True))
+
+        import os
+        import sys as _sys
+        _HERE = os.path.dirname(os.path.abspath(__file__))
+        _TOOLS = os.path.abspath(os.path.join(_HERE, "..", "..", "tools"))
+        if _TOOLS not in _sys.path:
+            _sys.path.insert(0, _TOOLS)
+        try:
+            from labs import common as _labs_common  # noqa: WPS433
+            from labs.import_setup import stage_bundle as _labs_stage  # noqa: WPS433
+        except Exception as exc:
+            raise RuntimeError(
+                f"roamcore.labs_import_setup: cannot import helpers: {exc}"
+            )
+
+        try:
+            result = _labs_stage(
+                bundle_path=bundle_path,
+                apply=apply_flag,
+                dry_run=dry_run,
+            )
+        except _labs_common.BundleError as exc:
+            raise RuntimeError(f"labs import failed: {exc}")
+        except OSError as exc:
+            raise RuntimeError(f"labs import filesystem error: {exc}")
+
+        # Reflect into the contract helpers so the wizard chip refreshes.
+        last_status = result.get("apply") and "apply_on_next_reload" or (
+            "staged" if not result["dry_run"] else "dry_run"
+        )
+        if dry_run:
+            last_status = "dry_run"
+        try:
+            await hass.services.async_call(
+                "input_text",
+                "set_value",
+                {"entity_id": "input_text.rc_labs_pending_import",
+                 "value": bundle_path},
+                blocking=False,
+            )
+            await hass.services.async_call(
+                "input_text",
+                "set_value",
+                {"entity_id": "input_text.rc_labs_last_import_status",
+                 "value": last_status},
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+        try:
+            await hass.services.async_call(
+                "logbook",
+                "log",
+                {
+                    "name": "RoamCore Labs",
+                    "message": (
+                        f"{'Dry-run' if dry_run else 'Staged'} import of "
+                        f"{bundle_path} (status={last_status})"
+                    ),
+                },
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "labs_export_setup",
+        _svc_labs_export_setup,
+        schema=None,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "labs_import_setup",
+        _svc_labs_import_setup,
+        schema=None,
+    )
+
+    # ------------------------------------------------------------------
+    # RoamCore Gamification (opt-in streak + trophy subsystem) — Wave 2 #33
+    # ------------------------------------------------------------------
+    # Privacy: pure HA service call. No outbound HTTP, no telemetry,
+    # no third-party imports. The trophy service is intentionally
+    # boring: it just flips an input_boolean ON so the dashboard can
+    # render the trophy as "seen" rather than "new". Idempotent.
+    # ------------------------------------------------------------------
+
+    KNOWN_TROPHIES = frozenset({
+        "first_trip_wrapped",
+        "first_power_session",
+        "first_automation",
+        "first_share_exported",
+        "first_offline_driving_day",
+        "first_setup_complete",
+        "first_twilight_handling",
+    })
+
+    async def _svc_gamification_acknowledge_trophy(call):
+        """Flip the matching input_boolean.rc_gamification_trophy_seen_<id> ON.
+
+        The kill-switch (``input_boolean.rc_gamification_enabled``) is
+        intentionally NOT consulted here: acknowledging a trophy is a
+        pure UI operation and should not be blocked by the master
+        switch. The trigger sensors are the ones that gate on the
+        master switch; this service is the read-only acknowledgement
+        path.
+
+        Raises ``ValueError`` on invalid trophy_id. The error is
+        surfaced via ``hass.components.persistent_notification`` so the
+        operator can see the message without digging into logs.
+        """
+        trophy_id = str(call.data.get("trophy_id") or "").strip()
+        if trophy_id not in KNOWN_TROPHIES:
+            try:
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "RoamCore gamification: unknown trophy_id",
+                        "message": (
+                            f"trophy_id {trophy_id!r} is not in the known set: "
+                            f"{sorted(KNOWN_TROPHIES)}"
+                        ),
+                        "notification_id": "roamcore_gamification_unknown_trophy",
+                    },
+                    blocking=False,
+                )
+            except Exception:
+                pass
+            raise ValueError(
+                f"unknown trophy_id: {trophy_id!r}"
+            )
+
+        entity_id = f"input_boolean.rc_gamification_trophy_seen_{trophy_id}"
+        try:
+            await hass.services.async_call(
+                "input_boolean",
+                "turn_on",
+                {"entity_id": entity_id},
+                blocking=True,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"gamification acknowledge failed: {type(exc).__name__}: {exc}"
+            )
+
+        # Best-effort: log the acknowledgement in the logbook.
+        try:
+            await hass.services.async_call(
+                "logbook",
+                "log",
+                {
+                    "name": "RoamCore Gamification",
+                    "message": f"Acknowledged trophy {trophy_id}",
+                },
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+    hass.services.async_register(
+        DOMAIN,
+        "gamification_acknowledge_trophy",
+        _svc_gamification_acknowledge_trophy,
+        schema=None,
+    )
+
     return True
 
 

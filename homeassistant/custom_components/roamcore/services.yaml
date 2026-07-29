@@ -110,3 +110,111 @@ backup_update:
       required: false
       selector:
         text: {}
+
+labs_export_setup:
+  name: Bundle RoamCore setup as a local tar.gz
+  description: >-
+    Bundle the active RoamCore setup (dashboard YAML + selected packages
+    + a manifest) into a local tar.gz. Privacy-by-default: no remote
+    upload, no telemetry, no third-party HTTP. The owner chooses where
+    to write the file and how to share it. See the Wave 2 #32 slice
+    (docs/setup/labs.md) for the operator guide.
+  fields:
+    target_path:
+      name: Target path
+      description: >-
+        Where to write the bundle. Directory or .tar.gz path. If a
+        directory is given, the bundle is written into it with a
+        UTC-timestamped filename. If omitted, the bundle is written
+        under /config/.storage/roamcore_labs/exports/<UTC-timestamp>/roamcore_setup.tar.gz.
+      required: false
+      example: /config/.storage/roamcore_labs/exports/manual/roamcore_setup.tar.gz
+      selector:
+        text: {}
+    dashboard_file:
+      name: Dashboard file
+      description: >-
+        Path to the dashboard YAML to include in the bundle. Default:
+        /config/lovelace/roamcore-dashboard.yaml.
+      required: false
+      selector:
+        text: {}
+    packages_dir:
+      name: Packages dir
+      description: >-
+        Path to the packages directory to include in the bundle. Default:
+        /config/packages.
+      required: false
+      selector:
+        text: {}
+
+labs_import_setup:
+  name: Stage a RoamCore Labs bundle for apply-on-next-reload
+  description: >-
+    Stage a local RoamCore Labs bundle (tar.gz) so the operator can
+    preview it on the Setup Wizard card. The bundle is unpacked into
+    /config/.storage/roamcore_labs/imports/<stem>_<timestamp>/ and the
+    path is written to input_text.rc_labs_pending_import so the
+    dashboard can render the pending-import pill. The actual apply is
+    gated on the operator's reload step (idempotent). dry_run default
+    is true; the service refuses to write anything outside the staging
+    root. Privacy-by-default: no remote upload, no telemetry, no
+    third-party HTTP. See the Wave 2 #32 slice (docs/setup/labs.md)
+    for the operator guide.
+  fields:
+    bundle_path:
+      name: Bundle path
+      description: Path to the bundle tar.gz to stage.
+      required: true
+      example: /config/.storage/roamcore_labs/exports/20260729T211214Z/roamcore_setup.tar.gz
+      selector:
+        text: {}
+    apply:
+      name: Apply on next reload
+      description: >-
+        If true, mark the staged bundle as 'apply on next reload'. The
+        service will NOT auto-apply; the operator still has to flip
+        the apply flag on the wizard card. Default: false (stage only).
+      required: false
+      default: false
+      selector:
+        boolean: {}
+    dry_run:
+      name: Dry run
+      description: >-
+        If true (default), inspect the bundle without extracting it.
+        The service emits the manifest + the list of files it would
+        extract to the logbook. Default: true.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+
+gamification_acknowledge_trophy:
+  name: Acknowledge a RoamCore gamification trophy
+  description: >-
+    Flip the matching input_boolean.rc_gamification_trophy_seen_<id>
+    ON so the dashboard can render the trophy as "seen" rather than
+    "new". Idempotent (already-on stays on). Privacy-by-default: no
+    remote upload, no telemetry, no third-party HTTP. The service is
+    a pure HA service call — no Python processing. See the Wave 2 #33
+    slice (docs/setup/gamification.md) for the operator guide.
+  fields:
+    trophy_id:
+      name: Trophy ID
+      description: >-
+        Trophy identifier to acknowledge. Must be one of the 7 known
+        trophies; an unknown value raises a ValueError surfaced as a
+        persistent_notification.
+      required: true
+      example: first_trip_wrapped
+      selector:
+        select:
+          options:
+            - first_trip_wrapped
+            - first_power_session
+            - first_automation
+            - first_share_exported
+            - first_offline_driving_day
+            - first_setup_complete
+            - first_twilight_handling

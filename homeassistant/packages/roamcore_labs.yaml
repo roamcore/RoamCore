@@ -1,0 +1,207 @@
+# RoamCore — Labs (share setups/dashboards) contract layer
+#
+# Slice: Wave 2 #32 — RoamCore Labs (share setups/dashboards)
+# Tier: b (community-supported)
+# Privacy: privacy-by-default. No remote upload, no telemetry, no third-party
+# HTTP. The bundle is a local file the owner shares by whatever channel they
+# already trust. See docs/setup/labs.md#privacy for the full statement.
+#
+# Per docs/reference/rc-entity-naming.md:
+#   <domain>.rc_<subsystem>_<object>_<metric>
+# Subsystem = "labs".
+#
+# This package declares 8 contract entities plus the operator-facing helpers
+# that drive the Labs card on the Setup Wizard. The services that operate
+# on these entities live in homeassistant/custom_components/roamcore/:
+#   roamcore.labs_export_setup(target_path=...)  — bundle active setup
+#   roamcore.labs_import_setup(bundle_path=...)  — stage a bundle in
+#       input_text.rc_labs_pending_import; apply on next reload. Idempotent,
+#       dry-run by default.
+#
+# Master switch: binary_sensor.rc_labs_enabled (default OFF). When OFF,
+# derived sensors (rc_labs_export_count, rc_labs_import_count) report
+# `unavailable` (never `unknown`) so the dashboard renders a clear "Off"
+# chip instead of a stale reading.
+
+# ----------------------------- helpers -----------------------------
+# rc_labs_enabled is the master switch (default OFF). On by hiring:
+# the operator has to opt in.
+binary_sensor:
+  - name: "RC Labs Enabled"
+    unique_id: rc_labs_enabled
+    icon: mdi:flask-outline
+    # We mirror the state of input_boolean.rc_labs_enabled via a template
+    # so the dashboard chip is consistent with the OFF-on-startup policy.
+    # The explicit OFF branch keeps the semantic unambiguous in code review.
+    state: >-
+      {% if is_state('input_boolean.rc_labs_enabled', 'off') %}
+        off
+      {% else %}
+        on
+      {% endif %}
+    availability: >-
+      {{ states('input_boolean.rc_labs_enabled') not in ['unknown', 'unavailable', 'none'] }}
+
+input_boolean:
+  rc_labs_enabled:
+    name: "RC Labs Enabled"
+    initial: false  # OFF by default — operator must opt in.
+    icon: mdi:flask-outline
+
+# Staging area for the next import. The service writes the path here;
+# the dashboard reads it back so the operator can confirm before the
+# apply-on-next-reload step.
+input_text:
+  rc_labs_pending_import:
+    name: "RC Labs Pending Import Path"
+    initial: ""
+    max: 512
+    icon: mdi:briefcase-upload-outline
+
+# Read-out helpers: the services bump these on each successful export /
+# import so the dashboard can show a "last action" line.
+text:
+  - name: "RC Labs Last Export Path"
+    unique_id: rc_labs_last_export_path
+    icon: mdi:archive-arrow-down-outline
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    state: >-
+      {{ states('input_text.rc_labs_last_export_path') }}
+
+  - name: "RC Labs Last Import Status"
+    unique_id: rc_labs_last_import_status
+    icon: mdi:archive-arrow-up-outline
+    # Deliberately NOT gated on the master switch — operators want to
+    # see "what was the last import I ran?" even when they turn the
+    # subsystem off again. The dashboard renders a friendly "Off" pill
+    # via the binary_sensor chip; the read-out field always reads.
+    state: >-
+      {{ states('input_text.rc_labs_last_import_status') }}
+
+# Read-out helpers that need to be referenced as text domains. yaml
+# splits `text:` and `input_text:` into two domains, so we wire the
+# read-out helpers with the input_text mirror in §below.
+
+# ----------------------------- read-outs -----------------------------
+# The service writes the path/status into input_text mirrors; the text
+# entities above read from those mirrors so the dashboard can pin them
+# onto the same chip as the export_count / import_count sensors.
+input_text:
+  rc_labs_last_export_path:
+    name: "RC Labs Last Export Path (mirror)"
+    initial: ""
+    max: 1024
+    icon: mdi:archive-arrow-down-outline
+  rc_labs_last_import_status:
+    name: "RC Labs Last Import Status (mirror)"
+    initial: ""
+    max: 256
+    icon: mdi:archive-arrow-up-outline
+
+# ----------------------------- buttons -----------------------------
+# Two operator-facing buttons the wizard card wires to the roamcore
+# services. They exist as first-class entities so the dashboard chip
+# can also render them as a single tap.
+button:
+  - name: "RC Labs Export Setup"
+    unique_id: rc_labs_export_setup
+    icon: mdi:archive-arrow-down-outline
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    press:
+      - service: roamcore.labs_export_setup
+        data: {}
+
+  - name: "RC Labs Import Setup"
+    unique_id: rc_labs_import_setup
+    icon: mdi:archive-arrow-up-outline
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    press:
+      - service: roamcore.labs_import_setup
+        data: {}
+
+# ----------------------------- counters -----------------------------
+# Two near-trivial sensors that the dashboard / wizard use to render
+# the "X exports, Y imports" pill. Providers are local file counters
+# that the services bump on each successful run; both are gated on
+# the master switch so they report `unavailable` when OFF.
+template:
+  - sensor:
+      - name: "RC Labs Export Count"
+        unique_id: rc_labs_export_count
+        icon: mdi:counter
+        device_class: ""
+        availability: >-
+          {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+        state: >-
+          {{ states('sensor.rc_labs_export_count_raw') | int(0) }}
+
+      - name: "RC Labs Import Count"
+        unique_id: rc_labs_import_count
+        icon: mdi:counter
+        device_class: ""
+        availability: >-
+          {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+        state: >-
+          {{ states('sensor.rc_labs_import_count_raw') | int(0) }}
+
+# Command-line counters read directly from a small JSON state file
+# written by the export / import services. They are gated on the
+# master switch so they report `unavailable` when OFF.
+command_line:
+  - sensor:
+      name: "RC Labs Export Count Raw"
+      unique_id: rc_labs_export_count_raw
+      scan_interval: 60
+      command: >-
+        bash -c 'jq -r ".export_count // 0" /config/.storage/roamcore_labs/state.json 2>/dev/null || echo 0'
+      value_template: "{{ value }}"
+      icon: "mdi:counter"
+
+  - sensor:
+      name: "RC Labs Import Count Raw"
+      unique_id: rc_labs_import_count_raw
+      scan_interval: 60
+      command: >-
+        bash -c 'jq -r ".import_count // 0" /config/.storage/roamcore_labs/state.json 2>/dev/null || echo 0'
+      value_template: "{{ value }}"
+      icon: "mdi:counter"
+
+# ----------------------------- services -----------------------------
+# Operator-facing scripts that the wizard snippet mirrors 1:1. The
+# cards call these scripts so the service call site is centralized
+# (zero duplication between the dashboard and the wizard).
+script:
+  rc_labs_export_setup:
+    alias: "RC Labs: export setup"
+    sequence:
+      - service: roamcore.labs_export_setup
+        data: {}
+
+  rc_labs_import_setup:
+    alias: "RC Labs: import setup"
+    sequence:
+      - service: roamcore.labs_import_setup
+        data: {}
+
+# ----------------------------- automations -----------------------------
+# When the operator flips the master switch on for the first time, we
+# seed the state.json file with the zero counters so the dashboard
+# doesn't render a stale "unknown" reading on the count chips.
+automation:
+  - id: rc_labs_seed_state_on_enable
+    alias: "RC Labs: seed state on enable"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_labs_enabled
+        from: "off"
+        to: "on"
+    action:
+      - service: shell_command.rc_labs_seed_state
+
+shell_command:
+  rc_labs_seed_state: >-
+    /bin/sh -lc 'mkdir -p /config/.storage/roamcore_labs && if [ ! -f /config/.storage/roamcore_labs/state.json ]; then printf "{\\n  \\"export_count\\": 0,\\n  \\"import_count\\": 0,\\n  \\"last_export_path\\": \\"\\",\\n  \\"last_import_status\\": \\"\\",\\n  \\"last_export_at\\": \\"\\",\\n  \\"last_import_at\\": \\"\\"\\n}\\n" > /config/.storage/roamcore_labs/state.json; fi'
