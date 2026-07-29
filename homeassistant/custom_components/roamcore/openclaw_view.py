@@ -20,7 +20,8 @@ from .const import (
 
 from aiohttp import web
 
-from .automation_intents import INTENT_CONTRACT, SUPPORTED_INTENTS, validate_intent
+from .automation_intents import INTENT_CONTRACT, SUPPORTED_INTENTS, apply_intent, validate_intent
+from .actions import allowlist_path, load_allowlist_yaml
 
 
 def _openclaw_enabled(hass: HomeAssistant, entry_id: str) -> bool:
@@ -625,5 +626,105 @@ class OpenClawAutomationValidateView(OpenClawAutomationIntentsView):
                 "ok": False,
                 "error": "use_post",
                 "hint": "POST JSON to this endpoint, or GET /api/roamcore/openclaw/automation/intents for schema.",
+            }
+        )
+
+
+class OpenClawAutomationApplyView(HomeAssistantView):
+    """Apply a validated intent via the allowlisted roamcore.action_executor.
+
+    Slice #24 wires the apply bridge: validate intent + cross-check the
+    allowlist + invoke the existing `roamcore.action_execute` service (which
+    enforces the kill switch, target constraints, and audit log).
+
+    The view does NOT execute HA services directly. It delegates to the
+    service registered in `__init__.py` so all the existing kill-switch and
+    audit-log logic stays in one place.
+    """
+
+    url = "/api/roamcore/openclaw/automation/apply"
+    name = "api:roamcore_openclaw_automation_apply"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def post(self, request):
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "automation_apply")
+
+        try:
+            data = await request.json()
+        except Exception:
+            return self.json(
+                {
+                    "ok": False,
+                    "error": "invalid_json",
+                    "contract": INTENT_CONTRACT,
+                    "generated_at": _iso_now(),
+                }
+            )
+
+        intent = data.get("intent") if isinstance(data, dict) else None
+        if intent is None:
+            intent = data
+
+        # Load the allowlist the same way action_execute does, on the
+        # executor thread to avoid blocking the event loop.
+        def _load_allowlist():
+            cfg_dir = self._hass.config.path("")
+            return load_allowlist_yaml(allowlist_path(cfg_dir))
+
+        policy = await self._hass.async_add_executor_job(_load_allowlist)
+
+        # First-pass: pure-Python validate + allowlist check (no HA side
+        # effects yet). This way we can fail fast and cheaply without
+        # touching the kill switch / audit log.
+        plan = apply_intent(intent, allowlist=policy, executor=None)
+        if not plan.get("ok"):
+            return self.json(
+                {
+                    "ok": False,
+                    "error": plan.get("error"),
+                    "contract": INTENT_CONTRACT,
+                    "generated_at": _iso_now(),
+                }
+            )
+
+        # Second-pass: actually invoke roamcore.action_execute. The service
+        # will re-check the kill switch + write an audit record.
+        try:
+            await self._hass.services.async_call(
+                "roamcore",
+                "action_execute",
+                {
+                    "action_id": plan.get("action_id"),
+                    "args": plan.get("args") or {},
+                    "reason": plan.get("reason") or "openclaw_automation_apply",
+                },
+                blocking=True,
+            )
+            executor_result: dict[str, Any] = {"ok": True}
+        except Exception as e:
+            executor_result = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+        return self.json(
+            {
+                "ok": bool(executor_result.get("ok")),
+                "contract": INTENT_CONTRACT,
+                "generated_at": _iso_now(),
+                "action_id": plan.get("action_id"),
+                "intent": plan.get("intent"),
+                "executor_result": executor_result,
+                "error": None if executor_result.get("ok") else executor_result.get("error"),
             }
         )

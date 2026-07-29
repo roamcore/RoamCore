@@ -12,6 +12,9 @@
 # Slice #23 (Mode / automation builder) added:
 #   ▶ Mode / automation builder: smoke check
 #
+# Slice #24 (OpenClaw automation apply) wires these on top of main:
+#   ▶ OpenClaw automation: smoke check
+#
 # Slice #22 (amenities overlay — iOverlander-style) wires these on top of main:
 #   ▶ Amenities overlay privacy: smoke check
 #   ▶ Amenities overlay: smoke check
@@ -47,6 +50,9 @@ bash scripts/checks/ha-beta-smoke.sh
 
 banner "Mode / automation builder: smoke check"
 bash scripts/checks/mode-builder-smoke.sh
+
+banner "OpenClaw automation: smoke check"
+bash scripts/checks/openclaw-automation-smoke.sh
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
