@@ -15,5 +15,10 @@ RoamCore ships `install.sh`/`uninstall.sh` to install the integration and assets
 ## Install / best next step
 - See: `docs/howto/homeassistant-installer.md`
 
+## RoamCore OTA
+- Built-in: `docs/setup/ota.md`
+- Add-on: `homeassistant/addons/roamcore_ota/`
+- Architecture: `docs/architecture/ota-channel.md`
+
 ## Links
 - (Add videos/quickstart)

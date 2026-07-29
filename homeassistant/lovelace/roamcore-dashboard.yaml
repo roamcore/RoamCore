@@ -122,3 +122,43 @@ views:
           - entity: sensor.rc_net_jitter
           - entity: sensor.rc_net_uptime
           - entity: sensor.rc_net_last_disconnect
+
+  # ---------------------------------------------------------------
+  # Setup-wizard OTA card snippet (Wave 2 #30 — commented by default)
+  #
+  # The Setup Wizard exposes this snippet on demand at the "OTA"
+  # stage. It is NOT auto-injected so the platform-level card does
+  # not surprise users who haven't opted in. Uncomment + move into
+  # any view's `cards:` list to surface it on the dashboard.
+  #
+  # - type: markdown
+  #   title: "RoamCore OTA"
+  #   content: |
+  #     # RoamCore OTA
+  #     Channel: **{{ states('input_select.rc_ota_channel') }}** ·
+  #     Running: **{{ states('input_text.rc_ota_running_version') }}** ·
+  #     Latest: **{{ states('sensor.rc_ota_latest_version') }}**
+  #
+  #     RoamCore OTA only talks to api.github.com over HTTPS — no telemetry.
+  # - type: glance
+  #   title: "Update status"
+  #   entities:
+  #     - entity: binary_sensor.rc_ota_update_available
+  #       name: Update available
+  #     - entity: binary_sensor.rc_ota_rollback_pending
+  #       name: Rollback pending
+  #     - entity: sensor.rc_ota_snapshot_count
+  #       name: Snapshots
+  #     - entity: sensor.rc_ota_last_check
+  #       name: Last check
+  # - type: entities
+  #   title: "OTA controls"
+  #   entities:
+  #     - entity: input_select.rc_ota_channel
+  #     - entity: input_number.rc_ota_poll_minutes
+  #     - entity: input_number.rc_ota_apply_hour
+  #     - entity: input_boolean.rc_ota_auto_apply
+  #     - entity: script.rc_ota_check
+  #     - entity: script.rc_ota_apply
+  #     - entity: script.rc_ota_rollback
+  # ---------------------------------------------------------------
