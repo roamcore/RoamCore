@@ -1,10 +1,19 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-07-29
 
 This is an internal status page for the remaining MVP feature build-out.
 
 ## Shipped (repo)
+
+- OTA updates (GitHub channel + rollback-aware) — Wave 2 #30 (slice shipped)
+  - Add-on: `homeassistant/addons/roamcore_ota/` (poller + 3-snapshot history at `/share/roamcore/snapshots/`)
+  - Contract package: `homeassistant/packages/roamcore_ota.yaml` (sensors + helpers + auto-apply scheduler at 03:00 local)
+  - Wizard snippet: `homeassistant/packages/roamcore_setup_wizard_ota.yaml` (paste-this-card for the OTA stage)
+  - Setup doc: `docs/setup/ota.md`
+  - Architecture doc: `docs/architecture/ota-channel.md`
+  - Smoke check: `scripts/checks/ota-smoke.sh` wired into `scripts/check.sh --core-only`
+  - Privacy: only outbound traffic is `api.github.com` over HTTPS (no telemetry)
 
 - Weather + time contract sensors
   - `homeassistant/packages/roamcore_weather_time.yaml`
