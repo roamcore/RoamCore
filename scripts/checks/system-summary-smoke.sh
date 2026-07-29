@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 fail() { echo "ERROR: $*" >&2; exit 1; }
-ok()   { echo "  \u2713 $*"; }
+ok()   { echo "  ✓ $*"; }
 
 echo "=================================================="
 echo " RoamCore system summary smoke check (slice #26)"
@@ -85,5 +85,5 @@ fi
 ok "feature-checklist.md #26 flipped to [x]"
 
 echo "=================================================="
-echo " \u2713 System summary smoke check passed (slice #26)"
+echo " ✓ System summary smoke check passed (slice #26)"
 echo "=================================================="
