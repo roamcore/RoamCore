@@ -60,6 +60,7 @@ Legend:
 
 - [ ] Advanced mode (clearly separated + safe recovery)
 - [ ] Deterministic system summary (boring, consistent, trustworthy)
+- [x] PWA scaffold (real install + offline detection + push notifications) — Wave 2 #10 (slice shipped)
 - [ ] AI chat (opt-in; API/Auth based)
 
 ---

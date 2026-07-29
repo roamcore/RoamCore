@@ -6,7 +6,7 @@
  * see the dashboard if LTE drops). Bump RC_CACHE_VERSION on every release
  * to invalidate all old clients.
  */
-const RC_CACHE_VERSION = 'rc-shell-v1';
+const RC_CACHE_VERSION = 'rc-shell-v2';
 const RC_CACHE_NAME = `roamcore-${RC_CACHE_VERSION}`;
 
 const RC_SHELL = [
@@ -15,6 +15,7 @@ const RC_SHELL = [
   './manifest.json',
   './icon-192.svg',
   './icon-512.svg',
+  './pwa.js',
 ];
 
 self.addEventListener('install', (event) => {
@@ -58,5 +59,39 @@ self.addEventListener('fetch', (event) => {
         return res;
       }).catch(() => caches.match('./index.html'));
     })
+  );
+});
+
+// ----- Push notifications (Wave 2 #10) -----
+// Passive listeners: the subscription is opt-in and the user supplies
+// the VAPID key. RoamCore hosts no relay; whatever server the user
+// wires up sends pushes here and we surface them as notifications.
+self.addEventListener('push', (event) => {
+  let payload = { title: 'RoamCore', body: '', tag: 'rc-pwa' };
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      payload = Object.assign(payload, parsed);
+    } catch (_e) {
+      payload.body = event.data.text();
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clients) => {
+        const target = clients[0];
+        if (target) return target.focus();
+        return self.clients.openWindow('./');
+      })
   );
 });

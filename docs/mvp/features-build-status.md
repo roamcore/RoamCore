@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-07-29
 
 This is an internal status page for the remaining MVP feature build-out.
 
@@ -32,6 +32,12 @@ This is an internal status page for the remaining MVP feature build-out.
 - Traccar live map (embedded)
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
+
+- PWA scaffold (real install + offline detection + push notifications)
+  - `dashboard/Frontend/Setup Wizard/{index.html, manifest.json, sw.js, pwa.js}`
+  - `docs/setup/pwa.md`, `docs/catalog/homelab/pwa.md`
+  - Wave 2 #10 (slice shipped)
+  - Tier-b community-supported; user supplies their own VAPID key + relay.
 
 ## Next steps (needs HAOS setup / UI wiring)
 

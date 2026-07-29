@@ -145,6 +145,57 @@
     footer.rc-footer a { color: var(--rc-accent); text-decoration: none; }
     .rc-status-ok { color: var(--rc-accent-2); }
     .rc-status-offline { color: #FFD275; }
+    .rc-btn {
+      font-family: var(--rc-mono);
+      font-size: 13px;
+      color: var(--rc-bg);
+      background: var(--rc-accent);
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .rc-btn[hidden] { display: none; }
+    .rc-btn-secondary {
+      background: transparent;
+      color: var(--rc-accent);
+      border: 1px solid var(--rc-border);
+    }
+    .rc-pwa-ios-hint {
+      position: relative;
+      border: 1px dashed var(--rc-accent);
+      background: rgba(91, 227, 255, 0.06);
+    }
+    .rc-pwa-ios-hint-close {
+      position: absolute;
+      top: 8px; right: 10px;
+      background: transparent;
+      border: 0;
+      color: var(--rc-fg-dim);
+      font-family: var(--rc-mono);
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .rc-pwa-push-endpoint {
+      display: block;
+      margin-top: 8px;
+      font-family: var(--rc-mono);
+      font-size: 11px;
+      color: var(--rc-fg-dim);
+      word-break: break-all;
+    }
+    input.rc-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--rc-fg);
+      border: 1px solid var(--rc-border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: var(--rc-mono);
+      font-size: 12px;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -152,7 +203,7 @@
     <header class="rc-header">
       <div class="rc-logo" aria-hidden="true">RC</div>
       <h1 class="rc-title">RoamCore</h1>
-      <span class="rc-tag" id="rc-conn">offline</span>
+      <span class="rc-tag" id="rc-conn" data-rc-online="0">offline</span>
     </header>
 
     <main class="rc-main">
@@ -168,6 +219,35 @@
           the OpenClaw bridge arrive in subsequent slices. The service worker
           has cached this page so it works offline.
         </p>
+        <button class="rc-btn" id="rc-pwa-install-btn" type="button" hidden
+                data-rc-install-state="available">Install RoamCore</button>
+      </section>
+
+      <section class="rc-card rc-pwa-ios-hint" id="rc-pwa-ios-hint" hidden
+               data-rc-shown="0">
+        <button class="rc-pwa-ios-hint-close" id="rc-pwa-ios-hint-close"
+                type="button" aria-label="Dismiss">&times;</button>
+        <h2>Add to Home Screen</h2>
+        <p>
+          Tap the <strong>Share</strong> button, then choose
+          <strong>Add to Home Screen</strong> to install RoamCore on iOS.
+        </p>
+      </section>
+
+      <section class="rc-card" id="rc-pwa-push-card">
+        <h2>Push notifications</h2>
+        <p>
+          Paste your VAPID public key (base64url) below to subscribe this
+          device. RoamCore does not run a push relay &mdash; you point the
+          subscription endpoint at your own server.
+        </p>
+        <label for="rc-pwa-vapid-input" style="font-family:var(--rc-mono);font-size:11px;color:var(--rc-fg-dim);">VAPID public key</label>
+        <input class="rc-input" id="rc-pwa-vapid-input" type="text"
+               autocomplete="off" spellcheck="false"
+               placeholder="BPlQd...">
+        <button class="rc-btn" id="rc-pwa-push-subscribe" type="button">Subscribe</button>
+        <button class="rc-btn rc-btn-secondary" id="rc-pwa-push-test" type="button">Test push</button>
+        <code class="rc-pwa-push-endpoint" id="rc-pwa-push-endpoint">(no subscription yet)</code>
       </section>
     </main>
 
@@ -199,7 +279,7 @@
 
     // The service worker hard-codes the cache name; mirror it here so the
     // footer shows what version is live without a separate manifest call.
-    function RC_CACHE_VERSION_SHOW() { return 'rc-shell-v1'; }
+    function RC_CACHE_VERSION_SHOW() { return 'rc-shell-v2'; }
 
     // Once the SW has had a chance to install + claim, swap the loading
     // screen for the ready card. Tiny delay keeps the pulse visible long
@@ -213,19 +293,28 @@
       }, 400);
     });
 
-    // Tiny connectivity indicator — purely cosmetic for the scaffold,
-    // real status comes from HA once tiles wire up.
-    function rcUpdateConn() {
-      const el = document.getElementById('rc-conn');
-      if (!el) return;
-      const online = navigator.onLine;
-      el.textContent = online ? 'online' : 'offline';
-      el.classList.toggle('rc-status-ok', online);
-      el.classList.toggle('rc-status-offline', !online);
-    }
-    window.addEventListener('online', rcUpdateConn);
-    window.addEventListener('offline', rcUpdateConn);
-    rcUpdateConn();
+    // Wire push-subscribe + test buttons (logic in pwa.js).
+    window.addEventListener('DOMContentLoaded', () => {
+      const sub = document.getElementById('rc-pwa-push-subscribe');
+      const test = document.getElementById('rc-pwa-push-test');
+      const input = document.getElementById('rc-pwa-vapid-input');
+      if (sub && input) {
+        sub.addEventListener('click', () => {
+          window.localStorage.setItem('rc_vapid_public_key', input.value.trim());
+          window.rcSubscribePush().then((res) => {
+            sub.setAttribute('data-rc-push-state', res.ok ? 'subscribed' : res.error || 'error');
+          });
+        });
+      }
+      if (test) {
+        test.addEventListener('click', () => {
+          window.rcTestPush().then((res) => {
+            test.setAttribute('data-rc-push-state', res.ok ? 'tested' : res.error || 'error');
+          });
+        });
+      }
+    });
   </script>
+  <script src="pwa.js"></script>
 </body>
 </html>

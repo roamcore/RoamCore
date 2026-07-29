@@ -151,6 +151,15 @@ else
     run_skip "PWA: manifest present" "no manifest at dashboard/Frontend/Setup Wizard/manifest.json"
 fi
 
+# 5c. PWA install/offline/push smoke (Wave 2 #10). Runs whenever the
+# Setup Wizard directory exists. Purely static, no HA runtime needed.
+if [ -d "dashboard/Frontend/Setup Wizard" ]; then
+    run_check "PWA: install/offline/push smoke" \
+        "bash scripts/checks/pwa-install-smoke.sh"
+else
+    run_skip "PWA: install/offline/push smoke" "no Setup Wizard directory"
+fi
+
 if [ $CORE_ONLY -eq 0 ]; then
     # 6. MkDocs site builds. Use `python3 -m mkdocs` so it works whether or not
     # the `mkdocs` binary is on PATH (it's installed via pip as a module).
