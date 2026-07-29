@@ -3628,3 +3628,123 @@ try {
 } catch (e) {
   // ignore
 }
+
+// --- AI chat card (bundled fallback for first-run installs) ---
+// The standalone file `roamcore-ai-chat.js` ships the full implementation. If
+// the user hasn't added it as a Lovelace resource, we still want the chat to
+// render inside the RoamCore pages. So we keep a thin, idempotent definition
+// here guarded against double-registration.
+//
+// Slice #27 — opt-in only, fail-closed, privacy contract enforced by the view.
+try {
+  if (typeof window !== 'undefined' && !customElements.get('roamcore-ai-chat')) {
+    class RoamcoreAiChatCardInline extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this._config = {};
+        this._hass = null;
+        this._history = [];
+        this._busy = false;
+        this._lastError = null;
+      }
+      setConfig(config) {
+        this._config = config || {};
+        if (!this._root) {
+          this._root = document.createElement('div');
+          this.shadowRoot.appendChild(this._root);
+        }
+        this._render();
+      }
+      set hass(hass) {
+        this._hass = hass;
+        this._render();
+      }
+      getCardSize() { return 5; }
+      disconnectedCallback() { /* nothing to clean up */ }
+      _render() {
+        if (!this._root) return;
+        var hass = this._hass;
+        if (!hass) {
+          this._root.innerHTML = '<div class="rc-aichat-inline-empty">Connect to Home Assistant to use AI chat.</div>';
+          return;
+        }
+        var tog = hass.states && hass.states['input_boolean.rc_ai_chat_enabled'];
+        var on = tog && tog.state === 'on';
+        var keySt = hass.states && hass.states['input_text.rc_ai_chat_api_key'];
+        var keyVal = keySt ? String(keySt.state || '') : '';
+        var keyed = on && keyVal && keyVal.trim() !== '';
+        var pill, banner, html = '';
+        if (!on) {
+          pill = '<span class="rc-pill rc-pill-off">OFF</span>';
+          banner = '<div class="rc-aichat-inline-banner">AI Chat is OFF. Toggle <code>input_boolean.rc_ai_chat_enabled</code> in Settings.</div>';
+        } else if (!keyed) {
+          pill = '<span class="rc-pill rc-pill-warn">SETUP</span>';
+          banner = '<div class="rc-aichat-inline-banner">AI chat is on but no API key is set. Set <code>input_text.rc_ai_chat_api_key</code>.</div>';
+        } else {
+          pill = '<span class="rc-pill rc-pill-on">ON</span>';
+        }
+        html += '<div class="rc-aichat-inline-head">' + pill + '</div>';
+        if (banner) html += banner;
+        html += '<div class="rc-aichat-inline-privacy">Messages and the system summary are sent to your configured AI provider when ON. Disabling the toggle stops all external calls within seconds.</div>';
+        this._root.innerHTML = html + '<style>' +
+          '.rc-aichat-inline-empty { padding: 14px 0; font-size: 13px; color: var(--secondary-text-color, rgba(255,255,255,0.7)); }' +
+          '.rc-aichat-inline-head { margin-bottom: 8px; }' +
+          '.rc-pill { display:inline-flex; align-items:center; padding: 2px 10px; border-radius: 999px; font-weight: 800; font-size: 11px; color: #0b0b0b; }' +
+          '.rc-pill-on { background: var(--rc-good, #43d17a); }' +
+          '.rc-pill-off { background: var(--rc-muted, rgba(255,255,255,0.55)); }' +
+          '.rc-pill-warn { background: var(--rc-ok, #f4c542); }' +
+          '.rc-aichat-inline-banner { padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--divider-color, rgba(255,255,255,0.12)); font-size: 13px; color: var(--primary-text-color, #f5f5f5); margin-bottom: 10px; }' +
+          '.rc-aichat-inline-banner code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 11px; }' +
+          '.rc-aichat-inline-privacy { font-size: 11px; opacity: 0.7; color: var(--secondary-text-color, rgba(255,255,255,0.7)); }' +
+        '</style>';
+      }
+    }
+    customElements.define('roamcore-ai-chat', RoamcoreAiChatCardInline);
+  }
+} catch (e) {
+  // ignore
+}
+
+// --- AI chat page (slice #27) ---
+// Minimal full-page embed. Mounts <roamcore-ai-chat> on the RoamCore pages.
+// Wire-up is best-effort: if the standalone JS card isn't loaded yet (e.g.
+// first run before the cache-bust query param lands), the inline fallback
+// above takes over.
+try {
+  if (typeof window !== 'undefined' && !customElements.get('roamcore-ai-chat-page')) {
+    class RoamcoreAiChatPage extends RoamcoreBasePage {
+      _render() {
+        if (!this._root || !this._hass) return;
+        this._root.innerHTML = `
+          <div class="rc-page">
+            ${this._header('AI chat')}
+            <div class="rc-grid" style="grid-template-columns: 1fr;">
+              <div class="rc-dtile">
+                <div class="rc-dtile-head">
+                  <div class="rc-dtile-title">AI chat (opt-in)</div>
+                  <div class="rc-dtile-icon">🤖</div>
+                </div>
+                <div class="rc-dtile-body">
+                  <div class="rc-ai-chat-mount" id="rcAiChatMount"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        try {
+          var mount = this._root.querySelector('#rcAiChatMount');
+          if (mount && !mount.querySelector('roamcore-ai-chat')) {
+            var card = document.createElement('roamcore-ai-chat');
+            if (typeof card.setConfig === 'function') card.setConfig({});
+            card.hass = this._hass;
+            mount.appendChild(card);
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+    customElements.define('roamcore-ai-chat-page', RoamcoreAiChatPage);
+  }
+} catch (e) {
+  // ignore
+}

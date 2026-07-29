@@ -1,0 +1,55 @@
+# RoamCore AI Chat (opt-in) — package
+#
+# Slice #27 — first slice of the AI chat layer.
+# Intent: opt-in only, default OFF, tier C (experimental).
+#
+# This package declares:
+#   - input_boolean.rc_ai_chat_enabled          (master toggle; defaults to OFF)
+#   - input_text.rc_ai_chat_provider            (anthropic | openai | ...)
+#   - input_text.rc_ai_chat_api_key             (user-supplied; empty = unconfigured)
+#   - input_text.rc_ai_chat_model               (per-provider model id)
+#   - input_number.rc_ai_chat_max_history       (in-process history cap, turns)
+#
+# Privacy contract (enforced by the view + smoke check):
+#   1. rc_ai_chat_enabled defaults to OFF.
+#   2. When OFF, the /api/roamcore/ai_chat/message endpoint returns 404.
+#      No outbound HTTP calls. No LLM calls. No summary fetch.
+#   3. When ON but rc_ai_chat_api_key is empty, the view returns 503.
+#      No outbound HTTP calls.
+#   4. When ON with a key, the view fetches the in-process OpenClaw summary
+#      and sends ONE outbound HTTPS call to the configured provider.
+#      No other outbound calls. No telemetry. No CDN scripts that phone home.
+
+input_boolean:
+  rc_ai_chat_enabled:
+    name: "RC AI Chat Enabled"
+    icon: mdi:robot-outline
+    initial: false  # OFF by default; opt-in only
+
+input_text:
+  rc_ai_chat_provider:
+    name: "RC AI Chat Provider"
+    initial: "anthropic"
+    min: 1
+    max: 32
+    pattern: "^[a-z0-9_-]+$"
+  rc_ai_chat_api_key:
+    name: "RC AI Chat API Key"
+    initial: ""
+    min: 0
+    max: 256
+    # tolerate empty (off) or token-ish (alnum + _-)
+    pattern: "^$|^[A-Za-z0-9_\\-]+$"
+  rc_ai_chat_model:
+    name: "RC AI Chat Model"
+    initial: "claude-3-5-haiku-latest"
+    min: 1
+    max: 64
+
+input_number:
+  rc_ai_chat_max_history:
+    name: "RC AI Chat Max History (turns)"
+    initial: 10
+    min: 0
+    max: 50
+    step: 1

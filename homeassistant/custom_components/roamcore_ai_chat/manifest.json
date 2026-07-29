@@ -1,0 +1,10 @@
+{
+  "domain": "roamcore_ai_chat",
+  "name": "RoamCore AI Chat",
+  "version": "0.1.0",
+  "documentation": "https://github.com/roamcore/RoamCore/blob/main/docs/setup/ai-chat.md",
+  "issue_tracker": "https://github.com/roamcore/RoamCore/issues",
+  "dependencies": ["http"],
+  "codeowners": [],
+  "iot_class": "local_push"
+}

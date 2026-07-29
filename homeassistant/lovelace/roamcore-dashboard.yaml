@@ -95,6 +95,14 @@ views:
     cards:
       - type: custom:roamcore-diagnostics-page
 
+  # AI chat (opt-in; experimental tier C)
+  - path: ai
+    title: AI chat
+    icon: mdi:robot-outline
+    panel: true
+    cards:
+      - type: custom:roamcore-ai-chat-page
+
   # Debug / health view (MVP observability)
   - path: status
     title: Status

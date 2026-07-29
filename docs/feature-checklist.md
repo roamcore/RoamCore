@@ -60,7 +60,7 @@ Legend:
 
 - [ ] Advanced mode (clearly separated + safe recovery)
 - [ ] Deterministic system summary (boring, consistent, trustworthy)
-- [ ] AI chat (opt-in; API/Auth based)
+- [x] AI chat (opt-in; API/Auth based) — slice #27 (opt-in + privacy contract + scaffold)
 
 ---
 
