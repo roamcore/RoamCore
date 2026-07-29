@@ -42,6 +42,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- RoamCore Labs (share setups/dashboards) — Wave 2 #32 (slice shipped)
+  - Contract layer: `homeassistant/packages/roamcore_labs.yaml` (8 contract entities)
+  - Wizard snippet: `homeassistant/packages/roamcore_setup_wizard_labs.yaml`
+  - Services: `roamcore.labs_export_setup` + `roamcore.labs_import_setup`
+  - CLI mirrors: `homeassistant/tools/labs/{export_setup,import_setup}.py` (stdlib-only)
+  - Smoke: `scripts/checks/labs-smoke.sh` (privacy invariant wired into `scripts/check.sh --core-only`)
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

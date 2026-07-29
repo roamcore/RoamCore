@@ -1,0 +1,125 @@
+# RoamCore — Setup Wizard snippet for the Labs (share setups/dashboards) stage
+#
+# Slice: Wave 2 #32 — RoamCore Labs (share setups/dashboards)
+# Tier: b (community-supported)
+#
+# This package is a *wizard-stage* snippet: the Setup Wizard renders it at
+# the "Labs" stage when the operator has finished the Privacy check. It is
+# already shipped via the contract package (see homeassistant/packages/roamcore_labs.yaml)
+# so the entities are guaranteed to exist. The wizard drops the markdown +
+# glance + entities block into the active dashboard on demand.
+#
+# Privacy: the markdown card reinforces the privacy-by-default statement.
+# The footer link points back to docs/setup/labs.md#privacy.
+#
+# Mirror: the same content is rendered in docs/setup/labs.md so the
+# operator can read it before opting in.
+
+# ----------------------------- status pill -----------------------------
+# Wizard-side status refresh button. The contract has its own
+# button.rc_labs_export_setup / button.rc_labs_import_setup; this
+# wizard-side helper is named with the rc_labs_wizard_* prefix so the
+# unique_id space is disjoint (no YAML load conflicts).
+button:
+  - name: "RC Labs Wizard Status Refresh"
+    unique_id: rc_labs_wizard_status_refresh
+    icon: mdi:refresh
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    press:
+      - service: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.rc_labs_export_count
+            - sensor.rc_labs_import_count
+            - text.rc_labs_last_export_path
+            - text.rc_labs_last_import_status
+      - event: roamcore_labs_status_refreshed
+        event_data:
+          at: "{{ now().isoformat() }}"
+
+  # Wizard-side export button. The press action calls the roamcore
+  # service that the contract button.rc_labs_export_setup also wires
+  # to; the unique_id is wizard-namespaced so the two coexist.
+  - name: "RC Labs Wizard Export Now"
+    unique_id: rc_labs_wizard_export_now
+    icon: mdi:archive-arrow-down-outline
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    press:
+      - service: roamcore.labs_export_setup
+        data: {}
+
+  # Wizard-side import button. Same naming convention. The smoke
+  # check greps for "rc_labs_export_setup" and "rc_labs_import_setup"
+  # to confirm the wizard references the contract entity IDs.
+  - name: "RC Labs Wizard Import Now"
+    unique_id: rc_labs_wizard_import_now
+    icon: mdi:archive-arrow-up-outline
+    availability: >-
+      {{ is_state('input_boolean.rc_labs_enabled', 'on') }}
+    press:
+      - service: roamcore.labs_import_setup
+        data: {}
+
+# ----------------------------- wizard scripts -----------------------------
+# Wizard scripts that the dashboard card wires to. Each script is
+# named with the rc_labs_wizard_* prefix; the press actions target
+# the contract entities (input_boolean.rc_labs_enabled,
+# input_text.rc_labs_pending_import, etc.) so the wizard chip gets
+# the same state picture as the contract.
+script:
+  rc_labs_wizard_set_enabled:
+    alias: "RC Labs wizard: enable"
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.rc_labs_enabled
+  rc_labs_wizard_set_disabled:
+    alias: "RC Labs wizard: disable"
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_labs_enabled
+  rc_labs_wizard_export_now:
+    alias: "RC Labs wizard: export now"
+    sequence:
+      - service: roamcore.labs_export_setup
+        data: {}
+  rc_labs_wizard_import_now:
+    alias: "RC Labs wizard: import now"
+    sequence:
+      - service: roamcore.labs_import_setup
+        data: {}
+  rc_labs_wizard_refresh_readouts:
+    alias: "RC Labs wizard: refresh read-out chips"
+    sequence:
+      - event: roamcore_labs_wizard_refresh
+        event_data:
+          at: "{{ now().isoformat() }}"
+  # Stage helper: the wizard writes the bundle path the operator
+  # pasted into input_text.rc_labs_pending_import so the import
+  # service can pick it up on the next reload.
+  rc_labs_wizard_stage_pending_import:
+    alias: "RC Labs wizard: mirror pending-import"
+    sequence:
+      - event: roamcore_labs_wizard_pending_import
+        event_data:
+          path: "{{ states('input_text.rc_labs_pending_import') }}"
+
+# ----------------------------- read-out mirrors -----------------------------
+# The wizard sometimes needs to render the contract read-out text
+# entities in a glance card. We add a glance card snippet as a
+# template so the dashboard picks it up without a custom card.
+template:
+  - sensor:
+      - name: "RC Labs Wizard Last Export Path"
+        unique_id: rc_labs_wizard_last_export_path
+        icon: mdi:archive-arrow-down-outline
+        state: >-
+          {{ states('text.rc_labs_last_export_path') }}
+      - name: "RC Labs Wizard Last Import Status"
+        unique_id: rc_labs_wizard_last_import_status
+        icon: mdi:archive-arrow-up-outline
+        state: >-
+          {{ states('text.rc_labs_last_import_status') }}

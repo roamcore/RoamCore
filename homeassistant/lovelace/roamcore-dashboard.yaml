@@ -162,3 +162,41 @@ views:
   #     - entity: script.rc_ota_apply
   #     - entity: script.rc_ota_rollback
   # ---------------------------------------------------------------
+
+  # ---------------------------------------------------------------
+  # Setup-wizard Labs (share setups/dashboards) card snippet (Wave 2 #32 — commented by default)
+  #
+  # The Setup Wizard exposes this snippet on demand at the "Labs"
+  # stage. It is NOT auto-injected so the platform-level card does
+  # not surprise users who haven't opted in. Uncomment + move into
+  # any view's `cards:` list to surface it on the dashboard.
+  #
+  # Privacy: the markdown card reinforces the privacy-by-default
+  # statement. The footer link points back to docs/setup/labs.md#privacy.
+  #
+  # - type: markdown
+  #   title: "RoamCore Labs"
+  #   content: |
+  #     # RoamCore Labs
+  #     Share your setup as a local tar.gz; import on another RoamCore install.
+  #     Labs is **{{ 'On' if is_state('input_boolean.rc_labs_enabled', 'on') else 'Off' }}**.
+  #     Exports: **{{ states('sensor.rc_labs_export_count') }}**.
+  #     Imports: **{{ states('sensor.rc_labs_import_count') }}**.
+  #     Last export path: `{{ states('text.rc_labs_last_export_path') }}`.
+  #     Last import status: **{{ states('text.rc_labs_last_import_status') }}**.
+  #     Pending import: `{{ states('input_text.rc_labs_pending_import') }}`.
+  #     ---
+  #     **Privacy:** RoamCore never uploads the bundle. The owner chooses how to share it.
+  #     See [docs/setup/labs.md#privacy](../../setup/labs.md#privacy).
+  # - type: entities
+  #   title: "Labs controls"
+  #   entities:
+  #     - entity: input_boolean.rc_labs_enabled
+  #     - entity: button.rc_labs_export_setup
+  #     - entity: button.rc_labs_import_setup
+  #     - entity: text.rc_labs_last_export_path
+  #     - entity: text.rc_labs_last_import_status
+  #     - entity: input_text.rc_labs_pending_import
+  #     - entity: script.rc_labs_wizard_set_enabled
+  #     - entity: script.rc_labs_wizard_set_disabled
+  # ---------------------------------------------------------------

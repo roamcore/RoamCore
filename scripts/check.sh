@@ -13,7 +13,8 @@
 #   ▶ HA-only beta: smoke check
 #   ▶ Networking controls (OpenWrt API): smoke check   (slice #28 — sibling branch)
 #   ▶ Remote access (Tailscale contract): smoke check   (slice #29 — sibling branch)
-#   ▶ OTA updates (GitHub channel + rollback-aware): smoke check   (slice #30 — this commit)
+#   ▶ OTA updates (GitHub channel + rollback-aware): smoke check   (slice #30 — sibling branch)
+#   ▶ RoamCore Labs (share setups/dashboards): smoke check   (slice #32 — this commit)
 #
 # Note: this branch was forked from main before the Wave 2 #23-#27 stack
 # landed upstream; we ship a minimal chain here. Each slice's PR is expected
@@ -85,6 +86,16 @@ run_if_present "scripts/checks/system-summary-smoke.sh"    "System summary: smok
 run_if_present "scripts/checks/advanced-mode-smoke.sh"     "Advanced mode: smoke check"
 run_if_present "scripts/checks/automation-apply-smoke.sh"  "Automation apply: smoke check"
 run_if_present "scripts/checks/mode-builder-smoke.sh"      "Mode builder: smoke check"
+
+# RoamCore Labs (share setups/dashboards) smoke ships with this
+# slice (#32). Run unconditionally on this branch.
+banner "RoamCore Labs (share setups/dashboards): smoke check"
+bash scripts/checks/labs-smoke.sh
+
+# Hardware auto-discovery smoke ships with the slice #31 branch. Until
+# that PR merges, probe so this branch's chain stays green on main.
+run_if_present "scripts/checks/hardware-auto-discovery-smoke.sh" \
+  "Hardware auto-discovery + setup flows: smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
