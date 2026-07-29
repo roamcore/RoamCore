@@ -33,6 +33,15 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Networking controls (OpenWrt API) — Wave 2 #28 (slice shipped)
+  - HA package: `homeassistant/packages/roamcore_openwrt_api.yaml`
+  - Scripts: `script.rc_openwrt_prefer_starlink` / `_lte` / `_auto`, `script.rc_openwrt_restart_network`
+  - Safety guard: `binary_sensor.rc_setup_networking_safe` (= OpenWrt online AND `input_boolean.rc_confirm_offline=on`)
+  - UI: Controls tile on Network page (preference radios + Restart Network button with `<dialog>` confirmation)
+  - Smoke: `scripts/checks/openwrt-controls-smoke.sh` (wired into `scripts/check.sh --core-only`)
+  - Branch: `feat/wave2-networking-controls-openwrt`
+  - PR: see origin branch tip
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
