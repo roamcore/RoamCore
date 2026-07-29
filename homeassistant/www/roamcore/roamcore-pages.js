@@ -3628,3 +3628,155 @@ try {
 } catch (e) {
   // ignore
 }
+
+// --- System summary card (bundled fallback for first-run installs) ---
+// The standalone file `roamcore-system-summary.js` ships the full
+// implementation. If the user hasn't added it as a Lovelace resource, we
+// still want the summary to render inside the RoamCore pages. So we keep a
+// thin, idempotent definition here guarded against double-registration.
+//
+// Slice #26 — boring, consistent, trustworthy. Don't reach the network:
+// just read what the host page already provides via `hass.callApi`.
+try {
+  if (typeof window !== 'undefined' && !customElements.get('roamcore-system-summary')) {
+    class RoamcoreSystemSummaryCardInline extends HTMLElement {
+      constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this._config = {};
+        this._hass = null;
+        this._data = null;
+        this._error = null;
+        this._pollTimer = null;
+        this._lastFetchedAt = null;
+      }
+      setConfig(config) {
+        this._config = config || {};
+        if (!this._root) {
+          this._root = document.createElement('div');
+          this.shadowRoot.appendChild(this._root);
+        }
+        this._render();
+      }
+      set hass(hass) {
+        this._hass = hass;
+        try { this._fetch(); } catch (e) { /* silent */ }
+        if (!this._pollTimer) {
+          this._pollTimer = setInterval(() => {
+            try { this._fetch(); } catch (e) { /* silent */ }
+          }, 30000);
+        }
+      }
+      getCardSize() { return 4; }
+      disconnectedCallback() {
+        if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+      }
+      _fetch() {
+        var hass = this._hass;
+        if (!hass || typeof hass.callApi !== 'function') {
+          this._error = 'no_hass'; this._render(); return;
+        }
+        var p = hass.callApi('GET', 'roamcore_system_summary');
+        if (p && typeof p.then === 'function') {
+          p.then((d) => { this._data = d || null; this._error = null; this._lastFetchedAt = new Date(); this._render(); })
+           .catch(() => { this._error = 'offline'; this._render(); });
+        }
+      }
+      _render() {
+        if (!this._root) return;
+        var d = this._data;
+        var label = 'Status unknown';
+        var color = 'var(--rc-muted, rgba(255,255,255,0.55))';
+        if (this._error === 'auth') {
+          this._root.innerHTML = '<div class="rc-summary-inline">Sign in to Home Assistant to view the system summary.</div>';
+          return;
+        }
+        if (this._error === 'offline' || !d) {
+          this._root.innerHTML = '<div class="rc-summary-inline">Status unknown — connect to Home Assistant.</div>';
+          return;
+        }
+        if (d.overall === 'ok') { label = 'All systems OK'; color = 'var(--rc-good, #43d17a)'; }
+        else if (d.overall === 'warn') { label = 'Some signals unknown'; color = 'var(--rc-ok, #f4c542)'; }
+        else if (d.overall === 'error') { label = 'Setup incomplete'; color = 'var(--rc-bad, #ff5d5d)'; }
+        var diag = d.diagnostics || {};
+        var trust = (typeof diag.signals_ok === 'number' && typeof diag.signals_total === 'number' && diag.signals_total > 0)
+          ? (diag.signals_ok + '/' + diag.signals_total + ' signals OK')
+          : '—';
+        var setup = d.setup || {};
+        var power = d.power_backend || {};
+        var net = d.network || {};
+        var yes = (b) => (b === true ? 'Yes' : (b === false ? 'No' : '—'));
+        var dash = (v) => (v === null || v === undefined || v === '' || v === 'unknown' || v === 'unavailable' || v === 'none') ? '—' : String(v);
+        this._root.innerHTML =
+          '<div class="rc-summary-inline">' +
+            '<div class="rc-summary-pill" style="background:' + color + '">' + label + '</div>' +
+            '<div class="rc-summary-trust">' + trust + '</div>' +
+            '<div class="rc-summary-section">Setup</div>' +
+            '<div class="rc-summary-row"><span>Owner ready</span><b>' + yes(setup.owner_ready) + '</b></div>' +
+            '<div class="rc-summary-row"><span>Map ready</span><b>' + yes(setup.map_ready) + '</b></div>' +
+            '<div class="rc-summary-row"><span>Trip wrapped ready</span><b>' + yes(setup.trip_wrapped_ready) + '</b></div>' +
+            '<div class="rc-summary-row"><span>Victron ready</span><b>' + yes(setup.victron_ready) + '</b></div>' +
+            '<div class="rc-summary-section">Power backend</div>' +
+            '<div class="rc-summary-row"><span>Connected</span><b>' + yes(power.connected) + '</b></div>' +
+            '<div class="rc-summary-row"><span>Status</span><b>' + dash(power.status) + '</b></div>' +
+            '<div class="rc-summary-section">Network</div>' +
+            '<div class="rc-summary-row"><span>WAN status</span><b>' + dash(net.wan_status) + '</b></div>' +
+            '<div class="rc-summary-row"><span>WAN source</span><b>' + dash(net.wan_source) + '</b></div>' +
+          '</div>' +
+          '<style>' +
+            '.rc-summary-inline { font-size: 13px; color: var(--primary-text-color, #f5f5f5); }' +
+            '.rc-summary-pill { display:inline-block; padding: 4px 10px; border-radius: 999px; color: #0b0b0b; font-weight: 800; margin-bottom: 8px; }' +
+            '.rc-summary-trust { opacity: 0.7; font-size: 12px; margin-bottom: 10px; }' +
+            '.rc-summary-section { margin-top: 8px; font-weight: 800; opacity: 0.85; }' +
+            '.rc-summary-row { display:flex; justify-content:space-between; gap: 10px; padding: 2px 0; }' +
+            '.rc-summary-row b { font-weight: 700; }' +
+          '</style>';
+      }
+    }
+    customElements.define('roamcore-system-summary', RoamcoreSystemSummaryCardInline);
+  }
+
+  // Embed the summary card on the Settings page so it's always visible
+  // even if the standalone JS isn't loaded as a Lovelace resource.
+  // We hook into the existing Settings page render path by monkey-patching
+  // its prototype at most once.
+  // (Kept as a no-op if the page class isn't present yet — pages.js evaluates
+  // top-to-bottom and this block runs after all classes are defined.)
+} catch (e) {
+  // ignore
+}
+
+// Mount <roamcore-system-summary> on the Settings page so users always see it.
+try {
+  if (typeof window !== 'undefined' && typeof RoamcoreSettingsPage === 'function') {
+    var _origSettingsRender = RoamcoreSettingsPage.prototype._render;
+    if (!_origSettingsRender.__rcSummaryPatched) {
+      RoamcoreSettingsPage.prototype._render = function () {
+        _origSettingsRender.apply(this, arguments);
+        try {
+          var root = this._root;
+          if (!root) return;
+          var existing = root.querySelector('.rc-system-summary-mount');
+          if (existing) return;
+          var mount = document.createElement('div');
+          mount.className = 'rc-system-summary-mount';
+          mount.style.cssText = 'margin-top: 12px;';
+          var card = document.createElement('roamcore-system-summary');
+          if (typeof card.setConfig === 'function') card.setConfig({ title: 'System summary' });
+          card.hass = this._hass;
+          mount.appendChild(card);
+          // Insert at the top of the page body (right after the header).
+          var header = root.querySelector('.rc-header') || root.firstChild;
+          if (header && header.parentNode === root) {
+            root.insertBefore(mount, header.nextSibling);
+          } else {
+            root.insertBefore(mount, root.firstChild);
+          }
+        } catch (e) { /* ignore */ }
+      };
+      RoamcoreSettingsPage.prototype._render.__rcSummaryPatched = true;
+    }
+  }
+} catch (e) {
+  // ignore
+}
