@@ -1,0 +1,50 @@
+# RoamCore contract entities: Mode / automation builder (slice #23)
+# Naming convention reference:
+#   RoamCore/docs/reference/rc-entity-naming.md
+#
+# This package complements `roamcore_mode.yaml`. The Mode / automation
+# builder slice #23 is split across two YAML packages for clarity:
+#
+#   * homeassistant/packages/roamcore_mode.yaml
+#       - input_select.rc_mode              (current mode; 5 options)
+#       - input_text.rc_mode_rules_json     (JSON rule list, with 2 seeds)
+#       - automation.rc_mode_apply_rules    (evaluates rules on trigger)
+#       - 5 rc_mode_set_* scripts           (UI-friendly quick-set)
+#       - rc_mode_apply + 5 rc_mode_apply_* scripts (scaffold)
+#
+#   * homeassistant/packages/roamcore_mode_builder.yaml (this file)
+#       - script.rc_mode_rules_seed_defaults (Reset to defaults)
+#
+# The simple rule language (one when-clause per rule) is documented in
+# docs/setup/mode-builder.md. Future slices may add AND/OR groups,
+# polling triggers, and a richer condition language.
+
+script:
+  # Re-seed the two default rules. Called from the UI "Reset to defaults"
+  # button (and from automations when the user wipes the JSON).
+  rc_mode_rules_seed_defaults:
+    alias: "RC Mode: Seed default rules"
+    mode: single
+    sequence:
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.rc_mode_rules_json
+          value: >-
+            [
+              {
+                "id": "rule_seed_battery_low",
+                "name": "When battery is low, switch to stealth",
+                "when": { "entity": "sensor.rc_battery_soc", "op": "<", "value": 20 },
+                "then": "stealth",
+                "enabled": true,
+                "cooldownMin": 15
+              },
+              {
+                "id": "rule_seed_motion_camp",
+                "name": "When motion stays on for 5 min, switch to camp",
+                "when": { "entity": "binary_sensor.rc_motion_active", "op": "==", "value": "on" },
+                "then": "camp",
+                "enabled": true,
+                "cooldownMin": 10
+              }
+            ]

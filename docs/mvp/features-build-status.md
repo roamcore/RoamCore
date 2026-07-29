@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-07-29
 
 This is an internal status page for the remaining MVP feature build-out.
 
@@ -33,6 +33,12 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Mode / automation builder (simple UI)
+  - `homeassistant/packages/roamcore_mode.yaml` (extended) + `homeassistant/packages/roamcore_mode_builder.yaml`
+  - `homeassistant/www/roamcore/roamcore-mode-builder.js` + mount in `roamcore-pages.js`
+  - `docs/setup/mode-builder.md`
+  - slice #23 (`feat/wave2-mode-automation-builder`)
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
@@ -51,3 +57,6 @@ This is an internal status page for the remaining MVP feature build-out.
 4) **HACS packaging (planned)**
    - Publish a HACS integration to install RoamCore from the HA UI.
    - Auto-create dashboard + resources.
+
+5) **Automations builder via text/LLM/MCP (OpenClaw API v2)**
+   - Slice #24 — the natural follow-on to slice #23.

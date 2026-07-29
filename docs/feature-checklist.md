@@ -51,7 +51,7 @@ Legend:
 
 ## Automations
 
-- [ ] Mode / automation builder (simple UI)
+- [x] Mode / automation builder (simple UI) — slice #23 (`feat/wave2-mode-automation-builder`)
 - [ ] Automations builder via text/LLM/MCP (OpenClaw API v2)
 
 ---
