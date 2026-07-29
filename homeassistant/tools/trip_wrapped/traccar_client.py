@@ -95,6 +95,7 @@ class TraccarClient:
 
     @classmethod
     def ha_supervisor_proxy(cls, base_url: str = "http://supervisor/core"):
+        # PRIVACY: loopback / supervisor proxy — stays inside HA core.
         # In the Home Assistant Core container, Supervisor auth is exposed as
         # /run/s6/container_environment/HASSIO_TOKEN.
         # Older docs/examples sometimes reference SUPERVISOR_TOKEN.

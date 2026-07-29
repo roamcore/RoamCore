@@ -26,8 +26,11 @@ Legend:
 - [x] Map page (reliable raster fallback)
 - [x] Trip Wrapped export (HTML + JSON output)
 - [x] Trip Wrapped “first-run” degraded mode (generates output + shows setup notice if Traccar not configured)
-- [ ] Trip tracking: fully local/private end-to-end by default
-- [ ] RoamCore Wrapped: fully seamless USP flow (no setup friction)
+- [x] Trip tracking: fully local/private end-to-end by default (slice #20 — see commit)
+
+  _Privacy contract._ Trip data stays on-device by default. The trip pipeline (`homeassistant/tools/trip_wrapped/`, `roamcore_trip_local.yaml`, `roamcore_trip_wrapped.yaml`, `roamcore_location.yaml`) refuses any outbound HTTP call unless the target is loopback (`127.0.0.0/8`, `::1`) or the local add-on CIDR (`192.168.1.0/24`, `10.0.0.0/8`). Operators can explicitly opt in to non-local hosts by turning `input_boolean.rc_trip_local_only` OFF and listing hostnames in `input_text.rc_trip_opt_in_domains` (or annotating the source with `# PRIVACY-OPTIN:`). Defaults point at the local tileserver add-on; the smoke check (`scripts/checks/trip-tracking-privacy-smoke.sh`) fails on any unannotated external host.
+- [x] RoamCore Wrapped: fully seamless USP flow (no setup friction)
+  _Slice #21: Map → Trip Wrapped shows a fully-rendered demo report with one tap on a brand-new install. See `scripts/checks/trip-wrapped-seamless-smoke.sh` and `homeassistant/tools/trip_wrapped/demo_seed.py` (stdlib-only, local-tileserver map URL). The "use my real trips" CTA appears once `input_boolean.rc_trip_wrapped_real` is ON._
 - [ ] Amenities overlay (API-based, toggleable; e.g. iOverlander)
 
 ---

@@ -1,3 +1,20 @@
+trip_wrapped_demo:
+  name: Generate Trip Wrapped demo seed
+  description: >-
+    Generates a fully-local demo Trip Wrapped JSON payload (no Traccar
+    required, no outbound HTTP) and writes it to /config/www/roamcore/trip_wrapped/latest.json.
+    Used by the first-run Map → Trip Wrapped "one-tap demo" CTA.
+    Returns the output path.
+  fields:
+    out:
+      name: Output path
+      description: Where to write the demo JSON. Defaults to the standard latest.json location.
+      required: false
+      default: /config/www/roamcore/trip_wrapped/latest.json
+      example: /config/www/roamcore/trip_wrapped/latest.json
+      selector:
+        text: {}
+
 secrets_set:
   name: Set secret in /config/secrets.yaml
   description: Best-effort atomic update to set a key/value pair in secrets.yaml.

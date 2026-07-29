@@ -7,6 +7,7 @@ import asyncio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN,
@@ -376,6 +377,65 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "options_set",
         _svc_options_set,
+        schema=None,
+    )
+
+    # --- Trip Wrapped demo seed (slice #21) ---
+    # Generates a fully-local demo Trip Wrapped JSON so the first-run UX
+    # can show a fully-rendered report with one tap. Stdlib-only, no
+    # outbound HTTP — see homeassistant/tools/trip_wrapped/demo_seed.py
+    # and docs/feature-checklist.md (privacy contract).
+    async def _svc_trip_wrapped_demo(call):
+        out_path = str(
+            call.data.get("out")
+            or "/config/www/roamcore/trip_wrapped/latest.json"
+        ).strip()
+        script_path = "/config/tools/trip_wrapped/demo_seed.py"
+
+        def _run():
+            import subprocess
+
+            proc = subprocess.run(
+                ["python3", script_path, "--out", out_path],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
+
+        try:
+            rc, stdout, stderr = await hass.async_add_executor_job(_run)
+        except Exception as e:
+            raise HomeAssistantError(f"roamcore.trip_wrapped_demo failed: {e}") from e
+
+        # The script prints the result path on stdout.
+        result_path = stdout or out_path
+        if rc != 0:
+            raise HomeAssistantError(
+                f"roamcore.trip_wrapped_demo exited {rc}: {stderr or 'unknown error'}"
+            )
+
+        # Best-effort UX: surface a small persistent notification so the
+        # operator knows the demo was written.
+        try:
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "title": "Trip Wrapped demo ready",
+                    "message": f"Demo Trip Wrapped written to: {result_path}",
+                },
+                blocking=False,
+            )
+        except Exception:
+            pass
+
+        return {"path": result_path}
+
+    hass.services.async_register(
+        DOMAIN,
+        "trip_wrapped_demo",
+        _svc_trip_wrapped_demo,
         schema=None,
     )
 

@@ -369,7 +369,11 @@
     const stats = d.stats || {};
 
     // Background map (raster) with place names.
-    // Uses OSM raster tiles as a dependable default; if you later add local PMTiles,
+    // PRIVACY: defaults to the local RoamCore tileserver (loopback). To use
+    // an external tile source, override `window.RC_TRIP_TILE_URL_TEMPLATE`
+    // before this script runs and add the host to
+    // `input_text.rc_trip_opt_in_domains` in Home Assistant.
+    // Uses local tiles as a dependable default; if you later add PMTiles,
     // we can swap the style to the RoamCore vector style.
     function initMapBg() {
       try {
@@ -378,12 +382,15 @@
         if (!el) return;
 
         // Basic raster style (labels included)
+        const tileUrlTpl = (typeof window !== 'undefined' && window.RC_TRIP_TILE_URL_TEMPLATE)
+          ? window.RC_TRIP_TILE_URL_TEMPLATE
+          : 'http://localhost:8000/{z}/{x}/{y}.png';
         const style = {
           version: 8,
           sources: {
             osm: {
               type: 'raster',
-              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+              tiles: [tileUrlTpl],
               tileSize: 256,
               attribution: '© OpenStreetMap contributors'
             }
@@ -1107,11 +1114,20 @@
 
       const n = Math.pow(2,z);
       const tasks = [];
+      // PRIVACY: default to the local RoamCore tileserver (loopback). To use
+      // an external tile source, set `window.RC_TRIP_TILE_URL_TEMPLATE` and
+      // add the host to `input_text.rc_trip_opt_in_domains` in HA.
+      const tileUrlTpl = (typeof window !== 'undefined' && window.RC_TRIP_TILE_URL_TEMPLATE)
+        ? window.RC_TRIP_TILE_URL_TEMPLATE
+        : 'http://localhost:8000/{z}/{x}/{y}.png';
       for (let ty=y0; ty<=y1; ty++) {
         for (let tx=x0; tx<=x1; tx++) {
           const wrapX = ((tx % n) + n) % n;
           if (ty < 0 || ty >= n) continue;
-          const url = `https://a.basemaps.cartocdn.com/light_all/${z}/${wrapX}/${ty}.png`;
+          const url = tileUrlTpl
+            .replace('{z}', encodeURIComponent(z))
+            .replace('{x}', encodeURIComponent(wrapX))
+            .replace('{y}', encodeURIComponent(ty));
           tasks.push({tx,ty,url});
         }
       }

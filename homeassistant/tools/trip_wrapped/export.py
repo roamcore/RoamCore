@@ -89,8 +89,14 @@ def _build_staticmap_url(points: list[tuple[float, float]], w: int, h: int) -> s
         "maptype": "mapnik",
         "path": path,
     }
-    # Use https; some environments block plain http.
-    return "https://staticmap.openstreetmap.de/staticmap.php?" + urllib.parse.urlencode(qs)
+    # PRIVACY: default to the local RoamCore tileserver add-on (loopback).
+    # The legacy `staticmap.openstreetmap.de` fallback is retained as an
+    # opt-in path via `input_text.rc_trip_opt_in_domains` (smoke-checked).
+    base = os.environ.get(
+        "RC_TRIP_STATICMAP_BASE",
+        "http://localhost:8000/staticmap.php",
+    )
+    return base + "?" + urllib.parse.urlencode(qs)
 
 
 def parse_args():
@@ -369,6 +375,7 @@ def main():
     if trips is None and not a.no_ha_proxy:
         try:
             ha_client = TraccarClient.ha_supervisor_proxy(base_url="http://supervisor/core")
+            # PRIVACY: loopback / supervisor proxy — stays inside HA core.
             trips = ha_client.get_trips(device_id=a.device_id, from_ts=a.from_ts, to_ts=a.to_ts)
         except Exception as e:
             pref_err = e
