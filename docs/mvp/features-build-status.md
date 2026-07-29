@@ -33,6 +33,19 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Trip tracking — fully local/private end-to-end by default (slice #20)
+  - Privacy contract: `docs/feature-checklist.md` (Map / Trip section).
+  - Toggle: `input_boolean.rc_trip_local_only` (default ON) +
+    `input_text.rc_trip_opt_in_domains` in `homeassistant/packages/roamcore_trip_privacy.yaml`.
+  - Pipeline defaults switched from public CDNs (`staticmap.openstreetmap.de`,
+    `tile.openstreetmap.org`, `a.basemaps.cartocdn.com`) to the local
+    RoamCore tileserver add-on (`http://localhost:8000/...`).
+  - Non-loopback hosts must be in `privacy_allowlist.json` or annotated
+    `# PRIVACY-OPTIN:` — enforced by
+    `scripts/checks/trip-tracking-privacy-smoke.sh` (wired into
+    `scripts/check.sh --core-only`).
+  - Trip Wrapped HTML gets a privacy banner: "Generated locally · no data sent off-device".
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
