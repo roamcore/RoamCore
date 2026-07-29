@@ -15,6 +15,9 @@ input_text:
   rc_traccar_base_url:
     name: "RC Traccar Base URL"
     initial: "http://localhost:8082"  # adjust for your Traccar add-on/external URL
+    # PRIVACY: loopback default (local Traccar add-on); change to a
+    # non-local host only after adding it to input_text.rc_trip_opt_in_domains
+    # AND setting input_boolean.rc_trip_local_only to OFF.
   rc_traccar_username:
     name: "RC Traccar Username"
   rc_traccar_password:

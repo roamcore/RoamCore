@@ -1,0 +1,39 @@
+# RoamCore trip pipeline privacy controls
+#
+# Slice #20 — Trip tracking: fully local/private end-to-end by default.
+#
+# These inputs gate any non-loopback outbound HTTP call from the trip
+# pipeline (trip_wrapped, trip_local, trip_wrapped wiring, location).
+#
+# Defaults:
+# - `rc_trip_local_only` is ON, meaning the pipeline must only call
+#   loopback (127.0.0.0/8, ::1) or the local add-on CIDR
+#   (192.168.1.0/24, 10.0.0.0/8). External hosts are denied.
+# - `rc_trip_opt_in_domains` is a comma-separated list of hostnames the
+#   operator explicitly trusts. When `rc_trip_local_only` is OFF, the
+#   trip pipeline will allow calls to hosts in this list.
+#   Per-line comments / annotations `# PRIVACY-OPTIN:` are also honoured
+#   by the smoke check for developer-side opt-ins.
+#
+# To opt-in to a single external host (e.g. a self-hosted tile server on
+# the LAN but outside the default CIDR):
+#   1) Set `input_boolean.rc_trip_local_only` to OFF
+#   2) Add the host to `input_text.rc_trip_opt_in_domains`
+#   3) Re-run `scripts/checks/trip-tracking-privacy-smoke.sh`
+
+input_boolean:
+  rc_trip_local_only:
+    name: "RC Trip Local-Only"
+    icon: mdi:shield-lock
+    initial: true
+
+input_text:
+  rc_trip_opt_in_domains:
+    name: "RC Trip Opt-In Non-Local Domains"
+    # Comma-separated hostnames the trip pipeline is allowed to call when
+    # `rc_trip_local_only` is OFF. Hosts must also be reachable from HA.
+    # Default is empty (no opt-ins) — keeps the trip data fully local.
+    initial: ""
+    max: 255
+    selector:
+      text:

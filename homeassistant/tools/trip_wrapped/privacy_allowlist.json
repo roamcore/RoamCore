@@ -1,0 +1,5 @@
+{
+  "$schema": "internal://roamcore/trip-privacy-allowlist/v1",
+  "_comment": "Repo-side allowlist of hostnames the trip pipeline may call when input_boolean.rc_trip_local_only is OFF. Keep this empty by default. The operator-side equivalent is input_text.rc_trip_opt_in_domains in Home Assistant. Smoke check: scripts/checks/trip-tracking-privacy-smoke.sh.",
+  "allowlist": []
+}
