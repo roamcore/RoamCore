@@ -2021,6 +2021,21 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       </div>
     `;
 
+    // Mode builder tile (slice #23): render the RcModeBuilder
+    // (custom:roamcore-mode-builder) card if the contract entities are
+    // present. The card itself hides cleanly if input_select.rc_mode is
+    // missing (matching the existing RcAmenitiesLayer pattern for
+    // input_boolean.rc_amenities_overlay_enabled). The card reads
+    // input_text.rc_mode_rules_json to render the rule list.
+    const modeBuilderAvailable = !!(this._hass?.states?.['input_select.rc_mode']) && !!(this._hass?.states?.['input_text.rc_mode_rules_json']);
+    const modeBuilderTile = modeBuilderAvailable
+      ? `
+        <div style="margin-top: 14px;">
+          <div class="rc-mode-builder-mount"></div>
+        </div>
+      `
+      : '';
+
     const mapTile = `
       <div style="border-radius: 12px; overflow:hidden; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); padding: 10px;">
         <div id="rc-map-inner" style="height: calc(100vh - 250px); min-height: 420px; max-height: 760px;">
@@ -2031,12 +2046,13 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="color: var(--rc-good); font-weight:900">⌖</div>
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
-      
+
       <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
         <a class="rc-btn" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
       </div>
       ${mapDataTiles}
       ${tripWrappedTile}
+      ${modeBuilderTile}
     `;
 
     this._root.innerHTML = `
@@ -2101,6 +2117,24 @@ class RoamcoreMapPage extends RoamcoreBasePage {
       });
       const prev = this._root.querySelector('#rc-tripwrapped-preview');
       if (prev) this._loadTripWrappedPreview(prev);
+    } catch (e) {}
+
+    // Mode builder (slice #23): mount the custom:roamcore-mode-builder card
+    // into its placeholder. Single instance is preserved across renders so
+    // the user's modal/toggle state is not wiped on every HA state update.
+    try {
+      const modeMount = this._root.querySelector('.rc-mode-builder-mount');
+      if (modeMount) {
+        if (!this._modeBuilderEl) {
+          const el = document.createElement('roamcore-mode-builder');
+          if (typeof el.setConfig === 'function') el.setConfig({ title: 'Mode builder' });
+          this._modeBuilderEl = el;
+        }
+        this._modeBuilderEl.hass = this._hass;
+        if (this._modeBuilderEl.parentElement !== modeMount) {
+          modeMount.appendChild(this._modeBuilderEl);
+        }
+      }
     } catch (e) {}
   }
 

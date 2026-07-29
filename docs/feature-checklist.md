@@ -51,8 +51,8 @@ Legend:
 
 ## Automations
 
-- [ ] Mode / automation builder (simple UI)
-- [ ] Automations builder via text/LLM/MCP (OpenClaw API v2)
+- [x] Mode / automation builder (simple UI) — slice #23 (`feat/wave2-mode-automation-builder`)
+- [x] Automations builder via text/LLM/MCP (OpenClaw API v2) — Shipped: 6dbd38b (OpenClaw automation apply endpoint + allowlisted executor bridge + 4-intent schema + smoke check)
 
 ---
 

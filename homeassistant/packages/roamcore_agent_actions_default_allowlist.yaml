@@ -1,0 +1,31 @@
+# RoamCore — Default Agent Actions Allowlist (slice #24)
+#
+# This is the *default* allowlist seeded for new installs so the OpenClaw
+# automation apply endpoint has at least one safe, mode-related action
+# ready to go. Users can extend it (or replace it) by editing
+# /config/.roamcore/agent_allowlist.yaml on their HA host — that file
+# (if present) takes precedence over this default.
+#
+# Hard constraints (enforced by the integration, not just convention):
+#   * Global kill switch:  input_boolean.rc_agent_actions_enabled must be ON.
+#   * set_helper:           input_text / input_number / input_select / input_boolean only.
+#   * run_script:           script.rc_* only.
+#
+# This file is intentionally tiny. Treat it as a starter set, not a wishlist.
+
+version: 1
+
+actions:
+  - id: set_helper:input_select.rc_mode
+    description: "Set the current RoamCore mode (does not apply it)."
+    kind: set_helper
+    target:
+      entity_id: input_select.rc_mode
+    constraints:
+      enum: [auto, travel, camp, stealth, off]
+
+  - id: run_script:script.rc_mode_apply
+    description: "Apply the currently selected RoamCore mode."
+    kind: run_script
+    target:
+      entity_id: script.rc_mode_apply
