@@ -58,7 +58,7 @@ Legend:
 
 ## System UX
 
-- [ ] Advanced mode (clearly separated + safe recovery)
+- [x] Advanced mode (clearly separated + safe recovery) — slice #25 (`feat/wave2-advanced-mode-recovery-safe`)
 - [ ] Deterministic system summary (boring, consistent, trustworthy)
 - [ ] AI chat (opt-in; API/Auth based)
 

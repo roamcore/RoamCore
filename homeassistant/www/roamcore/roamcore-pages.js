@@ -2788,6 +2788,18 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
   _render() {
     if (!this._root || !this._hass) return;
 
+    // Advanced mode (slice #25): mount the custom:roamcore-advanced-mode
+    // card into its placeholder. Single instance is preserved across
+    // renders so the user's toggle state isn't reset on every HA update.
+    const advancedAvailable = !!this._hass?.states?.['input_boolean.rc_advanced_mode_enabled'];
+    const advancedModeTile = advancedAvailable
+      ? `
+        <div style="margin-top: 14px;">
+          <div class="rc-advanced-mode-mount"></div>
+        </div>
+      `
+      : '';
+
     const tracker = this._getState('input_text.rc_location_tracker_entity');
     const weather = this._getState('input_text.rc_weather_entity_id');
     const tz = this._getState('input_text.rc_time_zone_override');
@@ -2902,11 +2914,36 @@ class RoamcoreSettingsPage extends RoamcoreBasePage {
                 <button class="rc-btn" data-nav="${this._basePath()}/diagnostics" style="flex:1; min-width: 220px;">Diagnostics</button>
                 <button class="rc-btn" data-nav="/config" style="flex:1; min-width: 220px;">Open HA Settings</button>
               </div>
+              ${advancedModeTile}
             `
           })}
         </div>
       </div>
     `;
+
+    // Advanced mode (slice #25): mount the custom:roamcore-advanced-mode
+    // card into its placeholder on the Settings page (lives next to the
+    // "Advanced" tile so the toggle is clearly separated from the rest
+    // of Settings). Single instance is preserved across renders.
+    try {
+      const advMount = this._root.querySelector('.rc-advanced-mode-mount');
+      if (advMount) {
+        if (!this._advancedModeEl) {
+          const el = document.createElement('roamcore-advanced-mode');
+          if (typeof el.setConfig === 'function') {
+            el.setConfig({
+              title: 'Advanced mode',
+              docs_href: '/local/roamcore/docs/setup/advanced-mode.html',
+            });
+          }
+          this._advancedModeEl = el;
+        }
+        this._advancedModeEl.hass = this._hass;
+        if (this._advancedModeEl.parentElement !== advMount) {
+          advMount.appendChild(this._advancedModeEl);
+        }
+      }
+    } catch (e) {}
   }
 }
 
