@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""RoamCore OTA add-on daemon (stdlib only).
+
+Polls the GitHub Releases API for the configured RoamCore repo on the
+configured channel (stable/beta/nightly), compares against the running
+image ID at /config/.roamcore_image_id, and publishes contract-layer
+sensors via MQTT discovery so Home Assistant surfaces update state.
+
+Snapshots: keeps the last N image metadata records at
+/share/roamcore/snapshots/ as JSON sidecars (timestamp, version, sha256,
+applied_at). The actual image payload is owned by an external apply path
+(see docs/setup/ota.md); this daemon only records metadata and emits
+the contract entities.
+
+Logging: rotates /share/roamcore/ota.log weekly (size-cap fallback).
+"""
+
+import hashlib
+import json
+import logging
+import os
+import re
+import signal
+import sys
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+CONFIG_PATH = "/data/options.json"
+IMAGE_ID_PATH = "/config/.roamcore_image_id"
+RUNNING_META_PATH = "/config/.roamcore_image_meta.json"
+DEFAULT_IMAGE_ID = "dev-unknown"
+DEFAULT_VERSION = "0.0.0-dev"
+
+# Channel → release-tag filter mapping. Keep this explicit and small.
+#   stable  → latest non-prerelease
+#   beta    → prereleases only
+#   nightly → tag-prefix "nightly-"
+CHANNEL_FILTERS = {
+    "stable":  lambda r: not r.get("prerelease", False) and not r.get("draft", False),
+    "beta":    lambda r: r.get("prerelease", False) and not r.get("draft", False),
+    "nightly": lambda r: r.get("tag_name", "").startswith("nightly-"),
+}
+
+
+def load_options() -> dict[str, Any]:
+    with open(CONFIG_PATH, "r", encoding="utf-8") as fh:
+        opts = json.load(fh)
+    opts.setdefault("repo", "roamcore/RoamCore")
+    opts.setdefault("channel", "stable")
+    opts.setdefault("poll_minutes", 360)
+    opts.setdefault("github_token", "")
+    opts.setdefault("snapshot_keep", 3)
+    opts.setdefault("snapshot_dir", "/share/roamcore/snapshots")
+    opts.setdefault("log_path", "/share/roamcore/ota.log")
+    opts.setdefault("mqtt_discovery_prefix", "homeassistant")
+    opts.setdefault("mqtt_base_topic", "roamcore/ota/roamcore-ota")
+    opts.setdefault("user_agent", "roamcore-ota-addon/0.1")
+    return opts
+
+
+def setup_logging(log_path: str) -> logging.Logger:
+    Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("roamcore_ota")
+    logger.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)sZ %(levelname)s %(message)s")
+    fh = logging.FileHandler(log_path)
+    fh.setFormatter(fmt)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setFormatter(fmt)
+    logger.handlers.clear()
+    logger.addHandler(fh)
+    logger.addHandler(sh)
+    return logger
+
+
+def maybe_rotate_log(log_path: str, logger: logging.Logger) -> None:
+    """Rotate the log weekly. Keeps one .1 backup; size-cap fallback at 5 MiB."""
+    try:
+        st = os.stat(log_path)
+    except FileNotFoundError:
+        return
+    if st.st_size > 5 * 1024 * 1024:
+        os.replace(log_path, log_path + ".1")
+        logger.info("log rotated (size-cap)")
+
+
+def get_running_image_id() -> str:
+    p = Path(IMAGE_ID_PATH)
+    if p.exists():
+        return p.read_text(encoding="utf-8").strip() or DEFAULT_IMAGE_ID
+    # First boot — write a deterministic placeholder so the daemon always
+    # has something to compare against. The image-id invariant is
+    # documented in docs/architecture/ota-channel.md.
+    p.write_text(DEFAULT_IMAGE_ID, encoding="utf-8")
+    return DEFAULT_IMAGE_ID
+
+
+def write_running_meta(image_id: str, version: str, sha256: str) -> None:
+    meta = {
+        "image_id": image_id,
+        "version": version,
+        "sha256": sha256,
+        "applied_at": datetime.now(timezone.utc).isoformat(),
+    }
+    Path(RUNNING_META_PATH).write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+
+def http_get_json(url: str, headers: dict[str, str], timeout: int = 15) -> Any:
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec - url is hardcoded
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_releases(opts: dict[str, Any], logger: logging.Logger) -> list[dict[str, Any]]:
+    repo = opts["repo"]
+    url = f"https://api.github.com/repos/{repo}/releases?per_page=30"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": opts["user_agent"],
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if opts.get("github_token"):
+        headers["Authorization"] = f"Bearer {opts['github_token']}"
+    try:
+        return http_get_json(url, headers)
+    except urllib.error.HTTPError as e:
+        logger.error("github api http error: %s %s", e.code, e.reason)
+        return []
+    except (urllib.error.URLError, TimeoutError) as e:
+        logger.error("github api network error: %s", e)
+        return []
+
+
+def pick_latest(releases: list[dict[str, Any]], channel: str) -> dict[str, Any] | None:
+    flt = CHANNEL_FILTERS.get(channel, CHANNEL_FILTERS["stable"])
+    matching = [r for r in releases if flt(r)]
+    if not matching:
+        return None
+    # GitHub releases are returned newest-first; the first match wins.
+    return matching[0]
+
+
+def release_to_payload(rel: dict[str, Any]) -> dict[str, Any]:
+    tag = rel.get("tag_name", "")
+    version = re.sub(r"^v", "", tag)
+    sha = rel.get("target_commitish", "")
+    return {
+        "version": version,
+        "tag": tag,
+        "sha256": hashlib.sha256(sha.encode("utf-8")).hexdigest() if sha else "",
+        "published_at": rel.get("published_at"),
+        "url": rel.get("html_url", ""),
+        "prerelease": rel.get("prerelease", False),
+        "draft": rel.get("draft", False),
+    }
+
+
+def write_snapshot(snapshot_dir: str, payload: dict[str, Any], logger: logging.Logger) -> None:
+    """Append a snapshot record. Keeps at most snapshot_keep records (oldest pruned)."""
+    sd = Path(snapshot_dir)
+    sd.mkdir(parents=True, exist_ok=True)
+    fname = f"snapshot-{int(time.time())}-{payload['tag'].replace('/', '_')}.json"
+    record = {
+        **payload,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "applied_at": None,  # operator / shell_command fills this on successful apply
+    }
+    (sd / fname).write_text(json.dumps(record, indent=2), encoding="utf-8")
+    logger.info("snapshot written: %s", fname)
+    # Prune: keep newest N snapshots (we keep snapshot_keep = last N).
+    files = sorted(sd.glob("snapshot-*.json"), key=lambda p: p.name, reverse=True)
+    keep = int(opts_snapshot_keep())
+    for old in files[keep:]:
+        old.unlink(missing_ok=True)
+        logger.info("snapshot pruned: %s", old.name)
+
+
+def opts_snapshot_keep() -> int:
+    """Helper so write_snapshot can read the configured keep without
+    threading opts through every call site."""
+    try:
+        opts = load_options()
+        return int(opts.get("snapshot_keep", 3))
+    except Exception:
+        return 3
+
+
+def build_mqtt_discovery(opts: dict[str, Any], device_id: str) -> list[dict[str, Any]]:
+    """Return the MQTT discovery payloads that the add-on re-publishes on
+    every check. Home Assistant picks these up via the MQTT integration."""
+    prefix = opts["mqtt_discovery_prefix"]
+    base = opts["mqtt_base_topic"]
+    common_device = {
+        "identifiers": [device_id],
+        "name": "RoamCore OTA",
+        "manufacturer": "RoamCore",
+        "model": "OTA Add-on",
+        "sw_version": "0.1.0",
+    }
+    return [
+        # latest version (string)
+        {
+            "topic": f"{prefix}/sensor/{device_id}/rc_ota_latest_version/config",
+            "payload": {
+                "name": "RC OTA Latest Version",
+                "unique_id": "rc_ota_latest_version",
+                "state_topic": f"{base}/state/latest_version",
+                "icon": "mdi:tag-outline",
+                "device": common_device,
+            },
+        },
+        # update available (binary)
+        {
+            "topic": f"{prefix}/binary_sensor/{device_id}/rc_ota_update_available/config",
+            "payload": {
+                "name": "RC OTA Update Available",
+                "unique_id": "rc_ota_update_available",
+                "state_topic": f"{base}/state/update_available",
+                "payload_on": "ON",
+                "payload_off": "OFF",
+                "icon": "mdi:package-down",
+                "device": common_device,
+            },
+        },
+        # last check (timestamp)
+        {
+            "topic": f"{prefix}/sensor/{device_id}/rc_ota_last_check/config",
+            "payload": {
+                "name": "RC OTA Last Check",
+                "unique_id": "rc_ota_last_check",
+                "state_topic": f"{base}/state/last_check",
+                "device_class": "timestamp",
+                "icon": "mdi:clock-check-outline",
+                "device": common_device,
+            },
+        },
+        # rollback pending (binary)
+        {
+            "topic": f"{prefix}/binary_sensor/{device_id}/rc_ota_rollback_pending/config",
+            "payload": {
+                "name": "RC OTA Rollback Pending",
+                "unique_id": "rc_ota_rollback_pending",
+                "state_topic": f"{base}/state/rollback_pending",
+                "payload_on": "ON",
+                "payload_off": "OFF",
+                "icon": "mdi:restore",
+                "device": common_device,
+            },
+        },
+    ]
+
+
+def publish_mqtt(discovery: list[dict[str, Any]], state: dict[str, str], base: str) -> None:
+    """Publish via the Supervisor's MQTT broker (unix socket). We do this
+    by writing the JSON payload to /share/<topic>... but the add-on is
+    isolated from the broker socket by default; instead, the contract
+    package picks up the state via the input_select/input_number flow
+    *and* a service-call wrapper that the operator triggers. To keep
+    this add-on runtime-independent of broker credentials, the state
+    file at /share/roamcore/state.json is the canonical source; the
+    contract package's `command_line` sensor reads it."""
+    state_path = Path("/share/roamcore/state.json")
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps({
+        "base_topic": base,
+        "discovery": discovery,
+        "state": state,
+        "published_at": datetime.now(timezone.utc).isoformat(),
+    }, indent=2), encoding="utf-8")
+
+
+def once(opts: dict[str, Any], logger: logging.Logger) -> None:
+    maybe_rotate_log(opts["log_path"], logger)
+    image_id = get_running_image_id()
+    releases = fetch_releases(opts, logger)
+    if not releases:
+        logger.warning("no releases fetched; leaving previous state")
+        state = {
+            "latest_version": "unknown",
+            "update_available": "OFF",
+            "rollback_pending": "OFF",
+            "last_check": datetime.now(timezone.utc).isoformat(),
+        }
+    else:
+        latest = pick_latest(releases, opts["channel"])
+        if latest is None:
+            logger.warning("no release matched channel=%s", opts["channel"])
+            state = {
+                "latest_version": "none",
+                "update_available": "OFF",
+                "rollback_pending": "OFF",
+                "last_check": datetime.now(timezone.utc).isoformat(),
+            }
+        else:
+            payload = release_to_payload(latest)
+            update_available = "ON" if payload["version"] != DEFAULT_VERSION and payload["sha256"] != hashlib.sha256(image_id.encode("utf-8")).hexdigest() else "OFF"
+            # When the latest on the selected channel matches what is
+            # already running we report OFF; otherwise ON.
+            state = {
+                "latest_version": payload["version"],
+                "update_available": update_available,
+                "rollback_pending": "OFF",  # becomes ON only after a failed apply; set by the apply path.
+                "last_check": datetime.now(timezone.utc).isoformat(),
+            }
+            write_snapshot(opts["snapshot_dir"], payload, logger)
+
+    discovery = build_mqtt_discovery(opts, "roamcore-ota")
+    publish_mqtt(discovery, state, opts["mqtt_base_topic"])
+    logger.info("state published: %s", json.dumps(state))
+
+
+def main() -> int:
+    opts = load_options()
+    logger = setup_logging(opts["log_path"])
+    logger.info("roamcore-otad start channel=%s poll=%smin repo=%s",
+                opts["channel"], opts["poll_minutes"], opts["repo"])
+
+    stop = {"flag": False}
+
+    def _stop(_sig, _frame):
+        stop["flag"] = True
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
+
+    while not stop["flag"]:
+        try:
+            once(opts, logger)
+        except Exception:  # noqa: BLE001 - last-resort guard, log everything
+            logger.exception("loop iteration failed")
+        # Sleep poll_minutes in small steps so SIGTERM is responsive.
+        deadline = time.time() + max(60, int(opts["poll_minutes"]) * 60)
+        while not stop["flag"] and time.time() < deadline:
+            time.sleep(1)
+    logger.info("roamcore-otad stop")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

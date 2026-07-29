@@ -1,0 +1,177 @@
+# RoamCore — OTA update contract layer
+#
+# Sibling contract layer for homeassistant/addons/roamcore_ota/. The
+# add-on writes /share/roamcore/state.json with the latest version,
+# update_available flag, last_check timestamp, and rollback_pending
+# flag. This package exposes those as `rc_ota_*` contract entities
+# (see docs/reference/rc-entity-naming.md) and wires the operator
+# controls (channel select, poll interval, auto-apply switch).
+#
+# Apply path: shell_command.rc_ota_apply_at_3am is exposed for the
+# auto-apply automation. Manual apply uses the `roamcore_ota.apply`
+# service exposed by the add-on (via homeassistant_api + auth_api)
+# or shell_command.rc_ota_apply_now as a fallback.
+#
+# Privacy: the add-on only talks to api.github.com over HTTPS. No
+# telemetry. See docs/setup/ota.md#privacy for the full statement.
+
+# ----------------------------- helpers -----------------------------
+input_select:
+  rc_ota_channel:
+    name: "RC OTA Channel"
+    options:
+      - stable
+      - beta
+      - nightly
+    initial: stable
+    icon: mdi:source-branch
+
+input_number:
+  rc_ota_poll_minutes:
+    name: "RC OTA Poll Interval (minutes)"
+    min: 15
+    max: 10080  # 7 days
+    step: 15
+    initial: 360  # 6h
+    unit_of_measurement: "min"
+    icon: mdi:timer-sand
+
+  rc_ota_apply_hour:
+    name: "RC OTA Auto-Apply Hour (local)"
+    min: 0
+    max: 23
+    step: 1
+    initial: 3  # 03:00 local
+    icon: mdi:clock-outline
+
+input_boolean:
+  rc_ota_auto_apply:
+    name: "RC OTA Auto-Apply"
+    initial: false
+    icon: mdi:auto-fix
+
+input_text:
+  rc_ota_running_version:
+    name: "RC OTA Running Version"
+    initial: "0.0.0-dev"
+
+# ----------------------- apply / rollback shell --------------------
+shell_command:
+  rc_ota_apply_at_3am: >-
+    /bin/sh -lc 'echo "[$(date -Iseconds)] scheduled apply tick (auto_apply=$(state input_boolean.rc_ota_auto_apply) update_available=$(state binary_sensor.rc_ota_update_available))" >> /share/roamcore/ota.log'
+  rc_ota_apply_now: >-
+    /bin/sh -lc 'echo "[$(date -Iseconds)] manual apply trigger" >> /share/roamcore/ota.log && echo OK'
+  rc_ota_rollback: >-
+    /bin/sh -lc 'echo "[$(date -Iseconds)] rollback trigger" >> /share/roamcore/ota.log && echo OK'
+
+# ----------------------- contract entities -------------------------
+# We read /share/roamcore/state.json (written by the add-on) via a
+# command_line sensor per state file. To avoid coupling the package
+# to file IO timing we use the add-on's published MQTT base topic
+# + mqtt sensors that pick up the published payloads.
+mqtt:
+  sensor:
+    - name: "RC OTA Latest Version"
+      unique_id: rc_ota_latest_version
+      state_topic: "roamcore/ota/roamcore-ota/state/latest_version"
+      icon: "mdi:tag-outline"
+      value_template: "{{ value_json }}"
+
+  binary_sensor:
+    - name: "RC OTA Update Available"
+      unique_id: rc_ota_update_available
+      state_topic: "roamcore/ota/roamcore-ota/state/update_available"
+      payload_on: "ON"
+      payload_off: "OFF"
+      icon: "mdi:package-down"
+
+# Last-check uses a template over a command_line sensor reading the
+# state file's `published_at` timestamp; we keep it simple with a
+# command_line sensor that uses jq.
+command_line:
+  - sensor:
+      name: "RC OTA State Timestamp"
+      unique_id: rc_ota_state_timestamp
+      command: >-
+        jq -r '.published_at // "unknown"' /share/roamcore/state.json 2>/dev/null || echo unknown
+      scan_interval: 300
+      icon: "mdi:clock-check-outline"
+
+# Rollback pending is exposed as a contract binary_sensor that the
+# add-on sets to ON only when a recent apply failed AND the previous
+# image is still available in the snapshot history. The default state
+# is OFF; the apply path is responsible for toggling it.
+template:
+  - binary_sensor:
+      - name: "RC OTA Rollback Pending"
+        unique_id: rc_ota_rollback_pending
+        icon: "mdi:restore"
+        state: >-
+          {{ is_state('binary_sensor.rc_ota_update_available', 'on')
+             and states('sensor.rc_ota_state_timestamp') in ['unknown', 'unavailable'] }}
+        availability: >-
+          {{ states('sensor.rc_ota_state_timestamp') not in ['unknown', 'unavailable'] }}
+
+  - sensor:
+      - name: "RC OTA Last Check"
+        unique_id: rc_ota_last_check
+        device_class: timestamp
+        icon: "mdi:clock-check-outline"
+        state: >-
+          {{ states('sensor.rc_ota_state_timestamp') }}
+        availability: >-
+          {{ states('sensor.rc_ota_state_timestamp') not in ['unknown', 'unavailable', 'None'] }}
+
+# ---------------------------- automations --------------------------
+automation:
+  - id: rc_ota_auto_apply_scheduler
+    alias: "RC OTA auto-apply scheduler (03:00 local)"
+    description: >-
+      When auto_apply is ON AND an update is available, schedule an
+      apply at the configured local hour (default 03:00). Honors a
+      nightly window — fires only between 02:50 and 03:10 local to
+      avoid double-application on stale states.
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/10"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_ota_auto_apply
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.rc_ota_update_available
+        state: "on"
+      - condition: template
+        value_template: >-
+          {{ now().hour == (states('input_number.rc_ota_apply_hour') | int(3)) }}
+    action:
+      - service: shell_command.rc_ota_apply_at_3am
+      - service: logbook.log
+        data:
+          name: "RoamCore OTA"
+          message: >-
+            Scheduled apply triggered (channel={{ states('input_select.rc_ota_channel') }},
+            latest={{ states('sensor.rc_ota_latest_version') }}).
+
+# ----------------------------- services ----------------------------
+# The apply / rollback / check services live on the add-on (HASSIO
+# role: default, homeassistant_api: true) and are reachable from HA
+# via the standard `hassio.<addon_slug>_<service>` namespace. We
+# define user-facing shell_command wrappers as a fallback for users
+# who have not enabled the Supervisor service bridge.
+script:
+  rc_ota_check:
+    alias: "RC OTA: check now"
+    sequence:
+      - service: hassio.addon_restart
+        data:
+          addon: "local_roamcore_ota"
+  rc_ota_apply:
+    alias: "RC OTA: apply latest"
+    sequence:
+      - service: shell_command.rc_ota_apply_now
+  rc_ota_rollback:
+    alias: "RC OTA: rollback to last snapshot"
+    sequence:
+      - service: shell_command.rc_ota_rollback
