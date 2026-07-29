@@ -36,7 +36,7 @@ Legend:
 
 - [x] Victron backend health entities (`rc_system_power_backend_*`)
 - [x] Victron connect UI card (discover/connect)
-- [ ] Victron pairing wizard (polished, foolproof)
+- [x] Victron pairing wizard (polished, foolproof)
 - [ ] Auto-discovery of Victron GX on LAN + prompt “enable MQTT over LAN”
 - [ ] Capability-driven power page (auto layout, hides missing tiles)
 
