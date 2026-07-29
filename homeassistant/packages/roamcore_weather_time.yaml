@@ -1,15 +1,40 @@
-# RoamCore contract entities: Weather + Time (MVP)
-# Naming convention reference:
-#   RoamCore/docs/reference/rc-entity-naming.md
-
-# NOTE (MVP): We assume the built-in Open-Meteo integration provides a
-# weather entity (commonly `weather.home`). If your HA instance uses a different
-# entity id, set `input_text.rc_weather_entity_id`.
+# RoamCore contract entities: Weather + Time
+#
+# These templates are designed to be **reliable for automations**.
+# Every contract entity follows:
+#   https://github.com/roamcore/RoamCore/blob/main/docs/reference/rc-entity-naming.md
+# (canonical pattern: `<domain>.rc_<subsystem>_<object>_<metric>`)
+#
+# If no weather integration is configured, sensors MUST report `unavailable`
+# with a `reason` attribute (e.g. "no_weather_integration") — they must
+# never crash Home Assistant and they must never silently return a stale
+# value.
+#
+# Source mapping (in priority order):
+#   1. Explicit override via `input_text.rc_weather_outdoor_temperature_entity`
+#   2. `weather.<entity_id>` from `input_text.rc_weather_entity_id`
+#      (default: `weather.home` — Met.no via HA's "Weather" integration)
+#   3. (none) → `unavailable` with reason `no_weather_integration`
 
 input_text:
   rc_weather_entity_id:
     name: "RC Weather Entity ID"
     initial: "weather.home"
+
+  # Manual override for the outdoor-temperature source. Leave blank to use
+  # the weather integration's current temperature attribute. Common values:
+  #   - sensor.openweathermap_temperature
+  #   - sensor.met_no_temperature
+  #   - sensor.outdoor_temperature   (your own outdoor sensor)
+  rc_weather_outdoor_temperature_entity:
+    name: "RC Weather Outdoor Temperature Entity"
+    initial: ""
+
+  # Manual override for the outdoor-humidity source. Leave blank to use the
+  # weather integration's `humidity` attribute.
+  rc_weather_outdoor_humidity_entity:
+    name: "RC Weather Outdoor Humidity Entity"
+    initial: ""
 
   # Manual timezone override for RoamCore contract entities.
   # Leave blank to use HA's configured timezone (config.time_zone).
@@ -18,30 +43,332 @@ input_text:
     max: 64
     initial: ""
 
+# -------------------------------------------------------------
+# Binary sensors first — they encode failure reasons explicitly.
+# -------------------------------------------------------------
+binary_sensor:
+  - name: "RC Weather Integration Available"
+    unique_id: rc_weather_integration_available
+    device_class: connectivity
+    icon: "mdi:weather-check"
+    state: >-
+      {% set wid = states('input_text.rc_weather_entity_id') %}
+      {{ wid not in ['unknown','unavailable','', none]
+         and states(wid) not in ['unknown','unavailable','none'] }}
+    attributes:
+      reason: >-
+        {% set wid = states('input_text.rc_weather_entity_id') %}
+        {% if wid in ['unknown','unavailable','', none] %}
+          no_weather_integration
+        {% elif states(wid) in ['unknown','unavailable','none'] %}
+          weather_integration_unavailable
+        {% else %}
+          ok
+        {% endif %}
+      weather_entity_id: "{{ states('input_text.rc_weather_entity_id') }}"
+
 template:
   - sensor:
-      - name: "RC Weather Temperature"
-        unique_id: rc_weather_temp_c
+      # --------------------------------------------------------
+      # Outdoor temperature — fallback chain:
+      #   explicit override → weather entity attribute → unavailable
+      # --------------------------------------------------------
+      - name: "RC Weather Outdoor Temperature"
+        unique_id: rc_weather_outdoor_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        state: >-
+          {% set override = states('input_text.rc_weather_outdoor_temperature_entity') %}
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% if override not in ['unknown','unavailable','', none]
+             and states(override) not in ['unknown','unavailable','none'] %}
+            {{ states(override) | float(0) }}
+          {% elif states(wid) not in ['unknown','unavailable','none']
+             and state_attr(wid, 'temperature') is not none %}
+            {{ state_attr(wid, 'temperature') | float(0) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability: >-
+          {% set override = states('input_text.rc_weather_outdoor_temperature_entity') %}
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% if override not in ['unknown','unavailable','', none]
+             and states(override) not in ['unknown','unavailable','none'] %}
+            true
+          {% elif wid not in ['unknown','unavailable','', none]
+             and states(wid) not in ['unknown','unavailable','none']
+             and (state_attr(wid, 'temperature') is not none) %}
+            true
+          {% else %}
+            false
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set override = states('input_text.rc_weather_outdoor_temperature_entity') %}
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if override not in ['unknown','unavailable','', none]
+               and states(override) not in ['unknown','unavailable','none'] %}
+              ok_override
+            {% elif wid not in ['unknown','unavailable','', none]
+               and states(wid) not in ['unknown','unavailable','none']
+               and (state_attr(wid, 'temperature') is not none) %}
+              ok_weather_integration
+            {% elif wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% else %}
+              weather_integration_unavailable
+            {% endif %}
+          source_entity: >-
+            {% set override = states('input_text.rc_weather_outdoor_temperature_entity') %}
+            {% if override not in ['unknown','unavailable','', none]
+               and states(override) not in ['unknown','unavailable','none'] %}
+              {{ override }}
+            {% else %}
+              {{ states('input_text.rc_weather_entity_id') }}
+            {% endif %}
+
+      # --------------------------------------------------------
+      # Outdoor humidity — same fallback chain
+      # --------------------------------------------------------
+      - name: "RC Weather Outdoor Humidity"
+        unique_id: rc_weather_outdoor_humidity
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        state: >-
+          {% set override = states('input_text.rc_weather_outdoor_humidity_entity') %}
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% if override not in ['unknown','unavailable','', none]
+             and states(override) not in ['unknown','unavailable','none'] %}
+            {{ states(override) | float(0) }}
+          {% elif states(wid) not in ['unknown','unavailable','none']
+             and state_attr(wid, 'humidity') is not none %}
+            {{ state_attr(wid, 'humidity') | float(0) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability: >-
+          {% set override = states('input_text.rc_weather_outdoor_humidity_entity') %}
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% if override not in ['unknown','unavailable','', none]
+             and states(override) not in ['unknown','unavailable','none'] %}
+            true
+          {% elif wid not in ['unknown','unavailable','', none]
+             and states(wid) not in ['unknown','unavailable','none']
+             and (state_attr(wid, 'humidity') is not none) %}
+            true
+          {% else %}
+            false
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set override = states('input_text.rc_weather_outdoor_humidity_entity') %}
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if override not in ['unknown','unavailable','', none]
+               and states(override) not in ['unknown','unavailable','none'] %}
+              ok_override
+            {% elif wid not in ['unknown','unavailable','', none]
+               and states(wid) not in ['unknown','unavailable','none']
+               and (state_attr(wid, 'humidity') is not none) %}
+              ok_weather_integration
+            {% elif wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% else %}
+              weather_integration_unavailable
+            {% endif %}
+          source_entity: >-
+            {% set override = states('input_text.rc_weather_outdoor_humidity_entity') %}
+            {% if override not in ['unknown','unavailable','', none]
+               and states(override) not in ['unknown','unavailable','none'] %}
+              {{ override }}
+            {% else %}
+              {{ states('input_text.rc_weather_entity_id') }}
+            {% endif %}
+
+      # --------------------------------------------------------
+      # Forecast condition (mapped to RC canonical enum)
+      # Canonical values: clear, cloudy, rain, snow, storm, fog, unknown
+      # --------------------------------------------------------
+      - name: "RC Weather Forecast Condition"
+        unique_id: rc_weather_forecast_condition
+        icon: "mdi:weather-partly-cloudy"
+        state: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% set s = states(wid) %}
+          {% if s in ['unknown','unavailable','none'] or wid in ['unknown','unavailable','', none] %}
+            unavailable
+          {% else %}
+            {% set s_lower = s | lower %}
+            {% if s_lower in ['sunny','clear','clear-night'] %}
+              clear
+            {% elif s_lower in ['partlycloudy','partly-cloudy','mostlycloudy','mostly-cloudy','cloudy','overcast'] %}
+              cloudy
+            {% elif s_lower in ['rainy','rain','pouring','drizzle','showers','light-rain','heavy-rain'] %}
+              rain
+            {% elif s_lower in ['snowy','snow','snowy-rainy','snow-rainy','hail','sleet','light-snow','heavy-snow'] %}
+              snow
+            {% elif s_lower in ['lightning','lightning-rainy','thunderstorm','storm','hurricane','tropical-storm'] %}
+              storm
+            {% elif s_lower in ['fog','foggy','haze','mist','smoke','dust'] %}
+              fog
+            {% elif s_lower in ['windy','wind'] %}
+              cloudy
+            {% elif s_lower in ['exceptional'] %}
+              unknown
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+        availability: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {{ wid not in ['unknown','unavailable','', none]
+             and states(wid) not in ['unknown','unavailable','none'] }}
+        attributes:
+          raw_condition: "{{ states('input_text.rc_weather_entity_id') }}"
+          reason: >-
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% elif states(wid) in ['unknown','unavailable','none'] %}
+              weather_integration_unavailable
+            {% else %}
+              ok
+            {% endif %}
+
+      # --------------------------------------------------------
+      # 24h forecast high / low temperature
+      # --------------------------------------------------------
+      - name: "RC Weather Forecast High Temp 24h"
+        unique_id: rc_weather_forecast_high_temp_24h
         unit_of_measurement: "°C"
         device_class: temperature
         state: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {% set t = state_attr(wid, 'temperature') %}
-          {{ (t | float) if t is not none else 'unknown' }}
+          {% if wid in ['unknown','unavailable','', none] or states(wid) in ['unknown','unavailable','none'] %}
+            unavailable
+          {% else %}
+            {% set fc = state_attr(wid, 'forecast') %}
+            {% if fc is none or (fc | length) == 0 %}
+              unavailable
+            {% else %}
+              {% set temps = fc | selectattr('temperature','defined') | map(attribute='temperature') | map('float') | list %}
+              {% if (temps | length) == 0 %}
+                unavailable
+              {% else %}
+                {{ (temps | max) | round(1) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
         availability: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] and (state_attr(wid,'temperature') is not none) }}
+          {% if wid in ['unknown','unavailable','', none] or states(wid) in ['unknown','unavailable','none'] %}
+            false
+          {% else %}
+            {% set fc = state_attr(wid, 'forecast') %}
+            {{ fc is not none and (fc | length) > 0 }}
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% elif states(wid) in ['unknown','unavailable','none'] %}
+              weather_integration_unavailable
+            {% elif (state_attr(wid, 'forecast') is none) or ((state_attr(wid, 'forecast') | length) == 0) %}
+              no_forecast_data
+            {% else %}
+              ok
+            {% endif %}
 
-      - name: "RC Weather Condition"
-        unique_id: rc_weather_condition
-        icon: "mdi:weather-partly-cloudy"
+      - name: "RC Weather Forecast Low Temp 24h"
+        unique_id: rc_weather_forecast_low_temp_24h
+        unit_of_measurement: "°C"
+        device_class: temperature
         state: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ states(wid) }}
+          {% if wid in ['unknown','unavailable','', none] or states(wid) in ['unknown','unavailable','none'] %}
+            unavailable
+          {% else %}
+            {% set fc = state_attr(wid, 'forecast') %}
+            {% if fc is none or (fc | length) == 0 %}
+              unavailable
+            {% else %}
+              {% set temps = fc | selectattr('temperature','defined') | map(attribute='temperature') | map('float') | list %}
+              {% if (temps | length) == 0 %}
+                unavailable
+              {% else %}
+                {{ (temps | min) | round(1) }}
+              {% endif %}
+            {% endif %}
+          {% endif %}
         availability: >-
           {% set wid = states('input_text.rc_weather_entity_id') %}
-          {{ wid not in ['unknown','unavailable',''] and states(wid) not in ['unknown','unavailable'] }}
+          {% if wid in ['unknown','unavailable','', none] or states(wid) in ['unknown','unavailable','none'] %}
+            false
+          {% else %}
+            {% set fc = state_attr(wid, 'forecast') %}
+            {{ fc is not none and (fc | length) > 0 }}
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% elif states(wid) in ['unknown','unavailable','none'] %}
+              weather_integration_unavailable
+            {% elif (state_attr(wid, 'forecast') is none) or ((state_attr(wid, 'forecast') | length) == 0) %}
+              no_forecast_data
+            {% else %}
+              ok
+            {% endif %}
 
+      # --------------------------------------------------------
+      # Next sun event (sunrise or sunset) — ISO timestamp
+      # --------------------------------------------------------
+      - name: "RC Weather Sun Next Event"
+        unique_id: rc_weather_sun_next_event
+        device_class: timestamp
+        icon: "mdi:weather-sunny"
+        state: >-
+          {% set sun_r = state_attr('sun.sun','next_rising') %}
+          {% set sun_s = state_attr('sun.sun','next_setting') %}
+          {% if sun_r is none and sun_s is none %}
+            unavailable
+          {% elif sun_r is none %}
+            {{ sun_s.isoformat() }}
+          {% elif sun_s is none %}
+            {{ sun_r.isoformat() }}
+          {% elif sun_r < sun_s %}
+            {{ sun_r.isoformat() }}
+          {% else %}
+            {{ sun_s.isoformat() }}
+          {% endif %}
+        availability: >-
+          {% set sun_r = state_attr('sun.sun','next_rising') %}
+          {% set sun_s = state_attr('sun.sun','next_setting') %}
+          {{ sun_r is not none or sun_s is not none }}
+        attributes:
+          kind: >-
+            {% set sun_r = state_attr('sun.sun','next_rising') %}
+            {% set sun_s = state_attr('sun.sun','next_setting') %}
+            {% if sun_r is none and sun_s is none %}
+              unknown
+            {% elif sun_r is none %}
+              sunset
+            {% elif sun_s is none %}
+              sunrise
+            {% elif sun_r < sun_s %}
+              sunrise
+            {% else %}
+              sunset
+            {% endif %}
+          next_rising: "{{ state_attr('sun.sun','next_rising') }}"
+          next_setting: "{{ state_attr('sun.sun','next_setting') }}"
+
+      # --------------------------------------------------------
+      # Time (kept from MVP — unchanged)
+      # --------------------------------------------------------
       - name: "RC Time Local"
         unique_id: rc_time_local
         icon: "mdi:clock"
@@ -54,5 +381,208 @@ template:
           {% set o = states('input_text.rc_time_zone_override') | trim %}
           {{ o if o else 'UTC' }}
 
+      # --------------------------------------------------------
+      # Time — Wave 2 (#15): reliable for automations
+      # Contract entities are designed so the fallback chain never
+      # crashes the dashboard and `reason` always explains the state.
+      # --------------------------------------------------------
+
+      # ISO-8601 timestamp of "now" in HA's configured local time.
+      # device_class: timestamp so the UI renders a native datetime widget.
+      - name: "RC Time Now ISO"
+        unique_id: rc_time_now_iso
+        device_class: timestamp
+        icon: "mdi:clock-outline"
+        state: "{{ now().isoformat() }}"
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% set ha_tz = now().astimezone().tzinfo %}
+            {% if o %}
+              ok_override
+            {% elif ha_tz is not none %}
+              ok_ha_config
+            {% else %}
+              unknown
+            {% endif %}
+          source: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              override
+            {% elif now().astimezone().tzinfo is not none %}
+              ha_config
+            {% else %}
+              unknown
+            {% endif %}
+
+      # UTC offset of `now()` in minutes. Positive = ahead of UTC,
+      # negative = behind. Falls back to `unavailable` when no tz info
+      # is resolvable (the Jinja `now()` always has tzinfo in HA so this
+      # is a defensive belt-and-suspenders check).
+      - name: "RC Time UTC Offset Minutes"
+        unique_id: rc_time_utc_offset_minutes
+        icon: "mdi:clock-time-eight-outline"
+        state: >-
+          {% set n = now() %}
+          {% if n.utcoffset() is none %}
+            unavailable
+          {% else %}
+            {{ (n.utcoffset().total_seconds() / 60) | int }}
+          {% endif %}
+        availability: "{{ now().utcoffset() is not none }}"
+        attributes:
+          reason: >-
+            {% if now().utcoffset() is none %}
+              unknown
+            {% else %}
+              ok
+            {% endif %}
+
+      # Canonical timezone *source* enum: override | ha_config | browser | unknown.
+      # We do NOT need a "browser" source at this layer — it would require a
+      # custom integration to introspect the active session. The enum slot
+      # is reserved for forward-compat (documented in
+      # docs/catalog/time/time-entities.md).
+      - name: "RC Time Source"
+        unique_id: rc_time_source
+        device_class: enum
+        icon: "mdi:source-branch"
+        state: >-
+          {% set o = states('input_text.rc_time_zone_override') | trim %}
+          {# If the override resolves to a valid IANA name, source is 'override'.
+             Otherwise fall through to 'ha_config' (or 'unknown'). #}
+          {% if o %}
+            override
+          {% else %}
+            {# hasTZ is implied: HA always serves now() with a tz. #}
+            ha_config
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              ok_override
+            {% else %}
+              ok_ha_config
+            {% endif %}
+
+      # Canonical sync status enum:
+      # ok | no_override | invalid_override | ha_unconfigured | unknown
+      - name: "RC Time Status"
+        unique_id: rc_time_status
+        device_class: enum
+        icon: "mdi:shield-check"
+        state: >-
+          {% set o = states('input_text.rc_time_zone_override') | trim %}
+          {# If the override is set, we treat it as 'ok' regardless of
+             whether zoneinfo would later reject it — that's reported via
+             the rc_time_zone sensor itself. #}
+          {% if o %}
+            ok
+          {% else %}
+            {# No override → check that HA has a tz configured. #}
+            {% set n = now() %}
+            {% if n.utcoffset() is none %}
+              ha_unconfigured
+            {% else %}
+              no_override
+            {% endif %}
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set o = states('input_text.rc_time_zone_override') | trim %}
+            {% if o %}
+              ok_override
+            {% else %}
+              {% set n = now() %}
+              {% if n.utcoffset() is none %}
+                ha_unconfigured
+              {% else %}
+                no_override
+              {% endif %}
+            {% endif %}
+
+  # ----------------------------------------------------------
+  # Precipitation expected within next 2 hours (binary)
+  # ----------------------------------------------------------
+  - binary_sensor:
+      - name: "RC Weather Precipitation Expected 2h"
+        unique_id: rc_weather_precipitation_expected_2h
+        device_class: moisture
+        icon: "mdi:weather-rainy"
+        state: >-
+          {% set wid = states('input_text.rc_weather_entity_id') %}
+          {% if wid in ['unknown','unavailable','', none] or states(wid) in ['unknown','unavailable','none'] %}
+            unknown
+          {% else %}
+            {% set fc = state_attr(wid, 'forecast') %}
+            {% if fc is none or (fc | length) == 0 %}
+              unknown
+            {% else %}
+              {# Inspect the next ~2h: most providers expose 1-3h slots #}
+              {% set precip_now = state_attr(wid, 'precipitation') %}
+              {% set precip_unit = state_attr(wid, 'precipitation_unit') %}
+              {% set within = namespace(found=false) %}
+              {# Met.no/HA weather providers expose 'precipitation_probability' in forecast #}
+              {% for entry in fc[:3] if not within.found %}
+                {% set p = entry.get('precipitation') %}
+                {% set pp = entry.get('precipitation_probability') %}
+                {% if p is not none and (p | float(0)) > 0 %}
+                  {% set within.found = true %}
+                {% elif pp is not none and (pp | float(0)) > 30 %}
+                  {% set within.found = true %}
+                {% endif %}
+              {% endfor %}
+              {% if within.found %}on{% else %}off{% endif %}
+            {% endif %}
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set wid = states('input_text.rc_weather_entity_id') %}
+            {% if wid in ['unknown','unavailable','', none] %}
+              no_weather_integration
+            {% elif states(wid) in ['unknown','unavailable','none'] %}
+              weather_integration_unavailable
+            {% elif (state_attr(wid, 'forecast') is none) or ((state_attr(wid, 'forecast') | length) == 0) %}
+              no_forecast_data
+            {% else %}
+              ok
+            {% endif %}
+
+      # --------------------------------------------------------
+      # DST active right now? (binary sensor)
+      # Computed via now().dst() — returns a timedelta (or None) so we
+      # map "non-zero" to on, "zero" to off, and "None" to unknown.
+      # --------------------------------------------------------
+      - name: "RC Time Is DST"
+        unique_id: rc_time_is_dst
+        device_class: running  # intentionally NOT a presence-style binary
+        icon: "mdi:weather-sunny"
+        state: >-
+          {% set d = now().dst() %}
+          {% if d is none %}
+            unknown
+          {% elif (d.total_seconds() | int) != 0 %}
+            on
+          {% else %}
+            off
+          {% endif %}
+        attributes:
+          reason: >-
+            {% set d = now().dst() %}
+            {% if d is none %}
+              unknown
+            {% else %}
+              ok
+            {% endif %}
+          dst_offset_minutes: >-
+            {% set d = now().dst() %}
+            {% if d is none %}
+              0
+            {% else %}
+              {{ (d.total_seconds() / 60) | int }}
+            {% endif %}
+
 # NOTE: This file is a Home Assistant package.
 # Keep template entity names/unique_ids stable to preserve entity_id continuity.
+# Naming reference: docs/reference/rc-entity-naming.md

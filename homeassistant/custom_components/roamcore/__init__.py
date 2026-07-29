@@ -27,6 +27,8 @@ from .openclaw_view import (
     OpenClawTimeSeriesView,
     OpenClawAutomationIntentsView,
     OpenClawAutomationValidateView,
+    OpenClawWeatherView,
+    OpenClawTimeView,
 )
 from .diagnostics_view import RoamcoreDiagnosticsView
 from .system_summary_view import RoamcoreSystemSummaryView
@@ -281,6 +283,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.http.register_view(OpenClawTimeSeriesView(hass, entry.entry_id))
     hass.http.register_view(OpenClawAutomationIntentsView(hass, entry.entry_id))
     hass.http.register_view(OpenClawAutomationValidateView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawWeatherView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawTimeView(hass, entry.entry_id))
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))
