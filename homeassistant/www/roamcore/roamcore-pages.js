@@ -2032,9 +2032,20 @@ class RoamcoreMapPage extends RoamcoreBasePage {
         <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(loc && loc!=='unknown' && loc!=='unavailable') ? loc : '—'}</div>
       </div>
       
-      <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
+      <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <a class="rc-btn" href="${this._traccarEmbedUrl()}" target="_blank" rel="noreferrer">Open Traccar (fullscreen)</a>
+        <button class="rc-btn rc-btn-small" id="rc-amenities-toggle"
+                title="Toggle the optional amenities overlay (water / dump / laundry / campsites / shops / gyms)"
+                style="${(() => {
+                  const on = (this._hass?.states?.['input_boolean.rc_amenities_overlay_enabled']?.state === 'on');
+                  return on
+                    ? 'border-color: rgba(110,231,255,0.55); color: var(--rc-accent, #6EE7FF);'
+                    : '';
+                })()}">
+          ${(this._hass?.states?.['input_boolean.rc_amenities_overlay_enabled']?.state === 'on') ? '✓ ' : ''}Amenities overlay
+        </button>
       </div>
+      <div id="rc-amenities-legend" style="margin-top: 8px; display:flex; gap:6px; flex-wrap:wrap;"></div>
       ${mapDataTiles}
       ${tripWrappedTile}
     `;
@@ -2071,12 +2082,55 @@ class RoamcoreMapPage extends RoamcoreBasePage {
             } catch (e) {}
             // Route overlay (best-effort)
             try { Promise.resolve(this._overlayTraccarTrack(m)).catch(() => {}); } catch (e) {}
+            // Amenities overlay (slice #22) — MapLibre path. Fails safe.
+            try {
+              this._rcAmenities = new RcAmenitiesLayer({ map: m, hass: this._hass, page: this });
+              this._rcAmenities.sync({ forceRefresh: true });
+            } catch (e) {}
           })
           .catch(() => {
             // Absolute last resort: Leaflet fallback.
             const mapP = this._mountLeafletMap(el, { lat, lon, trackerId });
-            Promise.resolve(mapP).then((map) => this._overlayTraccarTrack(map)).catch(() => {});
+            Promise.resolve(mapP).then((map) => {
+              this._overlayTraccarTrack(map);
+              // Amenities overlay (slice #22) — Leaflet path. Fails safe.
+              try {
+                this._rcAmenities = new RcAmenitiesLayer({ map: map, hass: this._hass, page: this });
+                this._rcAmenities.sync({ forceRefresh: true });
+              } catch (e) {}
+            }).catch(() => {});
           });
+      }
+    } catch (e) {}
+
+    // Amenities overlay toggle + legend (slice #22).
+    try {
+      const toggleBtn = this._root.querySelector('#rc-amenities-toggle');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', async () => {
+          try {
+            const on = (this._hass?.states?.['input_boolean.rc_amenities_overlay_enabled']?.state === 'on');
+            await this._callService(
+              'input_boolean',
+              on ? 'turn_off' : 'turn_on',
+              { entity_id: 'input_boolean.rc_amenities_overlay_enabled' }
+            );
+          } catch (e) {
+            console.warn('amenities toggle failed', e);
+          }
+        });
+      }
+      const legendEl = this._root.querySelector('#rc-amenities-legend');
+      if (legendEl) {
+        if (this._rcAmenities) {
+          try { this._rcAmenities.renderLegend(legendEl); } catch (e) {}
+        } else {
+          // Pre-mount: render legend anyway so the chips are visible.
+          try {
+            const tmp = new RcAmenitiesLayer({ map: null, hass: this._hass, page: this });
+            tmp.renderLegend(legendEl);
+          } catch (e) {}
+        }
       }
     } catch (e) {}
 
@@ -2404,6 +2458,249 @@ class RoamcoreMapPage extends RoamcoreBasePage {
     } catch (e) {
       return;
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Slice #22 — Amenities overlay layer (iOverlander-style).
+// ---------------------------------------------------------------------------
+// This is a self-contained Leaflet layer that the Map page attaches after
+// the basemap mounts. It loads `/local/roamcore/amenities/latest.json` (a
+// file produced by `homeassistant/tools/amenities/overpass_query.py` via
+// the shell_command in `homeassistant/packages/roamcore_amenities.yaml`)
+// and renders each POI as a coloured circleMarker.
+//
+// Design constraints (slice #22):
+//   - Toggleable, bound to `input_boolean.rc_amenities_overlay_enabled`.
+//   - Fails safe: missing/malformed JSON => no markers, one console.warn,
+//     basemap unaffected.
+//   - Does NOT change the basemap or the breadcrumb/route layer; just
+//     adds an L.layerGroup on top.
+//   - Polls every 5 minutes while the toggle is ON.
+//   - Category legend (6 chips) bound to `input_select.rc_amenities_categories`.
+
+const RC_AMENITIES_CATEGORIES = [
+  { key: 'water',        color: '#1d6fe0', label: 'Water' },
+  { key: 'dump_station', color: '#4b5563', label: 'Dump' },
+  { key: 'laundry',      color: '#0d9488', label: 'Laundry' },
+  { key: 'campground',   color: '#15803d', label: 'Camping' },
+  { key: 'supermarket',  color: '#ea580c', label: 'Shop' },
+  { key: 'gym',          color: '#dc2626', label: 'Gym' },
+];
+
+class RcAmenitiesLayer {
+  constructor({ map, hass, page }) {
+    this._map = map;
+    this._hass = hass;
+    this._page = page; // RoamcoreMapPage (for entity state reads)
+    this._group = null;
+    this._markers = [];
+    this._enabled = false;
+    this._pollTimer = null;
+    this._lastFetchedAt = 0;
+  }
+
+  _isToggleOn() {
+    try {
+      const v = this._hass?.states?.['input_boolean.rc_amenities_overlay_enabled']?.state;
+      return v === 'on';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  _selectedCategories() {
+    // input_select stores a single comma-separated string. Each chip that
+    // matches a known category is considered "active".
+    try {
+      const v = this._hass?.states?.['input_select.rc_amenities_categories']?.state || '';
+      const known = new Set(RC_AMENITIES_CATEGORIES.map(c => c.key));
+      const parts = String(v).split(',').map(s => s.trim()).filter(Boolean);
+      const sel = parts.filter(p => known.has(p));
+      return sel.length ? sel : RC_AMENITIES_CATEGORIES.map(c => c.key);
+    } catch (e) {
+      return RC_AMENITIES_CATEGORIES.map(c => c.key);
+    }
+  }
+
+  _colorFor(category) {
+    const found = RC_AMENITIES_CATEGORIES.find(c => c.key === category);
+    return found ? found.color : '#888888';
+  }
+
+  _ensureGroup() {
+    const L = window.L;
+    if (!L || !this._map) return null;
+    if (this._group) return this._group;
+    this._group = L.layerGroup();
+    return this._group;
+  }
+
+  _clearMarkers() {
+    try {
+      this._markers.forEach(mk => {
+        try { mk.remove(); } catch (e) {}
+      });
+    } catch (e) {}
+    this._markers = [];
+    try {
+      if (this._group) this._group.clearLayers();
+    } catch (e) {}
+  }
+
+  async _fetchOnce() {
+    // Fails safe: any error => no markers, single console warning.
+    let resp;
+    try {
+      resp = await fetch('/local/roamcore/amenities/latest.json', { cache: 'no-cache' });
+    } catch (e) {
+      console.warn('[rc-amenities] latest.json fetch failed:', e && e.message ? e.message : e);
+      return null;
+    }
+    if (!resp || !resp.ok) {
+      console.warn(`[rc-amenities] latest.json HTTP ${resp ? resp.status : 'no-response'} — overlay hidden`);
+      return null;
+    }
+    let data;
+    try {
+      data = await resp.json();
+    } catch (e) {
+      console.warn('[rc-amenities] latest.json malformed JSON — overlay hidden');
+      return null;
+    }
+    if (!data || !Array.isArray(data.pois)) {
+      console.warn('[rc-amenities] latest.json missing pois array — overlay hidden');
+      return null;
+    }
+    return data;
+  }
+
+  async refresh() {
+    if (!this._enabled) return;
+    const L = window.L;
+    if (!L || !this._map) return;
+    const data = await this._fetchOnce();
+    this._lastFetchedAt = Date.now();
+    this._clearMarkers();
+    if (!data) return;
+
+    const selected = new Set(this._selectedCategories());
+    const group = this._ensureGroup();
+    if (!group) return;
+    if (!this._map.hasLayer(group)) {
+      group.addTo(this._map);
+    }
+
+    const pois = data.pois || [];
+    for (const p of pois) {
+      if (!selected.has(p.category)) continue;
+      const lat = Number(p.lat);
+      const lon = Number(p.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const color = (p.tags && p.tags.color) || this._colorFor(p.category);
+      const mk = L.circleMarker([lat, lon], {
+        radius: 7,
+        color: color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.85,
+      });
+      const distTxt = (p.distanceKm != null) ? `${Number(p.distanceKm).toFixed(2)} km` : '—';
+      const coords = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      const safeId = String(p.id || '').replace(/'/g, '&#39;');
+      const popupHtml = `
+        <div style="font-family: inherit; min-width: 180px;">
+          <div style="font-weight: 900; font-size: 13px; margin-bottom: 4px;">${p.name || p.category}</div>
+          <div style="font-size: 11px; opacity: 0.8; margin-bottom: 6px;">${p.category} · ${distTxt}</div>
+          <div style="font-size: 11px; opacity: 0.8; font-family: ui-monospace, monospace;">${coords}</div>
+          <button data-rc-copy="${lat},${lon}" data-rc-poid="${safeId}"
+                  style="margin-top: 6px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: inherit; cursor: pointer; font-size: 11px;">
+            Copy coords
+          </button>
+        </div>
+      `;
+      try {
+        mk.bindPopup(popupHtml);
+        mk.on('popupopen', (ev) => {
+          try {
+            const node = ev.popup && ev.popup.getElement && ev.popup.getElement();
+            if (!node) return;
+            const btn = node.querySelector('[data-rc-copy]');
+            if (btn && !btn._rcBound) {
+              btn._rcBound = true;
+              btn.addEventListener('click', async () => {
+                try {
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(btn.getAttribute('data-rc-copy'));
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => { btn.textContent = 'Copy coords'; }, 1500);
+                  }
+                } catch (e) {}
+              });
+            }
+          } catch (e) {}
+        });
+      } catch (e) {}
+      mk.addTo(group);
+      this._markers.push(mk);
+    }
+  }
+
+  enable() {
+    if (this._enabled) return;
+    this._enabled = true;
+    // Initial fetch + render.
+    try { Promise.resolve(this.refresh()).catch(() => {}); } catch (e) {}
+    // 5-minute poll while enabled.
+    if (!this._pollTimer) {
+      this._pollTimer = setInterval(() => {
+        try { Promise.resolve(this.refresh()).catch(() => {}); } catch (e) {}
+      }, 5 * 60 * 1000);
+    }
+  }
+
+  disable() {
+    this._enabled = false;
+    if (this._pollTimer) {
+      try { clearInterval(this._pollTimer); } catch (e) {}
+      this._pollTimer = null;
+    }
+    this._clearMarkers();
+    try {
+      if (this._group && this._map && this._map.hasLayer(this._group)) {
+        this._map.removeLayer(this._group);
+      }
+    } catch (e) {}
+  }
+
+  // Re-sync enable/disable against the current toggle state, and refresh
+  // if the categories selection changed.
+  sync({ forceRefresh = false } = {}) {
+    const on = this._isToggleOn();
+    if (on && !this._enabled) this.enable();
+    else if (!on && this._enabled) this.disable();
+    else if (on && forceRefresh) {
+      try { Promise.resolve(this.refresh()).catch(() => {}); } catch (e) {}
+    }
+  }
+
+  // Render a small legend into a host element. 6 chips bound to the
+  // selected-categories select. Pure UI; no service calls.
+  renderLegend(hostEl) {
+    if (!hostEl) return;
+    const selected = new Set(this._selectedCategories());
+    const chips = RC_AMENITIES_CATEGORIES.map(c => {
+      const active = selected.has(c.key);
+      const opacity = active ? '1' : '0.35';
+      return `
+        <span data-rc-amenity-cat="${c.key}"
+              style="display:inline-flex; gap:4px; align-items:center; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.03); font-size: 11px; font-weight: 800; opacity: ${opacity};">
+          <span style="display:inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${c.color};"></span>
+          ${c.label}
+        </span>
+      `;
+    }).join('');
+    hostEl.innerHTML = chips;
   }
 }
 

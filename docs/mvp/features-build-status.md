@@ -58,6 +58,19 @@ This is an internal status page for the remaining MVP feature build-out.
   - Files touched: `homeassistant/tools/trip_wrapped/demo_seed.py` (new), `homeassistant/packages/roamcore_trip_wrapped.yaml`, `homeassistant/custom_components/roamcore/services.yaml`, `homeassistant/custom_components/roamcore/__init__.py`, `homeassistant/www/roamcore/roamcore-pages.js`, `scripts/checks/trip-wrapped-seamless-smoke.sh` (new), `scripts/check.sh`, `docs/feature-checklist.md`, `docs/mvp/features-build-status.md`, `docs/howto/trip-wrapped.md` (new).
   - Smoke check: `bash scripts/checks/trip-wrapped-seamless-smoke.sh` ✓
 
+- Amenities overlay — iOverlander-style, opt-in + privacy-respecting (slice #22)
+  - Python helper: `homeassistant/tools/amenities/overpass_query.py` (stdlib-only; `urllib.request` deferred to `--query` path; `--dry-run` emits a deterministic fixture JSON).
+  - HA wiring: `homeassistant/packages/roamcore_amenities.yaml`
+    - `input_boolean.rc_amenities_overlay_enabled` (default OFF — opt-in)
+    - `input_select.rc_amenities_categories` (default `water,laundry,campground,supermarket`)
+    - `input_number.rc_amenities_radius_km` (default 5 km, range 0.5–50)
+    - `input_text.rc_amenities_overpass_url` (default `https://overpass-api.de/api/interpreter`, annotated `# PRIVACY-OPTIN:`)
+    - shell_command `rc_amenities_overpass_query` + `rc_amenities_clear` + scripts + 4 automations (toggle ON → refresh, OFF → clear, 30-min periodic, movement >1 km refresh).
+  - Map UI: new `RcAmenitiesLayer` class + toggle button + category legend in `homeassistant/www/roamcore/roamcore-pages.js`. Fails safe: missing/malformed `latest.json` → console warning, basemap unaffected. Polls every 5 min while ON.
+  - Smoke checks: `scripts/checks/amenities-overlay-smoke.sh` + `scripts/checks/amenities-overlay-privacy-smoke.sh` (both wired into `scripts/check.sh --core-only`).
+  - Files touched: `homeassistant/tools/amenities/overpass_query.py` (new), `homeassistant/packages/roamcore_amenities.yaml` (new), `homeassistant/www/roamcore/roamcore-pages.js`, `scripts/checks/amenities-overlay-smoke.sh` (new), `scripts/checks/amenities-overlay-privacy-smoke.sh` (new), `scripts/check.sh`, `docs/feature-checklist.md`, `docs/catalog/map/amenities-overlay.md`, `docs/mvp/features-build-status.md`.
+  - Smoke checks: `bash scripts/checks/amenities-overlay-smoke.sh` ✓ + `bash scripts/checks/amenities-overlay-privacy-smoke.sh` ✓
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

@@ -13,6 +13,9 @@
 #   ▶ Trip tracking privacy: smoke check
 # Slice #21 (trip wrapped — seamless USP flow) added:
 #   ▶ Trip wrapped seamless: smoke check
+# Slice #22 (amenities overlay — iOverlander-style) added:
+#   ▶ Amenities overlay privacy: smoke check
+#   ▶ Amenities overlay: smoke check
 
 set -euo pipefail
 
@@ -44,6 +47,12 @@ bash scripts/checks/trip-tracking-privacy-smoke.sh
 
 banner "Trip wrapped seamless: smoke check"
 bash scripts/checks/trip-wrapped-seamless-smoke.sh
+
+banner "Amenities overlay privacy: smoke check"
+bash scripts/checks/amenities-overlay-privacy-smoke.sh
+
+banner "Amenities overlay: smoke check"
+bash scripts/checks/amenities-overlay-smoke.sh
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "Victron: mapping plan"
