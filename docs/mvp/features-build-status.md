@@ -33,6 +33,15 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Remote access (Tailscale) — Wave 2 #29 (slice shipped)
+  - HA package: `homeassistant/packages/roamcore_remote_access.yaml`
+  - Contract entities: `binary_sensor.rc_remote_access_active`, `sensor.rc_remote_access_url`, `sensor.rc_remote_access_peer_count`, `sensor.rc_remote_access_last_seen`, `input_boolean.rc_remote_access_enabled` (kill-switch), `input_text.rc_remote_access_tailnet_host` (operator override)
+  - Setup wizard card snippet: `homeassistant/packages/roamcore_setup_wizard_remote_access.yaml`
+  - Docs: `docs/setup/remote-access.md`
+  - Smoke: `scripts/checks/remote-access-tailscale-smoke.sh` (wired into `scripts/check.sh --core-only`)
+  - Branch: `feat/wave2-remote-access-tailscale`
+  - PR: see origin branch tip
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

@@ -67,7 +67,7 @@ Legend:
 ## Platform
 
 - [ ] Networking controls (VP2430 specific) via OpenWrt API
-- [ ] Remote access
+- [x] Remote access (Tailscale) — slice #29 (`homeassistant/packages/roamcore_remote_access.yaml`: contract layer + kill-switch + setup wizard card; see `docs/setup/remote-access.md`)
 - [ ] OTA updates (GitHub-based channel, rollback-aware)
 - [ ] Additional hardware support (OBD, lighting, etc)
 - [ ] Hardware auto-discovery + setup flows
