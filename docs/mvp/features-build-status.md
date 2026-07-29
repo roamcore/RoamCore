@@ -33,6 +33,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Deterministic system summary (slice #26)
+  - endpoint: `/api/roamcore/system/summary` (contract v2: stable sorted keys + `diagnostics` trust indicator)
+  - view: `homeassistant/custom_components/roamcore/system_summary_view.py`
+  - UI card: `homeassistant/www/roamcore/roamcore-system-summary.js` + pages.js embed on Settings
+  - docs: `docs/setup/system-summary.md`
+  - smoke: `scripts/checks/system-summary-smoke.sh` (wired into `scripts/check.sh`)
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

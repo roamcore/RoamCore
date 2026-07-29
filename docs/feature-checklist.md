@@ -59,7 +59,7 @@ Legend:
 ## System UX
 
 - [ ] Advanced mode (clearly separated + safe recovery)
-- [ ] Deterministic system summary (boring, consistent, trustworthy)
+- [x] Deterministic system summary (boring, consistent, trustworthy) — slice #26
 - [ ] AI chat (opt-in; API/Auth based)
 
 ---
