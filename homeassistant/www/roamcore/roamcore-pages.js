@@ -1537,162 +1537,10 @@ class RoamcoreBasePage extends HTMLElement {
   }
 }
 
-class RoamcorePowerPage extends RoamcoreBasePage {
-  _render() {
-    if (!this._root || !this._hass) return;
-
-    // Contract entities currently available (MVP)
-    const soc = this._num('sensor.rc_power_battery_soc', null);
-    const battV = this._num('sensor.rc_power_battery_voltage', null);
-    const battA = this._num('sensor.rc_power_battery_current', null);
-    const battT = this._num('sensor.rc_power_battery_temperature', null) ?? this._num('sensor.rc_power_battery_temperature_2', null);
-    const battCap = this._num('sensor.rc_power_battery_capacity', null);
-    const battCycles = this._num('sensor.rc_power_battery_cycle_count', null);
-    const battHealth = this._num('sensor.rc_power_battery_health', null);
-
-    const solarW = this._num('sensor.rc_power_solar_power', null);
-    const solarToday = this._num('sensor.rc_power_solar_energy_today', null);
-    const solarTotal = this._num('sensor.rc_power_solar_energy_total', null);
-    const solarPV = this._num('sensor.rc_power_solar_panel_voltage', null);
-    const solarPA = this._num('sensor.rc_power_solar_panel_current', null);
-    const solarEff = this._num('sensor.rc_power_solar_efficiency', null);
-
-    const loadW = this._num('sensor.rc_power_load_power', null);
-    const loadFridge = this._num('sensor.rc_power_load_fridge', null);
-    const loadLights = this._num('sensor.rc_power_load_lights', null);
-    const loadHeater = this._num('sensor.rc_power_load_heater', null);
-    const loadPump = this._num('sensor.rc_power_load_water_pump', null);
-    const loadOther = this._num('sensor.rc_power_load_other', null);
-
-    const inv = this._getState('sensor.rc_power_inverter_status');
-    const invOutW = this._num('sensor.rc_power_inverter_output_power', null);
-    const invOutV = this._num('sensor.rc_power_inverter_output_voltage', null);
-    const invHz = this._num('sensor.rc_power_inverter_frequency', null);
-    const invTemp = this._num('sensor.rc_power_inverter_temperature', null);
-
-    const shore = this._getState('binary_sensor.rc_power_shore_connected');
-    const shoreV = this._num('sensor.rc_power_shore_voltage', null);
-    const shoreA = this._num('sensor.rc_power_shore_current', null);
-    const shoreW = this._num('sensor.rc_power_shore_power', null);
-
-    const altV = this._num('sensor.rc_power_alternator_voltage', null);
-    const altA = this._num('sensor.rc_power_alternator_current', null);
-    const altW = this._num('sensor.rc_power_alternator_power', null);
-
-    const status = rcPowerStatusFromSoc(soc);
-    const c = rcStatusToColor(status);
-
-    const batteryTop = `
-      <div style="display:flex; gap:14px; align-items:center; margin-bottom: 12px;">
-        ${this._batterySvg(soc ?? 0, c)}
-        <div class="rc-value">
-          <div class="rc-value-num rc-value-xl" style="color:${c}">${soc == null ? '—' : Math.round(soc)}</div>
-          <div class="rc-value-unit">%</div>
-        </div>
-        ${this._badge(status === 'good' ? 'Healthy' : status === 'ok' ? 'OK' : 'Low', status)}
-      </div>
-    `;
-
-    const batteryRows = `
-      ${this._row('Voltage', battV == null ? '—' : round1(battV), 'V', '', 'sensor.rc_power_battery_voltage')}
-      ${this._row('Current', battA == null ? '—' : round1(battA), 'A', '', 'sensor.rc_power_battery_current')}
-      ${this._row('Temperature', battT == null ? '—' : round1(battT), '°C', '', battT == null ? '' : 'sensor.rc_power_battery_temperature')}
-      ${this._row('Capacity', battCap == null ? '—' : round1(battCap), 'Ah', '', 'sensor.rc_power_battery_capacity')}
-      ${this._row('Cycles', battCycles == null ? '—' : Math.round(battCycles), '', '', 'sensor.rc_power_battery_cycle_count')}
-      ${this._row('Health', battHealth == null ? '—' : Math.round(battHealth), '%', '', 'sensor.rc_power_battery_health')}
-    `;
-
-    const solar = `
-      <div class="rc-value" style="margin-bottom:10px;">
-        <div class="rc-value-num rc-value-lg" data-more="sensor.rc_power_solar_power" style="color:${rcStatusToColor('good')}">${solarW == null ? '—' : Math.round(solarW)}</div>
-        <div class="rc-value-unit">W</div>
-      </div>
-      ${this._row('Today', solarToday == null ? '—' : round1(solarToday), 'kWh', '', 'sensor.rc_power_solar_energy_today')}
-      ${this._row('Total', solarTotal == null ? '—' : round1(solarTotal), 'kWh', '', 'sensor.rc_power_solar_energy_total')}
-      ${this._row('Panel V', solarPV == null ? '—' : round1(solarPV), 'V', '', 'sensor.rc_power_solar_panel_voltage')}
-      ${this._row('Panel A', solarPA == null ? '—' : round1(solarPA), 'A', '', 'sensor.rc_power_solar_panel_current')}
-      ${this._row('Efficiency', solarEff == null ? '—' : Math.round(solarEff), '%', '', 'sensor.rc_power_solar_efficiency')}
-    `;
-
-    const loads = `
-      <div class="rc-value" style="margin-bottom:10px;">
-        <div class="rc-value-num rc-value-lg" data-more="sensor.rc_power_load_power">${loadW == null ? '—' : Math.round(loadW)}</div>
-        <div class="rc-value-unit">W</div>
-      </div>
-      ${this._row('Fridge', loadFridge == null ? '—' : Math.round(loadFridge), 'W', '', 'sensor.rc_power_load_fridge')}
-      ${this._row('Lights', loadLights == null ? '—' : Math.round(loadLights), 'W', '', 'sensor.rc_power_load_lights')}
-      ${this._row('Heater', loadHeater == null ? '—' : Math.round(loadHeater), 'W', (loadHeater == null || loadHeater == 0) ? rcStatusToColor('inactive') : '', 'sensor.rc_power_load_heater')}
-      ${this._row('Water Pump', loadPump == null ? '—' : Math.round(loadPump), 'W', '', 'sensor.rc_power_load_water_pump')}
-      ${this._row('Other', loadOther == null ? '—' : Math.round(loadOther), 'W', '', 'sensor.rc_power_load_other')}
-    `;
-
-    const inverter = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-        <div data-more="sensor.rc_power_inverter_status">${this._badge((inv && inv !== 'unknown' && inv !== 'unavailable') ? rcCap(inv) : '—', (inv && inv !== 'off') ? 'good' : 'inactive')}</div>
-        <div class="rc-label" style="text-transform:uppercase; font-weight:700;">eco</div>
-      </div>
-      ${this._row('Output', invOutW == null ? '—' : Math.round(invOutW), 'W', '', 'sensor.rc_power_inverter_output_power')}
-      ${this._row('Voltage', invOutV == null ? '—' : round1(invOutV), 'V', '', 'sensor.rc_power_inverter_output_voltage')}
-      ${this._row('Frequency', invHz == null ? '—' : round1(invHz), 'Hz', '', 'sensor.rc_power_inverter_frequency')}
-      ${this._row('Temperature', invTemp == null ? '—' : round1(invTemp), '°C', '', 'sensor.rc_power_inverter_temperature')}
-    `;
-
-    const shoreTile = `
-      <div style="margin-bottom: 10px;">
-        <div data-more="binary_sensor.rc_power_shore_connected">${this._badge(shore === 'on' ? 'Connected' : 'Disconnected', shore === 'on' ? 'good' : 'inactive')}</div>
-      </div>
-      ${this._row('Voltage', shoreV == null ? '—' : round1(shoreV), shoreV == null ? '' : 'V', '', 'sensor.rc_power_shore_voltage')}
-      ${this._row('Current', shoreA == null ? '—' : round1(shoreA), shoreA == null ? '' : 'A', '', 'sensor.rc_power_shore_current')}
-      ${this._row('Power', shoreW == null ? '—' : Math.round(shoreW), shoreW == null ? '' : 'W', '', 'sensor.rc_power_shore_power')}
-    `;
-
-    const alternatorTile = `
-      <div style="margin-bottom: 10px;">
-        ${this._badge('Idle', 'inactive')}
-      </div>
-      ${this._row('Voltage', altV == null ? '—' : round1(altV), altV == null ? '' : 'V')}
-      ${this._row('Current', altA == null ? '—' : round1(altA), altA == null ? '' : 'A')}
-      ${this._row('Power', altW == null ? '—' : Math.round(altW), altW == null ? '' : 'W')}
-    `;
-
-    const summary = `
-      <div class="rc-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div>
-          <div class="rc-label" style="margin-bottom:4px;">Net Power</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md" style="color:var(--rc-good)">+${(solarW!=null && loadW!=null) ? Math.round(solarW-loadW) : '—'}</div><div class="rc-value-unit">W</div></div>
-        </div>
-        <div>
-          <div class="rc-label" style="margin-bottom:4px;">Time to Full</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md">—</div></div>
-        </div>
-        <div>
-          <div class="rc-label" style="margin-bottom:4px;">Today Generation</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md">—</div><div class="rc-value-unit">kWh</div></div>
-        </div>
-        <div>
-          <div class="rc-label" style="margin-bottom:4px;">Today Consumption</div>
-          <div class="rc-value"><div class="rc-value-num rc-value-md">—</div><div class="rc-value-unit">kWh</div></div>
-        </div>
-      </div>
-    `;
-
-    this._root.innerHTML = `
-      <div class="rc-page">
-        ${this._header('Power')}
-        <div class="rc-grid">
-          ${this._tile({title:'Battery', icon:'', content: batteryTop + batteryRows, className:'span-2'})}
-          ${this._tile({title:'Solar', icon:'☼', content: solar})}
-          ${this._tile({title:'Loads', icon:'⚡', content: loads})}
-          ${this._tile({title:'Inverter', icon:'⎓', content: inverter})}
-          ${this._tile({title:'Shore Power', icon:'⎍', content: shoreTile})}
-          ${this._tile({title:'Alternator', icon:'⎈', content: alternatorTile})}
-          ${this._tile({title:'Power Summary', icon:'', content: summary, className:'span-2'})}
-        </div>
-      </div>
-    `;
-
-  }
-}
+// Expose the base class on `window` so companion modules (e.g.
+// homeassistant/www/roamcore/roamcore-power-page.js) can extend it without
+// pulling the entire pages bundle into their scope.
+window.RoamcoreBasePage = RoamcoreBasePage;
 
 class RoamcoreNetworkPage extends RoamcoreBasePage {
   _render() {
@@ -1836,8 +1684,6 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
 
   }
 }
-
-customElements.define('roamcore-power-page', RoamcorePowerPage);
 
 
 class RoamcoreLevelPage extends RoamcoreBasePage {
