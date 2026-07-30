@@ -1,5 +1,7 @@
 # Deadbolts (smart locks)
 
+> **Superseded by `connections/deadbolts/` (Wave 3 #48, PR #52). See `connections/deadbolts/docs/recipe.md` for the canonical install guide.**
+
 **Support tier:** B (Home Assistant supported)
 
 ## What this is
