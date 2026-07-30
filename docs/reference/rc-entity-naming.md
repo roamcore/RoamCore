@@ -64,7 +64,7 @@ Keep this list short. Start with these and extend deliberately:
 - `media` — multi-room audio / music orchestration (Music Assistant etc.), only if needed
 - `bed_lift` — van bed up/down control (Happijac / DIY / linear actuators / winch + strap), only if needed
 - `hvac` — heating / cooling / climate / engine pre-heat (heated floors, AC, Webasto, etc.), only if needed
-- `safety` — lifesafety sensors (smoke / CO / gas / leak / etc.), only if needed
+- `safety` — smoke / CO / gas / safety sensors + safety automations (smoke alarm, CO monitor, propane leak, etc.), only if needed
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
 
 ---
