@@ -1,0 +1,321 @@
+# Music Assistant (multi-room van audio) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/audio-media/music-assistant.md (legacy
+# tier-c, community-only). Promoted into tier-b because RoamCore does
+# NOT ship a native Music Assistant integration — we RECIPE the well-
+# understood combination of:
+#   - the operator-side HACS `music_assistant` integration (the
+#     canonical HACS-only Music Assistant integration for HA;
+#     HA core does NOT include Music Assistant — MA is HACS-only,
+#     fetched from `music-assistant/hass-music-assistant` on GitHub
+#     via HACS → Repositories → Add,
+#     https://github.com/music-assistant/hass-music-assistant), OR
+#   - an external Music Assistant server reachable on the LAN (run
+#     via the upstream `ghcr.io/music-assistant/server` container OR
+#     `linuxserver/music-assistant` for LSI Docker hosts), pointed
+#     at by the same HACS `music_assistant` integration (Path B for
+#     fleet installs + non-HAOS hosts that need the MA server
+#     decoupled from HA),
+#   - one-line helper entities that publish the RoamCore
+#     `rc_media_*` contract tiles (one `media_player` per zone,
+#     an `any_player_playing` binary sensor, an `active_zone`
+#     sensor, a now-playing title/artist/album trio, three
+#     library-count sensors, a `pause_all` button, a `resume_last`
+#     button, and a `default_zone` select),
+# and layer a contract on top (`rc_media_*` tiles + the pause_all /
+# resume_last affordances + the default_zone select) that feeds
+# OpenClaw media queries ("what's playing?", "what zone is on?",
+# "pause all music", "resume last playlist", "switch to outdoor
+# zone", "set volume 30 on bedroom", "play <artist/album/playlist>",
+# "how many artists in library?").
+#
+# This connection is the multi-room audio slice of RoamCore for
+# vans that want a provider-agnostic (Spotify, Apple Music,
+# TuneIn/radio, local files, Chromecast/AirPlay/Sonos receivers)
+# unified audio system orchestrated by HA:
+#   - powers the `media_player.rc_media_zone_living` /
+#     `media_player.rc_media_zone_bed` /
+#     `media_player.rc_media_zone_outdoor` /
+#     `binary_sensor.rc_media_any_player_playing` /
+#     `sensor.rc_media_active_zone` /
+#     `sensor.rc_media_now_playing_title` /
+#     `sensor.rc_media_now_playing_artist` /
+#     `sensor.rc_media_now_playing_album` /
+#     `sensor.rc_media_library_artists_count` /
+#     `sensor.rc_media_library_albums_count` /
+#     `sensor.rc_media_library_tracks_count` /
+#     `button.rc_media_pause_all` /
+#     `button.rc_media_resume_last` /
+#     `select.rc_media_default_zone` tiles,
+#   - feeds OpenClaw queries ("what's playing?", "what zone is on?",
+#     "pause all music", "resume last playlist", "switch to outdoor
+#     zone", "set volume 30 on bedroom", "play
+#     <artist/album/playlist>", "how many artists in library?"),
+#   - respects RoamCore modes (Stealth silent hours auto-pause all
+#     players unless zone is `bed`; Travel mode resumes the last
+#     playlist on outdoor motion with volume cap 60 %; Boost mode
+#     defaults outdoor zone to 80 % and other zones to 30 %; power-
+#     aware automation pauses all media when the inverter SOC drops
+#     below 25 % AND shore power is disconnected; TTS announcements
+#     are pinned to the living-room zone only, never bleeding into
+#     the bedroom at night).
+#
+# Why tier-b, not tier-a:
+#   - no real Music Assistant server on the CI bench to
+#     integration-test against (we ship no appliance and no
+#     RoamCore-owned MA container; the operator's exact MA server
+#     version + provider mix varies),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses Path A's HACS add-on vs Path B's external MA server
+#     based on HAOS-vs-not + memory + fleet needs — we ship no
+#     native wrapper for either path),
+#   - so the audit-recommended config_flow can't be canonical here
+#     either. The recipe is sound (it leans on the upstream HACS
+#     `music_assistant` integration + the well-understood MA
+#     provider ecosystem + the auto-discover via zeroconf), but
+#     we cannot claim one-tap automation.
+#   - the `tier-a promotion outline` at the bottom of
+#     docs/recipe.md describes exactly what needs to happen to
+#     flip this to tier-a (RoamCore-owned MA container image +
+#     default provider stub + CI bench container that validates
+#     the provider handshake).
+#
+# Two install paths (operator picks based on host OS + memory +
+# fleet size):
+#
+#   - Path A — Music Assistant HA add-on via HACS (recommended for
+#     HAOS installs where the operator wants MA to ship with HA).
+#     The operator adds the HACS repository
+#     `music-assistant/hass-music-assistant`, installs the HACS
+#     `music_assistant` integration, configures at least one
+#     provider (Spotify OAuth, Apple Music developer token, local
+#     files library mount, TuneIn radio, or a Chromecast/AirPlay/
+#     Sonos receiver), and HA auto-discovers MA via zeroconf on
+#     the LAN — the config_flow launches.
+#
+#   - Path B — External Music Assistant server (recommended for
+#     fleet installs + non-HAOS hosts that need the MA server
+#     decoupled from HA — e.g. the HA box is on a memory-constrained
+#     VP2430 but the MA server lives on the NAS Docker host).
+#     The operator runs the upstream
+#     `ghcr.io/music-assistant/server` container (or
+#     `linuxserver/music-assistant` for LSI Docker hosts), installs
+#     the same HACS `music_assistant` integration in HA, and points
+#     the integration at the external MA server URL (default
+#     `http://ma.lan:8095`). HA imports the players; the contract
+#     tiles are identical.
+#
+# Both paths land on the same `rc_media_*` contract tiles. The
+# wizard asks the operator which path they wired; the contract
+# tiles are identical either way.
+#
+# Note on `install.config_flow: true` AND `install.hacs: true`:
+# the upstream HACS `music_assistant` integration DOES expose a
+# `config_flow` since 2023 (both for the local add-on auto-discover
+# and for pointing at an external MA server URL), AND the upstream
+# integration is HACS-only (HA core does not include Music
+# Assistant). We honestly report both. The honest-but-tier-b part
+# is: we ship NO RoamCore-owned wrapper / no native integration
+# code, no `config_flow.py`, no provider handshake on the bench —
+# we RECIPE the upstream HACS integration. When this connection
+# promotes to tier-a (a RoamCore-owned MA container image +
+# default provider stub + a CI bench container that validates the
+# provider handshake), this stays at `tier: b` but the test
+# surface expands.
+
+id: music-assistant
+name: "Music Assistant (multi-room van audio) — tier-b recipe connection"
+tier: b
+category: media
+status: beta
+version: 0.1.0
+description: |
+  Music Assistant (<https://www.music-assistant.io/>) is a provider-
+  agnostic multi-room audio orchestrator very popular in HA
+  installs — it unifies Spotify, Apple Music, TuneIn/radio, local
+  files, and Chromecast/AirPlay/Sonos receivers behind a single
+  "play everywhere" surface with per-zone controls. For vans it
+  delivers multi-zone audio (living, bed, outdoor) with HA-
+  orchestrated player discovery + per-zone volume + provider-
+  agnostic library access. Tier-b recipe: RoamCore ships no
+  native Music Assistant integration — we publish the documented
+  setup for the operator-side HACS `music_assistant` integration
+  (Path A — HA add-on, recommended for HAOS installs) OR an
+  external MA server reachable on the LAN via the same HACS
+  integration (Path B — recommended for fleet installs + non-
+  HAOS hosts), and layer a contract on top (`rc_media_*`
+  dashboard tiles: per-zone media_player entities, an
+  `any_player_playing` binary sensor, an `active_zone` sensor, a
+  now-playing title/artist/album trio, three library-count
+  sensors, a `pause_all` button, a `resume_last` button, a
+  `default_zone` select). HACS-only install (MA is HACS-only —
+  HA core does NOT include Music Assistant); auto-discover via
+  zeroconf on the LAN; no shipped MA server — you bring the
+  server (Path A add-on OR Path B external container), we bring
+  the contract.
+icon: audio
+codeowners:
+  - "@bernardc"
+tags:
+  - music-assistant
+  - media
+  - multi-room
+  - audio
+  - provider-agnostic
+  - spotify
+  - apple-music
+  - chromecast
+  - airplay
+  - sonos
+  - recipe
+  - hacs
+
+wizard:
+  # Recipe = "add the HACS repository `music-assistant/hass-music-
+  # assistant`, install the HACS `music_assistant` integration,
+  # configure at least one provider (Spotify OAuth, Apple Music
+  # developer token, local-files library mount, TuneIn radio, or
+  # a Chromecast/AirPlay/Sonos receiver), and either use the HA
+  # add-on (Path A) or point at an external MA server (Path B);
+  # create the `rc_media_*` contract helpers, and enable the
+  # recipe §6 automations". No one-tap (the operator's provider
+  # mix is a personal choice); auto-discover is TRUE because MA
+  # does announce itself via zeroconf on the LAN — honest.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: true
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Music Assistant is a HACS-only integration (HA core does not
+    include it). To recipe telemetry + per-zone control + the
+    `rc_media_*` contract tiles without manual intervention we
+    add the HACS repository `music-assistant/hass-music-assistant`,
+    install the HACS `music_assistant` integration, choose Path A
+    (HA add-on — auto-discovered via zeroconf) or Path B (external
+    MA server — pointed at via URL like `http://ma.lan:8095`),
+    configure at least one provider (Spotify OAuth, Apple Music
+    developer token, TuneIn, local-files library mount, or a
+    Chromecast/AirPlay/Sonos receiver), and let the recipe §5
+    helpers publish the `rc_media_*` contract tiles. For the
+    pause_all / resume_last affordances, the recipe maps them to
+    the MA `music_assistant.play_media` / `turn_off` service calls
+    (player-agnostic).
+
+install:
+  # No native RoamCore-owned integration code for Music Assistant.
+  # The upstream HACS `music_assistant` integration is the
+  # UPSTREAM truth (Path A: HA add-on auto-discovered via zeroconf;
+  # Path B: external MA server URL pointed at). RoamCore adds no
+  # native integration code beyond the contract tiles documented
+  # in the recipe. `ha_integration_domain: music_assistant` is the
+  # canonical HACS integration domain. `config_flow: true` because
+  # the upstream HACS `music_assistant` integration does expose a
+  # config_flow since 2023 (both for the add-on auto-discover path
+  # and for the external-server-URL path) — honest upstream truth,
+  # NOT a tier-a marker for RoamCore's tier. `hacs: true` because
+  # MA is HACS-only (HA core does not include Music Assistant).
+  ha_integration_domain: music_assistant
+  config_flow: true            # upstream MA HACS integration has a config_flow since 2023 (NOT a tier-a marker)
+  hacs: true                   # honest: MA is HACS-only
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card                  # installs the rc_media_* contract tiles
+    - may_register_media_player_entities   # the upstream MA integration registers media_player.* entities; the recipe's translation maps them into rc_media_zone_*
+    - adds_input_select_helper             # rc_media_default_zone select
+    - adds_pause_all_button                # rc_media_pause_all button + automation that pauses every rc_media_zone_*
+    - adds_resume_last_button              # rc_media_resume_last button + automation that resumes the last-known playlist on rc_media_default_zone
+    - zeroconf_advertised                  # the MA server advertises itself via zeroconf on the LAN
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_media_*
+    # ids (the new §media subsystem — added to the allowed subsystems
+    # list in docs/reference/rc-entity-naming.md alongside this slice).
+    # NO `music_assistant`, `mass`, `ma_`, `spotify`, `airplay`,
+    # `chromecast`, `sonos`, `squeezebox`, `dlna`, or `upnp` in ANY
+    # rc_* tile id (the subsystem prefix `rc_media_*` is the contract's
+    # owning-area marker; vendor names appearing AFTER the subsystem
+    # marker are forbidden).
+    - media_player.rc_media_zone_living
+    - media_player.rc_media_zone_bed
+    - media_player.rc_media_zone_outdoor
+    - binary_sensor.rc_media_any_player_playing
+    - sensor.rc_media_active_zone
+    - sensor.rc_media_now_playing_title
+    - sensor.rc_media_now_playing_artist
+    - sensor.rc_media_now_playing_album
+    - sensor.rc_media_library_artists_count
+    - sensor.rc_media_library_albums_count
+    - sensor.rc_media_library_tracks_count
+    - button.rc_media_pause_all
+    - button.rc_media_resume_last
+    - select.rc_media_default_zone
+
+openclaw:
+  queries:
+    - whats_playing
+    - what_zone_is_on
+    - pause_all_music
+    - resume_last_playlist
+    - switch_to_outdoor_zone
+    - set_volume_30_on_bedroom
+    - play_artist_album_playlist
+    - how_many_artists_in_library
+  summary_keys:
+    - any_player_playing
+    - active_zone
+    - now_playing_title
+    - now_playing_artist
+    - now_playing_album
+    - library_artists_count
+    - default_zone
+
+# Tier-b: tests are optional (and we have no real MA server on the
+# bench to integration-test against). The tests/test_connection_yml.py
+# file below asserts the manifest itself is honest about its tier +
+# requirements; that satisfies the audit without claiming fake
+# integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe
+  # doc. We publish docs/recipe.md below.
+  - docs_recipe_published
+  # And HACS-default-store listed for the HA integration domain,
+  # which means an operator who already has HACS installed can find
+  # the integration in HACS → Integrations → Explore & Add Repositories
+  # without manually adding a custom repository URL. The upstream MA
+  # HACS integration IS in the HACS default store.
+  - hacs_default_store_listed_for_ha_integration_domain
+
+tier_warnings:
+  # We have no real Music Assistant server on the bench to
+  # integration-test against.
+  - no_real_music_assistant_for_integration_test
+  # The recipe depends on the user running MA (Path A add-on OR
+  # Path B external server).
+  - recipe_depends_on_user_running_ma
+  # Optional provider choice — Spotify / Apple Music / local files
+  # / TuneIn / Chromecast / AirPlay / Sonos / DLNA / UPnP.
+  - optional_provider_choice_spotify_apple_music_local_files
+  # HACS required for the integration (MA is HACS-only).
+  - hacs_required_for_integration
+
+links:
+  official:
+    - https://www.music-assistant.io/
+    - https://www.home-assistant.io/integrations/music_assistant/
+  upstream_wiki:
+    - https://music-assistant.io/getting-started/
+    - https://music-assistant.io/providers/
+  community:
+    - https://github.com/music-assistant/hass-music-assistant
+    - https://github.com/music-assistant/server
+    - https://github.com/linuxserver/docker-music-assistant
+  docs:
+    - https://music-assistant.io/getting-started/
+    - https://github.com/music-assistant/hass-music-assistant

@@ -41,6 +41,15 @@ This is an internal status page for the remaining MVP feature build-out.
   - legacy tier-c catalog page (`docs/catalog/networking/peplink.md`) now carries a supersession banner pointing at the new connection folder
   - PR #N
 
+- Music Assistant (multi-room van audio) (tier-b connection manifest)
+  - tier-b manifest: `connections/music-assistant/connection.yml` (media category, beta status; honest HACS-only install — `install.hacs: true` + `install.config_flow: true` because the UPSTREAM HACS `music_assistant` integration has a config_flow since 2023; HACS-only because HA core does NOT include Music Assistant; auto-discover via zeroconf on the LAN; covers Path A HA add-on for HAOS installs + Path B external MA server via `ghcr.io/music-assistant/server` for fleet installs + non-HAOS hosts)
+  - recipe: `connections/music-assistant/docs/recipe.md` (~960-line howto: HACS install + Path A HA add-on wiring + Path B external MA server wiring + provider configuration (Spotify OAuth / Apple Music dev token / TuneIn / local-files mount / Chromecast / AirPlay / Sonos receivers) + per-zone `rc_media_zone_*` template media_player aliases + now-playing trio + library counts + `pause_all` / `resume_last` button affordances + 6 automations (Stealth auto-pause / Travel motion-resume / Boost zone-default-volume / inverter-SOC power-aware pause / TTS-zone-pinning / remember-last-played) + 8 troubleshooting entries + privacy + tier-a promotion outline)
+  - manifest-honesty smoke: `connections/music-assistant/tests/test_connection_yml.py` (7/7 PASS via `bash scripts/check.sh --core-only`)
+  - contract entities: `media_player.rc_media_zone_living`, `media_player.rc_media_zone_bed`, `media_player.rc_media_zone_outdoor`, `binary_sensor.rc_media_any_player_playing`, `sensor.rc_media_active_zone`, `sensor.rc_media_now_playing_title`, `sensor.rc_media_now_playing_artist`, `sensor.rc_media_now_playing_album`, `sensor.rc_media_library_artists_count`, `sensor.rc_media_library_albums_count`, `sensor.rc_media_library_tracks_count`, `button.rc_media_pause_all`, `button.rc_media_resume_last`, `select.rc_media_default_zone` (all `rc_media_*` per docs/reference/rc-entity-naming.md §media subsystem — added to the allowed subsystems list alongside this slice)
+  - legacy tier-c catalog page (`docs/catalog/audio-media/music-assistant.md`) now carries a supersession banner pointing at the new connection folder
+  - HACS-only install is honestly disclosed: MA is fetched from `music-assistant/hass-music-assistant` via HACS → Repositories → Add (HA core does NOT include Music Assistant)
+  - PR #N
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

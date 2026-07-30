@@ -1,5 +1,10 @@
 # Music Assistant
 
+> ⚠️ **Superseded by the tier-b connection manifest:** This legacy tier-c
+> spec has been promoted to `connections/music-assistant/connection.yml`
+> with the full install how-to in
+> `connections/music-assistant/docs/recipe.md`. Retained for context.
+
 **Support tier:** B (Home Assistant supported)
 
 ## What this is
