@@ -33,6 +33,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Starlink (tier-b connection manifest)
+  - tier-b manifest: `connections/starlink/connection.yml` (networking category, beta status)
+  - recipe: `connections/starlink/docs/recipe.md` (~450-line howto: Path A router-only power cycle + Path B full PSU power cycle + smart-plug wiring + REST signal-stats + 3 automations + 6 troubleshooting entries + tier-a promotion outline)
+  - manifest-honesty smoke: `connections/starlink/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
+  - contract entities: `rc_net_starlink_sleep_state`, `rc_net_starlink_allow_sleep`, `rc_net_starlink_wake_30_min`, `rc_net_starlink_reachable`, `rc_net_starlink_signal_pct`, `rc_net_starlink_quiet_start`, `rc_net_starlink_quiet_end` (all `rc_net_starlink_*` per docs/reference/rc-entity-naming.md §net subsystem)
+  - legacy tier-c catalog page (`docs/catalog/networking/starlink-sleep-timer.md`) now carries a supersession banner pointing at the new connection folder
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

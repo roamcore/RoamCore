@@ -1,0 +1,145 @@
+# Starlink (sleep timer + bring-back-up controls) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/networking/starlink-sleep-timer.md (was tier-c,
+# legacy/community-only). Stays at tier-b because RoamCore does NOT ship a
+# Starlink terminal (we have no Gen-2/Gen-3 dish on the bench to integration-
+# test against) and no native HA integration exists for the operator-side
+# power-cycle path that this connection recipes. We RECIPE the well-understood
+# combination of:
+#   - an operator-side controllable smart plug / relay / DC switch behind the
+#     Starlink PSU (or behind the router only — see recipe §3),
+#   - HA's integration for that plug (TP-Link / Shelly / Sonoff / Zigbee /
+#     Modbus / etc.) and a one-line helper `switch.rc_net_starlink_plug`,
+#   - Starlink's local HTTP API (`http://192.168.100.1/`) for signal stats
+#     (Gen-2/Gen-3 routers expose `dish-status.json`; Gen-1 has no local API
+#     and the signal tile is grayed out),
+# and layer a contract on top (`rc_net_starlink_*` tiles for sleep state,
+# wake-on-demand, reachability, signal snapshot, and quiet-hours helpers).
+#
+# This connection is the mobile-internet slice of RoamCore for Starlink users:
+#   - powers the `rc_net_starlink_sleep_state` / `allow_sleep` / `wake_30_min`
+#     / `reachable` / `signal_pct` / `quiet_start` / `quiet_end` tiles,
+#   - feeds OpenClaw queries ("is starlink on?", "wake starlink for 30
+#     minutes", "starlink signal %", "when was starlink last woken?"),
+#   - respects RoamCore modes (skip sleep while Travel unless alternator
+#     charging; respect Stealth silent hours; break sleep if nobody else has
+#     internet so remote access keeps working).
+id: starlink
+name: Starlink (sleep timer + bring-back-up controls)
+tier: b
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish +
+  router). Tier-b recipe: we publish the documented setup for an operator-
+  side controllable smart plug / relay behind the Starlink PSU (or router-
+  only power) plus Starlink's local HTTP API for signal stats, and layer
+  a contract on top (`rc_net_starlink_*` dashboard tiles: sleep state,
+  allow-sleep toggle, one-tap wake-for-30-min button, reachability,
+  signal snapshot, and quiet-hours start/end helpers). No native
+  config_flow, no shipped Starlink terminal — you bring the dish, we
+  bring the contract.
+icon: networking
+codeowners:
+  - "@bernardc"
+tags:
+  - starlink
+  - networking
+  - sleep-timer
+  - mobile-internet
+  - recipe
+
+wizard:
+  # Recipe = "put a controllable smart plug behind the Starlink PSU,
+  # expose it to HA, point the connection at it, optionally pull signal
+  # stats from Starlink's local HTTP API". No one-tap, no auto-discover
+  # — Starlink isn't on the LAN by default and the operator's smart-
+  # plug choice is unconstrained.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~25 min"
+  requires_reboot: false
+  setup_notes: |
+    Starlink is a self-contained terminal (dish + router + PSU). To
+    recipe sleep + wake without manual intervention we put a controllable
+    smart plug (TP-Link / Shelly / Sonoff / Zigbee / Modbus DC switch /
+    etc.) behind the Starlink PSU and expose it to HA via your preferred
+    integration; HA flips the plug for the sleep timer + wake-for-30-min
+    tile. For signal stats (Gen-2/Gen-3 routers only) the recipe hits
+    Starlink's local HTTP API at `http://192.168.100.1/` — Gen-1 has no
+    local API and the signal tile is grayed out.
+
+install:
+  # No native HA integration for the operator-side power-cycle path that
+  # this connection recipes. The smart-plug integration the operator
+  # already uses (TP-Link / Shelly / Sonoff / Zigbee / Modbus / ...) is
+  # the UPSTREAM truth; RoamCore adds no native integration code beyond
+  # the contract tiles documented in the recipe.
+  ha_integration_domain: null
+  config_flow: false           # RoamCore ships no native config_flow for this connection
+  hacs: false                  # tier-b: no HACS integration of our own
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card               # installs the rc_net_starlink_* contract tiles
+    - adds_input_datetime_helpers       # rc_net_starlink_quiet_start / quiet_end
+    - adds_wake_button                  # rc_net_starlink_wake_30_min button + the automation that powers the plug back on
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_net_*
+    # ids. NO `starlink`, `spacex`, `dishy`, `gen2`, `gen3` in any rc_
+    # tile id beyond the subsystem prefix `rc_net_starlink_*` (the
+    # subsystem prefix is the contract's owning-area marker; the rule
+    # against vendor names forbids vendor names appearing AFTER the
+    # subsystem marker, not the subsystem marker itself).
+    - sensor.rc_net_starlink_sleep_state
+    - switch.rc_net_starlink_allow_sleep
+    - button.rc_net_starlink_wake_30_min
+    - binary_sensor.rc_net_starlink_reachable
+    - sensor.rc_net_starlink_signal_pct
+    - input_datetime.rc_net_starlink_quiet_start
+    - input_datetime.rc_net_starlink_quiet_end
+
+openclaw:
+  queries:
+    - is_starlink_on
+    - is_starlink_allow_sleep
+    - wake_starlink_for_minutes
+    - starlink_signal_pct
+    - starlink_last_wake_at
+  summary_keys:
+    - starlink_sleep_state
+    - starlink_allow_sleep
+    - starlink_reachable
+    - starlink_signal_pct
+    - starlink_last_wake_at
+
+# Tier-b: tests are optional (and we have no real Starlink terminal to
+# test against). The tests/test_connection_yml.py file below asserts the
+# manifest itself is honest about its tier + requirements; that satisfies
+# the audit without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_starlink_terminal_for_integration_test
+  - smart_plug_required
+  - recipe_depends_on_user_smart_plug_or_relay
+
+links:
+  official:
+    - https://www.starlink.com/
+  docs:
+    - https://www.starlink.com/specifications
+    - https://github.com/sparky8517/starlink-grpc-tools  # community local-API tooling (reference only)
+  repo:
+    - https://github.com/ericpignet/starlink-exporter  # community Prometheus exporter for Starlink's local HTTP API
