@@ -33,6 +33,12 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Frigate CCTV (tier-b connection manifest)
+  - tier-b manifest: `connections/frigate/connection.yml` (cctv category, beta status)
+  - recipe: `connections/frigate/docs/recipe.md` (515-line howto: Path A HA add-on + Path B external Docker + go2rtc + MQTT contract + storage + 6+ troubleshooting entries)
+  - manifest-honesty smoke: `connections/frigate/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
+  - legacy tier-c catalog page (`docs/catalog/cctv/frigate.md`) now carries a supersession banner pointing at the new connection folder
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**

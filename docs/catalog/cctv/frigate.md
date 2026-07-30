@@ -2,6 +2,8 @@
 
 **Support tier:** C (custom/manual)
 
+> ⚠️ SUPERSEDED: This legacy tier-c spec has been promoted to a tier-b connection at [`connections/frigate/`](../../connections/frigate/). This page is retained for historical context only. The current recipe (HA add-on path, external Docker path, MQTT contract wiring, troubleshooting, tier-a promotion outline) lives at [`connections/frigate/docs/recipe.md`](../../connections/frigate/docs/recipe.md).
+
 ## What this is
 A single-page spec for a low-CPU CCTV system using Frigate + go2rtc, designed for predictable storage and practical van use.
 
