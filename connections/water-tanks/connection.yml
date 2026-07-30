@@ -1,0 +1,188 @@
+# Water tanks (fresh/grey monitoring) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/water/water-tanks.md (legacy tier-c, ~25 lines,
+# originally listed as "Support tier: C (manual / varies)" with no recipe +
+# no contract + no automations — just a placeholder that said "add your
+# preferred sensors/integration, then wire the resulting entities into your
+# dashboard"). Promoted into tier-b because RoamCore does NOT ship a native
+# tank sensor hardware; we RECIPE three upstream operator-side paths and
+# layer a vendor-neutral contract via the 17 `rc_water_*` dashboard tiles
+# per `docs/reference/rc-entity-naming.md` §water subsystem (the `water`
+# subsystem is being added to the allowed subsystems list alongside this
+# slice — see the §water subsystem entry in rc-entity-naming.md):
+#   - Path A — ESPHome tank sensor node (recommended for ESPHome-friendly
+#     installs). One ESP32 per node, ultrasonic probe (JSNSR04T /
+#     HC-SR04 waterproof) wired into GPIO for each tank; the ESPHome YAML
+#     exposes `sensor.<node>_fresh_level_pct` +
+#     `sensor.<node>_fresh_distance_cm` +
+#     `sensor.<node>_grey_level_pct` +
+#     `sensor.<node>_grey_distance_cm`. Optional
+#     `binary_sensor.<node>_pump_running` (sense the pump's +12 V wire via
+#     a CT clamp on the same ESP32) + `sensor.<node>_fresh_temperature_c`
+#     (DS18B20 in tank bay) + `binary_sensor.<node>_leak_detected`.
+#   - Path B — Generic resistive / 4–20 mA / voltage probe via Shelly UNI
+#     ADC (no ESPHome). Probe wired into a Shelly UNI's ADC input; the
+#     Shelly integration exposes `sensor.<tank>_voltage`; the HA
+#     `template:` integration translates voltage to percentage via a
+#     calibration curve.
+#   - Path C — Cloud-bridged level sensor (SeeLevel / Garnet SeeLevel II
+#     709-BTG / Mopeka Pro Check / Lippert). Vendor integration in HA core
+#     or HACS exposes the level directly; the RoamCore recipe maps the
+#     vendor entity to the contract tile.
+
+id: water-tanks
+name: "Water tanks (fresh/grey monitoring) — tier-b recipe connection"
+tier: b
+category: water
+status: beta
+version: 0.1.0
+description: |
+  Water tanks — fresh + grey water telemetry + pump runtime + leak
+  detection + freeze-risk monitoring for vans — is the vendor-neutral
+  surface that turns "is the fresh tank still full enough to last the
+  night?" into a dashboard tile + a push notification + a mode-aware
+  automation. RoamCore does NOT ship a native tank sensor hardware;
+  this connection RECIPEs three upstream operator-side paths and
+  layers a vendor-neutral contract via the 17 `rc_water_*` dashboard
+  tiles per `docs/reference/rc-entity-naming.md` §water subsystem
+  (the `water` subsystem is being added to the allowed subsystems
+  list alongside this slice). The recipe covers fresh + grey tank
+  level + volume + days-remaining + pump runtime + leak detection +
+  freeze-risk + operator-tunable tank size + operator-tunable mode
+  (auto / stealth_only / silent / disabled), plus mode-aware
+  automations (Stealth silent hours auto-mute warnings unless they
+  hit the leak / freeze / empty thresholds), safety-first alerts
+  (leak_detected immediately stops the pump + sends a high-priority
+  push notification; freeze_risk triggers the heated-floors +
+  hvac-basics connections' freeze-warning path; fresh_empty_warning
+  surfaces prominently on the dashboard; pump_running_too_long
+  automatically stops the pump after 10 min to prevent battery
+  drain if a faucet was left open), and the multi-mode aggregate
+  that surfaces "is the water system within safe bounds?" as a
+  single dashboard tile.
+icon: water
+codeowners:
+  - "@bernardc"
+tags:
+  - water
+  - fresh
+  - grey
+  - tank
+  - pump
+  - leak
+  - freeze
+  - mode-aware
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~25 min"
+  requires_reboot: false
+  setup_notes: |
+    Water tanks requires the operator to (a) choose one of the
+    three upstream paths (Path A ESPHome tank sensor node per tank +
+    per-pump CT clamp + optional DS18B20 + optional leak sensor;
+    Path B Shelly UNI + ADC probe per tank + the operator's choice
+    of resistive / 4–20 mA / voltage probe; Path C SeeLevel /
+    Garnet / Mopeka / Lippert vendor integration), (b) confirm the
+    operator's chosen integration is already configured in HA and
+    exposes at least one upstream entity (sensor.* / binary_sensor.*
+    / switch.*), (c) wire the upstream entity -> contract
+    `rc_water_*` mapping via HA core `template:` (or HA core
+    `entity` customize-domain alias), (d) configure the operator-
+    tunable tank sizes via `number.rc_water_fresh_tank_size_l` +
+    `number.rc_water_grey_tank_size_l` + the calibration curve for
+    Path B (empty-voltage + full-voltage), (e) wire the §7 safety
+    interlocks (leak detected / freeze risk / fresh empty / pump
+    running too long / mode-aware lockouts) BEFORE first use, (f)
+    wire the §8 automations (auto-push on fresh low / auto-push on
+    grey full / auto-stop pump when pump running too long /
+    auto-push critical on leak detected / auto-engage heated-floors
+    on freeze risk / mode-aware scheduling so warnings auto-mute
+    in Stealth silent hours unless they hit the leak / freeze /
+    empty thresholds) AFTER the safety interlocks.
+
+install:
+  ha_integration_domain: sensor
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - registers_sensor_entities_for_each_tank
+    - may_register_binary_sensor_entities_for_leak_pump_running_freeze
+    - may_register_via_shelly_uni_for_path_b
+    - may_register_via_vendor_integration_for_path_c
+
+dashboard:
+  title: "Water"
+  tiles:
+    - sensor.rc_water_fresh_level_pct
+    - sensor.rc_water_fresh_level_l
+    - sensor.rc_water_fresh_days_remaining
+    - sensor.rc_water_grey_level_pct
+    - sensor.rc_water_grey_level_l
+    - binary_sensor.rc_water_grey_full_warning
+    - binary_sensor.rc_water_fresh_low_warning
+    - binary_sensor.rc_water_fresh_empty_warning
+    - binary_sensor.rc_water_pump_running
+    - sensor.rc_water_pump_runtime_min_last_24h
+    - binary_sensor.rc_water_pump_running_too_long
+    - binary_sensor.rc_water_leak_detected
+    - binary_sensor.rc_water_freeze_risk
+    - sensor.rc_water_fresh_temperature_c
+    - number.rc_water_fresh_tank_size_l
+    - number.rc_water_grey_tank_size_l
+    - select.rc_water_mode
+
+openclaw:
+  queries:
+    - "fresh water level?"
+    - "grey water level?"
+    - "days of fresh water remaining?"
+    - "is fresh water low?"
+    - "is fresh water empty?"
+    - "is grey full?"
+    - "is the water pump running?"
+    - "how long has the pump been running?"
+    - "is there a leak?"
+    - "is there a freeze risk?"
+    - "set fresh tank size to <N> litres"
+    - "set grey tank size to <N> litres"
+    - "set water mode to auto/stealth_only/silent/disabled"
+  summary_keys:
+    - fresh_level_pct
+    - fresh_level_l
+    - fresh_days_remaining
+    - grey_level_pct
+    - grey_level_l
+    - grey_full_warning
+    - fresh_low_warning
+    - pump_running
+    - pump_running_too_long
+    - leak_detected
+    - freeze_risk
+    - water_mode
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_water_tank_for_integration_test
+  - recipe_depends_on_user_running_tank_sensors_plus_pump_sense
+  - optional_esphome_vs_shelly_uni_vs_vendor_choice
+  - requires_operator_wiring_safety_freeze_leak_alerts_before_first_use
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/sensor/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/shelly/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/binary_sensor/

@@ -60,6 +60,7 @@ Keep this list short. Start with these and extend deliberately:
 - `location` — GPS / positioning
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
+- `water` — fresh / grey water tanks + pump + leak + freeze
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
 
 ---
