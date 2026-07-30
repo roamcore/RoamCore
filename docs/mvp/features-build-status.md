@@ -47,6 +47,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - contract entities: `rc_net_dns_blocked_today`, `rc_net_dns_blocked_pct`, `rc_net_dns_blocker_reachable`, `rc_net_dns_queries_total`, `rc_net_dns_blocker_enabled`, `rc_net_dns_resolver_status`, `rc_net_dns_gravity_updated` (all `rc_net_dns_*` per docs/reference/rc-entity-naming.md §net subsystem)
   - legacy tier-c catalog pages (`docs/catalog/homelab/pi-hole.md` + `docs/catalog/homelab/adguard-home.md`) now carry supersession banners pointing at the new connection folder
 
+- NAS (Network Attached Storage — Synology / QNAP / generic SMB) (tier-b connection manifest)
+  - tier-b manifest: `connections/nas/connection.yml` (homelab category, beta status; covers Synology DSM Path A + QNAP Path B + generic SMB/NFS Path C in one slice)
+  - recipe: `connections/nas/docs/recipe.md` (~770-line howto: Path A Synology DSM install + Path B QNAP install + Path C SMB share + backup target wiring + rc_homelab_nas_* contract wiring + 4 automations + 8 troubleshooting entries + tier-a promotion outline)
+  - manifest-honesty smoke: `connections/nas/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
+  - contract entities: `rc_homelab_nas_storage_used_pct`, `rc_homelab_nas_storage_total_gb`, `rc_homelab_nas_storage_free_gb`, `rc_homelab_nas_reachable`, `rc_homelab_nas_smart_status_ok`, `rc_homelab_nas_last_backup_at`, `rc_homelab_nas_backup_running`, `rc_homelab_nas_cpu_pct`, `rc_homelab_nas_memory_pct` (all `rc_homelab_nas_*` per docs/reference/rc-entity-naming.md `homelab` subsystem — being introduced by this slice; canonicalization pass will codify the mapping)
+  - legacy tier-b catalog page (`docs/catalog/homelab/nas.md`) now carries a supersession banner pointing at the new connection folder
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
