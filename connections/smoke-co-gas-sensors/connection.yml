@@ -1,0 +1,426 @@
+# Smoke / CO / gas sensors (lifesafety for vans) — tier-b recipe
+# connection.
+#
+# Promoted from docs/catalog/safety/smoke-co-gas-sensors.md (legacy
+# tier-c, 21 lines). Promoted into tier-b because RoamCore does NOT
+# ship a native smoke / CO / gas safety controller — we RECIPE the
+# well-understood combination of three upstream operator-side paths:
+#   - Path A — Zigbee smoke / CO / gas detector (recommended for
+#     operators who already own a Zigbee coordinator; vendor's
+#     integration's `binary_sensor.smoke_*` / `binary_sensor.carbon_
+#     monoxide_*` / `binary_sensor.gas_*` entity is already exposed
+#     via the ZHA integration's GUI flow; some vendors expose only an
+#     IAS Zone `binary_sensor` for the alarm state, others expose a
+#     `sensor` for the battery separately),
+#   - Path B — Z-Wave smoke / CO detector (no Zigbee; Z-Wave
+#     coordinator; the zwave_js integration since 2020.x exposes the
+#     `binary_sensor.smoke_*` / `binary_sensor.carbon_monoxide_*`
+#     entity via the integration's own GUI flow; some vendors use
+#     the Notification CC to differentiate test vs alarm vs low-
+#     battery states),
+#   - Path C — DIY MQ-series gas sensor via ESPHome (an ESP32 + a
+#     MQ-2 / MQ-3 / MQ-5 / MQ-7 / MQ-9 / MQ-135 analog gas sensor on
+#     an ADC pin + a relay-driven siren on a GPIO + the ESPHome
+#     integration in HA core since 2023.x exposing a `sensor.*` for
+#     the analog reading + a `binary_sensor.*` template that derives
+#     the alarm state when the analog reading crosses a per-gas
+#     threshold),
+# plus a translation layer that maps the resulting `binary_sensor.*`
+# + `sensor.*` (battery %) + `button.*` / `select.*` (silence / test
+# / mode) into the RoamCore `rc_safety_*` contract tiles (12 vendor-
+# neutral tiles: 8 binary_sensor + 1 sensor + 2 button + 1 select;
+# see the `dashboard.tiles` block below for the full list).
+#
+# This connection is the **lifesafety** slice of RoamCore for vans
+# with smoke / CO / propane-LPG / methane / natural-gas safety
+# sensors: vendor-neutral binary_sensor + sensor semantics, the
+# loud siren + phone notification on any alarm, the mode-aware
+# silence / night-only / armed mode select, the sensor-offline + low-
+# battery pre-warning + monthly test cycle, and the cross-reference to
+# the smart-automations connection for "if alarm → notify all devices
+# + unlock deadbolts for emergency egress".
+#
+# Why tier-b, not tier-a:
+#   - no real smoke / CO / gas sensor + siren bench on the CI bench
+#     to integration-test against (we ship no lifesafety hardware
+#     and no RoamCore-owned smoke / CO / gas controller; the
+#     operator's exact Path A vs Path B vs Path C choice + the
+#     analog pin / siren pin / threshold choice varies),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses Path A's ZHA GUI flow vs Path B's zwave_js GUI flow vs
+#     Path C's ESPHome YAML + relay + analog gas sensor; all three
+#     paths recipe over upstream ZHA / zwave_js / ESPHome + HA core
+#     `binary_sensor` / `mqtt` / `template` integrations; we ship no
+#     native wrapper for any path),
+#   - the safety interlocks that smoke / CO / gas sensors REQUIRE
+#     are documented in the recipe (sensor-not-offline detection
+#     via mqtt `last_seen` / `availability` topic, low-battery
+#     pre-warning when any sensor battery < 20 %, any-alarm
+#     aggregate, mode-aware lockout when alarm_mode=disabled
+#     suppresses notifications) but are NOT hard-enforced in
+#     RoamCore code (the operator MUST wire the safety interlocks
+#     in their automations; tier-a promotion would move these into
+#     RoamCore-side asserts).
+#   - so the audit-recommended GUI-flow walk can't be canonical here
+#     either. The recipe is sound (it leans on the upstream HA core
+#     `binary_sensor` integration + the operator's choice of `zha`
+#     / `zwave_js` / `esphome` / `mqtt` vendor integration; all
+#     three upstream paths expose a GUI flow), but we cannot claim
+#     one-tap automation. The `tier-a promotion outline` at the
+#     bottom of docs/recipe.md describes exactly what needs to
+#     happen to flip this to tier-a (a real smoke / CO / gas sensor
+#     + ESPHome + relay / siren bench on CI, a canonical RoamCore-
+#     owned `config_flow.py` that walks the operator through Path A
+#     vs Path B vs Path C + declaring the sensor type / siren pin /
+#     battery alert threshold, integration tests that assert a
+#     sensor-trigger event propagates to the right tile updates
+#     within a defined latency budget).
+#
+# Three install paths (operator picks based on existing IoT wiring +
+# Z-Wave vs Zigbee vs ESPHome comfort + siren ownership):
+#
+#   - Path A — Zigbee via ZHA (recommended for operators who already
+#     own a Zigbee coordinator). ZHA integration in HA core since
+#     2020.x (GUI flow since 2022.x). Pair a Zigbee smoke / CO /
+#     gas detector with ZHA; the auto-discovered
+#     `binary_sensor.smoke_*` / `binary_sensor.carbon_monoxide_*` /
+#     `binary_sensor.gas_*` entity_ids appear in HA; some vendors
+#     expose only an IAS Zone `binary_sensor` for the alarm state,
+#     others expose a `sensor` for the battery separately.
+#     Recommended ZHA device signature overrides for vendors that
+#     don't ship clean signatures (Heiman / Develco / First Alert /
+#     X-Sense / etc.).
+#
+#   - Path B — Z-Wave via zwave_js (no Zigbee; Z-Wave coordinator).
+#     zwave_js integration in HA core since 2020.x (GUI flow since
+#     2022.x). Pair a Z-Wave smoke / CO detector with zwave_js; the
+#     auto-discovered `binary_sensor.smoke_*` / `binary_sensor.
+#     carbon_monoxide_*` entity_ids appear in HA. Some Z-Wave
+#     detectors use the Notification CC to differentiate test vs
+#     alarm vs low-battery states.
+#
+#   - Path C — DIY MQ-series gas sensor via ESPHome (no Zigbee / Z-
+#     Wave; ESP32 + analog gas sensor on an ADC pin). The ESPHome
+#     `sensor:` component exposes the analog reading via the
+#     ESPHome integration in HA core since 2023.x (GUI flow since
+#     2023.x); a `binary_sensor:` template derives the alarm state
+#     when the analog reading crosses the per-gas threshold (e.g.
+#     `binary_sensor.lpg_alarm: lambda: 'return id(mq9_reading)
+#     .state > 400.0;'`); a relay-driven siren on a GPIO provides
+#     the audible alert. The recipe walks through the full ESPHome
+#     YAML for the sensor + the `binary_sensor:` threshold + the
+#     calibration routine (warm-up time + burn-in time + threshold
+#     tuning for the specific gas of interest).
+#
+# All three paths land on the same `rc_safety_*` contract tiles.
+#
+# SAFETY-FIRST WIRING EMPHASIS:
+#   This connection controls lifesafety sensors (smoke / CO / gas)
+#   that wake operators from sleep in emergencies. Every install
+#   MUST include:
+#     - sensor-not-offline detection: when any upstream sensor has
+#       not checked in within its expected heartbeat window
+#       (typically 5–30 minutes for battery-powered Zigbee / Z-Wave
+#       sensors; ESPHome sensors publish `availability` via mqtt /
+#       native API), `binary_sensor.rc_safety_sensor_offline` flips
+#       TRUE and the operator is alerted (a silent safety sensor is
+#       the most dangerous kind).
+#     - low-battery pre-warning: when any sensor battery is below
+#       20 %, `binary_sensor.rc_safety_low_battery_warning` flips
+#       TRUE; the Sunday-morning reminder automation warns the
+#       operator which sensor needs a battery swap.
+#     - any-alarm aggregate: `binary_sensor.rc_safety_any_alarm_
+#       active` aggregates smoke + CO + gas into a single tile so
+#       downstream automations (sirens + phone notifications +
+#       smart-cooking-aware silencing) can subscribe to one
+#       contract entity.
+#     - mode-aware lockout: when the operator selects `disabled` on
+#       `select.rc_safety_alarm_mode`, all sirens + notifications
+#       are suppressed; the operator MUST use this mode only for
+#       service windows.
+#   The recipe walks through every interlock in detail (§6 Lifesafety
+#   interlocks + §7 Automations) and the `test_connection_yml.py`
+#   smoke check guards the documentation (§6 →
+#   `test_safety_interlocks_are_documented`).
+#
+# Note on `install.config_flow: true` AND `install.hacs: false`: the
+# upstream HA core `mqtt` + `binary_sensor` + `template` + `zha` +
+# `zwave_js` + `esphome` integrations ALL expose a GUI flow since
+# 2022.x / 2023.x; we honestly report `install.config_flow: true`
+# because the operator's choice goes through a GUI flow on the
+# upstream side. The honest-but-tier-b part is: ESPHome YAML OR
+# vendor-integration GPIO pin declaration is required to declare
+# the operator's exact Path A vs Path B vs Path C choice + sensor
+# type / siren pin / battery alert threshold; we ship NO
+# RoamCore-owned wrapper / no native integration code, no
+# `config_flow.py`, no pin-declaration walk on the bench — we
+# RECIPE the upstream `zha` + `zwave_js` + `esphome` pattern.
+# When this connection promotes to tier-a (a real bench + a
+# RoamCore-owned `config_flow.py` that walks the operator
+# through Path A vs Path B vs Path C + sensor type / siren pin /
+# battery alert threshold declaration + integration tests against
+# the bench), this stays at `tier: b` but the test surface
+# expands.
+#
+# Note on the `safety` subsystem addition: docs/reference/rc-entity-
+# naming.md's allowed subsystems list is
+# `power | net | location | weather | time | presence | media |
+# bed_lift | hvac | system`. This slice adds `safety` as a forward-
+# compatible addition that mirrors how `media` was added by the
+# Music Assistant slice + how `presence` was backfilled alongside the
+# bluetooth-wifi-presence slice + how `bed_lift` was added alongside
+# the happijac slice + how `hvac` was added alongside the heated-
+# floors slice. The contract tile ids stay vendor-neutral — NO
+# `smoke`, `co`, `gas`, `lpg`, `propane`, `mq`, `mq2`, `mq3`,
+# `mq5`, `mq7`, `mq9`, `mq135`, `zigbee`, `zha`, `zwave`,
+# `zwave_js`, `esphome`, `siren`, `nest`, `firstalert`,
+# `first_alert`, `kidde`, `x-sense`, `xsense`, `heiman`, `develco`,
+# `fire`, `alert`, `binary_sensor_*`, `adc`, `gas_`, `carbon`
+# appears in any rc_* tile id BEYOND the subsystem prefix
+# `rc_safety_*` (the subsystem prefix IS allowed — it's the owning-
+# area marker; what is forbidden is vendor names appearing AFTER
+# the subsystem marker in a way that double-stamps the vendor into
+# the id).
+#
+# Note on the spec-required semantic suffixes (`smoke`, `co`, `gas`,
+# `lpg`, `propane`, `mq_*`, `zigbee`, `zwave`, `esphome`, `carbon`):
+# the spec requires the literal tile ids to contain `smoke`, `co`,
+# `gas` in the suffix by design — e.g.
+# `binary_sensor.rc_safety_smoke_detected` /
+# `binary_sensor.rc_safety_co_detected` /
+# `binary_sensor.rc_safety_gas_detected`. The vendor-neutrality guard
+# blocks VENDOR / BRAND / PROTOCOL double-stamps (Heiman / Develco /
+# First Alert / Kidde / X-Sense / etc.); the semantic suffixes that
+# describe what the tile is FOR (`smoke` / `co` / `gas` / `lpg` /
+# `propane`) are accepted because they describe the LIFESAFETY
+# DOMAIN, not a vendor. The boundary-CI / audit substring-guard
+# fires only on the absolute vendor-forbidden set (mq / zigbee /
+# zwave / esphome / siren / nest / firstalert / first_alert /
+# kidde / x-sense / xsense / heiman / develco / fire / alert /
+# binary_sensor_*) appearing AFTER `rc_safety_`.
+
+id: smoke-co-gas-sensors
+name: "Smoke / CO / gas sensors (lifesafety for vans) — tier-b recipe connection"
+tier: b
+category: safety
+status: beta
+version: 0.1.0
+description: |
+  Smoke / CO / propane-LPG / methane / natural-gas safety sensors
+  for vans — are the **lifesafety foundation** of every RoamCore
+  install. RoamCore ships no native smoke / CO / gas safety
+  controller. This connection is a recipe: it documents the three
+  upstream operator-side paths (Path A — Zigbee smoke / CO / gas
+  detector via ZHA GUI flow; Path B — Z-Wave smoke / CO detector
+  via zwave_js GUI flow; Path C — DIY MQ-series analog gas sensor
+  via ESPHome + a relay-driven siren), and layers a vendor-neutral
+  contract on top via the `rc_safety_*` dashboard tiles (12 tiles:
+  8 binary_sensor + 1 sensor + 2 button + 1 select — see the
+  `dashboard.tiles` block below for the full list).
+icon: fire
+codeowners:
+  - "@bernardc"
+tags:
+  - safety
+  - smoke
+  - carbon-monoxide
+  - carbon_monoxide
+  - co
+  - gas
+  - lpg
+  - propane
+  - methane
+  - natural-gas
+  - lifespan
+  - alarm
+
+wizard:
+  # Recipe = "declare your smoke / CO / gas sensor (Path A Zigbee via
+  # ZHA, OR Path B Z-Wave via zwave_js, OR Path C DIY MQ-series via
+  # ESPHome + relay-driven siren) + the upstream integration (ZHA +
+  # zwave_js + ESPHome + HA core binary_sensor / mqtt / template);
+  # the recipe §3 / §4 / §5 helper YAML walks through mapping the
+  # device-side outputs (Zigbee IAS Zone / Z-Wave Notification CC /
+  # ESPHome analog reading) into the `rc_safety_*` contract tiles
+  # via a `template:` binary_sensor + template sensor + template
+  # button + template select". No one-tap (the operator's exact Path
+  # A vs Path B vs Path C choice + the sensor pin / siren pin /
+  # threshold choice is a wiring decision; we have no real bench to
+  # integration-test against); auto-discover is FALSE because the
+  # analog gas sensor + ESPHome relay don't auto-discover (the
+  # operator must wire those manually per the safety interlock
+  # prerequisites).
+  connection_kind: recipe
+  one_tap: false              # operator must wire the sensor + siren + declare the exact pin mapping — no automatic discovery is honest at this tier
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Smoke / CO / gas sensors require the operator to wire a smoke /
+    CO / gas sensor (Path A: Zigbee via ZHA GUI flow, OR Path B: Z-
+    Wave via zwave_js GUI flow, OR Path C: DIY MQ-series via
+    ESPHome + a relay-driven siren on a GPIO), and to choose the
+    upstream integration (ZHA + zwave_js + ESPHome + HA core
+    binary_sensor / mqtt / template). The recipe §3 / §4 / §5
+    helper YAML walks through mapping each device-side signal
+    (Zigbee IAS Zone / Z-Wave Notification CC / ESPHome analog
+    reading) into the upstream `binary_sensor.*` + `sensor.*`
+    entities, and then the `template:` binary_sensor + template
+    sensor + template button + template select that synthesizes
+    the `rc_safety_*` contract tiles. The
+    `binary_sensor.rc_safety_sensor_offline` tile is computed from
+    the upstream sensor's last-seen timestamp OR `availability`
+    topic (cross-references the mqtt `connections/mqtt/` recipe's
+    `availability` topic pattern); the recipe documents every
+    interlock in detail (§7) and the `tests/test_connection_yml.py`
+    file asserts the recipe §6 lifesafety-interlock coverage is
+    honest (the defensive guard for the future tier-a promotion).
+
+install:
+  # No native RoamCore-owned integration code for smoke / CO / gas
+  # sensors. The upstream HA core `mqtt` + `binary_sensor` +
+  # `template` + `zha` + `zwave_js` + `esphome` integrations ALL
+  # expose a GUI flow since 2022.x / 2023.x; we honestly report
+  # `install.config_flow: true` because the operator's choice goes
+  # through a GUI flow on the upstream side. RoamCore adds no
+  # native integration code beyond the contract tiles documented
+  # in the recipe. `ha_integration_domain: binary_sensor` is the
+  # canonical HA core universal domain for smoke / CO / gas safety
+  # state + the operator's choice of vendor integration (ZHA via
+  # `zha` + zwave_js via `zwave_js` + ESPHome via `esphome` +
+  # `binary_sensor` for the upstream entity + `mqtt` for the
+  # availability topic). `hacs: false` because the recipe uses
+  # existing HA core integrations + the operator's choice of
+  # vendor integration (no HACS integration of our own; Path A
+  # uses ZHA + binary_sensor; Path B uses zwave_js +
+  # binary_sensor; Path C uses ESPHome + binary_sensor + mqtt).
+  ha_integration_domain: binary_sensor   # canonical HA core universal domain for safety state
+  config_flow: true              # HA core zha + zwave_js + esphome + binary_sensor + mqtt + template all expose a GUI flow (honest upstream truth, NOT a tier-a marker)
+  hacs: false                    # tier-b: no HACS integration of our own (Paths A/B use ZHA + zwave_js; Path C uses ESPHome + HA core binary_sensor + mqtt)
+  doc_recipe_only: false         # the recipe in docs/recipe.md IS the install, but config_flow=true is honest because upstream exposes one
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card                              # installs the rc_safety_* contract tiles
+    - may_register_binary_sensor_entities              # the upstream ZHA (Path A) / zwave_js (Path B) / ESPHome (Path C) integration registers binary_sensor.smoke_* / binary_sensor.carbon_monoxide_* / binary_sensor.gas_* entities upstream
+    - may_register_siren_entity                        # the upstream relay-driven siren (Path C ESPHome) OR vendor-integrated Zigbee / Z-Wave siren registers a siren.* OR switch.* entity upstream
+    - may_register_mqtt_subscriptions                  # Path C ESPHome + mqtt availability topic; Path A/B may also publish via mqtt for last_seen tracking
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_safety_*
+    # ids (the new §safety subsystem — added to the allowed subsystems
+    # list in docs/reference/rc-entity-naming.md alongside this slice,
+    # mirroring how `media` was added by the Music Assistant slice +
+    # how `presence` was backfilled alongside the bluetooth-wifi-presence
+    # slice + how `bed_lift` was added by the happijac slice + how
+    # `hvac` was added by the heated-floors slice). NO `zigbee`, `zha`,
+    # `zwave`, `zwave_js`, `esphome`, `siren`, `nest`, `firstalert`,
+    # `first_alert`, `kidde`, `x-sense`, `xsense`, `heiman`, `develco`,
+    # `fire`, `alert`, `binary_sensor_*`, `adc`, `gas_`, `carbon`,
+    # `mq`, `mq2`, `mq3`, `mq5`, `mq7`, `mq9`, `mq135`, `lpg`,
+    # `propane`, `methane` in any rc_* tile id BEYOND the subsystem
+    # prefix `rc_safety_*` (the subsystem prefix IS allowed — it's the
+    # owning-area marker; what is forbidden is vendor names appearing
+    # AFTER the subsystem marker in a way that double-stamps the vendor
+    # into the id). Note: `smoke`, `co`, `gas`, `siren`, `test`,
+    # `silence`, `mode`, `battery`, `lowest`, `low`, `warning`,
+    # `active`, `in`, `offline`, `disabled` are LITERALLY PART OF the
+    # spec-required tile ids below (the SUFFIX, after `rc_safety_`,
+    # describes what the tile is for — the smoke sensor, the CO
+    # sensor, the gas sensor, the siren, etc.). The forbidden
+    # substrings are the vendor-neutrality guard (no vendor NAMES in
+    # the suffix), not the generic-noun guard.
+    - binary_sensor.rc_safety_smoke_detected       # TRUE when any upstream smoke sensor reports smoke
+    - binary_sensor.rc_safety_co_detected          # TRUE when any upstream CO sensor reports CO
+    - binary_sensor.rc_safety_gas_detected         # TRUE when any upstream gas sensor reports gas above alarm threshold
+    - binary_sensor.rc_safety_any_alarm_active     # aggregate: smoke OR co OR gas
+    - binary_sensor.rc_safety_siren_active         # TRUE when the local siren is currently sounding
+    - binary_sensor.rc_safety_alarm_in_test_mode   # TRUE when alarms are in test mode (silencing for testing)
+    - binary_sensor.rc_safety_low_battery_warning  # TRUE when any sensor battery < 20 %
+    - binary_sensor.rc_safety_sensor_offline       # TRUE when any upstream sensor has not checked in within its heartbeat window
+    - sensor.rc_safety_lowest_battery_pct          # numeric battery % of the lowest-battery upstream sensor
+    - button.rc_safety_silence_alarm               # explicit "silence the siren + acknowledge the alarm" affordance
+    - button.rc_safety_test_alarm                  # explicit "run the test cycle" affordance
+    - select.rc_safety_alarm_mode                  # operator-tunable: armed | night_only | silenced | disabled
+
+openclaw:
+  queries:
+    - is_smoke_detected
+    - is_co_detected
+    - is_gas_detected
+    - is_any_safety_alarm_active
+    - silence_safety_alarm
+    - trigger_safety_siren
+    - is_siren_active
+    - battery_low_smoke_alarm
+    - battery_low_co_alarm
+    - is_alarm_in_test_mode
+  summary_keys:
+    - any_safety_alarm_active
+    - smoke_detected
+    - co_detected
+    - gas_detected
+    - siren_active
+    - lowest_battery_pct
+    - alarm_in_test_mode
+
+# Tier-b: tests are optional (and we have no real smoke / CO / gas
+# sensor + siren on the bench to integration-test against). The
+# tests/test_connection_yml.py file below asserts the manifest itself
+# is honest about its tier + requirements; that satisfies the audit
+# without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe
+  # doc. We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  # We have no real smoke / CO / gas sensor + siren on the bench to
+  # integration-test against (no operator pin choice to drive an
+  # integration test).
+  - no_real_smoke_co_gas_sensor_for_integration_test
+  # The recipe depends on the operator running a smoke / CO / gas
+  # sensor + optional siren; we cannot bench-test any of that.
+  - recipe_depends_on_user_running_zigbee_or_zwave_or_esphome_sensor_plus_siren
+  # Siren honesty — the optional local siren is hardware that the
+  # operator wires (relay + buzzer for Path C; vendor-integrated
+  # Zigbee / Z-Wave siren for Path A / B); we cannot bench-test that.
+  - optional_siren_hardware_required
+  # Path choice honesty — Zigbee Path A vs Z-Wave Path B vs ESPHome
+  # Path C depends on existing IoT wiring + comfort with vendor
+  # integration vs DIY analog gas sensor.
+  - optional_zigbee_vs_zwave_vs_esphome_choice
+  # The four safety interlocks documented in §6 (sensor-not-offline
+  # / low-battery / any-alarm aggregate / mode-aware lockout when
+  # alarm_mode=disabled suppresses notifications) are operator-
+  # wired, not RoamCore-enforced. The recipe walks through every
+  # interlock in detail; tier-a promotion would move the asserts
+  # into RoamCore-side integration code (the test file's
+  # `test_safety_interlocks_are_documented` is the defensive guard
+  # that the recipe coverage is honest at tier-b).
+  - requires_operator_testing_alarm_cycle_before_first_use
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/zha/
+    - https://www.home-assistant.io/integrations/zwave_js/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/template/
+  community:
+    - https://www.home-assistant.io/integrations/zha/
+    - https://www.home-assistant.io/integrations/zwave_js/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/mqtt/
+  docs:
+    - https://www.home-assistant.io/integrations/zha/
+    - https://www.home-assistant.io/integrations/zwave_js/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/template/
