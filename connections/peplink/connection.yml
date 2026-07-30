@@ -1,0 +1,268 @@
+# Peplink (multi-WAN router for van internet) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/networking/peplink.md (legacy tier-c,
+# community-only). Promoted into tier-b because RoamCore does NOT ship a
+# native Peplink integration — we RECIPE the well-understood combination
+# of:
+#   - the operator-side HA core `snmp` integration (the most common
+#     operator-side path; the Peplink Balance / MAX / EP-series exposes
+#     a stable MIB-II + Peplink-private OID surface for WAN state,
+#     signal strength per WAN, WAN priority, load-balance health,
+#     uptime, throughput, and public IP per WAN),
+#   - OR the Peplink InControl 2 REST API cloud path
+#     (`https://api.ic.peplink.com/...` with an API key) via the
+#     community `hass-incontrol2` HACS integration for operators
+#     managing >1 Peplink device (a fleet),
+#   - one-line helper entities that publish the RoamCore
+#     `rc_net_peplink_*` contract tiles (reachable, WAN1/WAN2 state,
+#     active WAN, WAN failover count in last 24h, load-balance
+#     health, uptime, public IP of the active WAN, a one-tap refresh
+#     button, a one-tap force-failover button for manual control or
+#     testing, and a `select` to choose WAN priority: WAN1 first /
+#     WAN2 first / load-balanced),
+# and layer a contract on top (`rc_net_peplink_*` tiles + the
+# one-tap refresh + the one-tap force-failover + the WAN-priority
+# `select`) that feeds OpenClaw multi-WAN queries ("is peplink
+# online?", "what's peplink's active WAN?", "how many peplink
+# failovers in the last 24h?", "what's peplink's load-balance
+# health?", "what's peplink's public IP?", "force a peplink
+# failover", "refresh peplink telemetry").
+#
+# This connection is the multi-WAN glue of RoamCore for vans that
+# already use a Peplink router to bond/failover multiple WANs:
+#   - powers the `rc_net_peplink_reachable` /
+#     `rc_net_peplink_wan1_state` /
+#     `rc_net_peplink_wan2_state` /
+#     `rc_net_peplink_active_wan` /
+#     `rc_net_peplink_wan_failover_count_24h` /
+#     `rc_net_peplink_wan_health_score` /
+#     `rc_net_peplink_uptime_hours` /
+#     `rc_net_peplink_public_ip` /
+#     `button.rc_net_peplink_refresh_now` /
+#     `button.rc_net_peplink_force_failover` /
+#     `select.rc_net_peplink_wan_priority` tiles,
+#   - feeds OpenClaw queries ("is peplink online?", "what's
+#     peplink's active WAN?", "how many peplink failovers in the
+#     last 24h?", "what's peplink's load-balance health?", "what's
+#     peplink's public IP?", "force a peplink failover",
+#     "refresh peplink telemetry"),
+#   - respects RoamCore modes (treat Peplink as the multi-WAN
+#     glue between Teltonika (cellular) + Starlink (long-range WAN)
+#     + campground Wi-Fi; in Travel / Boost mode prefer cellular
+#     (Teltonika) first, in Home / Shore mode prefer Starlink first;
+#     Stealth silent hours suppress the force-failover trigger +
+#     any WAN-restart automations; alert when WAN failover count
+#     exceeds 3 in 24h).
+#
+# Why tier-b, not tier-a:
+#   - no real Peplink Balance / MAX / EP-series router on the CI
+#     bench to integration-test against (we ship no appliance, and
+#     the operator's exact Peplink model + firmware combo varies —
+#     Balance One, Balance 20, Balance 30, MAX 700, EP 5, etc. all
+#     expose the same core MIB-II surface but firmware-specific
+#     Peplink-private OIDs shift),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses HA-core `snmp` vs the HACS `hass-incontrol2` based on
+#     their model + firmware + fleet size — we ship no native
+#     wrapper for either path),
+#   - so the audit-recommended config_flow can't be canonical here.
+#     The recipe is sound (it leans on HA's core `snmp` integration
+#     OR the HACS `hass-incontrol2` community integration + the
+#     well-understood MIB-II + Peplink-private OIDs), but we
+#     cannot claim one-tap automation.
+#   - the `tier-a promotion outline` at the bottom of
+#     docs/recipe.md describes exactly what needs to happen to flip
+#     this to tier-a.
+#
+# Two install paths (operator picks based on firmware/model + fleet
+# size):
+#
+#   - Path A — HA core SNMP integration (recommended for
+#     single-router operators with SNMP-enabled Peplink firmware —
+#     most Peplink units ship SNMP enabled-or-enableable, exposing
+#     MIB-II + Peplink-private OIDs for WAN state, signal strength
+#     per WAN, WAN priority, load-balance health, uptime,
+#     throughput, and public IP per WAN). The operator configures
+#     SNMP v2c (or v3) on the router, gives HA the router IP +
+#     community string, and the recipe walks them through mapping
+#     the MIB-II + Peplink-private OIDs into the `rc_net_peplink_*`
+#     contract tiles via the recipe §4 helper YAML.
+#
+#   - Path B — Peplink InControl 2 REST API via the community
+#     `hass-incontrol2` HACS integration (recommended for operators
+#     managing >1 Peplink device — a fleet). The operator creates
+#     an InControl 2 API key at <https://ic.peplink.com/>, installs
+#     the HACS `hass-incontrol2` integration, and the recipe walks
+#     them through mapping the InControl 2 fleet entities into the
+#     same `rc_net_peplink_*` contract tiles.
+#
+# Both paths land on the same `rc_net_peplink_*` contract tiles.
+# The wizard asks the operator which path they wired; the contract
+# tiles are identical either way.
+#
+# Note on `install.config_flow: false`: the upstream HA core `snmp`
+# integration does have a `config_flow` since HA 2022.x, and the
+# `hass-incontrol2` HACS integration also exposes one. We deliberately
+# set `install.config_flow: false` here to be honest about the tier-b
+# contract: we ship no native RoamCore-owned wrapper for either path,
+# we RECIPE both paths in docs/recipe.md, and the operator's exact
+# Peplink model + firmware + SNMP-vs-InControl2 choice varies. When
+# this connection promotes to tier-a (a real Peplink on the bench +
+# a canonical RoamCore wrapper that pins per-firmware OIDs via
+# config_flow), this field flips to `true`.
+id: peplink
+name: "Peplink (multi-WAN router for van internet) — tier-b recipe connection"
+tier: b
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  Peplink Balance / MAX / EP-series routers are rugged, configurable
+  multi-WAN gateways very popular in van life — they handle
+  LTE/5G + Starlink + campground Wi-Fi with automatic failover and
+  load balancing, giving a single stable "van Wi-Fi" network.
+  Tier-b recipe: RoamCore ships no native Peplink integration —
+  we publish the documented setup for the operator-side HA core
+  `snmp` integration (MIB-II + Peplink-private OIDs for WAN state,
+  signal strength per WAN, WAN priority, load-balance health,
+  uptime, throughput, public IP per WAN) OR the Peplink InControl 2
+  REST API path via the HACS `hass-incontrol2` community integration
+  (for fleet operators), and layer a contract on top
+  (`rc_net_peplink_*` dashboard tiles: reachable, WAN1 state, WAN2
+  state, active WAN, WAN failover count in last 24h, load-balance
+  health score, uptime, public IP of active WAN, one-tap refresh
+  button, one-tap force-failover button, WAN-priority `select`).
+  No native config_flow, no shipped Peplink router — you bring the
+  router, we bring the contract.
+icon: networking
+codeowners:
+  - "@bernardc"
+tags:
+  - peplink
+  - networking
+  - multi-wan
+  - failover
+  - load-balance
+  - router
+  - recipe
+
+wizard:
+  # Recipe = "enable SNMP on the Peplink router (Path A) OR
+  # install the HACS `hass-incontrol2` integration + InControl 2
+  # API key (Path B), point HA at it via the chosen integration,
+  # create the `rc_net_peplink_*` contract helpers, and enable
+  # the recipe §5 automations". No one-tap, no auto-discover —
+  # Peplink routers are not on the LAN by default and the
+  # operator's SNMP-vs-InControl2 choice is model + firmware +
+  # fleet-size driven.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Peplink routers are self-contained multi-WAN gateways. To
+    recipe telemetry + force-failover control without manual
+    intervention we enable SNMP (System → SNMP → Enable) for
+    Path A or install the HACS `hass-incontrol2` integration +
+    InControl 2 API key for Path B, point HA at the router via
+    the chosen integration, and let the recipe §4 helpers
+    publish the `rc_net_peplink_*` contract tiles. For the
+    force-failover button, the recipe maps it to the Peplink
+    REST/SNMP-triggered WAN-swap endpoint (Path A) or the
+    InControl 2 fleet-action endpoint (Path B).
+
+install:
+  # No native RoamCore-owned integration code for Peplink. The
+  # upstream HA core `snmp` integration (Path A) or the HACS
+  # `hass-incontrol2` community integration (Path B) is the
+  # UPSTREAM truth; RoamCore adds no native integration code
+  # beyond the contract tiles documented in the recipe.
+  # `ha_integration_domain: snmp` is the canonical operator-side
+  # path (Path A); Path B uses HACS `hass-incontrol2` — both are
+  # documented in the install section above and the recipe.
+  ha_integration_domain: snmp
+  config_flow: false           # RoamCore ships no native config_flow for this connection (see header note)
+  hacs: false                  # tier-b: no HACS integration of our own (Path B uses an existing community HACS integration)
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card                  # installs the rc_net_peplink_* contract tiles
+    - configures_multi_wan_helper          # selects / failover helpers feed the §5 mode-aware automations
+    - adds_input_select_helper             # rc_net_peplink_wan_priority select
+    - adds_input_number_helper             # rc_net_peplink_wan_failover_count_24h daily reset
+    - adds_force_failover_button           # rc_net_peplink_force_failover button + the automation that triggers WAN swap
+    - adds_refresh_button                  # rc_net_peplink_refresh_now button (force-poll the router)
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_net_*
+    # ids. NO `peplink`, `pepwave`, `ic2`, `incontrol`, `mib`, `snmp`,
+    # `balance`, `max`, or vendor names in any rc_ tile id BEYOND the
+    # subsystem prefix `rc_net_peplink_*` (the subsystem prefix is the
+    # contract's owning-area marker; the rule against vendor names
+    # forbids vendor names appearing AFTER the subsystem marker, not
+    # the subsystem marker itself). The Peplink model line is
+    # Balance / MAX / EP / BR — none of those may appear in any rc_*
+    # tile id beyond the subsystem prefix.
+    - binary_sensor.rc_net_peplink_reachable
+    - sensor.rc_net_peplink_wan1_state
+    - sensor.rc_net_peplink_wan2_state
+    - sensor.rc_net_peplink_active_wan
+    - sensor.rc_net_peplink_wan_failover_count_24h
+    - sensor.rc_net_peplink_wan_health_score
+    - sensor.rc_net_peplink_uptime_hours
+    - sensor.rc_net_peplink_public_ip
+    - button.rc_net_peplink_refresh_now
+    - button.rc_net_peplink_force_failover
+    - select.rc_net_peplink_wan_priority
+
+openclaw:
+  queries:
+    - is_peplink_online
+    - peplink_active_wan
+    - peplink_wan_failover_count_24h
+    - peplink_wan_health_score
+    - peplink_uptime_hours
+    - peplink_public_ip
+    - force_peplink_failover
+    - refresh_peplink_telemetry
+  summary_keys:
+    - peplink_reachable
+    - peplink_active_wan
+    - peplink_wan_failover_count_24h
+    - peplink_wan_health_score
+    - peplink_uptime_hours
+    - peplink_public_ip
+
+# Tier-b: tests are optional (and we have no real Peplink router to
+# test against). The tests/test_connection_yml.py file below asserts
+# the manifest itself is honest about its tier + requirements; that
+# satisfies the audit without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_peplink_for_integration_test
+  - recipe_depends_on_user_running_peplink
+  - model_and_firmware_variation_across_peplink_line
+  - snmp_or_incontrol2_path_choice
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/snmp/
+    - https://www.peplink.com/
+    - https://www.peplink.com/ic2-api-doc/
+  upstream_wiki:
+    - https://www.peplink.com/knowledgebase/
+  community:
+    - https://github.com/sneelco/hass-incontrol2
+  docs:
+    - https://www.home-assistant.io/integrations/snmp/
+    - https://www.peplink.com/ic2-api-doc/

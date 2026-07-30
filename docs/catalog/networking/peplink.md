@@ -1,5 +1,8 @@
 # Peplink (multi-WAN router for van internet)
 
+> **Superseded by:** `connections/peplink/` (Wave 3 #40, tier-b connection, shipped 2026-07-30).
+> This legacy tier-c spec is kept for context only. Use the connection folder + recipe for current install paths.
+
 **Support tier:** C (custom/manual)
 
 ## What this is

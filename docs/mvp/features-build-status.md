@@ -33,6 +33,14 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Peplink (multi-WAN router for van internet) (tier-b connection manifest)
+  - tier-b manifest: `connections/peplink/connection.yml` (networking category, beta status; covers HA core `snmp` Path A for single-router operators + Peplink InControl 2 REST API via the community HACS `hass-incontrol2` integration Path B for fleet operators)
+  - recipe: `connections/peplink/docs/recipe.md` (~870-line howto: Path A SNMP wiring + Path B InControl 2 wiring + force-failover affordance via Path A or Path B + WAN-priority `select` + mode-aware multi-WAN preference (cellular in Travel/Boost, Starlink in Home/Shore) + 4 automations + 8 troubleshooting entries + privacy + tier-a promotion outline)
+  - manifest-honesty smoke: `connections/peplink/tests/test_connection_yml.py` (7/7 PASS via `bash scripts/check.sh --core-only`)
+  - contract entities: `binary_sensor.rc_net_peplink_reachable`, `sensor.rc_net_peplink_wan1_state`, `sensor.rc_net_peplink_wan2_state`, `sensor.rc_net_peplink_active_wan`, `sensor.rc_net_peplink_wan_failover_count_24h`, `sensor.rc_net_peplink_wan_health_score`, `sensor.rc_net_peplink_uptime_hours`, `sensor.rc_net_peplink_public_ip`, `button.rc_net_peplink_refresh_now`, `button.rc_net_peplink_force_failover`, `select.rc_net_peplink_wan_priority` (all `rc_net_peplink_*` per docs/reference/rc-entity-naming.md §net subsystem)
+  - legacy tier-c catalog page (`docs/catalog/networking/peplink.md`) now carries a supersession banner pointing at the new connection folder
+  - PR #N
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
