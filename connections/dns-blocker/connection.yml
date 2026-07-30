@@ -1,0 +1,203 @@
+# Pi-hole / AdGuard Home (network-wide DNS ad blocker) — tier-b recipe connection.
+#
+# Promoted from the two legacy tier-c specs:
+#   - docs/catalog/homelab/pi-hole.md
+#   - docs/catalog/homelab/adguard-home.md
+#
+# Both legacy pages were tagged tier-b in the homelab catalog index, but
+# the underlying RoamCore tier is honestly tier-b: RoamCore does NOT
+# ship a DNS blocker container / VM of its own (no RoamCore-owned
+# `pi-hole` or `adguard-home` image, no config_flow.py wrapping either
+# upstream), and there is no DNS blocker on the CI bench to integration-
+# test against. The two legacy pages are functionally equivalent
+# (DNS-level sinkhole + blocklist + per-client query stats), so we
+# promote them into a SINGLE tier-b connection slice with Path A = Pi-hole
+# and Path B = AdGuard Home. The recipe covers both because either one
+# covers the RoamCore `rc_net_dns_*` contract.
+#
+# Category bridging note (homelab → networking):
+# The legacy pages live under docs/catalog/homelab/ (because the
+# homelab-on-wheels catalog tag is the operator-facing way to discover
+# "self-hosted tools you might want in the van"). But the contract
+# entities this connection publishes are §net-subsystem ids per
+# docs/reference/rc-entity-naming.md — `rc_net_dns_*` belongs under the
+# `net` subsystem, not under `homelab`. So we set category=networking
+# (matching the §net subsystem + matching the OpenWrt controls
+# category, which is the natural peer slice: OpenWrt is the LAN-side
+# piece that pushes the DNS blocker's IP as the only DNS server via
+# DHCP options). The legacy docs/catalog/homelab/ pages remain
+# (with supersession banners) so the homelab catalog tag still has
+# something to discover.
+#
+# Config-flow note (UPSTREAM truth, NOT a RoamCore claim):
+# Both upstream integrations have had a working config_flow in
+# Home Assistant core for years:
+#   - Pi-hole (`ha_integration_domain: pi_hole`): config_flow landed
+#     in HA core 2021.8 and has been the recommended install path
+#     since (Pi-hole v6 tightened the API contract, which is the
+#     current upstream). See https://www.home-assistant.io/integrations/pi_hole/
+#   - AdGuard Home (`ha_integration_domain: adguard`): config_flow
+#     landed in HA core 2022.11. See https://www.home-assistant.io/integrations/adguard/
+# RoamCore does NOT ship its own config_flow.py wrapping either upstream
+# — `install.config_flow: true` here reflects the UPSTREAM truth (the
+# operator adds the integration via HA's own config_flow), NOT a
+# RoamCore-owned config flow. The `__init__.py` is a DOMAIN-stub only.
+# If we ever flip to a RoamCore-owned native integration, we'd add a
+# `config_flow.py` in this folder and bump the tier to tier-a.
+#
+# This connection is the network-wide DNS-ad-blocker slice of RoamCore:
+#   - powers the `rc_net_dns_blocked_today` / `rc_net_dns_blocked_pct`
+#     / `rc_net_dns_blocker_reachable` / `rc_net_dns_queries_total`
+#     / `rc_net_dns_blocker_enabled` / `rc_net_dns_resolver_status` /
+#     `rc_net_dns_gravity_updated` tiles,
+#   - feeds OpenClaw queries ("how many ads blocked today?", "is the
+#     DNS blocker reachable?", "what % of DNS queries were blocked?",
+#     "are the blocklists up to date?", "is the DNS blocker enabled?",
+#     "what's the upstream DNS server status?"),
+#   - respects RoamCore modes (pause the blocker during Stealth-on-
+#     demand scenarios; surface a "blocklists stale" alert when
+#     `rc_net_dns_gravity_updated` flips to OFF).
+id: dns-blocker
+name: Pi-hole or AdGuard Home (network-wide DNS ad blocker)
+tier: b
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker
+  blockers (DNS sinkhole + blocklist + per-client query stats).
+  Tier-b recipe: we publish the documented setup for running one of
+  them as a LAN service (container, bare-metal, VM, or HA add-on)
+  and layering a contract on top (`rc_net_dns_*` dashboard tiles:
+  blocked-today count, blocked percent, blocker reachability, total
+  queries, enable/disable switch, upstream-DNS status, and a
+  gravity-updated indicator). Path A = Pi-hole (lightest footprint,
+  ~50 MB RAM). Path B = AdGuard Home (richer UI, built-in DoH/DoT).
+  No native RoamCore-owned config_flow — we RECIPE both paths and
+  you bring whichever blocker (or both) you want on your LAN.
+icon: networking
+codeowners:
+  - "@bernardc"
+tags:
+  - dns
+  - ad-blocker
+  - pi-hole
+  - adguard-home
+  - networking
+  - recipe
+
+wizard:
+  # Recipe = "run Pi-hole OR AdGuard Home on your LAN as a separate
+  # service (container, bare-metal, VM, or HA add-on), wire its
+  # upstream HA integration into HA's config_flow, point the
+  # connection at it, and import the contract template helpers from
+  # the recipe §5 snippet block". No one-tap, no auto-discover —
+  # the DNS blocker is a separate LAN service and there are two
+  # operator-chosen upstream paths (Pi-hole / AdGuard).
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~20 min"
+  requires_reboot: false
+  setup_notes: |
+    A DNS blocker (Pi-hole OR AdGuard Home) is a separate LAN service
+    you run alongside Home Assistant — typically as a Docker container,
+    a bare-metal install on a Raspberry Pi / mini PC, a VM on your
+    Proxmox host, or the community HA add-on. RoamCore does NOT ship
+    a DNS blocker of its own and does NOT bake one into the RoamCore
+    container image. You bring the blocker (Path A = Pi-hole at
+    https://pi-hole.net/, Path B = AdGuard Home at
+    https://github.com/AdguardTeam/AdGuardHome), expose it on the LAN
+    with a static IP, and HA's upstream integration picks it up via
+    config_flow. RoamCore then publishes the contract tiles
+    (`rc_net_dns_*`) that wrap the upstream sensors into vendor-
+    neutral ids.
+
+install:
+  # UPSTREAM truth: both Pi-hole (ha_integration_domain: pi_hole) and
+  # AdGuard Home (ha_integration_domain: adguard) have a working
+  # config_flow in Home Assistant core. Pi-hole v6's config_flow has
+  # been in HA core since 2021.8; AdGuard Home's config_flow has been
+  # in HA core since 2022.11. RoamCore does NOT ship a RoamCore-owned
+  # config_flow.py — `config_flow: true` here is the UPSTREAM truth
+  # (the operator adds the integration via HA's own config_flow), NOT
+  # a RoamCore-owned config flow. The `__init__.py` is a DOMAIN stub;
+  # the recipe documents the config_flow steps for both Path A and
+  # Path B. If a future RoamCore release ships a native wrapper around
+  # the upstream config_flow (e.g. a wizard-side helper that auto-
+  # creates the rc_net_dns_* tiles post-config_flow), this field
+  # would stay true AND a `config_flow.py` would land in this folder,
+  # bumping the tier to tier-a.
+  ha_integration_domain: pi_hole
+  config_flow: true            # UPSTREAM truth (Pi-hole v6 + AdGuard Home both have it in HA core); NOT a RoamCore-owned config_flow
+  hacs: false                  # tier-b: no HACS integration of our own
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card               # installs the rc_net_dns_* contract tiles
+    - configures_dns_wizard_helper      # recipe §5 helper templates that wrap upstream sensors into rc_net_dns_* ids
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_net_*
+    # ids (subsystem prefix `rc_net_dns_*` per the §net subsystem naming
+    # rules). NO `pi-hole`, `pi_hole`, `adguard`, `adblock`, `unbound`,
+    # `dnsmasq`, `blocklist`, `cloudflare`, `quad9`, or upstream DNS
+    # vendor name in any rc_ tile id beyond the subsystem prefix
+    # `rc_net_dns_` (the subsystem prefix is the contract's owning-
+    # area marker; the rule against vendor names forbids vendor names
+    # appearing AFTER the subsystem marker, not the subsystem marker
+    # itself). The subsystem token `dns_blocker` is the ONLY place
+    # that string appears — never double-stamped into the suffix.
+    - sensor.rc_net_dns_blocked_today
+    - sensor.rc_net_dns_blocked_pct
+    - binary_sensor.rc_net_dns_blocker_reachable
+    - sensor.rc_net_dns_queries_total
+    - switch.rc_net_dns_blocker_enabled
+    - sensor.rc_net_dns_resolver_status
+    - binary_sensor.rc_net_dns_gravity_updated
+
+openclaw:
+  queries:
+    - how_many_ads_blocked_today
+    - is_dns_blocker_reachable
+    - dns_blocked_pct
+    - are_blocklists_up_to_date
+    - is_dns_blocker_enabled
+    - resolver_status
+  summary_keys:
+    - dns_blocked_today
+    - dns_blocked_pct
+    - dns_blocker_reachable
+    - dns_queries_total
+    - dns_blocker_enabled
+    - dns_resolver_status
+    - dns_gravity_updated
+
+# Tier-b: tests are optional (and we have no real DNS blocker on the
+# CI bench to integration-test against). The tests/test_connection_yml.py
+# file below asserts the manifest itself is honest about its tier +
+# requirements; that satisfies the audit without claiming fake
+# integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_dns_blocker_for_integration_test
+  - recipe_depends_on_user_running_pi_hole_or_adguard
+  - optional_blocklist_subscription_choice
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/pi_hole/        # Pi-hole HA core integration (Path A)
+    - https://www.home-assistant.io/integrations/adguard/       # AdGuard Home HA core integration (Path B)
+  docs:
+    - https://pi-hole.net/                                      # Pi-hole upstream (Path A)
+    - https://github.com/AdguardTeam/AdGuardHome                # AdGuard Home upstream (Path B)
+    - https://github.com/AdguardTeam/AdGuardHome/wiki           # AdGuard Home wiki / install guides (Path B)

@@ -84,6 +84,8 @@ run_if_present "connections/frigate/tests/test_connection_yml.py" \
   "Connection: Frigate (tier-b) — CCTV with on-device object detection: manifest honesty smoke check"
 run_if_present "connections/starlink/tests/test_connection_yml.py" \
   "Connection: Starlink (tier-b) — sleep timer + bring-back-up controls: manifest honesty smoke check"
+run_if_present "connections/dns-blocker/tests/test_connection_yml.py" \
+  "Connection: DNS blocker (Pi-hole / AdGuard) (tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
