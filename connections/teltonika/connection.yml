@@ -1,0 +1,226 @@
+# Teltonika (LTE/5G router for vans) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/networking/teltonika.md (legacy tier-c,
+# community-only). Promoted into tier-b because RoamCore does NOT ship a
+# native Teltonika integration — we RECIPE the well-understood combination
+# of:
+#   - the operator-side HA core `snmp` integration (the most common
+#     operator-side path; the Teltonika RUT-series exposes a stable
+#     MIB-II + private Teltonika OIDs for WAN state, signal strength,
+#     SIM state, LTE/5G mode, carrier, data counters, and uptime),
+#   - OR the Teltonika REST / RMS / Web UI API path on newer firmware
+#     (`http://<router>/api/...` or the Teltonika RMS cloud API for
+#     operators who prefer cloud polling), used via HA's `rest`
+#     integration / `command_line` / shell_command — whichever the
+#     operator's firmware exposes,
+#   - one-line helper entities that publish the RoamCore
+#     `rc_net_teltonika_*` contract tiles (reachable, WAN state,
+#     signal %, LTE/5G mode, carrier, monthly data, uptime, public
+#     IP, and a reboot affordance via the operator's existing
+#     controllable-plug or the router's own REST/RMS API),
+# and layer a contract on top (`rc_net_teltonika_*` tiles + a one-tap
+# reboot button + an optional monthly-data-reset switch) that feeds
+# OpenClaw mobile-internet queries ("is teltonika online?", "what's
+# teltonika signal %?", "how much data this month?", "reboot teltonika").
+#
+# This connection is the LTE/5G mobile-internet slice of RoamCore for
+# vans that already use a Teltonika router as their primary WAN:
+#   - powers the `rc_net_teltonika_reachable` /
+#     `rc_net_teltonika_wan_state` / `rc_net_teltonika_signal_pct` /
+#     `rc_net_teltonika_lte_mode` / `rc_net_teltonika_carrier` /
+#     `rc_net_teltonika_data_used_gb` / `rc_net_teltonika_uptime_hours`
+#     / `rc_net_teltonika_public_ip` / `rc_net_teltonika_reboot` /
+#     `rc_net_teltonika_data_reset` tiles,
+#   - feeds OpenClaw queries ("is teltonika online?", "what's the
+#     teltonika signal?", "how much teltonika data this month?",
+#     "what carrier is teltonika on?", "reboot teltonika"),
+#   - respects RoamCore modes (treat Teltonika as a fallback WAN for
+#     Travel; fail over to Starlink or share with Peplink where
+#     relevant; suppress reboot in Stealth silent hours).
+#
+# Why tier-b, not tier-a:
+#   - no real Teltonika RUT-series router on the CI bench to
+#     integration-test against (we ship no appliance, and the
+#     operator's exact Teltonika model + firmware combo varies —
+#     RUT950, RUT951, RUTX11, RUTX12, RUTM50, etc. all expose the
+#     same core MIB-II surface but firmware-specific OIDs shift),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses SNMP vs REST vs RMS based on their firmware — we ship
+#     no native wrapper),
+#   - so the audit-recommended config_flow can't be canonical here.
+#     The recipe is sound (it leans on HA's core `snmp` integration
+#     OR Teltonika's documented REST/RMS API + the well-understood
+#     MIB-II OIDs), but we cannot claim one-tap automation.
+#   - the `tier-a promotion outline` at the bottom of docs/recipe.md
+#     describes exactly what needs to happen to flip this to tier-a.
+#
+# Two install paths (operator picks based on firmware):
+#
+#   - Path A — HA core SNMP integration (recommended, supported on
+#     every Teltonika RUT firmware). The operator configures SNMP v2c
+#     (or v3) on the router (System → SNMP → Enable), gives HA the
+#     router IP + community string, and the recipe walks them
+#     through mapping the MIB-II + Teltonika-private OIDs into the
+#     `rc_net_teltonika_*` contract tiles via the recipe §4 helper
+#     YAML.
+#
+#   - Path B — Teltonika REST / RMS / Web UI API (alternative for
+#     newer firmware that exposes `http://<router>/cgi-bin/api/...` or
+#     the Teltonika RMS cloud API). The operator pulls JSON via HA's
+#     `rest` integration or `command_line` shell_command and the
+#     same §4 helpers map fields into the contract tiles. The recipe
+#     ships a copy-pasteable REST-sensor block for the most common
+#     endpoints.
+#
+# Both paths share the same §4 contract helpers and §5 automations.
+# The wizard asks the operator which path they wired; the contract
+# tiles are identical either way.
+id: teltonika
+name: "Teltonika (LTE/5G router for vans) — tier-b recipe connection"
+tier: b
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  Teltonika RUT-series LTE/5G routers are rugged, configurable
+  mobile-internet gateways widely used in van life. Tier-b recipe:
+  RoamCore ships no native Teltonika integration — we publish the
+  documented setup for the operator-side HA core SNMP integration
+  (MIB-II + Teltonika-private OIDs for WAN state, signal strength,
+  SIM state, LTE/5G mode, carrier, monthly data, uptime) OR the
+  Teltonika REST / RMS API path (whichever the operator's firmware
+  supports), and layer a contract on top (`rc_net_teltonika_*`
+  dashboard tiles: reachable, WAN state, signal %, LTE mode,
+  carrier, data used, uptime, public IP, one-tap reboot button,
+  monthly-data-reset switch). No native config_flow, no shipped
+  Teltonika router — you bring the router, we bring the contract.
+icon: networking
+codeowners:
+  - "@bernardc"
+tags:
+  - teltonika
+  - networking
+  - lte
+  - 5g
+  - mobile-internet
+  - router
+  - recipe
+
+wizard:
+  # Recipe = "enable SNMP (or REST) on the Teltonika router, point HA
+  # at it via the core `snmp` integration (or `rest`), create the
+  # `rc_net_teltonika_*` contract helpers, and enable the recipe §5
+  # automations". No one-tap, no auto-discover — Teltonika routers
+  # are not on the LAN by default and the operator's SNMP/REST
+  # choice is firmware-driven.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Teltonika routers are self-contained mobile-internet gateways.
+    To recipe telemetry + reboot control without manual
+    intervention we enable SNMP (System → SNMP → Enable) or expose
+    the REST/RMS API on the operator's firmware, point HA at it via
+    the core `snmp` integration or `rest` integration, and let the
+    recipe §4 helpers publish the `rc_net_teltonika_*` contract
+    tiles. For reboot control, either put a controllable smart plug
+    behind the router (Path A's optional plug affordance) OR wire
+    the Teltonika REST/RMS `reboot` API into a `button` helper. The
+    recipe walks through both.
+
+install:
+  # No native RoamCore-owned integration code for Teltonika. The
+  # upstream HA core `snmp` integration (or `rest` / `command_line`
+  # for the Teltonika REST/RMS path) is the UPSTREAM truth;
+  # RoamCore adds no native integration code beyond the contract
+  # tiles documented in the recipe. `ha_integration_domain: snmp`
+  # is the canonical operator-side path; REST is an alternative
+  # documented in the recipe §4.2.
+  ha_integration_domain: snmp
+  config_flow: false           # RoamCore ships no native config_flow for this connection
+  hacs: false                  # tier-b: no HACS integration of our own
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card                  # installs the rc_net_teltonika_* contract tiles
+    - adds_input_number_helper             # rc_net_teltonika_data_used_gb monthly reset
+    - adds_input_boolean_helper            # rc_net_teltonika_data_reset
+    - adds_reboot_button                   # rc_net_teltonika_reboot_now button + the automation that triggers the plug/REST reboot
+    - adds_refresh_button                  # rc_net_teltonika_refresh_signals button (force-poll the router)
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_net_*
+    # ids. NO `teltonika`, `rut`, `rutx`, `rutm`, `teltonika_rms`,
+    # `teltonika_rest`, `snmp`, or vendor names in any rc_ tile id
+    # beyond the subsystem prefix `rc_net_teltonika_*` (the subsystem
+    # prefix is the contract's owning-area marker; the rule against
+    # vendor names forbids vendor names appearing AFTER the subsystem
+    # marker, not the subsystem marker itself).
+    - binary_sensor.rc_net_teltonika_reachable
+    - sensor.rc_net_teltonika_wan_state
+    - sensor.rc_net_teltonika_signal_pct
+    - sensor.rc_net_teltonika_lte_mode
+    - sensor.rc_net_teltonika_carrier
+    - sensor.rc_net_teltonika_data_used_gb
+    - sensor.rc_net_teltonika_uptime_hours
+    - sensor.rc_net_teltonika_public_ip
+    - switch.rc_net_teltonika_data_reset
+    - button.rc_net_teltonika_reboot_now
+    - button.rc_net_teltonika_refresh_signals
+
+openclaw:
+  queries:
+    - is_teltonika_online
+    - teltonika_wan_state
+    - teltonika_signal_pct
+    - teltonika_lte_mode
+    - teltonika_carrier
+    - teltonika_data_used_gb
+    - teltonika_uptime_hours
+    - teltonika_public_ip
+    - reboot_teltonika
+    - refresh_teltonika_signals
+  summary_keys:
+    - teltonika_reachable
+    - teltonika_wan_state
+    - teltonika_signal_pct
+    - teltonika_lte_mode
+    - teltonika_carrier
+    - teltonika_data_used_gb
+    - teltonika_uptime_hours
+    - teltonika_public_ip
+
+# Tier-b: tests are optional (and we have no real Teltonika router to
+# test against). The tests/test_connection_yml.py file below asserts
+# the manifest itself is honest about its tier + requirements; that
+# satisfies the audit without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_teltonika_for_integration_test
+  - recipe_depends_on_user_running_teltonika
+  - snmp_or_rest_choice_is_operator_side
+  - recipe_depends_on_user_snmp_or_rest_credentials
+  - firmware_specific_oids_may_shift
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/snmp/
+    - https://wiki.teltonika-networks.com/view/SNMP
+    - https://developers.teltonika-networks.com/
+    - https://teltonika-networks.com/
+  upstream_wiki:
+    - https://wiki.teltonika-networks.com/
+  docs:
+    - https://wiki.teltonika-networks.com/view/Monitoring_via_SNMP
+    - https://wiki.teltonika-networks.com/view/RUTX11_Monitoring_via_SNMP
