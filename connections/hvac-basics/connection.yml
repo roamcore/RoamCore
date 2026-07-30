@@ -1,0 +1,162 @@
+# HVAC basics (heating/cooling foundations) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/hvac/hvac-basics.md (legacy tier-c, ~15 lines,
+# originally mis-claimed as "Support tier: A — RoamCore native", which was
+# aspirational and false). Promoted into tier-b because RoamCore does NOT
+# ship a native HVAC appliance or bench — we RECIPE four upstream
+# operator-side paths:
+#   - Path A — Generic thermostat (any `climate.*` entity from HA core
+#     integrations like `generic_thermostat`, `ecobee`, `nest`, `mitsubishi`,
+#     `daikin`, etc.) — exposes `climate.*` + the underlying sensors.
+#   - Path B — Diesel heater (Webasto / Eberspächer / Chinese diesel / Vevor
+#     / Chinese planer-style) via the upstream `esphome` + `binary_sensor`
+#     + `switch` recipe, or the `mqtt` integration when the heater has an
+#     ESPHome-MQTT bridge.
+#   - Path C — Rooftop AC (Furrion / Dometic / MaxxAir / Coleman) via
+#     IR-bridge (Broadlink / MQTT-IR-Hub) + the upstream `switch` /
+#     `fan` / `select` integration, or directly via the AC's own HA
+#     integration if it has one.
+#   - Path D — Engine pre-heat integration with the van's Webasto /
+#     Thermo Top / Hydronic coolant pre-heater — the engine pre-heat is
+#     OUT OF SCOPE for the connection (see `connections/heated-floors/`
+#     for the cabin-side pre-heat loop); this connection focuses on the
+#     cabin climate control surface.
+
+id: hvac-basics
+name: "HVAC basics (heating/cooling foundations) — tier-b recipe connection"
+tier: b
+category: hvac
+status: beta
+version: 0.1.0
+description: |
+  HVAC basics — cabin heating/cooling foundations for vans — is the
+  umbrella for thermostat + diesel heater + rooftop AC + cabin
+  ventilation control. RoamCore does NOT ship a native HVAC appliance;
+  this connection RECIPEs four upstream operator-side paths and layers
+  a vendor-neutral contract via the 11 `rc_hvac_*` dashboard tiles per
+  `docs/reference/rc-entity-naming.md` §hvac subsystem (already in the
+  allowed subsystems list — no backfill needed). The recipe covers
+  thermostat + heater + AC + ventilation, plus mode-aware automations
+  (Stealth silent hours auto-lower fan, Sleep mode fan-off, Boost mode
+  pre-warm cabin), temperature-safety alerts (frost / over-temp), and
+  the multi-mode aggregate that surfaces "is ANY HVAC device active?"
+  as a single dashboard tile.
+icon: thermostat
+codeowners:
+  - "@bernardc"
+tags:
+  - hvac
+  - climate
+  - thermostat
+  - diesel-heater
+  - webasto
+  - eberspaecher
+  - ac
+  - furrion
+  - dometic
+  - maxxair
+  - coleman
+  - ventilation
+  - fan
+  - mode-aware
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    HVAC basics requires the operator to (a) choose one or more of
+    the four upstream paths (Path A generic thermostat via any
+    HA core climate integration; Path B diesel heater via ESPHome
+    or MQTT bridge; Path C rooftop AC via IR-bridge or native
+    integration; Path D cabin ventilation via fan / switch /
+    select), (b) confirm the operator's chosen integration is
+    already configured in HA and exposes at least one upstream
+    entity (climate.* / switch.* / fan.* / sensor.*), (c) wire
+    the upstream entity -> contract `rc_hvac_*` mapping via HA
+    core `template:` (or HA core `entity` customize-domain alias),
+    (d) wire the §7 safety interlocks (frost warning / over-temp
+    warning / low-voltage lockout / mode-aware lockouts) BEFORE
+    first use, (e) wire the §8 automations (Stealth auto-lower fan,
+    Sleep eco-mode, Boost disable-mode-aware-lockouts, frost auto-
+    heat, over-temp auto-cool + alert, mode-aware scheduling for
+    morning pre-warm) AFTER the safety interlocks.
+
+install:
+  ha_integration_domain: climate
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - may_register_climate_entity
+    - may_register_switch_entities_for_diesel_heater
+    - may_register_fan_entities_for_ac
+    - registers_temperature_sensors
+    - may_register_select_entities_for_mode
+
+dashboard:
+  title: "HVAC"
+  tiles:
+    - climate.rc_hvac_cabin_thermostat
+    - sensor.rc_hvac_cabin_temperature
+    - sensor.rc_hvac_cabin_humidity
+    - binary_sensor.rc_hvac_heater_active
+    - binary_sensor.rc_hvac_ac_active
+    - fan.rc_hvac_cabin_fan
+    - select.rc_hvac_fan_speed
+    - sensor.rc_hvac_outdoor_temperature
+    - binary_sensor.rc_hvac_frost_warning
+    - binary_sensor.rc_hvac_over_temp_warning
+    - select.rc_hvac_mode
+
+openclaw:
+  queries:
+    - "what is the cabin temperature?"
+    - "is the heater on?"
+    - "is the AC on?"
+    - "set cabin thermostat to <temp>C"
+    - "set cabin thermostat to heat/cool/auto/off"
+    - "set cabin fan speed to low/med/high/auto/off"
+    - "is frost warning active?"
+    - "is over-temp warning active?"
+    - "set HVAC mode to auto/heating/cooling/ventilation/disabled"
+  summary_keys:
+    - cabin_temperature
+    - cabin_humidity
+    - heater_active
+    - ac_active
+    - fan_speed
+    - frost_warning
+    - over_temp_warning
+    - hvac_mode
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_hvac_appliance_for_integration_test
+  - recipe_depends_on_user_running_thermostat_and_or_heater_and_or_ac
+  - optional_diesel_heater_via_esphome_or_mqtt
+  - optional_ac_via_ir_bridge_or_native_integration
+  - requires_operator_wiring_safety_thermostats_before_first_use
+  - frost_warning_and_over_temp_warning_depend_on_temperature_sensors
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/climate/
+    - https://www.home-assistant.io/integrations/generic_thermostat/
+    - https://www.home-assistant.io/integrations/ecobee/
+    - https://www.home-assistant.io/integrations/nest/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/broadlink/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/fan/
