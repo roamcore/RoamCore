@@ -94,6 +94,8 @@ run_if_present "connections/peplink/tests/test_connection_yml.py" \
   "Connection: Peplink (tier-b) — multi-WAN router for vans: manifest honesty smoke check"
 run_if_present "connections/music-assistant/tests/test_connection_yml.py" \
   "Connection: Music Assistant (tier-b) — manifest honesty smoke check"
+run_if_present "connections/bluetooth-wifi-presence/tests/test_connection_yml.py" \
+  "Connection: Bluetooth/Wi-Fi presence (tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"

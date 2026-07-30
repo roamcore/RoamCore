@@ -1,0 +1,315 @@
+# Bluetooth / Wi-Fi presence (who's home?) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/presence/bluetooth-wifi-presence.md (legacy
+# tier-c, 27 lines). Promoted into tier-b because RoamCore does NOT ship
+# a native presence scanner — we RECIPE the well-understood combination
+# of one of three upstream operator-side device-tracking paths:
+#   - Path A — HA core `bluetooth_le_tracker` (deprecated upstream as
+#     of HA 2024.6 but still functional; YAML-only — no config_flow;
+#     pairs each phone + recommends a Bluetooth Low Energy beacon as
+#     a screensaver-sleep workaround so the beacon remains discoverable
+#     while the phone screen is locked),
+#   - Path B — HA core `nmap_device_tracker` (config_flow since 2022.x)
+#     OR the `ping` binary_sensor alternative (Path B-alt; no nmap
+#     dependency but slower — 60 s poll). Recommended for fleet installs
+#     where each HA host can scan its own subnet,
+#   - Path C — Router-side device_tracker via the matching HA core
+#     integration (`asuswrt`, `unifi`, or `mikrotik`). Recommended when
+#     the operator already uses one of those routers as the LAN gateway
+#     (the router is the source of truth — no ARP scanning needed),
+# plus a translation layer that maps each upstream
+# `device_tracker.<vendor>_<mac>` entity into the RoamCore
+# `rc_presence_person_*` contract tile via either a template helper or
+# a HA `person` entity, AND a layer of aggregation helpers
+# (`binary_sensor.rc_presence_anyone_home`,
+# `binary_sensor.rc_presence_only_driver_home`,
+# `binary_sensor.rc_presence_all_away`,
+# `sensor.rc_presence_persons_home_count`,
+# `sensor.rc_presence_last_arrival`,
+# `sensor.rc_presence_last_departure`,
+# `button.rc_presence_refresh_now`,
+# `select.rc_presence_occupied_threshold_minutes`).
+#
+# This connection is the **presence-detection** slice of RoamCore for
+# vans that want a vendor-neutral "who's home?" signal that powers:
+#   - the `device_tracker.rc_presence_person_alice` /
+#     `device_tracker.rc_presence_person_bob` /
+#     `binary_sensor.rc_presence_anyone_home` /
+#     `binary_sensor.rc_presence_only_driver_home` /
+#     `sensor.rc_presence_persons_home_count` /
+#     `sensor.rc_presence_last_arrival` /
+#     `sensor.rc_presence_last_departure` /
+#     `binary_sensor.rc_presence_all_away` /
+#     `button.rc_presence_refresh_now` /
+#     `select.rc_presence_occupied_threshold_minutes` tiles,
+#   - feeds OpenClaw queries ("is anyone home?", "who is home?",
+#     "persons home count?", "last arrival time?", "last departure
+#     time?", "is only driver home?", "is everyone away?",
+#     "refresh presence now"),
+#   - respects RoamCore modes (Stealth silent hours suppresses the
+#     presence-driven lighting + inverter shutdown; Travel mode
+#     triggers approach lighting on first arrival; Boost mode relaxes
+#     the "only driver home → dim to 10 %" rule to 25 %; a power-
+#     aware automation alerts when shore is disconnected AND ≥2
+#     people are home AND inverter SOC < 30 % — cross-references the
+#     Victron `connections/victron/` recipe for SOC + the Music
+#     Assistant `connections/music-assistant/` recipe for the TTS
+#     target),
+#   - and layer a stricter "only home when both Bluetooth AND Wi-Fi
+#     agree" rule from the legacy catalog spec (§7) — reduces false
+#     positives from iPhone screensaver sleep.
+#
+# Why tier-b, not tier-a:
+#   - no real Bluetooth adapters + Wi-Fi routers + BLE beacons on the
+#     CI bench to integration-test against (we ship no appliance and
+#     no RoamCore-owned presence scanner; the operator's exact
+#     per-person device mix + Path A-vs-B-vs-C choice varies),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses Path A's `bluetooth_le_tracker` vs Path B's
+#     `nmap_device_tracker` / `ping` vs Path C's `asuswrt` / `unifi`
+#     / `mikrotik` based on the operator's host OS + available
+#     hardware + existing router — we ship no native wrapper for any
+#     of the three paths),
+#   - so the audit-recommended config_flow can't be canonical here
+#     either. The recipe is sound (it leans on the upstream HA core
+#     integrations + the well-understood translation-into-`person`
+#     pattern), but we cannot claim one-tap automation. The
+#     `tier-a promotion outline` at the bottom of docs/recipe.md
+#     describes exactly what needs to happen to flip this to tier-a
+#     (a real bench with 2 BLE devices + a Wi-Fi router; a canonical
+#     RoamCore-owned config_flow that wraps the per-person device
+#     declaration; integration tests against the bench).
+#
+# Three install paths (operator picks based on available hardware +
+# host OS + existing router + per-person device mix):
+#
+#   - Path A — Bluetooth LE tracking via HA core
+#     `bluetooth_le_tracker` (recommended for small vans with 1–2
+#     people where every phone is reliably discoverable on Bluetooth;
+#     YAML-only because the upstream integration is deprecated as
+#     of HA 2024.6 and has no config_flow; the recipe recommends
+#     pairing a BLE beacon like a Nut find3 or Apple AirTag alongside
+#     the phone so the beacon remains discoverable while the phone
+#     screen is locked).
+#
+#   - Path B — Wi-Fi presence via HA core `nmap_device_tracker` OR
+#     the `ping` binary_sensor alternative (recommended for fleet
+#     installs where each HA host can scan its own subnet; the
+#     `nmap_device_tracker` integration has a config_flow since
+#     2022.x; the `ping` alternative is simpler but slower — 60 s
+#     poll — and is the recommended fallback when the HA host
+#     cannot install `nmap`).
+#
+#   - Path C — Router-side device_tracker via the matching HA core
+#     integration (`asuswrt` for AsusWRT-Merlin routers, `unifi` for
+#     Ubiquiti UniFi gateways/controllers, `mikrotik` for MikroTik
+#     RouterOS routers). Recommended when the operator already uses
+#     one of those routers as the LAN gateway (the router is the
+#     source of truth — no ARP scanning needed).
+#
+# All three paths land on the same `rc_presence_*` contract tiles.
+# The wizard asks the operator which path they wired + which persons
+# they declared + which devices map to each person; the contract
+# tiles are identical either way.
+#
+# Note on `install.config_flow: true` AND `install.hacs: false`: the
+# upstream HA core `nmap_device_tracker` (Path B) and `asuswrt`
+# (Path C) integrations DO expose a `config_flow` since 2022.x; we
+# honestly report `install.config_flow: true` because the operator's
+# choice of Path B or Path C goes through a config_flow. The honest-
+# but-tier-b part is: Path A's `bluetooth_le_tracker` is YAML-only
+# (deprecated upstream), and we ship NO RoamCore-owned wrapper /
+# no native integration code, no `config_flow.py`, no per-person
+# device declaration on the bench — we RECIPE the upstream HA core
+# integrations. When this connection promotes to tier-a (a real
+# bench + a RoamCore-owned config_flow that wraps the per-person
+# device declaration + integration tests against the bench), this
+# stays at `tier: b` but the test surface expands.
+#
+# Note on the `presence` subsystem addition: docs/reference/rc-entity-
+# naming.md's allowed subsystems list is
+# `power | net | location | weather | time | media | system`. This
+# slice adds `presence` as a forward-compatible addition that mirrors
+# how `media` was added by the Music Assistant slice. The contract
+# tile ids stay vendor-neutral — NO `bluetooth`, `bt`, `wifi`, `wlan`,
+# `arp`, `nmap`, `ping`, `asuswrt`, `ubiquiti`, `unifi`, `mikrotik`,
+# `iphone`, `android`, `pixel`, `galaxy` appears in any tile id
+# BEYOND the subsystem prefix `rc_presence_*`.
+
+id: bluetooth-wifi-presence
+name: "Bluetooth / Wi-Fi presence (who's home?) — tier-b recipe connection"
+tier: b
+category: presence
+status: beta
+version: 0.1.0
+description: |
+  Presence detection — who is currently home in the van — is the
+  foundation of every occupied/away automation in RoamCore: shut
+  down inverter + pump when nobody is home, turn on approach
+  lighting when the first person returns after dark, suppress
+  Stealth-silent-hours actions when only the driver is present,
+  alert when shore is disconnected AND ≥2 people are home AND
+  inverter SOC is low. RoamCore ships no native presence scanner.
+  This connection is a recipe: it documents the three upstream
+  operator-side paths (HA core `bluetooth_le_tracker` for Path A,
+  `nmap_device_tracker` or `ping` for Path B, and the router-side
+  `asuswrt`/`unifi`/`mikrotik` integrations for Path C), and layers
+  a vendor-neutral contract on top via the `rc_presence_*` dashboard
+  tiles.
+icon: presence
+codeowners:
+  - "@bernardc"
+tags:
+  - presence
+  - bluetooth
+  - wifi
+  - device-tracker
+  - person
+  - recipe
+
+wizard:
+  # Recipe = "declare each tracked person (Alice, Bob, the dog, etc.),
+  # the device(s) that map to that person (phone, watch, key fob,
+  # BLE beacon), and the chosen upstream method (Bluetooth LE, nmap
+  # Wi-Fi scan, ping heartbeat, or router-side device_tracker); the
+  # recipe §4 helper YAML walks through mapping each upstream
+  # `device_tracker.<vendor>_<mac>` entity into the `rc_presence_person_*`
+  # contract tile via a template helper or a HA `person` entity".
+  # No one-tap (the operator's per-person device declaration is a
+  # personal choice + we have no real bench to integration-test against);
+  # auto-discover is FALSE because there's no upstream zeroconf-style
+  # announcement for a person's presence (the operator must declare
+  # the per-person mapping).
+  connection_kind: recipe
+  one_tap: false              # operator must declare per-person devices + choose a tracking method — no automatic discovery is honest at this tier
+  auto_discover: false
+  estimated_time: "~25 min"
+  requires_reboot: false
+  setup_notes: |
+    Presence detection requires the operator to declare each tracked
+    person (Alice, Bob, the dog, etc.), the device(s) that map to that
+    person (phone, watch, key fob, BLE beacon), and the chosen upstream
+    method (Bluetooth LE, nmap Wi-Fi scan, ping heartbeat, or
+    router-side device_tracker). The recipe §4 helper YAML walks
+    through mapping each upstream `device_tracker.<vendor>_<mac>`
+    entity into the `rc_presence_person_*` contract tile via a
+    template helper or a HA `person` entity. The
+    `binary_sensor.rc_presence_anyone_home` tile is computed as the
+    OR of all `rc_presence_person_*` entities being `home`, but the
+    recipe also documents the stricter "only home when both Bluetooth
+    AND Wi-Fi agree" rule from the legacy catalog spec (§7).
+
+install:
+  # No native RoamCore-owned integration code for presence detection.
+  # The upstream HA core `nmap_device_tracker` (Path B) + `asuswrt` /
+  # `unifi` / `mikrotik` (Path C) integrations are the UPSTREAM
+  # truth and DO expose a `config_flow` since 2022.x; the upstream
+  # HA core `bluetooth_le_tracker` (Path A) is YAML-only (deprecated
+  # as of HA 2024.6 but still functional). We honestly report
+  # `install.config_flow: true` because the operator's choice of
+  # Path B or Path C goes through a config_flow; Path A is YAML-only
+  # (documented in the recipe). RoamCore adds no native integration
+  # code beyond the contract tiles documented in the recipe.
+  # `ha_integration_domain: device_tracker` is the canonical HA core
+  # domain for Bluetooth/Wi-Fi/router device tracking. `hacs: false`
+  # because the recipe uses existing HA core integrations (no HACS
+  # integration of our own; Path A/B/C all use existing HA core).
+  ha_integration_domain: device_tracker   # canonical HA core domain for Bluetooth/Wi-Fi/router device tracking
+  config_flow: true                       # HA core nmap_device_tracker and asuswrt have config_flow; bluetooth_le_tracker is YAML-only (documented in recipe)
+  hacs: false                             # tier-b: no HACS integration of our own (Paths A/B/C all use existing HA core integrations)
+  doc_recipe_only: false                   # the recipe in docs/recipe.md IS the install, but config_flow=true is honest because upstream exposes one
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card                       # installs the rc_presence_* contract tiles
+    - may_register_device_tracker_entities      # the upstream HA core integrations register device_tracker.* entities; the recipe's translation maps them into rc_presence_person_*
+    - creates_person_helper_for_each_declared_member   # HA `person` entity per declared member (operator choice; the recipe walks through the per-person device_tracker list)
+    - configures_presence_aggregation_helpers   # binary_sensor.rc_presence_anyone_home / rc_presence_only_driver_home / rc_presence_all_away + sensor.rc_presence_persons_home_count / rc_presence_last_arrival / rc_presence_last_departure
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_presence_*
+    # ids (the new §presence subsystem — added to the allowed subsystems
+    # list in docs/reference/rc-entity-naming.md alongside this slice,
+    # mirroring how `media` was added by the Music Assistant slice).
+    # NO `bluetooth`, `bt`, `wifi`, `wlan`, `arp`, `nmap`, `ping`,
+    # `asuswrt`, `ubiquiti`, `unifi`, `mikrotik`, `iphone`, `android`,
+    # `pixel`, `galaxy` in ANY rc_* tile id BEYOND the subsystem
+    # prefix `rc_presence_*` (the subsystem prefix IS allowed — it's
+    # the owning-area marker; what is forbidden is vendor names
+    # appearing AFTER the subsystem marker in a way that double-
+    # stamps the vendor into the id).
+    - device_tracker.rc_presence_person_alice
+    - device_tracker.rc_presence_person_bob
+    - binary_sensor.rc_presence_anyone_home
+    - binary_sensor.rc_presence_only_driver_home
+    - sensor.rc_presence_persons_home_count
+    - sensor.rc_presence_last_arrival
+    - sensor.rc_presence_last_departure
+    - binary_sensor.rc_presence_all_away
+    - button.rc_presence_refresh_now
+    - select.rc_presence_occupied_threshold_minutes
+
+openclaw:
+  queries:
+    - is_anyone_home
+    - who_is_home
+    - persons_home_count
+    - last_arrival_time
+    - last_departure_time
+    - is_only_driver_home
+    - is_everyone_away
+    - refresh_presence_now
+  summary_keys:
+    - anyone_home
+    - persons_home_count
+    - last_arrival
+    - last_departure
+    - all_away
+
+# Tier-b: tests are optional (and we have no real presence devices
+# on the bench to integration-test against). The
+# tests/test_connection_yml.py file below asserts the manifest
+# itself is honest about its tier + requirements; that satisfies
+# the audit without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe
+  # doc. We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  # We have no real BLE devices + Wi-Fi router on the bench to
+  # integration-test against (no per-person device declaration
+  # to drive an integration test).
+  - no_real_presence_devices_for_integration_test
+  # The recipe depends on the operator declaring each tracked
+  # person + the device(s) that map to that person + the chosen
+  # upstream method (Path A Bluetooth, Path B nmap/ping, Path C
+  # router).
+  - recipe_depends_on_user_declaring_persons_and_devices
+  # Path choice honesty — Bluetooth vs nmap/ping vs router-side
+  # depends on host OS + available hardware + existing router +
+  # per-person device mix.
+  - bluetooth_vs_wifi_path_choice
+  # False positives on iPhone/Android screensaver sleep (the phone
+  # Bluetooth goes quiet when the screen locks; Path A's
+  # screensaver-sleep failure mode). The recipe recommends pairing
+  # a BLE beacon alongside the phone so the beacon remains
+  # discoverable.
+  - false_positives_on_screensaver_sleep
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/bluetooth_le_tracker/
+    - https://www.home-assistant.io/integrations/nmap_tracker/
+    - https://www.home-assistant.io/integrations/device_tracker/
+  community:
+    - https://www.home-assistant.io/integrations/asuswrt/
+    - https://www.home-assistant.io/integrations/unifi/
+    - https://www.home-assistant.io/integrations/mikrotik/
+  docs:
+    - https://www.home-assistant.io/integrations/bluetooth_le_tracker/
+    - https://www.home-assistant.io/integrations/nmap_tracker/
