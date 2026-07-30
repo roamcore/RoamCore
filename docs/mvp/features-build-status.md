@@ -167,7 +167,7 @@ This is an internal status page for the remaining MVP feature build-out.
   - cross-reference to Smoke / CO / gas sensors: §7.1 leak detected automation uses the same "loud siren + phone notification on any alarm" pattern as the smoke-co-gas-sensors Wave 3 #45 recipe §7.1 — the leak detected push notification is HIGH-PRIORITY because leaks in a van ruin everything (water + electronics + cabinetry + insulation all die together)
   - cross-reference to Deadbolts: §7.1 leak detected automation cross-references the deadbolts Wave 3 #48 recipe's §7.x emergency-egress unlock — the operator must be able to get OUT of the van even if water is pooling near the door
   - cross-reference to Mode / automation-builder: §7.5 mode-aware lockouts use `select.rc_mode` from the mode/automation-builder `connections/mode-automation-builder/` recipe for the Stealth auto-mute warnings + Sleep silent + Boost disable-mode-aware-lockouts
-  - PR #51
+  - PR #53
 
 ## Next steps (needs HAOS setup / UI wiring)
 

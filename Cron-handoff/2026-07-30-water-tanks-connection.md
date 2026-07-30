@@ -221,7 +221,7 @@ row for Wave 3 #50.
   auto-engage + to Victron for §7.4 pump running too long + to
   smoke-co-gas-sensors for §7.1 leak detected push notification +
   to deadbolts for §7.1 emergency-egress unlock + to mode/
-  automation-builder for §7.5 mode-aware lockouts + PR #51 link).
+  automation-builder for §7.5 mode-aware lockouts + PR #53 link).
 - **New** `Cron-handoff/2026-07-30-water-tanks-connection.md` (this
   file — slice summary with Context / Changes / Verification /
   Rollback).
@@ -244,7 +244,7 @@ git log --oneline -3                          # confirm new commit on feat/conne
 git push -u origin feat/connections/water-tanks   # push
 gh pr create --base main --head feat/connections/water-tanks \
   --title "Wave 3 #50: Connection: Water tanks (fresh/grey monitoring) (tier-b) — fresh/grey monitoring" \
-  --body "<commit body>"                        # open PR (PR #51)
+  --body "<commit body>"                        # open PR (PR #53)
 ```
 
 ## Rollback
