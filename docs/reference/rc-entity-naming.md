@@ -61,6 +61,7 @@ Keep this list short. Start with these and extend deliberately:
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
+- `remote_access` — remote access (Tailscale / Cloudflare Tunnel / Nabu Casa / Wireguard); vendor-neutral `rc_remote_access_*` ids (Wave 3 #58)
 
 ---
 
