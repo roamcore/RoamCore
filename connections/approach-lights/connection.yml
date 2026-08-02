@@ -1,0 +1,249 @@
+# Approach lights (welcome-home exterior + underbody lighting) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/lighting/approach-and-underbody-lights.md
+# (legacy tier-c, ~24 lines, originally listed as "Support tier: C" with
+# no recipe + no contract + no automations — just a placeholder that
+# said "Turn on exterior/underbody lights automatically when you
+# approach the van after dark, so you can see where you're stepping
+# and feel like the van is welcoming you home"). Promoted into tier-b
+# because RoamCore does NOT ship a native light hardware; we RECIPE
+# three upstream operator-side paths and layer a vendor-neutral
+# contract via the 12 `rc_lighting_*` dashboard tiles per
+# `docs/reference/rc-entity-naming.md` §lighting subsystem (NEW — to
+# be added by this slice in `docs/reference/rc-entity-naming.md`,
+# mirroring how `media` was added by Music Assistant Wave 3 #41 +
+# how `presence` was added by bluetooth-wifi-presence Wave 3 #42 +
+# how `water` was added by water-tanks Wave 3 #50 + how `bed_lift`
+# was added by happijac Wave 3 #43 + how `hvac` was added by
+# heated-floors Wave 3 #44 + how `safety` was added by smoke-co-gas-
+# sensors Wave 3 #45). This is the FIRST lighting-category slice in
+# the RoamCore connection pipeline; the `lighting` subsystem
+# addition is the same backfill pattern:
+#   - Path A — Smart switches / smart bulbs (recommended for
+#     operators with existing smart lighting). Vendor: any of Shelly
+#     1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch (A1 wired
+#     switches) + Philips Hue / LIFX / IKEA TRÅDFRI (A2 smart bulbs)
+#     + generic-Zigbee / generic-Z-Wave / Tuya (A3 vendor-neutral).
+#     The vendor integration exposes `light.*` or `switch.*`
+#     entities; the recipe maps each via HA core `template:` light
+#     wrappers or HA core `light:` group (since 2022.x).
+#   - Path B — Generic relay + HA template light (no smart bulb; just
+#     a 12 V underbody LED strip + a relay-driven entry light).
+#     Shelly 1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch
+#     wired into the 12 V / 24 V LED driver; HA core `template:`
+#     light or `switch:` template wraps the relay into a virtual
+#     `light.entry` + `light.underbody` + `light.soft_interior`.
+#   - Path C — All-in-one smart scene controller (Hue Bridge / Lutron
+#     Caséta / IKEA TRÅDFRI / Bond Home for ceiling-fan-light
+#     combos). Single hub exposes all lights as `light.*`; the
+#     recipe walks the operator through grouping the approach lights
+#     into a `light.approach_scene` group entity (HA `light:` group
+#     domain since 2022.x).
+#
+# The four canonical use cases the legacy spec names — (1) detect a
+# **first arrival** event (nobody → someone home) via bluetooth-wifi-
+# presence Wave 3 #42's `binary_sensor.rc_presence_anyone_home` +
+# `binary_sensor.rc_presence_all_away`; (2) "if it's dark" gating via
+# `sun.sun` OR `sensor.rc_weather_light_lux`; (3) run a short
+# "approach" scene for N minutes (underbody + entry + soft interior);
+# (4) mode-aware Stealth suppression via `select.rc_mode` from the
+# mode/automation-builder connection — are all covered in the recipe
+# §7 automations (5 total). The camera-override soft-deterrent (a
+# brighter 30-second "someone's at the door" cue when a Frigate
+# `person` detection fires in the entry zone after dark) cross-
+# references Frigate Wave 3 #35 and is the recipe §7.4 automation +
+# the `binary_sensor.rc_lighting_camera_override` contract tile.
+#
+# Honesty footnote (install.config_flow = true is NOT a tier-a marker):
+# The UPSTREAM HA core `light` domain (since 2022.x — exposes a GUI
+# flow for the operator's choice of vendor's light entity) + the
+# `switch` domain (since 2022.x) + the `template` integration (since
+# 2022.x) + the `input_boolean` integration (since 2022.x) + the
+# `input_select` integration (since 2022.x) + the `input_number`
+# integration (since 2022.x) + the `binary_sensor` integration
+# (since 2022.x) + the `button` integration (since 2023.x) + the
+# `input_datetime` integration (since 2022.x) + the `light:` group
+# domain (since 2022.x) ALL expose a GUI flow. That's honest upstream
+# truth, NOT a tier-a marker for RoamCore's tier. The tier-a marker
+# for RoamCore would be a RoamCore-owned `config_flow.py` +
+# RoamCore-owned integration code + integration tests against a
+# RoamCore-owned approach-light bench (a Shelly 1 + LED strip + Hue
+# Bridge + Frigate entry zone, all wired together in a controlled
+# environment). None of those are shipped at tier-b.
+
+id: approach-lights
+name: "Approach lights (welcome-home exterior + underbody lighting) (tier-b recipe connection)"
+tier: b
+category: lighting
+status: beta
+version: 0.1.0
+description: |
+  Approach lights (welcome-home exterior + underbody lighting) —
+  the universal small-comfort van automation: open the door after
+  dark, the underbody + entry + soft-interior lights come on for a
+  configurable duration (default 2 min) so you can see where you're
+  stepping and feel like the van is welcoming you home. RoamCore
+  does NOT ship a native light hardware; this connection RECIPEs
+  three upstream operator-side paths and layers a vendor-neutral
+  contract via the 12 `rc_lighting_*` dashboard tiles per
+  `docs/reference/rc-entity-naming.md` §lighting subsystem (NEW —
+  added by this slice in `docs/reference/rc-entity-naming.md`,
+  mirroring how `media` was added by Music Assistant Wave 3 #41 +
+  how `presence` was added by bluetooth-wifi-presence Wave 3 #42 +
+  how `water` was added by water-tanks Wave 3 #50 + how `bed_lift`
+  was added by happijac Wave 3 #43 + how `hvac` was added by
+  heated-floors Wave 3 #44 + how `safety` was added by smoke-co-gas-
+  sensors Wave 3 #45). The recipe covers the "is it dark + is
+  someone arriving + is mode != stealth" three-way gate + the
+  approach-active aggregate + the underbody / entry / soft-interior
+  state mirrors + the derived approach-minutes-remaining + the
+  last-approach-trigger timestamp + the operator-tunable approach-
+  mode (auto / dark_only / stealth_only / disabled) + the operator-
+  tunable approach-duration-minutes (default 2; range 1–10) + the
+  operator-triggerable run-approach-now button + the camera-override
+  soft-deterrent that fires when a Frigate `person` detection hits
+  the entry zone after dark (cross-references Frigate Wave 3 #35)
+  and the five §7 automations (first-arrival-after-dark / run-on-
+  demand / auto-stop-after-N-min / camera-override-on-frigate-person
+  / stealth-mode-suppression).
+icon: lightbulb-on
+codeowners:
+  - "@bernardc"
+tags:
+  - lighting
+  - light
+  - switch
+  - approach
+  - welcome-home
+  - exterior
+  - underbody
+  - entry
+  - soft-interior
+  - scene
+  - camera-override
+  - mode-aware
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~20 min"
+  requires_reboot: false
+  setup_notes: |
+    Approach lights requires the operator to (a) choose one of
+    the three upstream paths (Path A — smart switches / smart bulbs
+    the operator already owns — Shelly 1 / Shelly Plus 1 / Zooz
+    ZEN17 / Aeotec Nano Switch wired switches; Philips Hue / LIFX /
+    IKEA TRÅDFRI smart bulbs; generic-Zigbee / generic-Z-Wave /
+    Tuya vendor-neutral; Path B — generic relay + HA template light
+    — Shelly / Zooz / Aeotec relay wired into a 12 V / 24 V LED
+    driver for the underbody strip + the entry porch light, with HA
+    `template:` light wrapping the relay state into virtual
+    `light.entry` + `light.underbody` + `light.soft_interior`; Path
+    C — all-in-one smart scene controller — Hue Bridge / Lutron
+    Caséta / IKEA TRÅDFRI / Bond Home hub with all approach lights
+    grouped into a `light.approach_scene` group entity), (b) confirm
+    the operator's chosen integration is already configured in HA
+    and exposes at least one upstream entity (light.* / switch.*),
+    (c) wire the upstream entity -> contract `rc_lighting_*` mapping
+    via HA core `template:` (or HA core `light:` group domain),
+    (d) configure the operator-tunable thresholds via
+    `number.rc_lighting_approach_duration_min` (default 2; range
+    1–10) + `select.rc_lighting_approach_mode` (auto / dark_only /
+    stealth_only / disabled), (e) wire the §7 automations (first-
+    arrival-after-dark / run-on-demand / auto-stop-after-N-min /
+    camera-override-on-frigate-person / stealth-mode-suppression)
+    BEFORE first use, (f) confirm the bluetooth-wifi-presence Wave
+    3 #42 connection's `binary_sensor.rc_presence_anyone_home` +
+    `binary_sensor.rc_presence_all_away` are wired (the first-
+    arrival trigger depends on `rc_presence_all_away` transitioning
+    TRUE → FALSE), (g) confirm the dark-outside signal is wired via
+    `sun.sun` (simpler) OR `sensor.rc_weather_light_lux` (more
+    accurate when there's bright streetlight pollution), (h) confirm
+    the mode/automation-builder connection's `select.rc_mode` is
+    wired (the Stealth suppression depends on it), (i) optionally
+    wire the Frigate Wave 3 #35 entry-zone `person` detection for
+    the camera-override soft-deterrent (skip this if Frigate is not
+    installed — the camera-override contract tile will simply stay
+    FALSE).
+
+install:
+  ha_integration_domain: light
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - registers_light_entities_for_each_approach_zone
+    - may_register_via_vendor_integration_for_path_a
+    - may_register_via_relay_plus_template_for_path_b
+    - may_register_via_hub_for_path_c
+
+dashboard:
+  title: "Approach lights"
+  tiles:
+    - binary_sensor.rc_lighting_approach_active
+    - binary_sensor.rc_lighting_approach_available
+    - binary_sensor.rc_lighting_underbody_state
+    - binary_sensor.rc_lighting_entry_state
+    - binary_sensor.rc_lighting_soft_interior_state
+    - sensor.rc_lighting_approach_minutes_remaining
+    - sensor.rc_lighting_last_approach_trigger_minutes_ago
+    - binary_sensor.rc_lighting_dark_outside
+    - select.rc_lighting_approach_mode
+    - number.rc_lighting_approach_duration_min
+    - button.rc_lighting_run_approach_now
+    - binary_sensor.rc_lighting_camera_override
+
+openclaw:
+  queries:
+    - "is_approach_lighting_on"
+    - "approach_lighting_minutes_remaining"
+    - "last_approach_trigger_minutes_ago"
+    - "is_dark_outside"
+    - "is_underbody_light_on"
+    - "is_entry_light_on"
+    - "is_soft_interior_light_on"
+    - "run_approach_now"
+    - "set_approach_mode"
+    - "set_approach_duration_min"
+    - "is_camera_override_active"
+  summary_keys:
+    - approach_active
+    - approach_available
+    - underbody_state
+    - entry_state
+    - soft_interior_state
+    - approach_minutes_remaining
+    - last_approach_trigger_minutes_ago
+    - dark_outside
+    - approach_mode
+    - approach_duration_min
+    - camera_override
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_approach_lights_for_integration_test
+  - recipe_depends_on_user_running_approach_lights_plus_presence_detection_plus_dark_sensor
+  - optional_smart_switch_vs_relay_vs_hub_choice
+  - requires_operator_wiring_safety_camera_override_before_first_use_if_frigate_enabled
+  - mode_aware_stealth_suppression_required_for_legal_campgrounds
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/light/
+    - https://www.home-assistant.io/integrations/switch/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/sensor/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/button/

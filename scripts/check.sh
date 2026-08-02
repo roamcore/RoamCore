@@ -114,6 +114,8 @@ run_if_present "connections/water-tanks/tests/test_connection_yml.py" \
   "Connection: Water tanks (fresh/grey monitoring) (tier-b) — manifest honesty smoke check"
 run_if_present "connections/electronic-valves/tests/test_connection_yml.py" \
   "Connection: Electronic valves + auto tank switching (tier-b) — manifest honesty smoke check"
+run_if_present "connections/approach-lights/tests/test_connection_yml.py" \
+  "Connection: Approach lights (welcome-home exterior + underbody lighting) (tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
