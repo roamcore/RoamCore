@@ -1,0 +1,197 @@
+# Timezone geolocator (location-aware HA timezone) — tier-c recipe connection.
+#
+# Promoted from docs/catalog/time/timezone-geolocator.md
+# (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
+# with no recipe + no contract + no automations — just a placeholder
+# that said "RoamCore includes notes for using GeoLocator to keep
+# time zone correct based on location"). Promoted into tier-c
+# because RoamCore does NOT ship a native timezone engine; we RECIPE
+# the well-understood GeoLocator HACS integration by SmartyVan
+# (https://github.com/SmartyVan/hass-geolocator) and a thin RoamCore
+# automation wrapper that calls `geolocator.update_location` on a
+# cadence the operator picks. Tier-c is honest here: GeoLocator is
+# upstream HACS code, NOT RoamCore-owned; the RoamCore wrapper is a
+# `geolocator.update_location` service-call automation + the
+# 8 `rc_time_zone_*` contract tiles documented below; RoamCore
+# does NOT fork GeoLocator. This is the FIRST `time`-category
+# slice in the RoamCore connection pipeline:
+#   - Path A — Traccar / HA Companion / Wican Pro GPS source. The
+#     GPS source (Traccar server Wave 3 #36 OR the HA Companion app
+#     OR a Wican Pro Wave 3 #6 OBD-II reader's GPS feed OR any other
+#     `device_tracker.*` updating `zone.home`) is the canonical
+#     location source. GeoLocator reads the GPS coordinates from
+#     `zone.home` and computes the correct timezone ID from an
+#     offline lookup table. RoamCore does NOT maintain its own
+#     timezone engine; we reuse GeoLocator's lookup.
+#   - Path B — `homeassistant.set_location` service call. The
+#     operator can manually push coordinates to HA via the
+#     `homeassistant.set_location` service (useful for benches
+#     without a GPS tracker). The recipe walks the operator through
+#     wiring a button or input_number to trigger this on demand.
+#   - Path C — Optional RoamCore automation wrapper. A conservative
+#     15-minute-cadence automation that calls
+#     `geolocator.update_location` to keep the system timezone
+#     in sync with `zone.home`. The wrapper is OPTIONAL — operators
+#     who prefer event-driven updates can trigger on `zone.home`
+#     changes instead.
+
+# The legacy spec calls out the same single canonical use case: keep
+# HA's system timezone correct as the van travels across regions so
+# that time-based automations (sun events + `now()` + `today_at()`)
+# keep working. The recipe §5 walks through the single MANDATORY
+# automation (RoamCore Update timezone via GeoLocator on a 15-min
+# cadence or on `zone.home` changes).
+
+# Honesty footnote (install.config_flow = true is NOT a tier-a
+# marker): The UPSTREAM HA core `zone` domain (since 2022.x —
+# exposes a GUI flow for the operator's choice of home zone) + the
+# `device_tracker` domain (since 2022.x) + the `homeassistant`
+# service domain (since 2022.x — `homeassistant.set_location`) + the
+# `template` integration (since 2022.x) + the `input_boolean`
+# integration (since 2022.x) + the `input_datetime` integration
+# (since 2022.x) + the HACS `geolocator` integration (since 2023.x
+# — exposes a GUI flow) ALL expose a GUI flow. That's honest
+# upstream truth, NOT a tier-a marker for RoamCore's tier. The
+# tier-a marker for RoamCore would be a RoamCore-owned
+# operator-wired setup flow + RoamCore-owned integration code +
+# integration tests against a RoamCore-owned timezone engine bench.
+# None of those are shipped at tier-c. Tier-c honesty: GeoLocator
+# is upstream HACS code; the RoamCore wrapper is a thin automation.
+
+id: timezone-geolocator
+name: "Timezone geolocator (location-aware HA timezone) — tier-c recipe connection"
+tier: c
+category: time
+status: recipe_published
+version: 0.1.0
+description: |
+  Timezone geolocator (location-aware HA timezone) — the umbrella
+  for "keep HA's system timezone correct as the van travels across
+  regions so that time-based automations (sun events + `now()` +
+  `today_at()`) keep working" — is the time-category complement to
+  the existing RoamCore time helpers (`homeassistant/packages/
+  roamcore_weather_time.yaml` + `sensor.rc_time_zone` override
+  contract). RoamCore does NOT ship a native timezone engine; we
+  RECIPE the GeoLocator HACS integration by SmartyVan
+  (https://github.com/SmartyVan/hass-geolocator) and a thin
+  RoamCore automation wrapper (a 15-minute-cadence or event-driven
+  `geolocator.update_location` call). The recipe covers the
+  legacy canonical use case (keep HA timezone synced to
+  `zone.home`), the GPS source wiring (Traccar Wave 3 #36 / HA
+  Companion app / Wican Pro Wave 3 #6 OBD-II's GPS feed / any
+  `device_tracker.*` updating `zone.home`), the manual
+  `homeassistant.set_location` service-call fallback, the
+  event-driven vs cadence-driven update choice, and the 8
+  `rc_time_zone_*` contract tiles (timezone + offset + last_update
+  + staleness + GPS source + cadence select + manual-update button +
+  fallback-input). The REUSE-FIRST strategy is intentional:
+  GeoLocator's offline timezone lookup table is the canonical
+  source; RoamCore does NOT maintain its own timezone engine.
+icon: globe-clock
+codeowners:
+  - "@bernardc"
+tags:
+  - time
+  - timezone
+  - geolocator
+  - gps
+  - zone
+  - travel
+  - reuse-first
+  - automation-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~15 min"
+  requires_reboot: false
+  setup_notes: |
+    Timezone geolocator requires the operator to (a) install
+    GeoLocator via HACS → Repositories → Custom repositories
+    (URL: https://github.com/SmartyVan/hass-geolocator, Category:
+    Integration), (b) restart Home Assistant, (c) configure the
+    GPS source so `zone.home` is updated (Traccar Wave 3 #36 / HA
+    Companion app / Wican Pro Wave 3 #6 OBD-II's GPS feed / any
+    `device_tracker.*` updating `zone.home`), (d) confirm the
+    upstream device_tracker entity exists in HA, (e) wire the
+    upstream entity -> `zone.home` mapping (GeoLocator reads
+    coordinates from `zone.home` directly; no template needed if
+    the device_tracker is already the operator's home zone), (f)
+    wire the §5 automation (RoamCore Update timezone via
+    GeoLocator) BEFORE first use. GeoLocator's offline timezone
+    lookup table handles the timezone ID computation; RoamCore
+    does NOT maintain its own timezone engine.
+
+install:
+  ha_integration_domain: geolocator
+  config_flow: true
+  hacs: true
+  hacs_url: "https://github.com/SmartyVan/hass-geolocator"
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - registers_geolocator_integration
+    - may_register_zone_update_service_call
+    - registers_timezone_tile
+
+dashboard:
+  title: "Timezone geolocator"
+  tiles:
+    - sensor.rc_time_zone_current
+    - sensor.rc_time_zone_offset_minutes
+    - binary_sensor.rc_time_zone_synced
+    - sensor.rc_time_zone_last_update_minutes_ago
+    - binary_sensor.rc_time_zone_stale
+    - sensor.rc_time_zone_gps_source
+    - select.rc_time_zone_update_cadence
+    - button.rc_time_zone_update_now
+
+openclaw:
+  queries:
+    - "what timezone is the van in?"
+    - "is the timezone synced?"
+    - "when was the timezone last updated?"
+    - "is the timezone stale?"
+    - "what is the GPS source for the timezone?"
+    - "set the timezone update cadence to event_driven / 15_min / 60_min / manual"
+    - "update the timezone now"
+  summary_keys:
+    - current_timezone
+    - offset_minutes
+    - synced
+    - last_update_minutes_ago
+    - stale
+    - gps_source
+    - update_cadence
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_timezone_engine_for_integration_test
+  - recipe_depends_on_user_installing_geolocator_via_hacs
+  - reuse_first_strategy_geo_locator_recommended_no_custom_timezone_engine
+  - optional_gps_source_via_traccar_or_ha_companion_or_wican_pro
+  - requires_zone_home_to_be_updated_by_a_gps_source
+  - cadence_vs_event_driven_choice_left_to_operator
+  - ha_system_timezone_change_does_not_require_ha_restart_via_geolocator
+
+links:
+  official:
+    - https://github.com/SmartyVan/hass-geolocator
+    - https://www.home-assistant.io/integrations/zone/
+    - https://www.home-assistant.io/integrations/device_tracker/
+    - https://www.home-assistant.io/integrations/homeassistant/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_datetime/
+  cross_references:
+    - ../traccar/
+    - ../teltonika/
+    - ../wican-pro/
+    - ../weather-time-contract/
