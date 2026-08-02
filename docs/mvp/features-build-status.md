@@ -48,7 +48,7 @@ This is an internal status page for the remaining MVP feature build-out.
   - cross-reference to HVAC basics (no relationship): different subsystem
   - cross-reference to Motion-based lighting (no relationship): different subsystem
   - cross-reference to Approach lights (no relationship): different subsystem
-  - PR #N
+  - PR #58
 
 ## Next steps (needs HAOS setup / UI wiring)
 
