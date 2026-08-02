@@ -2,6 +2,8 @@
 
 **Support tier:** C
 
+> **SUPERSEDED 2026-08-02 by `connections/in-cab-tablet-dashboard/connection.yml` + `connections/in-cab-tablet-dashboard/docs/recipe.md`. This legacy tier-c catalog page is kept as a thin folder-overview pointer for backward compatibility.**
+
 Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving: exterior lighting, compressor, basic house status, and key vehicle stats.
 
 ## What you need

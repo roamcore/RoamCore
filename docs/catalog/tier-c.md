@@ -49,11 +49,12 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 
 ## Time
 
-- [Time zone auto-detection (GeoLocator)](time/timezone-geolocator/) — RoamCore includes notes for using GeoLocator to keep time zone correct based on location.
+- [Time (atomic) — NTP-synchronized time with offline-resilience](time/atomic-time/) — RoamCore includes notes for keeping HA's clock accurate even when offline
+- [Time zone auto-detection (GeoLocator)](time/timezone-geolocator/) — > **SUPERSEDED** by `connections/timezone-geolocator/connection.yml` + `connections/timezone-geolocator/docs/recipe.md` (Wave 3 #54, shipped
 
 ## Vehicle Obd
 
-- [In‑cab dashboard (driving tablet)](vehicle-obd/in-cab-tablet-dashboard/) — Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving: exterior lighting, compressor,
+- [In‑cab dashboard (driving tablet)](vehicle-obd/in-cab-tablet-dashboard/) — > **SUPERSEDED 2026-08-02 by `connections/in-cab-tablet-dashboard/connection.yml` + `connections/in-cab-tablet-dashboard/docs/recipe.md`. Th
 - [MeatPi WiCAN Pro (OBD2 reader)](vehicle-obd/wican-pro/) — MeatPi WiCAN Pro is an OBD2 + CAN adapter (ESP32-based) that can bring vehicle telemetry into Home Assistant: voltage, coolant temp, fault c
 
 ## Water
