@@ -47,7 +47,7 @@ This is an internal status page for the remaining MVP feature build-out.
   - cross-reference to deadbolts (optional): the recipe's §11 cross-references the deadbolts Wave 3 #48 connection for the optional "tag-unlock-the-door" affordance that uses the same `tag_id → scene` mapping pattern
   - cross-reference to Approach lights (optional): the recipe's §11 cross-references the approach-lights Wave 3 #52 connection for the canonical "Lights off" / "Welcome home" scene entities that the `tag_id → scene` mapping table can use as scene targets
   - cross-reference to HVAC basics (optional): the recipe's §11 cross-references the HVAC basics Wave 3 #49 connection for the canonical "Bedtime" / "Climate" scene entities that the `tag_id → scene` mapping table can use as scene targets
-  - PR #N
+  - PR #61
 
 ## Next steps (needs HAOS setup / UI wiring)
 
