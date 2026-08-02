@@ -168,7 +168,7 @@ This is an internal status page for the remaining MVP feature build-out.
   - cross-reference to Frigate (optional): §3 Path A3 Frigate motion event cross-references Frigate Wave 3 #35 for vans with Frigate CCTV installed (the Frigate `motion` event is the camera-side motion source)
   - cross-reference to Wican Pro (optional): §4 Path B1 OBD-II reader cross-references Wican Pro Wave 3 #6 for the canonical ignition source (`binary_sensor.rc_obd_engine_running`)
   - cross-reference to HVAC basics: §8.1 Travel auto-off interior lights safety feature (interior-distraction laws make it non-optional when driving in many jurisdictions) — different subsystem (this slice is `lighting` not `hvac`) but shares the safety-critical Travel mode pattern
-  - PR #N
+  - PR #57
 
 ## Next steps (needs HAOS setup / UI wiring)
 
