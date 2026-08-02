@@ -114,6 +114,8 @@ run_if_present "connections/motion-based-lighting/tests/test_connection_yml.py" 
   "Connection: Motion-based lighting (driving + arrival) (tier-b) — manifest honesty smoke check"
 run_if_present "connections/timezone-geolocator/tests/test_connection_yml.py" \
   "Connection: Timezone geolocator (tier-c) — manifest honesty smoke check"
+run_if_present "connections/time-atomic/tests/test_connection_yml.py" \
+  "Connection: Time (atomic) (tier-c) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
