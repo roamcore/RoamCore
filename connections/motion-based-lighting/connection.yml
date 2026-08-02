@@ -1,0 +1,259 @@
+# Motion-based lighting (driving + arrival) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/lighting/motion-based-lighting.md
+# (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
+# with no recipe + no contract + no automations — just a placeholder
+# that said "Make lighting feel automatic: turn off interior house
+# lights when the vehicle starts moving, turn on soft interior lights
+# when ignition turns off after dark, turn on exterior lights when
+# the first person returns home after sunset"). Promoted into tier-b
+# because RoamCore does NOT ship a native motion sensor / ignition
+# signal / presence / dark-outside bench; we RECIPE four upstream
+# operator-side paths and layer a vendor-neutral contract via the
+# 12 `rc_lighting_*` dashboard tiles per the lighting subsystem
+# naming convention established by the approach-lights Wave 3 #52
+# connection (the `lighting` subsystem addition to
+# docs/reference/rc-entity-naming.md is OWNED by approach-lights —
+# this slice inherits the `rc_lighting_*` prefix and does NOT
+# backfill the subsystem naming doc, mirroring how hvac-basics
+# Wave 3 #49 inherits the `rc_hvac_*` prefix from heated-floors
+# Wave 3 #44 without backfilling). This is the SECOND
+# lighting-category slice in the RoamCore connection pipeline:
+#   - Path A — Motion sensor (PIR / mmWave radar / Frigate / generic
+#     HA binary_sensor motion feed) wired into any HA core motion-
+#     exposing integration (ZHA / Zigbee2MQTT / ESPHome / Frigate).
+#     The motion sensor surfaces as `binary_sensor.motion_*` and the
+#     recipe walks the operator through aggregating those into the
+#     `binary_sensor.rc_lighting_motion_available` gate.
+#   - Path B — Ignition / engine-running signal (OBD-II reader /
+#     12 V D+ signal / MQTT-published engine_running / manual
+#     `input_boolean.engine_running` fallback) wired via the
+#     Wican Pro `connections/wican-pro/` recipe OR the upstream
+#     `mqtt` integration OR ESPHome analog input. The ignition
+#     signal drives the Travel-mode interior auto-off + the
+#     Stop-and-soft-interior automation (the §7.1 + §7.2 safety
+#     features that interior-distraction laws make non-optional
+#     when driving in many jurisdictions).
+#   - Path C — Presence detection (bluetooth-wifi-presence Wave 3
+#     #42's `binary_sensor.rc_presence_anyone_home` +
+#     `binary_sensor.rc_presence_all_away` + per-device
+#     `device_tracker.*`) driving the §7.3 arrival cue (exterior
+#     + soft interior fade-in for the first person returning home
+#     after sunset).
+#   - Path D — Mode-aware override (Travel / Camp / Stealth /
+#     Custom) via `select.rc_lighting_motion_mode` (off / travel /
+#     camp / stealth / custom) + optional cross-reference to the
+#     mode/automation-builder Wave 2 #23 `select.rc_mode` for the
+#     higher-level Stealth / Sleep / Boost / Off integration. In
+#     Stealth mode, ALL motion lighting is suppressed (legal
+#     campgrounds). In Travel mode, interior auto-off is enforced
+#     (the §7.1 safety feature). In Camp mode, motion triggers
+#     soft interior + arrival cue + exterior arrival. In Custom,
+#     the operator picks which pillars are active via
+#     `select.rc_lighting_custom_pillars`.
+#
+# The three canonical use cases the legacy spec names — (1)
+# "turn off interior house lights when the vehicle starts moving";
+# (2) "turn on soft interior lights when ignition turns off after
+# dark"; (3) "turn on exterior lights when the first person
+# returns home after sunset" — are all covered in the recipe §8
+# automations (5 total: travel-auto-off-interior-lights + stop-
+# and-soft-interior + arrival-cue-exterior-and-soft-interior +
+# motion-triggered-interior-camping + stealth-mode-suppression).
+# The mode-aware override is documented in §6 + the §8.5 stealth-
+# mode-suppression automation; the manual-override "automations
+# don't fight manual control" gate is documented in §1 + the
+# §7.4 motion-triggered-interior automation (the 5-minute
+# `binary_sensor.rc_lighting_manual_override_active` window).
+#
+# Honesty footnote (install.config_flow = true is NOT a tier-a
+# marker): The UPSTREAM HA core `light` domain (since 2022.x —
+# exposes a GUI flow for the operator's choice of vendor's light
+# entity) + the `binary_sensor` domain (since 2022.x) + the
+# `template` integration (since 2022.x) + the `device_tracker`
+# domain (since 2022.x) + the `mqtt` integration (since 2022.x)
+# + the `sun` integration (since 2022.x) + the `select`
+# integration (since 2022.x) + the `number` integration (since
+# 2022.x) + the `button` integration (since 2023.x) + the
+# `input_boolean` integration (since 2022.x) + the
+# `integration` helper (since 2022.x) ALL expose a GUI flow.
+# That's honest upstream truth, NOT a tier-a marker for
+# RoamCore's tier. The tier-a marker for RoamCore would be a
+# RoamCore-owned operator-wired setup flow + RoamCore-owned
+# integration code + integration tests against a RoamCore-owned
+# motion + ignition + presence + dark-outside bench. None of
+# those are shipped at tier-b.
+
+id: motion-based-lighting
+name: "Motion-based lighting (driving + arrival) — tier-b recipe connection"
+tier: b
+category: lighting
+status: beta
+version: 0.1.0
+description: |
+  Motion-based lighting (driving + arrival) — the umbrella for
+  ignition-driven interior auto-off + ignition-driven soft-interior
+  on stop + presence-driven arrival cue + motion-driven interior
+  camping + mode-aware Stealth suppression — is the lighting-
+  category complement to the approach-lights Wave 3 #52 welcome-
+  home scene. RoamCore does NOT ship a native motion sensor /
+  ignition signal / presence / dark-outside bench; this connection
+  RECIPEs four upstream operator-side paths (Path A motion sensor,
+  Path B ignition signal, Path C presence detection, Path D mode-
+  aware override) and layers a vendor-neutral contract via the 12
+  `rc_lighting_*` dashboard tiles per the lighting subsystem
+  naming convention established by the approach-lights Wave 3 #52
+  connection. The recipe covers the three legacy canonical use
+  cases (interior auto-off on driving + soft-interior on ignition-
+  off after dark + exterior on first arrival after sunset), the
+  mode-aware Travel / Camp / Stealth / Custom override (Stealth
+  suppresses ALL motion lighting for legal campgrounds; Travel
+  enforces interior auto-off as a safety feature; Camp triggers
+  motion-driven soft interior; Custom lets the operator pick
+  which pillars are active), the manual-override "automations don't
+  fight manual control" gate (5-minute `binary_sensor.rc_lighting_
+  manual_override_active` window after a manual `light.turn_on` /
+  `light.turn_off`), and the aggregate `binary_sensor.rc_lighting_
+  motion_available` + `binary_sensor.rc_lighting_motion_active`
+  surfaces for the dashboard "is ANY motion automation firing?" +
+  "are all the required upstream gates satisfied?" tiles.
+icon: motion-sensor
+codeowners:
+  - "@bernardc"
+tags:
+  - lighting
+  - motion
+  - automation
+  - ignition
+  - presence
+  - mode-aware
+  - travel
+  - camp
+  - stealth
+  - arrival
+  - safety
+  - interior-distraction-law
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Motion-based lighting requires the operator to (a) choose one
+    or more of the four upstream paths (Path A motion sensor via
+    ZHA / Zigbee2MQTT / ESPHome / Frigate; Path B ignition signal
+    via OBD-II / 12 V D+ signal / MQTT-published engine_running /
+    manual `input_boolean.engine_running` fallback; Path C presence
+    via the bluetooth-wifi-presence Wave 3 #42 connection's
+    `binary_sensor.rc_presence_anyone_home` +
+    `binary_sensor.rc_presence_all_away`; Path D mode override via
+    `select.rc_lighting_motion_mode` + optional cross-reference
+    to the mode/automation-builder Wave 2 #23 `select.rc_mode`),
+    (b) confirm the operator's chosen integration is already
+    configured in HA and exposes at least one upstream entity
+    (`binary_sensor.motion_*` for Path A; `binary_sensor.engine_
+    running` or `binary_sensor.rc_obd_engine_running` for Path B;
+    `binary_sensor.rc_presence_*` for Path C; `select.rc_lighting_
+    motion_mode` for Path D), (c) wire the upstream entity ->
+    contract `rc_lighting_*` mapping via HA core `template:`
+    binary_sensor / select / number / button / sensor helpers
+    (or HA core `entity` customize-domain alias), (d) wire the
+    `sun.sun` (or `sensor.rc_weather_light_lux`) dark-outside
+    gate via HA core `template:` binary_sensor that maps to
+    `binary_sensor.rc_lighting_dark_outside`, (e) wire the
+    §6 mode-aware override (select.rc_lighting_motion_mode +
+    select.rc_lighting_custom_pillars), (f) wire the §8
+    automations (travel-auto-off-interior-lights + stop-and-soft-
+    interior + arrival-cue-exterior-and-soft-interior + motion-
+    triggered-interior-camping + stealth-mode-suppression) BEFORE
+    first use.
+
+install:
+  ha_integration_domain: light
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - may_register_light_entities
+    - may_register_binary_sensor_for_motion
+    - registers_motion_sensor_bindings
+    - may_register_select_entities_for_mode
+    - registers_ignition_template
+
+dashboard:
+  title: "Motion lighting"
+  tiles:
+    - binary_sensor.rc_lighting_motion_available
+    - binary_sensor.rc_lighting_motion_active
+    - binary_sensor.rc_lighting_driving
+    - binary_sensor.rc_lighting_dark_outside
+    - binary_sensor.rc_lighting_presence_someone_home
+    - binary_sensor.rc_lighting_presence_all_away
+    - select.rc_lighting_motion_mode
+    - number.rc_lighting_motion_duration_min
+    - button.rc_lighting_run_motion_now
+    - sensor.rc_lighting_last_motion_trigger_minutes_ago
+    - sensor.rc_lighting_motion_trigger_count_24h
+    - binary_sensor.rc_lighting_manual_override_active
+
+openclaw:
+  queries:
+    - "is anyone home?"
+    - "is it dark outside?"
+    - "is the vehicle moving?"
+    - "is motion lighting available?"
+    - "is any motion automation firing?"
+    - "set motion mode to off / travel / camp / stealth / custom"
+    - "run motion lighting now"
+    - "what was the last motion trigger?"
+    - "how many motion triggers in the last 24h?"
+    - "is manual override active?"
+  summary_keys:
+    - motion_available
+    - motion_active
+    - driving
+    - dark_outside
+    - presence_someone_home
+    - presence_all_away
+    - motion_mode
+    - motion_duration_min
+    - last_motion_trigger_minutes_ago
+    - motion_trigger_count_24h
+    - manual_override_active
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_motion_sensor_for_integration_test
+  - recipe_depends_on_user_running_motion_sensors_and_or_ignition_signal_and_or_presence_detection
+  - optional_ignition_signal_via_obd_ii_or_12v_dcdc_or_engine_running_binary_sensor
+  - optional_exterior_lights_via_smart_switch_or_relay_or_hub_scene
+  - requires_operator_wiring_safety_manual_override_before_first_use
+  - mode_aware_stealth_suppression_required_for_legal_campgrounds
+  - travel_mode_auto_off_interior_lights_is_a_safety_feature_not_optional
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/light/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/device_tracker/
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/integration/
+    - https://www.home-assistant.io/integrations/sun/
+    - https://www.home-assistant.io/integrations/sensor/
+    - https://www.home-assistant.io/integrations/select/
+    - https://www.home-assistant.io/integrations/number/
+    - https://www.home-assistant.io/integrations/button/
+  cross_references:
+    - ../approach-lights/
+    - ../bluetooth-wifi-presence/
