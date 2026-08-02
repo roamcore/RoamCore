@@ -1,0 +1,329 @@
+# NFC tags (vendor-neutral NFC-triggered scenes mapped via tag_id → scene
+# mapping) — tier-c recipe connection.
+#
+# Promoted from docs/catalog/nfc-tags/index.md (legacy 14-line stub —
+# originally listed as "Support tier: C" with no recipe + no contract +
+# no automations — just a placeholder about "easy NFC-based automations
+# and practical places to put tags in a van" + "Lights off", "Bedtime",
+# "Leave camp" as example scene names). Promoted into tier-c because
+# RoamCore does NOT ship a native NFC integration; we RECIPE the
+# well-understood upstream HA core `tag` integration (since 2022.x —
+# exposes scanned NFC tag IDs as `tag.last_scanned` + persistence via
+# the core `tag` registry + a `tag_scanned` event fired on every scan)
+# + a thin RoamCore automation wrapper that maps each `tag_id` to a
+# RoamCore scene (the umbrella for "Lights off", "Bedtime", "Leave camp"
+# + operator-defined scenes). Tier-c is honest here: HA's core `tag`
+# integration is upstream HA core code, NOT RoamCore-owned; the
+# RoamCore wrapper is a thin `tag_id → scene` mapping table + the
+# contract layer (the 8 `rc_nfc_*` contract tiles documented below).
+# RoamCore does NOT fork the upstream `tag` integration.
+#
+# The legacy spec calls out the single canonical use case: cheap + simple
+# NFC tags make the van feel magical — tap your phone to run a scene
+# ("Lights off", "Bedtime", "Leave camp") — and the recipe walks through
+# practical places to put tags in a van (the cab visor + the entry
+# door + the bed headboard + the outdoor awning rail + the
+# freshwater fill cap). The recipe §3 + §4 + §5 walks through the
+# THREE operator-pickable paths:
+#   - Path A — Phone-as-NFC-reader (HA Companion app NFC scan). The
+#     operator's phone (the HA Companion app, since 2022.x) scans the
+#     NFC tag and fires a `tag_scanned` event in HA with the tag's
+#     unique ID. Path A is the default for any van operator who has a
+#     modern Android phone with NFC built in (most Android phones since
+#     2018 support NFC).
+#   - Path B — USB NFC reader (e.g. ACR122U / PN532 / SonMicro /
+#     Identiv). A dedicated USB NFC reader plugged into the HA server
+#     (requires a USB port + the `nfcpy` integration — HACS) scans the
+#     NFC tag and fires a `tag_scanned` event in HA with the tag's
+#     unique ID. Path B is the default for vans where the operator
+#     does NOT have an Android phone with NFC (e.g. the operator
+#     uses an iPhone, which does NOT expose an NFC scan event to HA
+#     directly) OR for vans where the operator wants a SINGLE shared
+#     NFC reader that everyone in the van can use (no per-phone
+#     pairing required).
+#   - Path C — HA Companion app `tag` automation trigger. The HA
+#     Companion app's `tag` trigger (since 2022.x) fires a
+#     `tag_scanned` event in HA when the operator scans an NFC tag
+#     with the phone. Path C is the default for the operator who
+#     already has the HA Companion app installed + already uses it for
+#     other RoamCore affordances (presence detection + notifications
+#     + dashboard shortcuts). Path C is functionally a subset of
+#     Path A (the HA Companion app is the phone-side NFC reader);
+#     the recipe treats Path C as an "implicit" Path A (the operator
+#     does NOT need to install a separate NFC reader; the phone
+#     IS the NFC reader).
+#
+# The legacy spec calls out the single canonical use case: cheap +
+# simple NFC tags make the van feel magical — tap your phone to run
+# a scene. The recipe §7 walks through the THREE MANDATORY automations:
+#   - §7.1 Last-tag-triggered scene — an automation that fires when
+#     a `tag_scanned` event is received AND matches a known
+#     `tag_id` in the RoamCore `tag_id → scene` mapping table AND
+#     then calls `scene.turn_on` on the mapped scene. The recipe
+#     walks the operator through registering each NFC tag in HA's
+#     tag registry + writing the `tag_id → scene` mapping into the
+#     RoamCore automation wrapper.
+#   - §7.2 Tag-unknown warning — an automation that fires when a
+#     `tag_scanned` event is received AND the `tag_id` is NOT in
+#     the RoamCore `tag_id → scene` mapping table. The automation
+#     sends a notification to the operator's phone (via the HA
+#     Companion app) saying "Unknown NFC tag scanned: <tag_id> —
+#     register it in the RoamCore tag_id → scene mapping table".
+#     This is the operator's on-ramp for adding new tags without
+#     having to read the recipe cover-to-cover.
+#   - §7.3 Stealth-mode suppression — an automation that SUPPRESSES
+#     the §7.1 last-tag-triggered scene automation when the
+#     `select.rc_mode` is in `stealth` mode (campgrounds with quiet
+#     hours + overnight stays where running a scene would disturb
+#     other campers). The recipe §11 cross-references the
+#     mode/automation-builder recipe (Wave 2 #23) for the
+#     `select.rc_mode` tile.
+#
+# Honesty footnote (install.config_flow = true is NOT a tier-a marker):
+# The UPSTREAM HA core `tag` integration (since 2022.x — exposes a
+# GUI flow for the operator to register a scanned NFC tag in the
+# HA tag registry; the UI's "Settings → Devices & Services → Tags"
+# page since 2022.x exposes a list of registered tags + an "Add
+# tag" button that lets the operator paste the tag's unique ID +
+# name it) + the HA core `scene` integration (since 2022.x —
+# exposes a GUI flow for the operator to create a scene from a
+# collection of entity states) + the HA core `automation` UI
+# editor (since 2022.x — exposes a GUI flow for the operator to
+# create an automation with a `tag` trigger) + the HA Companion
+# app's `tag` trigger (since 2022.x — phone-side NFC scan event)
+# + the HACS `nfcpy` integration (HACS — exposes a GUI flow for
+# the operator to wire a USB NFC reader into HA) + the HA core
+# `device_tracker` domain (since 2022.x — for the operator's
+# phone presence as a fallback "the operator is here" signal)
+# ALL expose a GUI flow. That's honest upstream truth, NOT a
+# tier-a marker for RoamCore's tier. The tier-a marker for
+# RoamCore would be a RoamCore-owned operator-wired setup flow
+# + RoamCore-owned integration code + integration tests against
+# a RoamCore-owned NFC bench. None of those are shipped at
+# tier-c. Tier-c honesty: HA's `tag` integration is upstream HA
+# core code; the RoamCore wrapper is a thin `tag_id → scene`
+# mapping table + the contract layer.
+
+id: nfc-tags
+name: "NFC tags (vendor-neutral NFC-triggered scenes mapped via tag_id → scene mapping) — tier-c recipe connection"
+tier: c
+category: access_control
+status: recipe_published
+version: 0.1.0
+description: |
+  NFC tags (vendor-neutral NFC-triggered scenes mapped via
+  `tag_id → scene` mapping) — the umbrella for "cheap + simple
+  NFC tags make the van feel magical: tap your phone to run a
+  scene (Lights off, Bedtime, Leave camp)" — is the
+  access-control-category complement to the broader RoamCore
+  scene + automation affordances. The single "what scene did
+  the last NFC tag trigger?" tile aggregates the most recent
+  `tag_scanned` event into one dashboard indicator; the
+  "is the last-tag-triggered scene still active?" tile is the
+  scratchpad state (TRUE while the triggered scene is still
+  in its active state); the "how many NFC tags are registered?"
+  tile surfaces the operator's coverage; the "tag_id of the
+  last scanned tag" sensor surfaces the most recent scanned
+  tag ID; the "last-tag ID scanned minutes ago" sensor is
+  the freshness gate (helpful for "when did the operator last
+  interact with the van?"); the "tag-unknown warning" binary
+  sensor surfaces whether the last scanned tag was unknown
+  (the operator's on-ramp for adding new tags); the
+  "Stealth-mode suppression" binary sensor surfaces whether
+  the mode/automation-builder recipe is currently suppressing
+  NFC-triggered scenes; the "trigger-scene-now" button
+  surfaces the manual override (operator can trigger the
+  last-tag-triggered scene without re-scanning the tag —
+  useful for the "I just want the lights off" affordance).
+
+  RoamCore does NOT ship a native NFC integration; we RECIPE
+  the well-understood upstream HA core `tag` integration
+  (since 2022.x — exposes scanned NFC tag IDs as
+  `tag.last_scanned` + persistence via the core `tag` registry
+  + a `tag_scanned` event fired on every scan) + a thin
+  RoamCore automation wrapper that maps each `tag_id` to a
+  RoamCore scene (the umbrella for "Lights off", "Bedtime",
+  "Leave camp" + operator-defined scenes). The recipe covers
+  the THREE operator-pickable paths (Path A phone-as-NFC-
+  reader via the HA Companion app + Path B USB NFC reader via
+  the HACS `nfcpy` integration + Path C HA Companion app
+  `tag` automation trigger as an implicit Path A), the THREE
+  MANDATORY §7 automations (last-tag-triggered scene + tag-
+  unknown warning + Stealth-mode suppression), the 8
+  `rc_nfc_*` contract tiles (last-triggered scene + active
+  state + registered tags count + last scanned tag ID + last
+  scan minutes ago + tag-unknown warning + Stealth-mode
+  suppression + trigger-scene-now button), the 6 §8
+  troubleshooting entries, the §9 privacy section (no
+  telemetry beyond local HA tag registry + scene registry +
+  scan event log; all processing is local to the HA instance;
+  no cloud call home), the §10 tier-b promotion outline (real
+  NFC bench on CI + RoamCore-owned operator-wired setup flow
+  walking the operator through registering each NFC tag in
+  HA's tag registry + writing the `tag_id → scene` mapping
+  into the RoamCore wrapper + integration tests asserting
+  a `tag_scanned` event with a known `tag_id` triggers the
+  mapped scene + a `tag_scanned` event with an unknown
+  `tag_id` fires the tag-unknown warning + a `select.rc_mode`
+  change to `stealth` suppresses the §7.1 automation), and the
+  §11 cross-references (the HA Companion app for the phone-
+  side NFC scan + the HACS `nfcpy` integration for the USB
+  NFC reader + the HA core `scene` integration for the scene
+  registry + the mode/automation-builder recipe Wave 2 #23 for
+  the `select.rc_mode` tile + the Stealth-mode suppression
+  pattern + the deadbolts Wave 3 #48 connection for the
+  optional "tag-unlock-the-door" affordance that uses the same
+  `tag_id → scene` mapping pattern).
+
+  The REUSE-FIRST strategy is intentional: HA's core `tag`
+  integration handles the NFC tag scan event (the upstream
+  `tag` integration since 2022.x exposes the `tag_scanned`
+  event + the `tag.last_scanned` entity + the `tag.list`
+  service); the HA Companion app's `tag` trigger (since
+  2022.x) handles the phone-side NFC scan event; the HACS
+  `nfcpy` integration handles the USB NFC reader; the HA
+  core `scene` integration handles the scene registry (the
+  operator's `scene.*` entities); the HA core `automation`
+  UI editor handles the `tag_id → scene` mapping automation.
+  HA's core `tag` integration is upstream HA core code, NOT
+  RoamCore-owned; the RoamCore wrapper is a thin `tag_id →
+  scene` mapping table + the contract layer.
+icon: near-field-communication
+codeowners:
+  - "@bernardc"
+tags:
+  - nfc
+  - tag
+  - scene
+  - automation
+  - access-control
+  - phone
+  - usb-reader
+  - ha-companion
+  - nfcpy
+  - stealth-mode
+  - van-life
+  - reuse-first
+  - automation-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~25 min"
+  requires_reboot: false
+  setup_notes: |
+    NFC tags requires the operator to (a) source NFC tags (any
+    NTAG215 / NTAG216 / Mifare Classic 1K / Mifare Ultralight
+    NFC sticker tags work — they're cheap + widely available
+    + the HA Companion app + the HACS `nfcpy` integration both
+    support them out of the box), (b) decide on a phone-as-
+    NFC-reader (Path A) OR a USB NFC reader (Path B) OR an
+    implicit Path A via the HA Companion app `tag` trigger
+    (Path C), (c) wire the chosen path — install the HA
+    Companion app + enable NFC scans on the phone (Path A)
+    OR plug the USB NFC reader into the HA server + install
+    the HACS `nfcpy` integration (Path B) OR just enable the
+    HA Companion app's `tag` trigger (Path C, the implicit
+    Path A), (d) register each NFC tag in HA's tag registry
+    (Settings → Devices & Services → Tags → Add tag — paste
+    the tag's unique ID + give it a friendly name), (e)
+    create the operator's scenes in HA's scene registry
+    (Settings → Devices & Services → Scenes → Add scene —
+    choose the entities + their states for each scene), (f)
+    wire the §7.1 last-tag-triggered scene automation (the
+    `tag_id → scene` mapping table — the operator's
+    single source of truth for which tag fires which scene),
+    (g) wire the §7.2 tag-unknown warning automation (so the
+    operator gets a notification when an unregistered tag is
+    scanned), (h) wire the §7.3 Stealth-mode suppression
+    automation (so the mode/automation-builder recipe's
+    `select.rc_mode` tile can suppress NFC-triggered scenes
+    in campgrounds with quiet hours). RoamCore does NOT
+    maintain a custom NFC integration; HA's core `tag`
+    integration handles the NFC tag scan event (the upstream
+    `tag` integration since 2022.x exposes the `tag_scanned`
+    event + the `tag.last_scanned` entity + the `tag.list`
+    service); the HA Companion app's `tag` trigger (since
+    2022.x) handles the phone-side NFC scan event; the HACS
+    `nfcpy` integration handles the USB NFC reader; the HA
+    core `scene` integration handles the scene registry; the
+    HA core `automation` UI editor handles the `tag_id → scene`
+    mapping automation.
+
+install:
+  ha_integration_domain: tag
+  config_flow: true
+  hacs: true
+  hacs_url: https://github.com/roamcore/hacs-nfcpy
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_tag_integration
+    - registers_nfc_tags_in_ha_registry
+    - registers_nfc_tag_id_to_scene_mapping
+    - registers_nfc_tiles
+    - may_register_last_tag_triggered_automation
+    - may_register_tag_unknown_warning_automation
+    - may_register_stealth_mode_suppression_automation
+
+dashboard:
+  title: "NFC tags"
+  tiles:
+    - sensor.rc_nfc_last_triggered_scene
+    - binary_sensor.rc_nfc_last_triggered_scene_active
+    - sensor.rc_nfc_registered_tags_count
+    - sensor.rc_nfc_last_scanned_tag_id
+    - sensor.rc_nfc_last_scan_minutes_ago
+    - binary_sensor.rc_nfc_tag_unknown_warning
+    - binary_sensor.rc_nfc_stealth_mode_suppressed
+    - button.rc_nfc_trigger_scene_now
+
+openclaw:
+  queries:
+    - "what scene did the last NFC tag trigger?"
+    - "is the last NFC-tag-triggered scene still active?"
+    - "how many NFC tags are registered?"
+    - "what was the last scanned NFC tag ID?"
+    - "when was the last NFC tag scanned?"
+    - "is the tag-unknown warning active?"
+    - "is the NFC scanner in stealth mode suppression?"
+    - "trigger the last NFC-tag-triggered scene now"
+  summary_keys:
+    - last_triggered_scene
+    - last_triggered_scene_active
+    - registered_tags_count
+    - last_scanned_tag_id
+    - last_scan_minutes_ago
+    - tag_unknown_warning
+    - stealth_mode_suppressed
+    - trigger_scene_now_available
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_nfc_integration
+  - recipe_depends_on_user_registering_nfc_tags_in_ha_registry
+  - requires_operator_choice_of_path_a_phone_nfc_reader_or_path_b_usb_nfc_reader_or_path_c_implicit
+  - no_real_nfc_reader_hardware_on_ci_bench
+  - mode_aware_stealth_suppression_required_when_used_at_campgrounds
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/tag/
+    - https://www.home-assistant.io/integrations/scene/
+    - https://www.home-assistant.io/integrations/automation/
+    - https://www.home-assistant.io/integrations/device_tracker/
+    - https://companion.home-assistant.io/docs/core/sensors
+    - https://hacs.xyz/docs/integrations/active
+  cross_references:
+    - ../deadbolts/
+    - ../smart-automations/
+    - ../mode-builder/
+    - ../approach-lights/
+    - ../hvac-basics/

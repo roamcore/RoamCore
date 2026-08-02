@@ -61,6 +61,7 @@ Keep this list short. Start with these and extend deliberately:
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
+- `nfc` — NFC tag interactions (NFC tag scan events + the `tag_id → scene` mapping + the Stealth-mode suppression); vendor-neutral `rc_nfc_*` ids (Wave 3 #57)
 
 ---
 
