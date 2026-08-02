@@ -50,7 +50,7 @@ This is an internal status page for the remaining MVP feature build-out.
   - cross-reference to Timezone geolocator (no relationship): different subsystem
   - cross-reference to Motion-based lighting (no relationship): different subsystem
   - cross-reference to Time (atomic) (no relationship): different subsystem
-  - PR #TBD
+  - PR #60
 
 ## Next steps (needs HAOS setup / UI wiring)
 
