@@ -1,0 +1,420 @@
+# Frigate — vendor-neutral NVR backend with on-device
+# person / car / animal / package detection that the
+# upstream HA core `frigate` integration exposes for
+# IP-camera motion detection + recording + audit trails
+# — tier-b recipe connection.
+#
+# Promoted from docs/catalog/cctv/frigate.md (legacy
+# 669-byte tier-c claim stub — "CCTV with Frigate
+# (spec + setup ideas): A single-page spec for a low-CPU
+# CCTV system using Frigate + go2rtc, designed for
+# predictable storage and practical van use" with no
+# recipe + no contract + no automations + no install
+# path — just a placeholder with an aspirational tier-c
+# claim). The legacy stub's tier-c claim was honest-
+# upstream-truth: RoamCore ships NO native NVR engine
+# (no `custom_components/frigate/` directory in the repo
+# today — the upstream HA core `frigate` integration IS
+# the canonical NVR integration; RoamCore RECIPES over
+# it). The picker promotes the legacy stub into a
+# tier-b recipe connection because the contract layer
+# is the canonical RoamCore contribution (the 12
+# `rc_security_*` + `rc_storage_*` tiles + the recipe +
+# the §8 MANDATORY automations) while the upstream
+# engines are the HA core `frigate` integration (since
+# 2022.x) + the upstream `camera` platform (since 2022.x
+# — exposes a GUI flow for the operator to add derived
+# motion entities from the upstream sensors) + the
+# upstream `input_boolean` + `input_text` +
+# `input_datetime` + `input_button` + `select` helpers
+# (since 2022.x — expose a GUI flow for the operator to
+# add the helper entities from the HA UI under Settings
+# → Helpers) + the upstream `recorder` integration (since
+# 2022.x — the canonical recording service for Home
+# Assistant automations) + the upstream `logbook`
+# integration (since 2022.x — the canonical audit-log
+# destination for Home Assistant automations) + the
+# upstream `template:` sensor wrapper (since 2022.x —
+# wraps any upstream sensor state into a derived
+# `sensor.*` entity) + the upstream `template:`
+# binary_sensor wrapper (since 2022.x — wraps any
+# upstream binary_sensor state into a derived
+# `binary_sensor.*` entity) + the upstream `button:`
+# domain helper (since 2022.x — exposes the
+# operator-triggered one-tap reset-recipe button helper)
+# + the upstream `script:` integration (since 2022.x —
+# exposes the script-runner operator-wired setup flow
+# for the §8.5 records-on-motion guard's `record` service
+# wrapper). RoamCore does NOT fork any of these; the
+# wrapper is the contract layer + the recipe + the §8
+# MANDATORY automations + the per-camera offline guard
+# + the per-camera records-on-motion guard + the
+# per-camera motion-mask guard + the storage-full guard
+# + the retentions-spin-down guard. The legacy doc now
+# carries a SUPERSEDED banner pointing at this
+# connection.
+
+id: frigate
+name: Frigate
+description: >-
+  Vendor-neutral NVR backend with on-device person / car
+  / animal / package detection that the upstream HA core
+  `frigate` integration exposes for IP-camera motion
+  detection + recording + audit trails. The recipe is the
+  umbrella for "the camera backend everything depends
+  on": the operator picks ONE of THREE upstream NVR paths
+  (Path A HACS frigate add-on, Path B external / cloud
+  NVR, Path C local container / VM NVR) + mounts the
+  camera URLs + confirms the cameras are online +
+  enables + starts recording + audits + can revert via
+  the one-tap reset-now button. RoamCore ships no native
+  NVR engine; the wrapper is a thin RoamCore upstream-
+  entity-aggregation layer + the contract layer + the
+  FIVE §8 MANDATORY automations over the upstream HA
+  core `frigate` integration (since 2022.x — exposes the
+  canonical NVR backend for Home Assistant automations)
+  + the upstream `camera` platform (since 2022.x —
+  exposes a GUI flow for the operator to add the
+  upstream cameras via the HA UI under Settings →
+  Devices & services → Integrations → Add Integration →
+  Camera) + the HA core `input_boolean` + `input_text` +
+  `input_datetime` + `input_button` + `select` helpers
+  (since 2022.x — expose a GUI flow for the operator to
+  add the helper entities from the HA UI under Settings
+  → Helpers) + the upstream `recorder` integration
+  (since 2022.x — the canonical recording service for
+  Home Assistant automations) + the upstream `logbook`
+  integration (since 2022.x — the canonical audit-log
+  destination for Home Assistant automations) + the HA
+  core `template:` sensor wrapper (since 2022.x — wraps
+  any upstream sensor state into a derived `sensor.*`
+  entity) + the HA core `template:` binary_sensor wrapper
+  (since 2022.x — wraps any upstream binary_sensor state
+  into a derived `binary_sensor.*` entity) + the
+  upstream `button:` domain helper (since 2022.x —
+  exposes a GUI flow for the operator to trigger the
+  reset-now button from the HA UI) + the upstream
+  `script:` integration (since 2022.x — exposes the
+  script-runner operator-wired setup flow for the §8.5
+  records-on-motion guard's `record` service wrapper).
+version: 1
+category: cctv
+tier: b
+status: beta
+tags:
+  - frigate
+  - nvr
+  - cctv
+  - camera
+  - detection
+  - person
+  - car
+  - animal
+  - package
+  - recording
+  - audit
+  - vendor-neutral
+  - upstream
+  - ha-core
+  - security
+
+# Wizard contract (tier-b honest contract: the recipe is
+# NOT a one-tap install; the operator walks the FIVE-step
+# operator-pickable flow).
+wizard:
+  connection_kind: recipe
+  one_tap: false
+
+# Who owns this slice + who to ping for changes.
+owners:
+  - bernard
+  - roamcore-core
+
+# Where the source-of-truth docs live.
+docs:
+  recipe: docs/recipe.md
+  design: docs/design.md
+  troubleshooting: docs/troubleshooting.md
+  supersedes: docs/catalog/cctv/frigate.md
+
+# What the operator needs to install for the recipe.
+# The recipe is honest-upstream-truth: the upstream HA
+# core `frigate` integration + the upstream `camera`
+# platform + the upstream HA core `input_boolean` +
+# `input_text` + `input_datetime` + `input_button` +
+# `select` helpers + the upstream `recorder`
+# integration + the upstream `logbook` integration + the
+# HA core `template:` sensor + binary_sensor wrappers +
+# the upstream `button:` domain helper + the upstream
+# `script:` integration all expose their own
+# operator-wired setup flow + GUI flow since 2022.x —
+# honest upstream truth, NOT a tier-a marker for
+# RoamCore's tier. The tier-a marker for RoamCore would
+# be a RoamCore-owned NVR engine + RoamCore-owned
+# integration code + integration tests against a
+# RoamCore-owned NVR engine bench. None of those are
+# shipped at tier-b.
+install:
+  # The UPSTREAM HA core `frigate` integration (since
+  # 2022.x — exposes the canonical NVR backend for Home
+  # Assistant automations) + the UPSTREAM `camera`
+  # platform (since 2022.x — exposes a GUI flow for the
+  # operator to add the upstream cameras via the HA UI
+  # under Settings → Devices & services → Integrations →
+  # Add Integration → Camera) + the UPSTREAM HA core
+  # `input_boolean` + `input_text` + `input_datetime` +
+  # `input_button` + `select` helpers (since 2022.x —
+  # expose a GUI flow for the operator to add the helper
+  # entities from the HA UI under Settings → Helpers) +
+  # the UPSTREAM `recorder` integration (since 2022.x —
+  # the canonical recording service for Home Assistant
+  # automations) + the UPSTREAM HA core `logbook`
+  # integration (since 2022.x — the canonical audit-log
+  # destination for Home Assistant automations) + the
+  # UPSTREAM HA core `template:` sensor + binary_sensor
+  # wrappers (since 2022.x — expose a GUI flow for the
+  # operator to add a derived entity from the upstream
+  # sensors) + the UPSTREAM `button:` domain helper
+  # (since 2022.x — exposes a GUI flow for the operator
+  # to trigger the reset-now button from the HA UI) +
+  # the UPSTREAM `script:` integration (since 2022.x —
+  # exposes the script-runner operator-wired setup flow
+  # for the §8.5 records-on-motion guard's `record`
+  # service wrapper) ALL expose a GUI flow since 2022.x.
+  # install.config_flow is TRUE here because the UPSTREAM
+  # HA core `frigate` integration + the UPSTREAM
+  # `camera` platform + the UPSTREAM HA core
+  # `input_boolean` + `input_text` + `input_datetime` +
+  # `input_button` + `select` helpers + the UPSTREAM
+  # `recorder` integration + the UPSTREAM HA core
+  # `logbook` integration + the UPSTREAM HA core
+  # `template:` sensor + binary_sensor wrappers + the
+  # UPSTREAM `button:` domain helper + the UPSTREAM
+  # `script:` integration ALL expose a GUI flow. That's
+  # honest upstream truth, NOT a tier-a marker for
+  # RoamCore's tier. The tier-a marker for RoamCore
+  # would be a RoamCore-owned operator-wired setup flow
+  # + RoamCore-owned integration code + integration
+  # tests against a RoamCore-owned NVR engine bench.
+  # None of those are shipped at tier-b.
+  config_flow: true
+  # install.hacs is TRUE because the recommended Path A
+  # (HACS frigate add-on) depends on a HACS add-on as the
+  # canonical upstream vendor-neutral local NVR. The
+  # operator MUST install the HACS frigate add-on from
+  # the HACS default store before the §3 Path A wire-up.
+  # Without the HACS frigate add-on installed, the
+  # upstream HA core `frigate` integration has no local
+  # NVR to point at (the upstream `frigate` integration
+  # is a client; it needs an NVR engine to connect to).
+  # The recipe documents the HACS frigate add-on install
+  # path in §3 Path A.
+  hacs: true
+  # The recipe depends on the operator choosing ONE of
+  # the THREE upstream NVR paths documented in §3 (Path
+  # A HACS frigate add-on, Path B external / cloud NVR,
+  # Path C local container / VM NVR). Forgetting to pick
+  # a path means the upstream HA core `frigate`
+  # integration has no NVR engine to connect to (the
+  # upstream `frigate` integration is a client; it needs
+  # an NVR engine to connect to).
+  requires_user_choice: true
+  # The recipe depends on the operator editing the
+  # camera URLs via `input_text.rc_security_camera_url`
+  # (a comma-separated list of camera URLs) + the
+  # optional camera username + password + motion
+  # detection toggle. Forgetting to wire the URLs means
+  # the upstream `frigate` integration cannot connect
+  # to any cameras.
+  requires_user_input: true
+
+# External upstream integration references. The recipe
+# is honest-upstream-truth: the HA core `frigate`
+# integration IS the canonical NVR integration (since
+# 2022.x); RoamCore does NOT fork any of these. The
+# links.official list points at the canonical upstream
+# integration docs.
+links:
+  official:
+    - https://www.home-assistant.io/integrations/frigate/
+    - https://www.home-assistant.io/integrations/camera/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_datetime/
+    - https://www.home-assistant.io/integrations/input_button/
+    - https://www.home-assistant.io/integrations/select/
+    - https://www.home-assistant.io/integrations/recorder/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/logbook/
+    - https://www.home-assistant.io/integrations/script/
+  hacs:
+    - https://hacs.xyz/docs/setup/prerequisites
+  community:
+    - https://www.home-assistant.io/docs/authentication/
+    - https://www.home-assistant.io/integrations/recorder/
+    - https://www.home-assistant.io/docs/scripts/
+
+# Tier-b contracts. tier_requirements lists the audit's
+# hard requirements for tier-b; tier_warnings lists the
+# honest disclosures about why this slice is tier-b
+# rather than tier-a.
+tier_requirements:
+  # The recipe MUST be published at the path declared in
+  # docs.recipe (the source-of-truth howto).
+  - docs_recipe_published
+  # The dashboard tiles MUST be vendor-neutral per
+  # docs/reference/rc-entity-naming.md (no vendor names
+  # in any `rc_*` tile id).
+  - dashboard_tiles_vendor_neutral
+  # The connection.yml MUST declare a category that
+  # matches the legacy catalog path's category (the
+  # legacy doc lives at docs/catalog/cctv/frigate.md).
+  - category_matches_legacy_doc
+  # The FIVE §8 MANDATORY automations MUST be documented
+  # in the recipe (per-camera offline guard + per-camera
+  # records-on-motion guard + per-camera motion-mask
+  # guard + storage-full guard + retentions-spin-down
+  # guard).
+  - automations_documented
+tier_warnings:
+  # No RoamCore-owned NVR engine on CI to integration-
+  # test against (the bench would require canned fixture
+  # responses for camera-offline events + canned fixture
+  # responses for records-on-motion events + canned
+  # fixture responses for motion-mask changes events +
+  # canned fixture responses for storage-full events +
+  # canned fixture responses for retentions-spin-down
+  # events — all wired together in a controlled
+  # environment).
+  - no_native_nvr_engine_for_integration_test
+  # The recipe depends on the operator choosing ONE of
+  # the THREE upstream NVR paths documented in §3 (Path
+  # A HACS frigate add-on, Path B external / cloud NVR,
+  # Path C local container / VM NVR).
+  - recipe_depends_on_user_choosing_nvr_path
+  # The recipe depends on the operator editing the
+  # camera URLs at `input_text.rc_security_camera_url`
+  # (a comma-separated list of camera URLs) + the
+  # optional camera username + password + motion
+  # detection toggle.
+  - recipe_depends_on_user_wiring_camera_urls
+  # The operator must confirm the cameras are online
+  # (`binary_sensor.rc_security_camera_online` reads
+  # TRUE) before the first recording; the §8.1
+  # per-camera offline guard surfaces a critical
+  # notification when a camera has gone offline.
+  - requires_operator_confirming_cameras_online_before_first_recording
+  # The §8.5 records-on-motion guard MUST be wired to the
+  # `input_boolean.rc_storage_recording_enabled` toggle;
+  # forgetting to wire the guard means a misconfigured
+  # deployment could record without the operator's
+  # consent.
+  - records_on_motion_guard_must_be_wired
+
+# The 12 vendor-neutral contract tiles documented in the
+# recipe §7 contract layer. Every tile id MUST match
+# `^[a-z_]+\.rc_(security|storage)_[a-z0-9_]+$` per
+# docs/reference/rc-entity-naming.md; the `security`
+# subsystem is OWNED by this slice (the FIRST
+# `security`-category `security` slice in the RoamCore
+# connection pipeline — the `security` subsystem addition
+# to docs/reference/rc-entity-naming.md is the FIRST
+# `security`-category `security` slice) and the `storage`
+# subsystem is OWNED by this slice (the FIRST
+# `security`-category `storage` slice in the RoamCore
+# connection pipeline — the `storage` subsystem addition
+# to docs/reference/rc-entity-naming.md is the FIRST
+# `security`-category `storage` slice).
+#
+# The 12 contract tiles are split into 4 cameras + 4
+# detection + 4 recording/storage:
+#   binary_sensor.rc_security_camera_online
+#     (the generic per-camera online chip; mirrors the
+#      upstream `frigate` integration's camera-online
+#      state; the §8.1 per-camera offline guard's
+#      canonical safety chip + the §8.2 cameras-online
+#      guard's target)
+#   binary_sensor.rc_security_camera_recording
+#     (the generic per-camera recording chip; mirrors
+#      the upstream `recorder` integration's recording
+#      state for the camera; the §8.5 records-on-motion
+#      guard's target)
+#   sensor.rc_security_camera_last_motion
+#     (the generic per-camera last-motion timestamp;
+#      mirrors the upstream `frigate` integration's
+#      last-motion event for the camera; the §8.3
+#      per-camera motion-mask guard's target)
+#   sensor.rc_security_camera_motion_mask
+#     (the generic per-camera motion-mask count; mirrors
+#      the upstream `frigate` integration's motion-mask
+#      state for the camera; the §8.3 per-camera
+#      motion-mask guard's target)
+#   sensor.rc_security_detection_person_count
+#     (the generic per-camera person-detection count
+#      aggregated across all cameras; mirrors the
+#      upstream `frigate` integration's detection event
+#      log for `person` label)
+#   sensor.rc_security_detection_car_count
+#     (the generic per-camera car-detection count
+#      aggregated across all cameras; mirrors the
+#      upstream `frigate` integration's detection event
+#      log for `car` label)
+#   sensor.rc_security_detection_animal_count
+#     (the generic per-camera animal-detection count
+#      aggregated across all cameras; mirrors the
+#      upstream `frigate` integration's detection event
+#      log for `animal` label)
+#   sensor.rc_security_detection_package_count
+#     (the generic per-camera package-detection count
+#      aggregated across all cameras; mirrors the
+#      upstream `frigate` integration's detection event
+#      log for `package` label)
+#   input_boolean.rc_storage_recording_enabled
+#     (the generic master enable for the upstream
+#      `recorder` integration's `record` service; default
+#      OFF for the recommended safe-default mode; the
+#      §8.5 records-on-motion guard fires whenever a
+#      `record` service call arrives while this toggle
+#      is OFF)
+#   sensor.rc_storage_recording_used
+#     (the generic per-camera recording storage used in
+#      gigabytes; mirrors the upstream `recorder`
+#      integration's storage stat)
+#   sensor.rc_storage_recording_free
+#     (the generic per-camera recording storage free in
+#      gigabytes; mirrors the upstream `recorder`
+#      integration's storage stat; the §8.4 storage-full
+#      guard fires when this dips below 10 GB)
+#   sensor.rc_storage_recording_retention_today_count
+#     (the generic per-camera recording retention today
+#      count; the count of recordings retained today
+#      before the retention-spin-down cycle; the §8.5
+#      retentions-spin-down guard fires when this
+#      exceeds the operator's configured threshold)
+dashboard:
+  tiles:
+    - binary_sensor.rc_security_camera_online
+    - binary_sensor.rc_security_camera_recording
+    - sensor.rc_security_camera_last_motion
+    - sensor.rc_security_camera_motion_mask
+    - sensor.rc_security_detection_person_count
+    - sensor.rc_security_detection_car_count
+    - sensor.rc_security_detection_animal_count
+    - sensor.rc_security_detection_package_count
+    - input_boolean.rc_storage_recording_enabled
+    - sensor.rc_storage_recording_used
+    - sensor.rc_storage_recording_free
+    - sensor.rc_storage_recording_retention_today_count
+
+# Tests: the audit requires the manifest-honesty smoke
+# check at
+# connections/frigate/tests/test_connection_yml.py (the
+# 7 manifest-honesty checks for tier-b recipe connections;
+# mirrors the mqtt / agent-actions-allowlist /
+# openclaw-api / advanced-mode / demo-mode / mode /
+# leveling / fans / happijac / remote-access / nfc-tags /
+# in-cab-tablet-dashboard / time-atomic / timezone-
+# geolocator / motion-based-lighting / hvac-basics /
+# approach-lights pattern).
+tests:
+  - tests/test_connection_yml.py

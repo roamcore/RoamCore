@@ -485,6 +485,22 @@ items:
       - co
       - gas
       - propane
+  - id: frigate
+    title: Frigate
+    category: security
+    yaml_category: cctv
+    support_tier: B
+    install_method: hacs
+    status: beta
+    page: catalog/security/frigate.md
+    summary: Frigate — RoamCore catalog entry.
+    tags:
+      - frigate
+      - nvr
+      - cctv
+      - camera
+      - detection
+      - person
   - id: nfc-tags
     title: NFC tags
     category: security

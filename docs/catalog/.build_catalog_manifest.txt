@@ -31,6 +31,7 @@ safety/deadbolts.md
 safety/index.md
 safety/smart-automations.md
 safety/smoke-co-gas-sensors.md
+security/frigate.md
 security/index.md
 security/nfc-tags.md
 water/electronic-valves.md
