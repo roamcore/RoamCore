@@ -287,6 +287,22 @@ items:
       - 5g
       - mobile-internet
       - router
+  - id: wican-pro
+    title: WiCAN Pro
+    category: connectivity
+    yaml_category: connectivity
+    support_tier: A
+    install_method: one_line
+    status: beta
+    page: catalog/connectivity/wican-pro.md
+    summary: RoamCore auto-discovers it on the same network, polls it for engine RPM, speed, coolant temperature, throttle position, fuel level, battery voltage and a dozen other generic OBD2 readings, and saves them to a local time-series database. The dashboard populates automatically the moment the device is discovered — no…
+    tags:
+      - obd2
+      - vehicle
+      - telemetry
+      - time-series
+      - auto-discover
+      - wican-pro
   - id: amenities_overlay
     title: Amenities overlay
     category: location

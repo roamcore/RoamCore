@@ -67,6 +67,7 @@ CATEGORY_MAP: dict[str, str] = {
     "alternator": "power",
     # connectivity / networking
     "networking": "connectivity",
+    "connectivity": "connectivity",
     "tailscale": "connectivity",
     "remote-access": "connectivity",
     # safety
