@@ -1,0 +1,336 @@
+# MQTT — vendor-neutral lightweight pub/sub messaging layer that the
+# upstream HA core `mqtt` integration uses for Victron GX + Teltonika +
+# Wican Pro + Shelly + Tasmota + ESPHome + Traccar + 90%+ of IoT
+# devices — tier-b recipe connection.
+#
+# Promoted from docs/catalog/homelab/mqtt.md (legacy 12-line
+# tier-b claim stub — "MQTT (the broker everything depends
+# on): A lightweight pub/sub messaging layer that the
+# upstream HA core `mqtt` integration uses for Victron GX +
+# Teltonika + Wican Pro + Shelly + Tasmota + ESPHome +
+# Traccar + 90%+ of IoT devices. (Add recipe + contract +
+# automations + install path)" with no recipe + no contract
+# + no automations + no install path — just a placeholder
+# with an aspirational tier-b claim). The legacy stub's
+# tier-b claim is honest-upstream-truth: RoamCore ships NO
+# native pub/sub broker engine (no `custom_components/mqtt/`
+# directory in the repo today — the upstream HA core `mqtt`
+# integration IS the canonical broker integration; RoamCore
+# recipes over it). The picker promotes the legacy stub into
+# a tier-b recipe connection because the contract layer is
+# the canonical RoamCore contribution (the 8 `rc_mqtt_*`
+# tiles + the recipe + the §8 MANDATORY automations) while
+# the upstream engines are the HA core `mqtt` integration +
+# the HACS mosquitto add-on + the HA core `input_boolean` +
+# `input_text` + `input_datetime` + `input_button` +
+# `select` helpers + the HA core `template:` sensor +
+# binary_sensor wrappers + the HA core `logbook`
+# integration + the upstream `script:` integration (all in
+# the upstream HA core codebase since 2022.x). RoamCore does
+# NOT fork any of these; the wrapper is the contract layer
+# + the recipe + the §8 MANDATORY automations + the
+# broker-online guard + the broker-tls-error guard + the
+# broker-auth-error guard + the publish-from-HA guard. The
+# legacy doc now carries a SUPERSEDED banner pointing at
+# this connection.
+
+id: mqtt
+name: MQTT
+description: >-
+  Vendor-neutral lightweight pub/sub messaging layer that
+  the upstream HA core `mqtt` integration uses for Victron
+  GX + Teltonika + Wican Pro + Shelly + Tasmota + ESPHome +
+  Traccar + 90%+ of IoT devices. The recipe is the umbrella
+  for "the broker everything depends on": the operator picks
+  ONE of THREE upstream broker paths (Path A HACS mosquitto
+  add-on, Path B external / cloud broker, Path C local
+  container / VM broker) + mounts the broker credentials +
+  confirms the broker is online + enables + starts
+  publishing + audits + can revert via the one-tap
+  reconnect button. RoamCore ships no native pub/sub broker
+  engine; the wrapper is a thin RoamCore upstream-entity-
+  aggregation layer + the contract layer + the FIVE §8
+  MANDATORY automations over the upstream HA core `mqtt`
+  integration (since 2022.x — exposes the canonical pub/sub
+  messaging layer for Home Assistant automations) + the
+  HACS mosquitto add-on (the canonical upstream
+  vendor-neutral local broker add-on) + the HA core
+  `input_boolean` + `input_text` + `input_datetime` +
+  `input_button` + `select` helpers (since 2022.x — expose a
+  GUI flow for the operator to add the helper entities from
+  the HA UI under Settings → Helpers) + the HA core
+  `template:` sensor wrapper (since 2022.x — wraps any
+  upstream sensor state into a derived `sensor.*` entity) +
+  the HA core `template:` binary_sensor wrapper (since
+  2022.x — wraps any upstream binary_sensor state into a
+  derived `binary_sensor.*` entity) + the HA core `logbook`
+  integration (since 2022.x — the canonical audit-log
+  destination for Home Assistant automations) + the
+  upstream `script:` integration (since 2022.x — exposes
+  the script-runner operator-wired setup flow for the §8.5
+  publish-from-HA guard's `mqtt.publish` wrapper).
+version: 1
+category: homelab
+tier: b
+status: beta
+tags:
+  - mqtt
+  - broker
+  - pub-sub
+  - messaging
+  - iot
+  - vendor-neutral
+  - upstream
+  - ha-core
+  - discovery
+
+# Wizard contract (tier-b honest contract: the recipe is
+# NOT a one-tap install; the operator walks the FIVE-step
+# operator-pickable flow).
+wizard:
+  connection_kind: recipe
+  one_tap: false
+
+# Who owns this slice + who to ping for changes.
+owners:
+  - bernard
+  - roamcore-core
+
+# Where the source-of-truth docs live.
+docs:
+  recipe: docs/recipe.md
+  design: docs/design.md
+  troubleshooting: docs/troubleshooting.md
+  supersedes: docs/catalog/homelab/mqtt.md
+
+# What the operator needs to install for the recipe.
+# The recipe is honest-upstream-truth: the upstream HA core
+# `mqtt` integration + the HACS mosquitto add-on + the
+# upstream HA core `input_boolean` + `input_text` +
+# `input_datetime` + `input_button` + `select` helpers +
+# the HA core `template:` sensor + binary_sensor wrappers
+# + the HA core `logbook` integration + the upstream
+# `script:` integration all expose their own operator-wired
+# setup flow + GUI flow since 2022.x — honest upstream
+# truth, NOT a tier-a marker for RoamCore's tier. The
+# tier-a marker for RoamCore would be a RoamCore-owned
+# pub/sub broker engine + RoamCore-owned integration code
+# + integration tests against a RoamCore-owned pub/sub
+# broker engine bench. None of those are shipped at tier-b.
+install:
+  # The UPSTREAM HA core `mqtt` integration (since 2022.x
+  # — exposes the canonical pub/sub messaging layer for
+  # Home Assistant automations) + the UPSTREAM HACS
+  # mosquitto add-on (the canonical upstream vendor-neutral
+  # local broker add-on) + the UPSTREAM HA core
+  # `input_boolean` + `input_text` + `input_datetime` +
+  # `input_button` + `select` helpers (since 2022.x —
+  # expose a GUI flow for the operator to add the helper
+  # entities from the HA UI under Settings → Helpers) +
+  # the UPSTREAM HA core `template:` sensor + binary_sensor
+  # wrappers (since 2022.x — expose a GUI flow for the
+  # operator to add derived entities from the upstream
+  # sensors) + the UPSTREAM HA core `logbook` integration
+  # (since 2022.x — the canonical audit-log destination
+  # for Home Assistant automations) + the UPSTREAM HA core
+  # `script:` integration (since 2022.x — exposes the
+  # script-runner operator-wired setup flow for the §8.5
+  # publish-from-HA guard's `mqtt.publish` wrapper) ALL
+  # expose a GUI flow since 2022.x. install.config_flow is
+  # TRUE here because the UPSTREAM HA core `mqtt`
+  # integration + the UPSTREAM HACS mosquitto add-on +
+  # the UPSTREAM HA core `input_boolean` + `input_text` +
+  # `input_datetime` + `input_button` + `select` helpers
+  # + the UPSTREAM HA core `template:` sensor +
+  # binary_sensor wrappers + the UPSTREAM HA core
+  # `logbook` integration + the UPSTREAM HA core
+  # `script:` integration ALL expose a GUI flow. That's
+  # honest upstream truth, NOT a tier-a marker for
+  # RoamCore's tier. The tier-a marker for RoamCore would
+  # be a RoamCore-owned operator-wired setup flow +
+  # RoamCore-owned integration code + integration tests
+  # against a RoamCore-owned pub/sub broker engine bench.
+  # None of those are shipped at tier-b.
+  config_flow: true
+  # install.hacs is TRUE because the recommended Path A
+  # (HACS mosquitto add-on) depends on a HACS add-on as the
+  # canonical upstream vendor-neutral local broker. The
+  # operator MUST install the HACS mosquitto add-on from
+  # the HACS default store before the §3 Path A wire-up.
+  # Without the HACS mosquitto add-on installed, the
+  # upstream HA core `mqtt` integration has no local broker
+  # to point at (the upstream `mqtt` integration is a
+  # client; it needs a broker to connect to). The recipe
+  # documents the HACS mosquitto add-on install path in §3
+  # Path A.
+  hacs: true
+  # The recipe depends on the operator choosing ONE of the
+  # THREE upstream broker paths documented in §3 (Path A
+  # HACS mosquitto add-on, Path B external / cloud broker,
+  # Path C local container / VM broker). Forgetting to
+  # pick a path means the upstream HA core `mqtt`
+  # integration has no broker to connect to (the upstream
+  # `mqtt` integration is a client; it needs a broker to
+  # connect to).
+  requires_user_choice: true
+  # The recipe depends on the operator editing the broker
+  # URL via `input_text.rc_mqtt_broker_url` (default
+  # `tcp://core-mosquitto:1883`) + the optional broker
+  # username + password + TLS toggle. Forgetting to wire
+  # the URL means the upstream `mqtt` integration cannot
+  # connect to the broker.
+  requires_user_input: true
+
+# External upstream integration references. The recipe is
+# honest-upstream-truth: the HA core `mqtt` integration IS
+# the canonical broker integration (since 2022.x); RoamCore
+# does NOT fork any of these. The links.official list
+# points at the canonical upstream integration docs.
+links:
+  official:
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_datetime/
+    - https://www.home-assistant.io/integrations/input_button/
+    - https://www.home-assistant.io/integrations/select/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/logbook/
+    - https://www.home-assistant.io/integrations/script/
+  hacs:
+    - https://hacs.xyz/docs/setup/prerequisites
+  community:
+    - https://www.home-assistant.io/docs/mqtt/
+    - https://www.home-assistant.io/docs/mqtt/discovery/
+    - https://www.home-assistant.io/docs/mqtt/service/
+    - https://www.home-assistant.io/docs/authentication/
+
+# Tier-b contracts. tier_requirements lists the audit's
+# hard requirements for tier-b; tier_warnings lists the
+# honest disclosures about why this slice is tier-b rather
+# than tier-a.
+tier_requirements:
+  # The recipe MUST be published at the path declared in
+  # docs.recipe (the source-of-truth howto).
+  - docs_recipe_published
+  # The dashboard tiles MUST be vendor-neutral per
+  # docs/reference/rc-entity-naming.md (no vendor names
+  # in any `rc_*` tile id).
+  - dashboard_tiles_vendor_neutral
+  # The connection.yml MUST declare a category that
+  # matches the legacy catalog path's category (the legacy
+  # doc lives at docs/catalog/homelab/mqtt.md).
+  - category_matches_legacy_doc
+  # The FIVE §8 MANDATORY automations MUST be documented
+  # in the recipe (broker-offline guard + broker-online
+  # guard + broker-tls-error guard + broker-auth-error
+  # guard + publish-from-HA guard).
+  - automations_documented
+tier_warnings:
+  # No RoamCore-owned pub/sub broker engine on CI to
+  # integration-test against (the bench would require
+  # canned fixture responses for broker-offline events +
+  # canned fixture responses for broker-tls-error events +
+  # canned fixture responses for broker-auth-error events
+  # + canned fixture responses for publish-from-HA
+  # disabled events + canned fixture responses for
+  # broker-online recovery events — all wired together in
+  # a controlled environment).
+  - no_native_pub_sub_broker_engine_for_integration_test
+  # The recipe depends on the operator choosing ONE of
+  # the THREE upstream broker paths documented in §3
+  # (Path A HACS mosquitto add-on, Path B external / cloud
+  # broker, Path C local container / VM broker).
+  - recipe_depends_on_user_choosing_broker_path
+  # The recipe depends on the operator editing the broker
+  # credentials at `input_text.rc_mqtt_broker_url` (default
+  # `tcp://core-mosquitto:1883`) + the optional username +
+  # password + TLS toggle.
+  - recipe_depends_on_user_wiring_broker_credentials
+  # The operator must confirm the broker is online
+  # (`binary_sensor.rc_mqtt_broker_online` reads TRUE)
+  # before the first publish; the §8.1 broker-offline
+  # guard surfaces a critical notification when the broker
+  # has gone offline.
+  - requires_operator_confirming_broker_online_before_first_publish
+  # The §8.5 publish-from-HA guard MUST be wired to the
+  # `input_boolean.rc_mqtt_enabled` toggle; forgetting to
+  # wire the guard means a misconfigured deployment could
+  # publish without the operator's consent.
+  - publish_from_ha_guard_must_be_wired
+
+# The 8 vendor-neutral contract tiles documented in the
+# recipe §7 contract layer. Every tile id MUST match
+# `^[a-z_]+\.rc_mqtt_[a-z0-9_]+$` per
+# docs/reference/rc-entity-naming.md; the `mqtt` subsystem
+# is OWNED by this slice — the FIRST `homelab`-category
+# `mqtt` slice in the RoamCore connection pipeline. The
+# subsystem addition to docs/reference/rc-entity-naming.md
+# is the FIRST `homelab`-category `mqtt` slice.
+#
+# The 8 contract tiles are:
+#   binary_sensor.rc_mqtt_broker_online
+#     (the §7 §8.1 broker-offline guard's canonical
+#      safety chip + the §8.2 broker-online guard's
+#      target; should ALWAYS be TRUE when the upstream
+#      `mqtt` integration reports a connected state;
+#      should NEVER be TRUE unexpectedly)
+#   sensor.rc_mqtt_broker_status
+#     (the §7 resolved broker connection status;
+#      surfaces "online" / "offline" / "tls_error" /
+#      "auth_error" / "disabled" / "unknown" in the
+#      dashboard; mirrors the §8.1 + §8.2 + §8.3 + §8.4
+#      + §8.5 guards' state)
+#   input_text.rc_mqtt_broker_url
+#     (the §7 operator-configurable broker URL; default
+#      `tcp://core-mosquitto:1883` for the recommended
+#      Path A HACS mosquitto add-on)
+#   sensor.rc_mqtt_discovery_count
+#     (the §7 resolved count of upstream `mqtt`
+#      discovery messages received in the last 24 hours;
+#      mirrors the upstream `mqtt` integration's
+#      auto-discovery signal)
+#   button.rc_mqtt_reconnect_now
+#     (the §7 operator-triggered one-tap reconnect;
+#      flips the upstream `mqtt` integration's connection
+#      state + re-publishes the `homeassistant/status`
+#      topic + clears the offline guard)
+#   input_boolean.rc_mqtt_enabled
+#     (the §7 master enable for the upstream `mqtt`
+#      integration's `mqtt.publish` service; default OFF
+#      for the recommended safe-default mode; the §8.5
+#      publish-from-HA guard fires whenever a `mqtt.publish`
+#      invocation arrives while this toggle is OFF)
+#   input_text.rc_mqtt_broker_username
+#     (the §7 operator-configurable broker username;
+#      default empty for the recommended local-only mode;
+#      the §8.4 broker-auth-error guard fires when this
+#      is populated AND the upstream `mqtt` integration
+#      reports an authentication failure)
+#   input_boolean.rc_mqtt_broker_tls_enabled
+#     (the §7 TLS toggle; default FALSE for the
+#      recommended local-only mode; the §8.3 broker-tls-
+#      error guard fires when this is ON AND the upstream
+#      `mqtt` integration reports a TLS handshake failure)
+dashboard:
+  tiles:
+    - binary_sensor.rc_mqtt_broker_online
+    - sensor.rc_mqtt_broker_status
+    - input_text.rc_mqtt_broker_url
+    - sensor.rc_mqtt_discovery_count
+    - button.rc_mqtt_reconnect_now
+    - input_boolean.rc_mqtt_enabled
+    - input_text.rc_mqtt_broker_username
+    - input_boolean.rc_mqtt_broker_tls_enabled
+
+# Tests: the audit requires the manifest-honesty smoke
+# check at connections/mqtt/tests/test_connection_yml.py
+# (the 7 manifest-honesty checks for tier-b recipe
+# connections; mirrors the agent-actions-allowlist /
+# openclaw-api / advanced-mode / demo-mode / mode /
+# leveling / fans / happijac / remote-access / nfc-tags /
+# in-cab-tablet-dashboard / time-atomic / timezone-
+# geolocator / motion-based-lighting / hvac-basics /
+# approach-lights pattern).
+tests:
+  - tests/test_connection_yml.py

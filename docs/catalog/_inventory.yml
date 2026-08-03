@@ -302,6 +302,23 @@ items:
       - roll
       - imu
       - accelerometer
+  - id: mqtt
+    title: MQTT
+    category: misc
+    yaml_category: homelab
+    support_tier: B
+    install_method: hacs
+    status: beta
+    page: catalog/misc/mqtt.md
+    summary: MQTT — RoamCore catalog entry.
+    needs_curation_review: true
+    tags:
+      - mqtt
+      - broker
+      - pub-sub
+      - messaging
+      - iot
+      - vendor-neutral
   - id: nas
     title: Network Attached Storage
     category: misc

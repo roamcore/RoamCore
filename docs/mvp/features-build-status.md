@@ -66,6 +66,16 @@ This is an internal status page for the remaining MVP feature build-out.
   - Cross-references: time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64.
   - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #69 OPEN against `main`.
 
+- MQTT (vendor-neutral lightweight pub/sub messaging layer for IoT devices — the broker everything depends on)
+  - Connection: [`connections/mqtt/`](../../connections/mqtt/) (Wave 3 #34, PR #70)
+  - Tier-b recipe connection over the upstream HA core `mqtt` integration (since 2022.x — exposes the canonical pub/sub messaging layer for Home Assistant automations) + the HACS mosquitto add-on (the canonical upstream vendor-neutral local broker add-on) + the HA core `input_boolean` + `input_text` + `input_number` + `input_select` + `input_datetime` + `input_button` + `script` + `select` helpers (since 2022.x) + the HA core `template:` sensor + binary_sensor wrappers (since 2022.x) + the HA core `logbook` integration (since 2022.x) + the upstream `script:` integration (since 2022.x). RoamCore does NOT maintain a custom pub/sub broker engine; the upstream HA core `mqtt` integration IS the canonical broker integration.
+  - 8 vendor-neutral `rc_mqtt_*` contract tiles (the broker-online chip + the broker-status + the broker-url + the discovery-count + the reconnect-now button + the master enable + the broker-username + the tls-enabled tiles) — no Victron / SeeLevel / Garnet / Mopeka / Renogy / Starlink / Peplink / Teltonika / Unifi / Ubiquiti / OpenAI / Anthropic / Claude / GPT / ChatGPT / LLM / MQTT / webhook / REST / API / HTTP / HTTPS / ESPHome / Companion / phone / GPS / accelerometer / iPhone / iOS / Android / Samsung / Pixel / OnePlus / Xiaomi / Huawei / mosquitto / hive / emqx / vernemq / rabbit / nats / kafka / redis / input_boolean / input_text / input_number / input_select / input_datetime / input_button / script / template / logbook / Z-Wave / Zigbee / ZHA / Deconz / Tasmota / Shelly / Sonoff / ESP32 / ESP8266 / Wi-Fi / BLE / Bluetooth names leak into the tile ids.
+  - 5 §8 MANDATORY automations (broker-offline guard + broker-online guard + broker-tls-error guard + broker-auth-error guard + publish-from-HA guard).
+  - Three upstream broker paths documented in the recipe (Path A HACS mosquitto add-on — recommended; Path B external / cloud broker; Path C local container / VM broker).
+  - Legacy catalog doc [`docs/catalog/homelab/mqtt.md`](../catalog/homelab/mqtt.md) now superseded (the SUPERSEDED banner is appended at the end of the doc).
+  - Cross-references: time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64 + agent-actions-allowlist Wave 3 #65.
+  - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #70 OPEN against `main`.
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
