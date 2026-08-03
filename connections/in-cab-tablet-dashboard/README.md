@@ -28,7 +28,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-b would require a RoamCore-owned in-cab-tablet dashboard engine + integration code + integration tests against a real in-cab tablet bench (a 7-10" Android tablet mounted in the cab with the HA Companion app installed + a Wican Pro OBD-II reader for the ignition source + a Traccar server for the location proxy + canned fixture responses for ignition-on / ignition-off / zone-home / zone-away events). We have no operator-side in-cab-tablet bench on the CI to integration-test against (the bench requires a physical tablet in the cab + a Wican Pro device + a Traccar server + the HA Companion app). Tier-c is the honest tier: HA's Lovelace view system is upstream HA core code (not RoamCore-owned); the RoamCore wrapper is a few thin automations + a contract layer. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md`) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
+The legacy catalog page (the legacy spec) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
 
 ## Files
 
@@ -39,7 +39,7 @@ The legacy catalog page (`docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md`) 
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md`](../../docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - Wican Pro OBD-II connection (the canonical `binary_sensor.rc_vehicle_ignition` source; Wave 3 #6): `connections/wican-pro/`
 - Traccar connection (the fallback `device_tracker.rc_location_van` ignition proxy; Wave 3 #36): `connections/traccar/`
 - HA Companion app (the operator-phone-based `device_tracker.<phone_name>` ignition proxy): upstream integration

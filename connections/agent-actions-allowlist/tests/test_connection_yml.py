@@ -58,7 +58,6 @@ CONNECTION_DIR = REPO_ROOT / "connections" / "agent-actions-allowlist"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
 POLICY_EXAMPLE_PATH = CONNECTION_DIR / "docs" / "policy.example.yaml"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "ai" / "agent-actions-allowlist.md"
 
 EXISTING_KILL_SWITCH_PACKAGE = (
     REPO_ROOT / "homeassistant" / "packages" / "roamcore_agent_actions.yaml"
@@ -550,56 +549,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-a claim stub — category
-    must match.
-
-    The legacy spec lives at
-    docs/catalog/ai/agent-actions-allowlist.md (a 12-
-    line tier-a claim stub, originally listed "Agent
-    actions allowlist (safety gateway): A safety layer
-    that defaults to deny and only permits explicitly-
-    allowed agent actions, with a kill switch. Lets you
-    use automation/agents without fear of unexpected
-    device control; Clear boundary between read-only
-    and can change things. None. Design notes:
-    docs/design/agent-actions-allowlist.md; HA package:
-    homeassistant/packages/roamcore_agent_actions.yaml.
-    (Add safety philosophy + examples)" with no recipe
-    + no contract + no automations + no install path —
-    just a placeholder with an aspirational tier-a
-    claim). We promote the connection into the `ai`
-    category so the audit + boundary-CI can pair them up.
-    The legacy doc MUST still exist (with the
-    supersession banner) so that the recipe can
-    reference it AND the audit can verify the
-    supersession banner is in place.
-    """
-    assert manifest["category"] == "ai", (
-        f"category must stay 'ai' (legacy doc lives at "
-        f"docs/catalog/ai/agent-actions-allowlist.md); "
-        f"got {manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "docs/catalog/ai/agent-actions-allowlist.md to "
-        "still exist so we can reference it from the "
-        "recipe (and add a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim
-    # doesn't leak into any downstream catalog scrape.
-    # The banner text is the verbatim spec-required
-    # string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/ai/agent-actions-allowlist.md "
-        "must carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/agent-actions-allowlist/" in legacy_index_text, (
-        "legacy docs/catalog/ai/agent-actions-allowlist.md "
-        "must point at `connections/agent-actions-"
-        "allowlist/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

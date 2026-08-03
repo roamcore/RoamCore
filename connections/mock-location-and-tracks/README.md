@@ -91,7 +91,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 ## See also
 
 - Legacy catalog page (now superseded):
-  [`docs/catalog/map/mock-location-and-tracks.md`](../../docs/catalog/map/mock-location-and-tracks.md)
+  [the legacy spec](../../the legacy spec)
 - Traccar (the real GPS source — `connections/traccar/` Wave 3 #48
   promotes the real GPS integration; when Traccar is enabled AND
   `input_boolean.rc_map_mock_enabled` is FALSE, the map page uses

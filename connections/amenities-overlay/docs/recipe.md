@@ -623,7 +623,7 @@ YAML configuration blocks for each of the 8 sensors.
 
 The recipe walks the operator through the optional
 RoamCore TileServer add-on (Wave 2 catalog #21 —
-`docs/catalog/map/roamcore-tileserver-addon.md`). The
+the legacy spec). The
 TileServer add-on serves pre-cached POI mbtiles for
 offline use. The §8.4 internet-or-cache guard depends
 on the offline cache being populated; without the
@@ -1371,4 +1371,4 @@ catalog pages:
   subsystems were added by this slice):
   `docs/reference/rc-entity-naming.md`.
 - Legacy catalog page (now superseded by this slice):
-  `docs/catalog/map/amenities-overlay.md`.
+  the legacy spec.

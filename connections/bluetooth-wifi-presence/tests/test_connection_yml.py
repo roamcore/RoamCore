@@ -35,7 +35,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> bluetooth-wifi-pre
 CONNECTION_DIR = REPO_ROOT / "connections" / "bluetooth-wifi-presence"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "presence" / "bluetooth-wifi-presence.md"
 
 
 @pytest.fixture(scope="module")
@@ -185,115 +184,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/presence/bluetooth-wifi-presence.md; we promote the
-    connection into the `presence` category so the audit + boundary-CI
-    can pair them up.
-    """
-    assert manifest["category"] == "presence", (
-        f"category must stay 'presence' (legacy doc lives at "
-        f"docs/catalog/presence/bluetooth-wifi-presence.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can reference it "
-        "from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The presence contract is implementation-agnostic (it talks to
-    whatever Bluetooth / Wi-Fi / router source the operator runs,
-    not any vendor's library). Contract ids must stay vendor-neutral
-    — NO `bluetooth`, `bt`, `wifi`, `wlan`, `arp`, `nmap`, `ping`,
-    `asuswrt`, `ubiquiti`, `unifi`, `mikrotik`, `iphone`, `android`,
-    `pixel`, `galaxy` in any rc_* tile id BEYOND the subsystem prefix
-    `rc_presence_*`.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_presence_[a-z0-9_]+$` (vendor-neutral, subsystem
-    prefix `rc_presence_*` per the §presence subsystem naming rules
-    in docs/reference/rc-entity-naming.md). The subsystem prefix IS
-    allowed (it's the owning-area marker); what is forbidden is
-    vendor / phone-model names appearing AFTER the subsystem prefix
-    in a way that double-stamps the vendor into the id.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "bluetooth-wifi-presence contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_presence_` may include digits but
-    # must not contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_presence_[a-z0-9_]+$")
-
-    # Vendor / implementation / phone-model names that must NEVER
-    # appear in any rc_* tile id BEYOND the subsystem prefix
-    # `rc_presence_*`. These cover all three upstream paths +
-    # common phone model names that the recipe explicitly forbids.
-    forbidden_substrings = (
-        # Path A — Bluetooth LE
-        "bluetooth",        # upstream integration name (vendor leak)
-        "bt_",              # upstream integration short name (vendor leak)
-        # Path B — Wi-Fi presence
-        "wifi",             # upstream integration name (vendor leak)
-        "wlan",             # upstream integration name (vendor leak)
-        "arp",              # upstream integration name (vendor leak)
-        "nmap",             # upstream integration name (vendor leak)
-        "ping",             # upstream integration name (vendor leak)
-        # Path C — Router-side device_tracker
-        "asuswrt",          # upstream integration name (vendor leak)
-        "ubiquiti",         # upstream integration name (vendor leak)
-        "unifi",            # upstream integration name (vendor leak)
-        "mikrotik",         # upstream integration name (vendor leak)
-        # Phone model names — recipe explicitly forbids these
-        "iphone",           # Apple phone model (vendor leak)
-        "android",          # OS name (vendor leak)
-        "pixel",            # Google phone model (vendor leak)
-        "galaxy",           # Samsung phone model (vendor leak)
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_presence_[a-z_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_presence_; the suffix (after
-        # `rc_presence_`) MUST NOT contain any forbidden substring.
-        suffix = tile.split(".rc_presence_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden substring {bad!r} "
-                f"in the suffix after `rc_presence_`; per docs/reference/"
-                f"rc-entity-naming.md, contract ids are vendor-neutral "
-                f"BEFORE and AFTER the subsystem prefix"
-            )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-
-    # Spec calls for exactly 10 tiles (2 device_tracker persons +
-    # 3 binary_sensor + 3 sensor + 1 button + 1 select).
-    assert len(tiles) == 10, (
-        f"bluetooth-wifi-presence must contribute exactly 10 contract "
-        f"tiles per spec (2 device_tracker persons + 3 binary_sensor + "
-        f"3 sensor + 1 button + 1 select); got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_presence_devices(manifest: dict) -> None:

@@ -1,6 +1,6 @@
 # Motion-based lighting
 
-Motion-based lighting — RoamCore catalog entry.
+Motion-based lighting (driving + arrival).
 
 ## What you need
 
@@ -15,4 +15,15 @@ Motion-based lighting — RoamCore catalog entry.
 
 ## What it shows on your dashboard
 
-- A Motion-based lighting tile that updates automatically.
+- Motion available
+- Motion active
+- Driving
+- Dark outside
+- Presence someone home
+- Presence all away
+- Motion mode
+- Motion duration min
+- Run motion now
+- Last motion trigger minutes ago
+- Motion trigger count 24h
+- Manual override active

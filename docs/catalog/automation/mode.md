@@ -14,4 +14,13 @@ Quickly switch the van between common states (driving, parked, quiet night). A c
 
 ## What it shows on your dashboard
 
-- A Mode tile that updates automatically.
+- State
+- State previous
+- Is auto inferred
+- Is manual override
+- Changed at
+- Inference confidence
+- Ai summary
+- Revert to auto
+- Force stealth
+- Force travel

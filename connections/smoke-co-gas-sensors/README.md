@@ -44,7 +44,7 @@ Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests aga
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/safety/smoke-co-gas-sensors.md`](../../docs/catalog/safety/smoke-co-gas-sensors.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Smart Automations connection (companion for the §7 cooking-active mode-aware suppression): `connections/smart-automations/`
 - Deadbolts connection (companion for the §7 smoke-detected emergency-egress unlock): `connections/deadbolts/`
 - Bluetooth / Wi-Fi presence connection (companion for the §7 sensor-offline warning escalation): `connections/bluetooth-wifi-presence/`

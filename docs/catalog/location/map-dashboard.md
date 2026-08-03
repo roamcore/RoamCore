@@ -1,6 +1,6 @@
 # Map dashboard
 
-RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…
+Map dashboard — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache.
 
 ## What you need
 
@@ -14,4 +14,13 @@ RoamCore provides a map experience inside Home Assistant, including current loca
 
 ## What it shows on your dashboard
 
-- A Map dashboard tile that updates automatically.
+- Device tracker
+- Latitude
+- Longitude
+- Accuracy meters
+- Speed kph
+- Bearing degrees
+- Has fix
+- Internet reachable for tiles
+- Basemap mode
+- Trip overlay

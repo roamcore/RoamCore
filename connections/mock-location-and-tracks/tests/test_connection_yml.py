@@ -39,7 +39,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONNECTION_DIR = REPO_ROOT / "connections" / "mock-location-and-tracks"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "map" / "mock-location-and-tracks.md"
 
 # Tier-a audit markers — these files MUST be present on disk because
 # tier-a claims RoamCore owns all of the integration code natively.
@@ -216,18 +215,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-A doc — category must match."""
-    assert manifest["category"] == "map"
-    assert LEGACY_DOC.is_file(), (
-        "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "still exist (carrying the supersession banner)"
-    )
-    legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "Replaced by" in legacy_text, (
-        "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "carry a supersession banner pointing at the new connection "
-        "folder"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

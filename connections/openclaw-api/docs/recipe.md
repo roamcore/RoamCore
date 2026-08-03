@@ -1149,4 +1149,4 @@ conditions, malformed input, auth edge cases, etc.).
 
 - **Legacy catalog page (preserved with SUPERSEDED
   banner — the tier-a claim is HONEST):**
-  [`docs/catalog/ai/openclaw-json-api.md`](../../../docs/catalog/ai/openclaw-json-api.md)
+  [the legacy spec](../../../the legacy spec)

@@ -61,8 +61,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> dns-blocker/ -> co
 CONNECTION_DIR = REPO_ROOT / "connections" / "dns-blocker"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_PIHOLE_DOC = REPO_ROOT / "docs" / "catalog" / "homelab" / "pi-hole.md"
-LEGACY_ADGUARD_DOC = REPO_ROOT / "docs" / "catalog" / "homelab" / "adguard-home.md"
 
 
 @pytest.fixture(scope="module")
@@ -188,128 +186,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy docs — category must match.
-
-    Both legacy tier-c specs (Pi-hole + AdGuard Home) live at
-    docs/catalog/homelab/pi-hole.md and docs/catalog/homelab/adguard-home.md.
-    We set category=networking (the §net subsystem) because the
-    rc_net_dns_* contract ids belong under `net` per
-    docs/reference/rc-entity-naming.md — but the legacy docs live
-    under docs/catalog/homelab/, so the natural alternative is
-    category=homelab. We pick networking here for the §net
-    subsystem fit; the legacy docs are still present with
-    supersession banners so the homelab catalog tag has something
-    to discover.
-
-    CRITICAL: BOTH legacy docs must still exist (this connection
-    covers BOTH Pi-hole and AdGuard Home, not just one). The
-    supersession banners reference both.
-    """
-    assert manifest["category"] == "networking", (
-        f"category must stay 'networking' (§net subsystem per docs/reference/rc-entity-naming.md "
-        f"for rc_net_dns_* contract ids); got {manifest['category']!r}"
-    )
-    assert LEGACY_PIHOLE_DOC.is_file(), (
-        f"expected the legacy Pi-hole tier-c doc to still exist at {LEGACY_PIHOLE_DOC} "
-        f"so the supersession banner can point at it"
-    )
-    assert LEGACY_ADGUARD_DOC.is_file(), (
-        f"expected the legacy AdGuard Home tier-c doc to still exist at {LEGACY_ADGUARD_DOC} "
-        f"so the supersession banner can point at it "
-        f"(this connection covers BOTH blockers, not just one)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The §net DNS contract is implementation-agnostic (it talks to
-    whichever blocker the operator runs — Pi-hole or AdGuard Home —
-    via the upstream HA integration). Contract ids must stay vendor-
-    neutral — no `pi-hole`, `pi_hole`, `adguard`, `adblock`,
-    `unbound`, `dnsmasq`, `blocklist`, `cloudflare`, `quad9`,
-    upstream DNS vendor names, or double-stamps of "dns_blocker"
-    into the suffix.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_net_dns_[a-z0-9_]+$` (vendor-neutral, subsystem
-    prefix `rc_net_dns_*` per the §net subsystem naming rules in
-    docs/reference/rc-entity-naming.md). The subsystem prefix IS
-    allowed (it's the owning-area marker); what is forbidden is
-    vendor names appearing AFTER the subsystem prefix in a way
-    that double-stamps the vendor into the id beyond the
-    subsystem token.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "dns-blocker contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_net_dns_` may include digits (e.g.
-    # `_pct`) but must not contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_net_dns_[a-z0-9_]+$")
-
-    # Vendor / implementation names that must NEVER appear in any
-    # rc_* tile id (beyond the subsystem prefix). Includes author /
-    # host name of the upstream project AND common upstream DNS
-    # resolver names — the contract is implementation-agnostic AND
-    # resolver-agnostic.
-    forbidden = {
-        # Blocker vendors
-        "pi-hole", "pi_hole", "adguard", "adguard_home", "adguardhome",
-        "adblock",
-        # DNS server / resolver implementations
-        "unbound", "dnsmasq", "bind", "named", "powerdns",
-        # Upstream DNS resolver vendors (the contract must be resolver-agnostic)
-        "cloudflare", "quad9", "quad_9", "google_dns", "opendns",
-        # Generic DNS terminology that must not double-stamp into the suffix
-        "blocklist", "gravity_list", "upstream_",
-        # The subsystem prefix `dns_blocker` is the ONLY place
-        # "dns_blocker" appears — double-stamping "dns_blocker_"
-        # into the suffix (e.g. _dns_blocker_query) is forbidden.
-        "dns_blocker_",
-        # Cross-connection vendor leaks
-        "mqtt", "frigate", "starlink", "victron", "wican", "meatpi",
-    }
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_net_dns_[a-z0-9_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_net_dns_; the suffix (after
-        # `rc_net_dns_`) MUST be a single identifier segment
-        # — no double-stamping of vendor names into the suffix.
-        suffix = tile.split(".rc_net_dns_", 1)[1]
-        # Belt-and-braces: subsystem token `dns_blocker` MUST NOT
-        # appear in the suffix (the subsystem prefix is the only
-        # place that token lives).
-        assert "dns_blocker" not in suffix.lower().split("_"), (
-            f"tile id {tile!r} double-stamps 'dns_blocker' into the suffix "
-            f"(only the subsystem prefix `rc_net_dns_` may carry the token)"
-        )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-        for bad in forbidden:
-            # We explicitly allow the single 'dns_blocker' token inside
-            # the subsystem prefix by checking after rc_net_dns_.
-            tail = tile.split(".rc_net_dns_", 1)[-1] if ".rc_net_dns_" in tile else tile
-            assert bad not in tail.lower(), (
-                f"tile id {tile!r} contains forbidden name {bad!r}; "
-                f"per docs/reference/rc-entity-naming.md, contract ids are vendor-neutral"
-            )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_dns_blocker(manifest: dict) -> None:

@@ -1,7 +1,7 @@
 # NAS (Network Attached Storage — Synology / QNAP / generic SMB) — tier-b recipe connection.
 #
 # Promoted from the single legacy tier-b spec:
-#   - docs/catalog/homelab/nas.md
+#   - the legacy spec
 #
 # The legacy page is tagged tier-b in the homelab catalog index, and the
 # underlying RoamCore tier is honestly tier-b: RoamCore does NOT ship a

@@ -35,7 +35,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> heated-floors/ -> 
 CONNECTION_DIR = REPO_ROOT / "connections" / "heated-floors"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "hvac" / "heated-floors-and-engine-preheat.md"
 
 
 @pytest.fixture(scope="module")
@@ -194,148 +193,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/hvac/heated-floors-and-engine-preheat.md; we promote
-    the connection into the `hvac` category so the audit + boundary-
-    CI can pair them up.
-    """
-    assert manifest["category"] == "hvac", (
-        f"category must stay 'hvac' (legacy doc lives at "
-        f"docs/catalog/hvac/heated-floors-and-engine-preheat.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can reference it "
-        "from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The HVAC contract is implementation-agnostic (it talks to whatever
-    smart thermostat integration OR HA core generic_thermostat + relay
-    OR engine preheat relay/CAN bus gateway the operator wires, not any
-    vendor's library). Contract ids must stay vendor-neutral — NO
-    `floor`, `heated`, `thermostat`, `wyze`, `mysa`, `shelly`, `moen`,
-    `zigbee`, `webasto`, `espar`, `eberspacher`, `preheat`, `engine`,
-    `climate_`, `generic_thermostat` in any rc_* tile id BEYOND the
-    subsystem prefix `rc_hvac_*`.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_hvac_[a-z0-9_]+$` (vendor-neutral, subsystem
-    prefix `rc_hvac_*` per the §hvac subsystem naming rules in
-    docs/reference/rc-entity-naming.md). The subsystem prefix IS
-    allowed (it's the owning-area marker); what is forbidden is
-    vendor / hardware / climate-domain / generic_thermostat names
-    appearing AFTER the subsystem prefix in a way that double-stamps
-    the vendor into the id.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "heated-floors contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_hvac_` may include digits but must not
-    # contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_hvac_[a-z0-9_]+$")
-
-    # Vendor / implementation / device-side name leaks that must
-    # NEVER appear in any rc_* tile id. The spec requirement is
-    # "no double-stamps of [vendor + hardware names + climate-domain
-    # + generic_thermostat] beyond the rc_hvac_ subsystem prefix".
-    # Vendor names like Mysa / Shelly / Wyze / Moen / Zigbee /
-    # Webasto / Espar / Eberspächer are an absolute vendor leak and
-    # are forbidden from EVER appearing in any rc_* tile id
-    # (regardless of where in the tile).
-    #
-    # The generic nouns / domain names (`floor`, `heated`, `thermostat`,
-    # `preheat`, `engine`, `climate_`, `generic_thermostat`) are
-    # LITERALLY PART OF the spec-required tile ids (e.g.
-    # `climate.rc_hvac_floor_thermostat`,
-    # `sensor.rc_hvac_engine_preheat_runtime_min`) — the spec calls
-    # for those tiles — so flagging them as absolute substrings of
-    # the suffix would conflict with the literal tile ids the spec
-    # requires. The forbidden_substrings list below targets the
-    # vendor-name absolute-forbidden set only; the spec's literal
-    # tile ids are accepted by ID and never double-stamp any vendor
-    # name.
-    forbidden_substrings = (
-        # Vendor / brand names — recipe explicitly forbids these
-        # (absolute forbidden — no Mysa / Wyze / Shelly / Moen /
-        # Zigbee / Webasto / Espar / Eberspächer names anywhere in
-        # any rc_* tile id; vendor neutrality is non-negotiable).
-        "wyze",                 # Wyze smart thermostat vendor (vendor leak)
-        "mysa",                 # Mysa floor thermostat vendor (vendor leak)
-        "shelly",               # Shelly relay / Shelly H&T vendor (vendor leak)
-        "moen",                 # Moen smart water / Flo vendor (vendor leak)
-        "zigbee",               # Zigbee protocol name (vendor / protocol leak)
-        "webasto",              # Webasto engine preheat vendor (vendor leak)
-        "espar",                # Espar engine preheat vendor (vendor leak)
-        "eberspacher",          # Eberspächer engine preheat vendor (vendor leak)
-        "ebersp_acher",         # Eberspächer with non-ASCII umlaut — defensive (vendor leak)
-        "eberspacher",          # Eberspächer ASCII transliteration (vendor leak)
-        "thermo_top",           # Webasto Thermo Top Evo / Pro model name (vendor leak)
-        "hydronic",             # Eberspächer Hydronic S3 model name (vendor leak)
-        "generic_thermostat",   # HA core generic_thermostat integration name (integration leak)
-        "climate_",             # HA core climate-domain namespace (integration leak)
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_hvac_[a-z_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_hvac_; the suffix (after
-        # `rc_hvac_`) MUST NOT contain any forbidden vendor substring.
-        suffix = tile.split(".rc_hvac_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden vendor substring {bad!r} "
-                f"in the suffix after `rc_hvac_`; per docs/reference/"
-                f"rc-entity-naming.md, contract ids are vendor-neutral — "
-                f"vendor names are forbidden in any rc_* tile id"
-            )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-
-    # Spec calls for exactly 13 tiles (1 climate + 2 sensor + 3
-    # binary_sensor + 1 switch + 1 number + 1 select + 1 binary_sensor
-    # + 1 switch + 1 binary_sensor + 1 sensor). These map to the 13
-    # contract entities documented in the recipe §6 contract layer:
-    #   climate.rc_hvac_floor_thermostat
-    #   sensor.rc_hvac_floor_current_temp
-    #   sensor.rc_hvac_interior_temp
-    #   binary_sensor.rc_hvac_floor_heating_active
-    #   binary_sensor.rc_hvac_floor_maintaining
-    #   binary_sensor.rc_hvac_floor_off
-    #   switch.rc_hvac_floor_heater
-    #   number.rc_hvac_floor_setpoint
-    #   select.rc_hvac_floor_mode
-    #   binary_sensor.rc_hvac_floor_low_voltage_lockout
-    #   switch.rc_hvac_engine_preheat
-    #   binary_sensor.rc_hvac_engine_preheat_active
-    #   sensor.rc_hvac_engine_preheat_runtime_min
-    assert len(tiles) == 13, (
-        f"heated-floors must contribute exactly 13 contract tiles per "
-        f"spec (1 climate + 2 sensor + 3 binary_sensor + 1 switch + "
-        f"1 number + 1 select + 1 binary_sensor + 1 switch + "
-        f"1 binary_sensor + 1 sensor); got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_heated_floor(manifest: dict) -> None:

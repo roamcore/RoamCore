@@ -14,4 +14,16 @@ Heated floors + engine pre-heat — cold-weather comfort controls for vans — a
 
 ## What it shows on your dashboard
 
-- A Heated floors + engine pre-heat tile that updates automatically.
+- Floor thermostat
+- Floor current temp
+- Interior temp
+- Floor heating active
+- Floor maintaining
+- Floor off
+- Floor heater
+- Floor setpoint
+- Floor mode
+- Floor low voltage lockout
+- Engine preheat
+- Engine preheat active
+- Engine preheat runtime min

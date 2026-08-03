@@ -14,4 +14,17 @@ Music Assistant is a provider- agnostic multi-room audio orchestrator very popul
 
 ## What it shows on your dashboard
 
-- A Music Assistant tile that updates automatically.
+- Zone living
+- Zone bed
+- Zone outdoor
+- Any player playing
+- Active zone
+- Now playing title
+- Now playing artist
+- Now playing album
+- Library artists count
+- Library albums count
+- Library tracks count
+- Pause all
+- Resume last
+- Default zone

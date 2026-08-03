@@ -1,6 +1,6 @@
 # Timezone geolocator
 
-Keep HA's system timezone correct as the van travels across regions so that time-based automations (sun events + `now` + `today_at`) keep working.
+Timezone geolocator (location-aware HA timezone).
 
 ## What you need
 
@@ -14,4 +14,11 @@ Keep HA's system timezone correct as the van travels across regions so that time
 
 ## What it shows on your dashboard
 
-- A Timezone geolocator tile that updates automatically.
+- Zone current
+- Zone offset minutes
+- Zone synced
+- Zone last update minutes ago
+- Zone stale
+- Zone gps source
+- Zone update cadence
+- Zone update now

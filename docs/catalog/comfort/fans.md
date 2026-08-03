@@ -1,6 +1,6 @@
 # Fans
 
-Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather.
+Fans (vendor-neutral fan-controller umbrella for HA, covering rooftop vent fans + circulation fans + bathroom exhaust fans — rooftop + circulation fans cover the climate-aware airflow + the rain-sensor safety block; bathroom exhaust fans wire as a separate downstream `fan.
 
 ## What you need
 
@@ -15,4 +15,11 @@ Fans are a simple upgrade that massively improves comfort: airflow, condensation
 
 ## What it shows on your dashboard
 
-- A Fans tile that updates automatically.
+- Main
+- Speed percent
+- Mode
+- Active
+- Runtime minutes today
+- Last trigger reason
+- Run now 15min
+- Rain sensor active

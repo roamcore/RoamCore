@@ -43,12 +43,12 @@ When a real Teltonika router lands on the bench (likely via `testcontainers/snmp
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/networking/teltonika.md`](../../docs/catalog/networking/teltonika.md)
-- Catalog category index: `docs/catalog/networking/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Starlink connection (companion mobile-internet slice — long-range WAN):
   `connections/starlink/`
 - Peplink (multi-WAN router companion — shares the multi-WAN failover story):
-  `docs/catalog/networking/peplink.md`
+  the legacy spec
 - MQTT broker (cross-reference — Teltonika events could ride MQTT if a community exporter is installed):
   `connections/mqtt/`
 - RoamCore entity naming: `docs/reference/rc-entity-naming.md`

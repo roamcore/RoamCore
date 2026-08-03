@@ -891,7 +891,7 @@ Until those three are in place, the slice is tier-b.
 
 Cross-references:
 - Legacy catalog page (now superseded by this slice):
-  `docs/catalog/level-sensor/leveling.md`.
+  the legacy spec.
 - HA core `sensor` integration (the canonical umbrella):
   https://www.home-assistant.io/integrations/sensor/.
 - HA core `template:` sensor wrapper (the canonical pitch

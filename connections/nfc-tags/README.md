@@ -30,7 +30,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-b would require a RoamCore-owned NFC integration + integration code + integration tests against a real NFC bench (a controlled NFC tag reader + canned fixture responses for `tag_scanned` events + the upstream HA core `tag` integration installed + the HACS `nfcpy` integration installed). We have no operator-side NFC bench on the CI to integration-test against (the bench requires a physical NFC reader + canned fixture responses for `tag_scanned` events + the HA Companion app's `tag` trigger installed + the HACS `nfcpy` integration installed + the upstream HA core `tag` integration installed — all wired together in a controlled environment). Tier-c is the honest tier: HA's core `tag` integration is upstream HA core code (not RoamCore-owned); the RoamCore wrapper is a thin `tag_id → scene` mapping table + a contract layer. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/nfc-tags/index.md` — 14-line stub, originally listed as "Support tier: C" with no recipe + no contract + no automations — just a placeholder about "easy NFC-based automations and practical places to put tags in a van" + "Lights off", "Bedtime", "Leave camp" as example scene names) is now superseded by this tier-c recipe connection.
+The legacy catalog page (the legacy spec — 14-line stub, originally listed as "Support tier: C" with no recipe + no contract + no automations — just a placeholder about "easy NFC-based automations and practical places to put tags in a van" + "Lights off", "Bedtime", "Leave camp" as example scene names) is now superseded by this tier-c recipe connection.
 
 ## Files
 
@@ -41,7 +41,7 @@ The legacy catalog page (`docs/catalog/nfc-tags/index.md` — 14-line stub, orig
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/nfc-tags/index.md`](../../docs/catalog/nfc-tags/index.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `tag` integration: https://www.home-assistant.io/integrations/tag/
 - HA core `scene` integration: https://www.home-assistant.io/integrations/scene/
 - HA Companion app NFC sensor docs: https://companion.home-assistant.io/docs/core/sensors

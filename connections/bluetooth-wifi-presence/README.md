@@ -59,8 +59,8 @@ When a real Bluetooth + Wi-Fi bench lands (likely 2 BLE devices + a Wi-Fi router
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/presence/bluetooth-wifi-presence.md`](../../docs/catalog/presence/bluetooth-wifi-presence.md)
-- Catalog category index: `docs/catalog/presence/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Music Assistant connection (companion for the §7 "Power-aware occupancy alert" TTS automation — the TTS target is `media_player.rc_media_zone_living`):
   `connections/music-assistant/`
 - RoamCore entity naming: `docs/reference/rc-entity-naming.md`

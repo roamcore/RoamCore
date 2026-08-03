@@ -44,8 +44,8 @@ When a real Music Assistant server lands on the bench (likely via a RoamCore-own
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/audio-media/music-assistant.md`](../../docs/catalog/audio-media/music-assistant.md)
-- Catalog category index: `docs/catalog/audio-media/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Starlink connection (companion van-networking slice — long-range WAN that supports the cloud paths MA may use):
   `connections/starlink/`
 - Teltonika connection (companion mobile-internet slice — cellular WAN):

@@ -14,4 +14,16 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## What it shows on your dashboard
 
-- A Smoke / CO / gas safety sensors tile that updates automatically.
+- Smoke detected
+- Co detected
+- Gas detected
+- Smoke max ppm
+- Co max ppm
+- Gas max ppm
+- Any alarm
+- Alarm silenced
+- Battery low
+- Sensor offline
+- Alarm mode
+- Alarm test
+- Alarm silence

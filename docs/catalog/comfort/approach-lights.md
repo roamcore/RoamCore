@@ -15,4 +15,15 @@ Approach lights (welcome-home exterior + underbody lighting) — the universal s
 
 ## What it shows on your dashboard
 
-- A Approach lights tile that updates automatically.
+- Approach active
+- Approach available
+- Underbody state
+- Entry state
+- Soft interior state
+- Approach minutes remaining
+- Last approach trigger minutes ago
+- Dark outside
+- Approach mode
+- Approach duration min
+- Run approach now
+- Camera override

@@ -42,7 +42,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> in-cab-tablet-dash
 CONNECTION_DIR = REPO_ROOT / "connections" / "in-cab-tablet-dashboard"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "vehicle-obd" / "in-cab-tablet-dashboard.md"
 LOVELACE_FILE = REPO_ROOT / "dashboard" / "lovelace" / "storage" / "lovelace.roamcore.json"
 
 

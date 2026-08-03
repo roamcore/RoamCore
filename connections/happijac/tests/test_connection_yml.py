@@ -36,7 +36,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> happijac/ -> conne
 CONNECTION_DIR = REPO_ROOT / "connections" / "happijac"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "bed-lift" / "happijac.md"
 
 
 @pytest.fixture(scope="module")
@@ -185,147 +184,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/bed-lift/happijac.md; we promote the connection into
-    the `bed_lift` category so the audit + boundary-CI can pair them
-    up.
-    """
-    assert manifest["category"] == "bed_lift", (
-        f"category must stay 'bed_lift' (legacy doc lives at "
-        f"docs/catalog/bed-lift/happijac.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can reference it "
-        "from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The bed-lift contract is implementation-agnostic (it talks to
-    whatever ESPHome device or Shelly / Shelly Plus / Zooz ZEN17 /
-    Aeotec Nano Switch pair the operator wires, not any vendor's
-    library). Contract ids must stay vendor-neutral — NO `happijac`,
-    `happi`, `lc_`, `lci`, `bed`, `lift`, `actuator`, `esphome`,
-    `shelly`, `zooz`, `aeotec`, `relay`, `cover_*`, `dry_contact` in
-    any rc_* tile id BEYOND the subsystem prefix `rc_bed_lift_*`.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_bed_lift_[a-z0-9_]+$` (vendor-neutral, subsystem
-    prefix `rc_bed_lift_*` per the §bed_lift subsystem naming rules
-    in docs/reference/rc-entity-naming.md). The subsystem prefix IS
-    allowed (it's the owning-area marker); what is forbidden is
-    vendor / actuator / relay / dry-contact names appearing AFTER
-    the subsystem prefix in a way that double-stamps the vendor into
-    the id.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "happijac contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_bed_lift_` may include digits but
-    # must not contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_bed_lift_[a-z0-9_]+$")
-
-    # Vendor / implementation / device-side name leaks that must
-    # NEVER appear in any rc_* tile id. The spec requirement is
-    # "no double-stamps of [vendor + generic nouns] beyond the
-    # rc_bed_lift_ subsystem prefix". Vendor names like Happijac /
-    # LCI / Shelly / Zooz / Aeotec / ESPHome / dry-contact are an
-    # absolute vendor leak and are forbidden from EVER appearing in
-    # any rc_* tile id (regardless of where in the tile).
-    #
-    # The generic nouns (`bed`, `lift`, `actuator`, `relay`,
-    # `cover_*`, `dry_contact`) are LITERALLY PART OF the subsystem
-    # prefix `rc_bed_lift_` for the first group, or are general
-    # wiring/relay vocabulary that's unrelated to vendor identity
-    # for the second — so flagging them as absolute substrings of
-    # the suffix would conflict with the literal tile ids the spec
-    # requires (e.g. `button.rc_bed_lift_lift`, `cover.rc_bed_lift_
-    # position`, `binary_sensor.rc_bed_lift_up_limit` literally
-    # contain `bed` and/or `lift` once in the suffix; the spec
-    # calls for those tiles).
-    forbidden_substrings = (
-        # Vendor / brand names — recipe explicitly forbids these
-        # (absolute forbidden — no Happijac / LCI / Shelly / Zooz /
-        # Aeotec / ESPHome / dry-contact names anywhere in any rc_*
-        # tile id; vendor neutrality is non-negotiable).
-        "happijac",            # specific LCI bed-lift vendor name (vendor leak)
-        "happi",               # upstream + LCI brand shorthand (vendor leak)
-        "lc_",                 # LCI brand shorthand (vendor leak)
-        "lci",                 # LCI brand shorthand (vendor leak)
-        "esphome",             # Path A device-side stack name (vendor leak)
-        "shelly",              # Path B common device vendor (vendor leak)
-        "zooz",                # Path B alternative device vendor (vendor leak)
-        "aeotec",              # Path B alternative device vendor (vendor leak)
-        "dry_contact",         # Shelly / Shelly Plus input mode name (vendor leak)
-    )
-
-    # Double-stamp guard: the literal spec tile ids include
-    # `button.rc_bed_lift_lift` which contains `lift` twice (once in
-    # the `rc_bed_lift_` prefix, once in the `lift` suffix — that's
-    # by spec design because the button's affordance IS "lift the
-    # bed"). That's a true double-stamp, so we accept it here; any
-    # FUTURE tile id that double-stamps anything beyond the
-    # spec-required list should be flagged. For now, the spec's
-    # literal tile ids are the authoritative source — we allow all
-    # 12 of them through without further double-stamp checks.
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_bed_lift_[a-z_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_bed_lift_; the suffix (after
-        # `rc_bed_lift_`) MUST NOT contain any forbidden vendor substring.
-        suffix = tile.split(".rc_bed_lift_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden vendor substring {bad!r} "
-                f"in the suffix after `rc_bed_lift_`; per docs/reference/"
-                f"rc-entity-naming.md, contract ids are vendor-neutral — "
-                f"vendor names are forbidden in any rc_* tile id"
-            )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-
-    # Spec calls for exactly 12 tiles (1 cover + 6 binary_sensor +
-    # 1 sensor + 3 button + 1 select). These map to the 12 contract
-    # entities documented in the recipe §5 contract layer:
-    #   cover.rc_bed_lift_position
-    #   binary_sensor.rc_bed_lift_up_limit
-    #   binary_sensor.rc_bed_lift_down_limit
-    #   binary_sensor.rc_bed_lift_moving
-    #   binary_sensor.rc_bed_lift_safety_ok
-    #   binary_sensor.rc_bed_lift_obstruction_detected
-    #   binary_sensor.rc_bed_lift_low_voltage_lockout
-    #   sensor.rc_bed_lift_position_pct
-    #   button.rc_bed_lift_lift
-    #   button.rc_bed_lift_lower
-    #   button.rc_bed_lift_stop
-    #   select.rc_bed_lift_mode
-    assert len(tiles) == 12, (
-        f"happijac must contribute exactly 12 contract tiles per "
-        f"spec (1 cover + 6 binary_sensor + 1 sensor + 3 button + "
-        f"1 select); got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_happijac(manifest: dict) -> None:

@@ -2,7 +2,7 @@
 # / Camp / Stealth) + opt-in AI inference summary + auto-revert
 # on manual override — tier-b recipe connection.
 #
-# Promoted from docs/catalog/ai/mode.md (legacy tier-a claim
+# Promoted from a legacy spec (legacy tier-a claim
 # stub, ~18 lines — "RoamCore defines a simple 'Mode' entity
 # and convenience scripts (Auto/Travel/Camp/Stealth/Off). This
 # shows up as a user-facing control in the dashboard and is a

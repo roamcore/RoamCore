@@ -3,7 +3,7 @@
 # HA Companion app's external URL setting — operator picks ONE path) —
 # tier-b recipe connection.
 #
-# Promoted from docs/catalog/remote-access/index.md (legacy 16-line
+# Promoted from a legacy spec (legacy 16-line
 # stub — originally listed ONLY Tailscale at "Support tier: B" with no
 # recipe + no contract + no broader vendor-neutral coverage — just a
 # placeholder about "check sensor status, view cameras, get alerts, or

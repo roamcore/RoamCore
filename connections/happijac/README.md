@@ -59,8 +59,8 @@ When a real Happijac + ESPHome + relay bench lands (a bench with at least one ES
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/bed-lift/happijac.md`](../../docs/catalog/bed-lift/happijac.md)
-- Catalog category index: `docs/catalog/bed-lift/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Victron connection (companion for the §6 low-voltage lockout cross-reference to `sensor.rc_power_battery_soc` + `binary_sensor.rc_power_shore_connected`):
   `connections/victron/`
 - Music Assistant connection (companion for the §7 "obstruction detected → stop + alert" TTS automation — the TTS target is `media_player.rc_media_zone_living`):

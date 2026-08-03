@@ -2,7 +2,7 @@
 # aggregation + trip overlay + offline-tile cache — tier-a
 # recipe connection.
 #
-# Promoted from docs/catalog/map/map-dashboard.md (legacy
+# Promoted from a legacy spec (legacy
 # tier-a claim stub, 28 lines — "RoamCore provides a map
 # experience inside Home Assistant, including current
 # location and route/trip context. Quick 'where are we /

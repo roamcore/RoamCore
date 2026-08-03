@@ -1,7 +1,6 @@
 # Electronic valves + auto tank switching — tier-b recipe connection.
 #
-# Promoted from docs/catalog/water/electronic-valves-and-auto-tank-switch.md
-# (legacy tier-c, ~21 lines, originally listed as "Support tier: C" with
+# Promoted from a legacy spec # (legacy tier-c, ~21 lines, originally listed as "Support tier: C" with
 # no recipe + no contract + no automations — just a placeholder that said
 # "Use electronically controlled valves to automate water routing").
 # Promoted into tier-b because RoamCore does NOT ship a native valve

@@ -1,6 +1,6 @@
 # Remote access
 
-Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems.
+Remote access (vendor-neutral remote-access umbrella for HA, covering Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud + Wireguard — operator picks ONE path).
 
 ## What you need
 
@@ -15,4 +15,12 @@ Check the van from anywhere: see sensor status, view cameras, get alerts, or (op
 
 ## What it shows on your dashboard
 
-- A Remote access tile that updates automatically.
+- Access enabled
+- Access url
+- Access active
+- Access active path
+- Access peer count
+- Access last verified minutes ago
+- Access hostname resolvable
+- Access verify now
+- Access path

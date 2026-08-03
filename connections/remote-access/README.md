@@ -45,7 +45,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require a RoamCore-owned remote-access engine + integration code + integration tests against a real remote-access bench (a controlled environment with Tailscale coordination server + Cloudflare Tunnel token + Nabu Casa test subscription + Wireguard server + canned fixture responses for reachability probes). We have no operator-side remote-access bench on the CI to integration-test against (the bench requires the four upstream integrations + the operator's account on the chosen vendor's service + canned fixture responses for reachability probes — all wired together in a controlled environment). Tier-b is the honest tier: Tailscale + Cloudflare Tunnel + Nabu Casa + Wireguard are all upstream / vendor / HACS code (not RoamCore-owned); the RoamCore wrapper is a thin path-routing layer + the contract layer. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/remote-access/index.md` — 16-line stub, originally listed ONLY Tailscale at "Support tier: B" with no recipe + no contract + no broader vendor-neutral coverage — just a placeholder about "check sensor status, view cameras, get alerts, or (optionally) control systems" + "safe ways to reach Home Assistant remotely, with clear notes on security and support level") is now superseded by this tier-b recipe connection. The Wave 2 #29 branch (`feat/wave2-remote-access-tailscale` @ `0caa9c2`) already shipped the Tailscale-specific contract layer at `homeassistant/packages/roamcore_remote_access.yaml` — this slice lifts that contract into the `connections/` pipeline + adds the broader vendor-neutral contract layer + adds Cloudflare Tunnel + Nabu Casa + Wireguard as alternative paths.
+The legacy catalog page (the legacy spec — 16-line stub, originally listed ONLY Tailscale at "Support tier: B" with no recipe + no contract + no broader vendor-neutral coverage — just a placeholder about "check sensor status, view cameras, get alerts, or (optionally) control systems" + "safe ways to reach Home Assistant remotely, with clear notes on security and support level") is now superseded by this tier-b recipe connection. The Wave 2 #29 branch (`feat/wave2-remote-access-tailscale` @ `0caa9c2`) already shipped the Tailscale-specific contract layer at `homeassistant/packages/roamcore_remote_access.yaml` — this slice lifts that contract into the `connections/` pipeline + adds the broader vendor-neutral contract layer + adds Cloudflare Tunnel + Nabu Casa + Wireguard as alternative paths.
 
 ## Files
 
@@ -56,8 +56,8 @@ The legacy catalog page (`docs/catalog/remote-access/index.md` — 16-line stub,
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/remote-access/index.md`](../../docs/catalog/remote-access/index.md)
-- Legacy Tailscale catalog page (now superseded by this slice): [`docs/catalog/remote-access/tailscale.md`](../../docs/catalog/remote-access/tailscale.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
+- Legacy Tailscale catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `tailscale` integration (Path A): https://www.home-assistant.io/integrations/tailscale/
 - HA Core `cloud` integration (Path C): https://www.home-assistant.io/integrations/cloud/
 - HA Companion app external URL docs: https://companion.home-assistant.io/docs/core/sensors

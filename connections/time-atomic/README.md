@@ -27,7 +27,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-b would require a RoamCore-owned atomic-clock engine + integration code + integration tests against a real time-sync bench (a controlled NTP server + a GPS source simulator + a DS3231 / RV-3028 RTC module). We have no operator-side atomic-clock bench on the CI to integration-test against (the bench requires all three paths wired together in a controlled environment — NTP server reachability, GPS source coordinates, RTC module battery + drift). Tier-c is the honest tier: HA core's `time` integration is upstream HA core code (not RoamCore-owned); the RoamCore wrapper is a few thin automations + a contract layer. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/time/atomic-time.md` — created in this slice as the legacy spec pointer) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
+The legacy catalog page (the legacy spec — created in this slice as the legacy spec pointer) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
 
 ## Files
 
@@ -38,7 +38,7 @@ The legacy catalog page (`docs/catalog/time/atomic-time.md` — created in this 
 
 ## See also
 
-- Legacy catalog page (created + now superseded by this slice): [`docs/catalog/time/atomic-time.md`](../../docs/catalog/time/atomic-time.md)
+- Legacy catalog page (created + now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `time` integration: https://www.home-assistant.io/integrations/time/
 - Traccar connection (the canonical GPS source for Path B; Wave 3 #36): `connections/traccar/`
 - Wican Pro OBD-II connection (the optional GPS source for Path B; Wave 3 #6): `connections/wican-pro/`

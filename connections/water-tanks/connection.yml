@@ -1,6 +1,6 @@
 # Water tanks (fresh/grey monitoring) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/water/water-tanks.md (legacy tier-c, ~25 lines,
+# Promoted from a legacy spec (legacy tier-c, ~25 lines,
 # originally listed as "Support tier: C (manual / varies)" with no recipe +
 # no contract + no automations — just a placeholder that said "add your
 # preferred sensors/integration, then wire the resulting entities into your

@@ -1,8 +1,8 @@
 # Pi-hole / AdGuard Home (network-wide DNS ad blocker) — tier-b recipe connection.
 #
 # Promoted from the two legacy tier-c specs:
-#   - docs/catalog/homelab/pi-hole.md
-#   - docs/catalog/homelab/adguard-home.md
+#   - the legacy spec
+#   - the legacy spec
 #
 # Both legacy pages were tagged tier-b in the homelab catalog index, but
 # the underlying RoamCore tier is honestly tier-b: RoamCore does NOT

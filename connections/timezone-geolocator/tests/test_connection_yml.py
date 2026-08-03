@@ -38,7 +38,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> timezone-geolocato
 CONNECTION_DIR = REPO_ROOT / "connections" / "timezone-geolocator"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "time" / "timezone-geolocator.md"
 
 
 @pytest.fixture(scope="module")
@@ -298,38 +297,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/time/timezone-geolocator.md; we promote the
-    connection into the `time` category so the audit + boundary-
-    CI can pair them up. The legacy doc MUST still exist (with
-    the supersession banner) so that the recipe can reference
-    it AND the audit can verify the supersession banner is in
-    place.
-    """
-    assert manifest["category"] == "time", (
-        f"category must stay 'time' (legacy doc lives at "
-        f"docs/catalog/time/timezone-geolocator.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can "
-        "reference it from the recipe (and add a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the supersession
-    # banner so the false tier-c placeholder doesn't leak into any
-    # downstream catalog scrape. The banner text is the verbatim
-    # spec-required string.
-    legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_text, (
-        "legacy docs/catalog/time/timezone-geolocator.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/timezone-geolocator/" in legacy_text, (
-        "legacy docs/catalog/time/timezone-geolocator.md must "
-        "point at `connections/timezone-geolocator/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

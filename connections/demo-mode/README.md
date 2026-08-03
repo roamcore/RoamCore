@@ -64,7 +64,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require a RoamCore-owned demo-mode engine + integration code + integration tests against a real demo-mode engine bench (a controlled environment with canned fixture responses for sensor availability events + canned fixture responses for remote-access session events + canned fixture responses for service-call blocking events — all wired together in a controlled environment). We have no operator-side demo-mode engine bench on the CI to integration-test against (the bench requires the operator's chosen battery + tank + LTE sensors + the operator's real-hardware target list + canned fixture responses for sensor availability events — all wired together in a controlled environment). Tier-b is the honest tier: HA core `input_boolean` + `input_select` + `input_text` + `input_number` + HA core `template:` are all upstream / vendor / HACS / hardware code (not RoamCore-owned); the RoamCore wrapper is a thin upstream-entity-aggregation layer + the contract layer + the §9 MANDATORY automations. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/ai/demo-mode.md` — 14-line tier-a claim stub, originally listed "Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos. Helps you configure slowly without a broken-looking dashboard. Great for showcasing RoamCore without full hardware installed. None. HA package: homeassistant/packages/roamcore_demo_mode.yaml" with no recipe + no contract + no automations + no install path — just a placeholder with an aspirational tier-a claim) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore demo-mode engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §9 automations as tier-b.
+The legacy catalog page (the legacy spec — 14-line tier-a claim stub, originally listed "Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos. Helps you configure slowly without a broken-looking dashboard. Great for showcasing RoamCore without full hardware installed. None. HA package: homeassistant/packages/roamcore_demo_mode.yaml" with no recipe + no contract + no automations + no install path — just a placeholder with an aspirational tier-a claim) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore demo-mode engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §9 automations as tier-b.
 
 ## Files
 
@@ -75,7 +75,7 @@ The legacy catalog page (`docs/catalog/ai/demo-mode.md` — 14-line tier-a claim
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/ai/demo-mode.md`](../../docs/catalog/ai/demo-mode.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `input_boolean` integration (the canonical demo-enabled helper umbrella): https://www.home-assistant.io/integrations/input_boolean/
 - HA core `input_select` integration (the canonical scenario selector helper): https://www.home-assistant.io/integrations/input_select/
 - HA core `input_text` integration (the canonical real-hardware target list helper): https://www.home-assistant.io/integrations/input_text/

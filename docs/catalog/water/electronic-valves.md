@@ -1,6 +1,6 @@
 # Electronic valves + auto tank switching
 
-Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns "which tank am I drawing from right now?" + "is the grey valve about to overflow?" + "can I safely open a…
+Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks.
 
 ## What you need
 
@@ -14,4 +14,20 @@ Electronic valves + auto tank switching — fresh / aux tank routing, grey drain
 
 ## What it shows on your dashboard
 
-- A Electronic valves + auto tank switching tile that updates automatically.
+- Valve fresh inlet state
+- Valve grey drain state
+- Valve aux tank state
+- Valve fresh inlet position
+- Valve grey drain position
+- Valve aux tank position
+- Valve any moving
+- Valve auto tank switch active
+- Valve leak detected lockout
+- Valve freeze risk lockout
+- Valve active tank
+- Valve mode
+- Valve auto close grey min
+- Valve low voltage lockout soc pct
+- Valve low voltage lockout
+- Valve open all
+- Valve close all

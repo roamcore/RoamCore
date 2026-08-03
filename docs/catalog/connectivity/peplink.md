@@ -14,4 +14,14 @@ Peplink Balance / MAX / EP-series routers are rugged, configurable multi-WAN gat
 
 ## What it shows on your dashboard
 
-- A Peplink tile that updates automatically.
+- Peplink reachable
+- Peplink wan1 state
+- Peplink wan2 state
+- Peplink active wan
+- Peplink wan failover count 24h
+- Peplink wan health score
+- Peplink uptime hours
+- Peplink public ip
+- Peplink refresh now
+- Peplink force failover
+- Peplink wan priority

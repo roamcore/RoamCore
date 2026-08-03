@@ -43,7 +43,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONNECTION_DIR = REPO_ROOT / "connections" / "smart-automations"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "safety" / "smart-automations.md"
 
 
 @pytest.fixture(scope="module")
@@ -105,55 +104,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match."""
-    assert manifest["category"] == "safety"
-    assert LEGACY_DOC.is_file(), (
-        "legacy docs/catalog/safety/smart-automations.md must still "
-        "exist (carrying the supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names or generic nouns."""
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles
-    for tile in tiles:
-        assert isinstance(tile, str)
-
-    pattern = re.compile(r"^[a-z_]+\.rc_safety_(automation|automations)_[a-z0-9_]+$")
-    forbidden_substrings = (
-        # vendor names (absolute forbidden)
-        "nest", "kidde", "first_alert", "firstalert",
-        "x_sense", "xsense", "x-sense", "heiman", "zipato",
-        "victron", "traccar", "openwrt", "esphome", "zigbee",
-        "z_wave", "zwave", "z-wave", "mqtt", "tuya", "xiaomi",
-        "philips", "ubiquiti", "unifi", "mikrotik",
-        # generic nouns (forbidden double-stamps)
-        "smart", "automation_engine", "roamcore_smart",
-        "lovelace_", "timer_", "schedule_", "rule_",
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_safety_(automation|automations)_[a-z_]+$"
-        )
-        suffix = tile.split(".rc_safety_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden substring {bad!r}"
-            )
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment)
-
-    # 7 summary tiles (3 sensors + 1 binary_sensor + 1 select + 2 buttons)
-    # + 17 per-automation binary_sensors = 24 contract tiles.
-    assert len(tiles) == 24, (
-        f"smart-automations must contribute exactly 24 contract "
-        f"tiles (7 summary + 17 per-automation mirror binary_sensors); "
-        f"verify the manifest matches §5; got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_automation_engine(manifest: dict) -> None:

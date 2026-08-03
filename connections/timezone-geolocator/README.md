@@ -25,7 +25,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-b would require a RoamCore-owned timezone engine + integration code + integration tests against a real timezone-update bench (a Traccar server + a mock GPS feed + canned fixture responses). We have no operator-side timezone bench on the CI to integration-test against (the bench requires GeoLocator itself, which is upstream HACS code, plus a Traccar server, which is a separate service). Tier-c is the honest tier: GeoLocator is upstream HACS code (not RoamCore-owned); the RoamCore wrapper is a thin automation + a contract layer. The recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/time/timezone-geolocator.md`) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
+The original legacy catalog page (the legacy spec) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-c recipe connection.
 
 ## Files
 
@@ -36,7 +36,7 @@ The original legacy catalog page (`docs/catalog/time/timezone-geolocator.md`) li
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/time/timezone-geolocator.md`](../../docs/catalog/time/timezone-geolocator.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - GeoLocator upstream (HACS): https://github.com/SmartyVan/hass-geolocator
 - Traccar connection (the canonical GPS source; Wave 3 #36): `connections/traccar/`
 - Wican Pro OBD-II connection (the optional GPS source; Wave 3 #6): `connections/wican-pro/`

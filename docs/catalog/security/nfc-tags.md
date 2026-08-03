@@ -1,6 +1,6 @@
 # NFC tags
 
-Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp).
+NFC tags (vendor-neutral NFC-triggered scenes mapped via `tag_id → scene` mapping).
 
 ## What you need
 
@@ -14,4 +14,11 @@ Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene
 
 ## What it shows on your dashboard
 
-- A NFC tags tile that updates automatically.
+- Last triggered scene
+- Last triggered scene active
+- Registered tags count
+- Last scanned tag id
+- Last scan minutes ago
+- Tag unknown warning
+- Stealth mode suppressed
+- Trigger scene now

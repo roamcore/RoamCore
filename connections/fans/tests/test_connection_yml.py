@@ -49,7 +49,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> fans/ -> connectio
 CONNECTION_DIR = REPO_ROOT / "connections" / "fans"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "fans" / "index.md"
 
 
 @pytest.fixture(scope="module")
@@ -442,47 +441,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/fans/index.md (a 14-line stub, originally
-    listed "Fans are a simple upgrade that massively improves
-    comfort: airflow, condensation control, cooking smells,
-    and keeping the van livable in warm weather. This section
-    covers fan controllers, vent fans, and easy automations
-    like 'run when humidity is high'" with no recipe + no
-    contract + no vendor-neutral coverage — just a
-    placeholder). We promote the connection into the
-    `ventilation` category so the audit + boundary-CI can pair
-    them up. The legacy doc MUST still exist (with the
-    supersession banner) so that the recipe can reference it
-    AND the audit can verify the supersession banner is in
-    place.
-    """
-    assert manifest["category"] == "ventilation", (
-        f"category must stay 'ventilation' (legacy doc lives "
-        f"at docs/catalog/fans/index.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-c doc at "
-        "docs/catalog/fans/index.md to still exist so we can "
-        "reference it from the recipe (and add a supersession "
-        "banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-c placeholder
-    # doesn't leak into any downstream catalog scrape. The
-    # banner text is the verbatim spec-required string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/fans/index.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/fans/" in legacy_index_text, (
-        "legacy docs/catalog/fans/index.md must "
-        "point at `connections/fans/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

@@ -36,7 +36,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a requires a working RoamCore-owned operator-wired setup flow, integration tests against a real motion + ignition + presence + dark-outside bench (a PIR sensor + a Wican Pro OBD-II + a bluetooth-wifi-presence setup + a `sun.sun` integration + a Frigate entry zone), and `wizard.one_tap: true`. We have no operator-side motion-lighting bench on the CI to integration-test against (the bench requires physical hardware: a PIR / mmWave motion sensor + an OBD-II reader + a bluetooth / Wi-Fi presence setup + a sun sensor + a Frigate CCTV setup, all wired together in a controlled environment). So this connection is honestly beta-tier: the recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/lighting/motion-based-lighting.md`) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-b recipe connection.
+The original legacy catalog page (the legacy spec) listed "Support tier: C" with no recipe + no contract + no automations — that placeholder is now superseded by this tier-b recipe connection.
 
 ## Files
 
@@ -47,7 +47,7 @@ The original legacy catalog page (`docs/catalog/lighting/motion-based-lighting.m
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/lighting/motion-based-lighting.md`](../../docs/catalog/lighting/motion-based-lighting.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Approach lights connection (lighting sibling — same subsystem; Wave 3 #52): `connections/approach-lights/`
 - Bluetooth / Wi-Fi presence connection (the Path C presence source; Wave 3 #42): `connections/bluetooth-wifi-presence/`
 - Wican Pro OBD-II connection (the Path B canonical ignition source; Wave 3 #6): `connections/wican-pro/`

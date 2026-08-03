@@ -42,7 +42,7 @@ Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests aga
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/safety/smart-automations.md`](../../docs/catalog/safety/smart-automations.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Canonical automation list (the source of truth for what each of the 17 automations does): [`docs/guides/smart-automations.md`](../../docs/guides/smart-automations.md)
 - Smoke / CO / gas safety sensors (companion for the §7 cooking-aware silencing automation): `connections/smoke-co-gas-sensors/`
 - Heated floors + engine pre-heat (companion for the §16 Bedtime Level Check prerequisite): `connections/heated-floors/`

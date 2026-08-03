@@ -65,8 +65,8 @@ When a real heated-floor + relay + temperature probe + optional engine preheat b
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/hvac/heated-floors-and-engine-preheat.md`](../../docs/catalog/hvac/heated-floors-and-engine-preheat.md)
-- Catalog category index: `docs/catalog/hvac/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Victron connection (companion for the §7 low-voltage lockout cross-reference to `sensor.rc_power_battery_soc` + `binary_sensor.rc_power_shore_connected`):
   `connections/victron/`
 - Bluetooth / Wi-Fi presence connection (companion for the §7 "presence-aware pre-warm when operator's phone reconnects to the LAN" automation — uses the `rc_presence_*` contract tiles for the presence signal):

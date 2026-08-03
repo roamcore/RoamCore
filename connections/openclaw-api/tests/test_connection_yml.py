@@ -53,7 +53,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> openclaw-api/ -> c
 CONNECTION_DIR = REPO_ROOT / "connections" / "openclaw-api"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "ai" / "openclaw-json-api.md"
 
 CUSTOM_COMPONENT_DIR = (
     REPO_ROOT / "homeassistant" / "custom_components" / "roamcore_openclaw_api"
@@ -570,62 +569,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-a claim stub — category
-    must match.
-
-    The legacy spec lives at
-    docs/catalog/ai/openclaw-json-api.md (a 22-line
-    tier-a claim stub, originally listed "RoamCore
-    exposes stable JSON endpoints for local agents
-    (system summary + skill execution) so assistants can
-    read state and (optionally) take safe actions.
-    Why it's useful in a van: Ask 'what's the system
-    status?' in plain English; Build safe, auditable
-    automations through an agent interface. Extra
-    hardware required: None (runs inside Home
-    Assistant). Install: see
-    docs/reference/openclaw-json-api.md; see
-    docs/howto/openclaw-roamcore-skill.md; Custom
-    component: homeassistant/custom_components/
-    roamcore_openclaw_api; HA package toggles/controls:
-    homeassistant/packages/roamcore_openclaw_api_
-    controls.yaml" with no recipe + no contract + no
-    automations + no install path — just a placeholder
-    with an aspirational tier-a claim). We promote the
-    connection into the `ai` category so the audit +
-    boundary-CI can pair them up. The legacy doc MUST
-    still exist (with the supersession banner) so that
-    the recipe can reference it AND the audit can verify
-    the supersession banner is in place.
-    """
-    assert manifest["category"] == "ai", (
-        f"category must stay 'ai' (legacy doc lives at "
-        f"docs/catalog/ai/openclaw-json-api.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "docs/catalog/ai/openclaw-json-api.md to still "
-        "exist so we can reference it from the recipe "
-        "(and add a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim
-    # doesn't leak into any downstream catalog scrape.
-    # The banner text is the verbatim spec-required
-    # string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(
-        encoding="utf-8"
-    )
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/ai/openclaw-json-api.md "
-        "must carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/openclaw-api/" in legacy_index_text, (
-        "legacy docs/catalog/ai/openclaw-json-api.md "
-        "must point at `connections/openclaw-api/` per "
-        "spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

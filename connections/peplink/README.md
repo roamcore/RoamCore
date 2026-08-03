@@ -46,8 +46,8 @@ When a real Peplink router lands on the bench (likely via `testcontainers/snmp-s
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/networking/peplink.md`](../../docs/catalog/networking/peplink.md)
-- Catalog category index: `docs/catalog/networking/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - Teltonika connection (companion mobile-internet slice — single cellular WAN that Peplink fails over to/from):
   `connections/teltonika/`
 - Starlink connection (companion mobile-internet slice — long-range WAN that Peplink fails over to/from):

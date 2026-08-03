@@ -35,7 +35,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests against a real water tank bench (a fresh tank + a grey tank + a pump + a leak sensor + a temperature probe + an ESPHome node + optionally a Shelly UNI + a vendor sensor), and `wizard.one_tap: true`. We have no operator-side water tank bench on the CI to integration-test against (the bench requires physical hardware: a fresh tank + a grey tank + a pump + a leak sensor + a temperature probe + an ESP32 + an ultrasonic probe + a CT clamp + optionally a Shelly UNI, all wired together in a controlled environment). So this connection is honestly beta-tier: the recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/water/water-tanks.md`) listed "Support tier: C (manual / varies)" with no recipe + no contract + no automations — just a placeholder that said "add your preferred sensors/integration, then wire the resulting entities into your dashboard". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
+The original legacy catalog page (the legacy spec) listed "Support tier: C (manual / varies)" with no recipe + no contract + no automations — just a placeholder that said "add your preferred sensors/integration, then wire the resulting entities into your dashboard". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
 
 ## Files
 
@@ -46,7 +46,7 @@ The original legacy catalog page (`docs/catalog/water/water-tanks.md`) listed "S
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/water/water-tanks.md`](../../docs/catalog/water/water-tanks.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Heated floors + engine pre-heat connection (companion for the §7 freeze-risk safety interlock — engages floor heating on freeze_risk; Wave 3 #44): `connections/heated-floors/`
 - HVAC basics connection (companion for the §7 freeze-risk safety interlock — keeps cabin thermostat > 5 °C; Wave 3 #49): `connections/hvac-basics/`
 - Victron (power) connection (companion for the §7 freeze-risk / §7 pump-running-too-long safety interlocks — freeze risk + pump drain both pull battery): `connections/victron/`

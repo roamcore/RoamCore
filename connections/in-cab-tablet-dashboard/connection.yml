@@ -1,8 +1,7 @@
 # In-cab tablet dashboard (driving / arrival / lock-screen Lovelace views
 # with ignition-aware auto-switch) — tier-c recipe connection.
 #
-# Promoted from docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md
-# (legacy tier-c, ~20 lines, originally listed as "Support tier: C"
+# Promoted from a legacy spec # (legacy tier-c, ~20 lines, originally listed as "Support tier: C"
 # with no recipe + no contract + no automations — just a placeholder
 # that said "Provide a 'Driving' friendly view" + "Optionally auto-
 # switch the UI when ignition turns on"). Promoted into tier-c

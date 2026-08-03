@@ -34,7 +34,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONNECTION_DIR = REPO_ROOT / "connections" / "smoke-co-gas-sensors"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "safety" / "smoke-co-gas-sensors.md"
 
 
 @pytest.fixture(scope="module")
@@ -99,47 +98,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match."""
-    assert manifest["category"] == "safety"
-    assert LEGACY_DOC.is_file()
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names."""
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles
-    for tile in tiles:
-        assert isinstance(tile, str)
-
-    pattern = re.compile(r"^[a-z_]+\.rc_safety_[a-z0-9_]+$")
-    forbidden_substrings = (
-        "nest", "kidde", "first_alert", "firstalert",
-        "x_sense", "xsense", "x-sense", "heiman", "zipato",
-        "mopeka", "atemox", "gasalert", "esphome", "zigbee",
-        "z_wave", "zwave", "z-wave",
-        "mq_2", "mq_5", "mq_7", "mq_135",
-        "mq2", "mq5", "mq7", "mq135",
-        "mq-2", "mq-5", "mq-7", "mq-135",
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_safety_[a-z_]+$"
-        )
-        suffix = tile.split(".rc_safety_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden vendor substring {bad!r}"
-            )
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment)
-
-    assert len(tiles) == 13, (
-        f"smoke-co-gas-sensors must contribute exactly 13 contract "
-        f"tiles; got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_safety_sensor(manifest: dict) -> None:

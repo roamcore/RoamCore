@@ -1,8 +1,7 @@
 # Heated floors + engine pre-heat (cold-weather comfort) — tier-b recipe
 # connection.
 #
-# Promoted from docs/catalog/hvac/heated-floors-and-engine-preheat.md
-# (legacy tier-c, 21 lines). Promoted into tier-b because RoamCore does
+# Promoted from a legacy spec # (legacy tier-c, 21 lines). Promoted into tier-b because RoamCore does
 # NOT ship a native heated-floor controller or engine pre-heat
 # controller — we RECIPE the well-understood combination of three
 # upstream operator-side paths:

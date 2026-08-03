@@ -14,4 +14,14 @@ Teltonika RUT-series LTE/5G routers are rugged, configurable mobile-internet gat
 
 ## What it shows on your dashboard
 
-- A Teltonika tile that updates automatically.
+- Teltonika reachable
+- Teltonika wan state
+- Teltonika signal pct
+- Teltonika lte mode
+- Teltonika carrier
+- Teltonika data used gb
+- Teltonika uptime hours
+- Teltonika public ip
+- Teltonika data reset
+- Teltonika reboot now
+- Teltonika refresh signals

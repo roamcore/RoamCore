@@ -1,7 +1,7 @@
 # Smart Automations (one-click enable / disable for the 17 prebuilt
 # van-life automations) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/safety/smart-automations.md (legacy
+# Promoted from a legacy spec (legacy
 # tier-c, ~16 lines). The legacy spec claimed tier-A "RoamCore
 # native" but RoamCore ships NO native automation engine — we
 # RECIPE the upstream HA Core `automation:` + `script:` + `template:`
