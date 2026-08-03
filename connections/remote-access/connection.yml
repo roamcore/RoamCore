@@ -1,0 +1,433 @@
+# Remote access (vendor-neutral remote-access umbrella for HA, covering
+# Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud + Wireguard + the
+# HA Companion app's external URL setting — operator picks ONE path) —
+# tier-b recipe connection.
+#
+# Promoted from docs/catalog/remote-access/index.md (legacy 16-line
+# stub — originally listed ONLY Tailscale at "Support tier: B" with no
+# recipe + no contract + no broader vendor-neutral coverage — just a
+# placeholder about "check sensor status, view cameras, get alerts, or
+# (optionally) control systems" + "safe ways to reach Home Assistant
+# remotely, with clear notes on security and support level"). Promoted
+# into tier-b because RoamCore does NOT ship a native remote-access
+# engine; we RECIPE the well-understood upstream Tailscale integration
+# (HA core `tailscale` integration since 2022.x — exposes tailnet device
+# status via the `binary_sensor.tailscale_*` entities + the
+# `device_tracker.tailscale_*` entities from the operator's tailnet) +
+# the HACS `cloudflared` add-on (HACS — installs the `cloudflared`
+# daemon that tunnels traffic through Cloudflare's edge to the HA
+# server's local URL without opening inbound ports) + the HA Core
+# `cloud` integration (since 2022.x — exposes the Nabu Casa HA Cloud
+# remote URL via `sensor.home_assistant_cloud_remote` + the
+# `cloud.remote_connect` / `cloud.remote_disconnect` services) + the
+# HACS `wireguard` add-on (HACS — installs the Wireguard server in the
+# HA server + generates per-client keys + exposes the VPN interface
+# for manual peer management) + the HA Companion app's `external_url`
+# setting (since 2022.x — points the operator's phone at the chosen
+# remote-access URL when the operator is OFF-LAN). The umbrella
+# publishes the 9 `rc_remote_access_*` contract tiles documented
+# below (operator kill-switch + the chosen URL + the active gate +
+# the active-path indicator + the peer count + the freshness gate +
+# the magic-DNS resolvable gate + the manual verify-now button + the
+# operator-chosen path selector). RoamCore does NOT fork any of the
+# upstream remote-access integrations; the contract layer is a thin
+# path-routing wrapper + the vendor-neutral tile surface.
+#
+# The legacy catalog lists ONLY Tailscale (tier-b) but the recipe
+# expands coverage to four operator-pickable remote-access paths:
+#   - Path A — Tailscale (mesh VPN, default for most operators). The
+#     operator installs the Tailscale client on the HA server via the
+#     HA core `tailscale` integration OR the HACS Tailscale add-on +
+#     logs in to Tailscale + enables MagicDNS + adds the operator's
+#     devices to the tailnet. Path A is the default for any van
+#     operator who wants a secure mesh VPN without opening inbound
+#     ports + with MagicDNS hostname resolution (the HA server is
+#     reachable as `https://<host>.ts.net`). Path A was the Wave 2
+#     #29 focus (`feat/wave2-remote-access-tailscale` @
+#     `0caa9c2`) — that branch already shipped the Tailscale-
+#     specific contract at
+#     `homeassistant/packages/roamcore_remote_access.yaml`. This
+#     slice lifts the Wave 2 contract into the `connections/`
+#     pipeline + ADDS the broader vendor-neutral contract layer +
+#     ADDS Cloudflare Tunnel + Nabu Casa + Wireguard as alternative
+#     paths so the operator is not locked to Tailscale.
+#   - Path B — Cloudflare Tunnel (no inbound ports, default for
+#     operators with a Cloudflare-managed domain). The operator
+#     creates a Cloudflare account + adds the operator's domain to
+#     Cloudflare + creates a Cloudflare Tunnel pointing at the HA
+#     server's local URL + installs the `cloudflared` daemon on the
+#     HA server via the HACS `cloudflared` add-on OR the official
+#     Cloudflare Tunnel integration. Path B is the default for any
+#     van operator who already has a Cloudflare-managed domain + who
+#     wants to expose the HA server without opening inbound ports
+#     on the HA server's firewall + who wants Cloudflare's edge
+#     caching + DDoS protection for the remote-access path.
+#   - Path C — Nabu Casa HA Cloud (Home Assistant's official cloud
+#     relay). The operator subscribes to Nabu Casa HA Cloud via the
+#     HA Cloud panel + enables remote access + the HA Core `cloud`
+#     integration exposes the Nabu Casa remote URL via
+#     `sensor.home_assistant_cloud_remote` + the
+#     `cloud.remote_connect` / `cloud.remote_disconnect` services.
+#     Path C is the default for any van operator who wants the
+#     HA Core official cloud relay + who does NOT want to manage a
+#     self-hosted VPN server + who is willing to pay for the
+#     subscription. Nabu Casa is paid; the operator subscribes
+#     directly via the HA Cloud panel.
+#   - Path D — Wireguard (manual VPN, default for operators who
+#     prefer self-hosted VPN over managed services). The operator
+#     installs Wireguard on the HA server via the HACS `wireguard`
+#     add-on OR a manual install + generates server keys +
+#     generates per-client keys + configures the Wireguard server
+#     interface + adds the operator's devices as Wireguard peers +
+#     configures firewall rules + verifies the VPN tunnel.
+#     Path D is the default for any van operator who prefers a
+#     self-hosted VPN (no third-party relay + no subscription)
+#     + who is comfortable with per-client key management + who
+#     wants full control over the VPN configuration.
+#   - Companion external URL — the HA Companion app's
+#     `external_url` setting (since 2022.x) lets the operator
+#     point the phone at the chosen remote-access URL when the
+#     operator is OFF-LAN. This is NOT a separate remote-access
+#     path; it's the Companion app's affordance for using one of
+#     the four paths above when the operator is OFF-LAN. The
+#     recipe §3 + §4 + §5 + §6 cross-references the HA Companion
+#     app's `external_url` setting.
+#
+# The legacy spec calls out the single canonical use case: check the
+# van from anywhere — see sensor status, view cameras, get alerts,
+# or (optionally) control systems. The recipe walks through safe
+# ways to reach HA remotely, with clear notes on security + support
+# level. The recipe §1 + §3 + §4 + §5 + §6 + §7 walks through the
+# umbrella + the FOUR operator-pickable paths + the contract
+# entities + the §8 FIVE automations:
+#   - §8.1 Kill-switch ON → enable remote access. The automation
+#     fires when the `binary_sensor.rc_remote_access_enabled` tile
+#     flips to ON AND the `select.rc_remote_access_path` tile is
+#     set to a valid path (one of `tailscale` /
+#     `cloudflare_tunnel` / `nabu_casa` / `wireguard`). The
+#     automation calls the upstream integration's enable service
+#     (e.g. `cloudflared.start` for Path B + `cloud.remote_connect`
+#     for Path C + the Wireguard server start for Path D).
+#   - §8.2 Kill-switch OFF → disable remote access. The
+#     automation fires when the `binary_sensor.rc_remote_access_
+#     enabled` tile flips to OFF. The automation calls the
+#     upstream integration's disable service (e.g.
+#     `cloudflared.stop` for Path B + `cloud.remote_disconnect` for
+#     Path C + the Wireguard server stop for Path D) so the
+#     remote-access path is fully torn down when the operator
+#     chooses to disable remote access.
+#   - §8.3 Auto-verify every 15 minutes. The automation fires
+#     every 15 minutes + calls the `button.rc_remote_access_verify_
+#     now` button (which fires an upstream reachability probe)
+#     + updates the `sensor.rc_remote_access_last_verified_
+#     minutes_ago` freshness gate.
+#   - §8.4 Notify on path switch. The automation fires when the
+#     `select.rc_remote_access_path` tile changes from one path
+#     to another. The automation sends a notification to the
+#     operator's phone (via the HA Companion app) saying
+#     "Remote access path switched from <old_path> to
+#     <new_path> — verify reachability at
+#     <sensor.rc_remote_access_url>".
+#   - §8.5 Stealth-mode suppression via `select.rc_mode` from
+#     mode/automation-builder. The automation SUPPRESSES the §8.1
+#     kill-switch-ON automation when the `select.rc_mode` tile is
+#     in `stealth` mode (campgrounds with quiet hours + overnight
+#     stays where exposing the HA server remotely would be a
+#     privacy concern). The recipe §11 cross-references the
+#     mode/automation-builder recipe (Wave 2 #23) for the
+#     `select.rc_mode` tile.
+#
+# Honesty footnote (install.config_flow = true is NOT a tier-a
+# marker): The UPSTREAM HA core `tailscale` integration (since
+# 2022.x — exposes a GUI flow for the operator to authenticate
+# against the Tailscale coordination server + view the operator's
+# tailnet device list + tailnet ACL settings) + the HACS `cloudflared`
+# add-on (HACS — exposes a GUI flow for the operator to install the
+# `cloudflared` daemon + configure the Cloudflare Tunnel token) +
+# the HACS `wireguard` add-on (HACS — exposes a GUI flow for the
+# operator to install the Wireguard server + generate server keys
+# + add per-client peers) + the HA Core `cloud` integration (since
+# 2022.x — exposes a GUI flow for the operator to subscribe to
+# Nabu Casa HA Cloud + enable remote access + view the remote URL)
+# + the HA Companion app's `external_url` setting (since 2022.x —
+# exposes a GUI flow for the operator to set the external URL in
+# the Companion app settings) ALL expose a GUI flow. That's honest
+# upstream truth, NOT a tier-a marker for RoamCore's tier. The
+# tier-a marker for RoamCore would be a RoamCore-owned operator-
+# wired setup flow + RoamCore-owned integration code + integration
+# tests against a RoamCore-owned remote-access bench. None of
+# those are shipped at tier-b. Tier-b honesty: Tailscale + Cloudflare
+# Tunnel + Nabu Casa + Wireguard are all upstream / vendor / HACS
+# code; the RoamCore wrapper is a thin path-routing layer + the
+# contract layer.
+
+id: remote-access
+name: "Remote access (vendor-neutral remote-access umbrella for HA — Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud + Wireguard, operator picks ONE path) — tier-b recipe connection"
+tier: b
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  Remote access (vendor-neutral remote-access umbrella for HA,
+  covering Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud +
+  Wireguard — operator picks ONE path) — the umbrella for "check
+  the van from anywhere: see sensor status, view cameras, get
+  alerts, or (optionally) control systems" — is the networking-
+  category complement to the broader RoamCore scene + automation
+  affordances. The single "is remote access enabled?" tile
+  aggregates the operator kill-switch into one dashboard
+  indicator; the "the URL to access HA remotely" tile surfaces
+  the chosen-path URL (the magic-DNS hostname for Path A +
+  the Cloudflare Tunnel hostname for Path B + the Nabu Casa
+  remote URL for Path C + the Wireguard server endpoint for
+  Path D); the "is remote access active?" tile is the AND
+  gate (TRUE iff the kill-switch is ON AND at least one
+  remote-access path is verified reachable); the "which path
+  is currently active?" tile surfaces the operator's chosen
+  path (one of `tailscale` / `cloudflare_tunnel` / `nabu_casa` /
+  `wireguard` / `companion_external_url` / `none`); the
+  "remote-access peer count" tile surfaces the count of
+  remote-access clients currently connected (Tailscale-only —
+  the HA core `tailscale` integration exposes tailnet peer
+  count via `device_tracker.tailscale_*` entities); the
+  "last-verified minutes ago" tile is the freshness gate
+  (helpful for "when did the upstream integration last confirm
+  reachability?"); the "magic DNS resolvable" tile surfaces
+  whether the chosen path's hostname resolves (TRUE for Path A
+  with MagicDNS enabled + Path B with Cloudflare DNS enabled);
+  the "verify-now" button surfaces the manual verification
+  trigger (operator can force an immediate reachability probe
+  without waiting for the §8.3 15-minute auto-verify); the
+  "operator-chosen path" selector is the operator-facing
+  affordance (the operator picks one of the four paths above).
+
+  RoamCore does NOT ship a native remote-access engine; we
+  RECIPE the well-understood upstream Tailscale integration
+  (HA core `tailscale` integration since 2022.x — exposes
+  tailnet device status via the `binary_sensor.tailscale_*`
+  entities + the `device_tracker.tailscale_*` entities from
+  the operator's tailnet) + the HACS `cloudflared` add-on
+  (HACS — installs the `cloudflared` daemon that tunnels
+  traffic through Cloudflare's edge to the HA server's local
+  URL without opening inbound ports) + the HA Core `cloud`
+  integration (since 2022.x — exposes the Nabu Casa HA Cloud
+  remote URL via `sensor.home_assistant_cloud_remote` + the
+  `cloud.remote_connect` / `cloud.remote_disconnect`
+  services) + the HACS `wireguard` add-on (HACS — installs the
+  Wireguard server in the HA server + generates per-client
+  keys + exposes the VPN interface for manual peer management)
+  + the HA Companion app's `external_url` setting (since
+  2022.x — points the operator's phone at the chosen remote-
+  access URL when the operator is OFF-LAN). The umbrella
+  publishes the 9 `rc_remote_access_*` contract tiles
+  documented below (operator kill-switch + the chosen URL +
+  the active gate + the active-path indicator + the peer count
+  + the freshness gate + the magic-DNS resolvable gate + the
+  manual verify-now button + the operator-chosen path selector).
+  RoamCore does NOT fork any of the upstream remote-access
+  integrations; the contract layer is a thin path-routing
+  wrapper + the vendor-neutral tile surface.
+
+  The recipe covers the FOUR operator-pickable paths (Path A
+  Tailscale mesh VPN + Path B Cloudflare Tunnel no-inbound-ports
+  + Path C Nabu Casa HA Cloud official cloud relay + Path D
+  Wireguard self-hosted VPN) + the FIVE §8 automations
+  (kill-switch ON enables remote access + kill-switch OFF
+  disables remote access + auto-verify every 15 minutes +
+  notify on path switch + Stealth-mode suppression via
+  `select.rc_mode`) + the 9 `rc_remote_access_*` contract
+  tiles + the 6 §9 troubleshooting entries + the §10 privacy
+  section (no RoamCore-side telemetry; the chosen vendor's
+  standard logs are operator-owned via the vendor's console;
+  Tailscale logs are operator-owned via the Tailscale admin
+  console + Cloudflare Tunnel logs are operator-owned via the
+  Cloudflare dashboard + Nabu Casa logs are operator-owned via
+  the HA Cloud panel + Wireguard logs are operator-owned on the
+  HA server) + the §11 tier-a promotion outline (real remote-
+  access bench on CI + RoamCore-owned operator-wired setup
+  flow walking the operator through path selection + the four
+  upstream integrations + integration tests asserting the
+  kill-switch + the active gate + the freshness gate + the
+  path switch notification) + the §12 cross-references (the HA
+  Companion app for the OFF-LAN affordance + the HACS
+  `cloudflared` add-on for Path B + the HACS `wireguard` add-on
+  for Path D + the HA Core `tailscale` integration for Path A +
+  the HA Core `cloud` integration for Path C + the
+  mode/automation-builder recipe Wave 2 #23 for the
+  `select.rc_mode` tile + the approach-lights Wave 3 #52
+  connection for the canonical ON-LAN-only lighting scene that
+  Stealth-mode suppresses).
+
+  The REUSE-FIRST strategy is intentional: HA's core `tailscale`
+  integration (since 2022.x) handles the Tailscale tailnet
+  device status + the per-device reachability state; the HACS
+  `cloudflared` add-on handles the Cloudflare Tunnel daemon +
+  the tunnel token + the Cloudflare DNS hostname; the HA Core
+  `cloud` integration handles the Nabu Casa HA Cloud remote URL
+  + the `cloud.remote_connect` / `cloud.remote_disconnect`
+  services; the HACS `wireguard` add-on handles the Wireguard
+  server + the per-client key generation; the HA Companion
+  app's `external_url` setting handles the OFF-LAN affordance.
+  All four upstream integrations are upstream / vendor / HACS
+  code; the RoamCore wrapper is a thin path-routing layer + the
+  contract layer.
+icon: cloud-lock
+codeowners:
+  - "@bernardc"
+tags:
+  - remote-access
+  - tailscale
+  - cloudflare-tunnel
+  - nabu-casa
+  - wireguard
+  - mesh-vpn
+  - no-inbound-ports
+  - ha-companion
+  - ha-cloud
+  - ha-integration
+  - hacs
+  - cloudflared
+  - stealth-mode
+  - van-life
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~45 min"
+  requires_reboot: false
+  setup_notes: |
+    Remote access requires the operator to (a) have an always-
+    on HA instance reachable from the operator's home network,
+    (b) pick ONE of the four remote-access paths (Path A
+    Tailscale + Path B Cloudflare Tunnel + Path C Nabu Casa
+    HA Cloud + Path D Wireguard), (c) set up the chosen path
+    (Path A — install the HA core `tailscale` integration OR
+    the HACS Tailscale add-on + login to Tailscale + enable
+    MagicDNS + add the operator's devices to the tailnet; Path
+    B — create a Cloudflare account + add the operator's
+    domain to Cloudflare + create a Cloudflare Tunnel pointing
+    at the HA server's local URL + install the `cloudflared`
+    daemon on the HA server via the HACS `cloudflared` add-on;
+    Path C — subscribe to Nabu Casa HA Cloud via the HA Cloud
+    panel + enable remote access + verify the Nabu Casa remote
+    URL; Path D — install the HACS `wireguard` add-on OR a
+    manual Wireguard install + generate server keys + generate
+    per-client keys + configure the Wireguard server interface
+    + add the operator's devices as Wireguard peers + configure
+    firewall rules), (d) configure the operator's account on
+    the chosen vendor's service (Tailscale account for Path A +
+    Cloudflare account for Path B + Nabu Casa subscription for
+    Path C + nothing extra for Path D — the operator owns the
+    Wireguard keys), (e) configure the HA server's firewall to
+    permit the chosen path's port range (UDP 41641 for Path A
+    Tailscale + outbound HTTPS 7844 for Path B Cloudflare
+    Tunnel + outbound HTTPS for Path C Nabu Casa + UDP 51820
+    for Path D Wireguard), (f) install the HA Companion app
+    for the OFF-LAN affordance (the HA Companion app's
+    `external_url` setting points the phone at the chosen
+    remote-access URL when the operator is OFF-LAN), (g)
+    configure the operator's DNS provider account if Path B
+    Cloudflare Tunnel is chosen (Cloudflare-managed domain +
+    Cloudflare DNS), (h) configure the
+    `binary_sensor.rc_remote_access_enabled` kill-switch tile,
+    (i) configure the `select.rc_remote_access_path` tile to
+    the chosen path. RoamCore does NOT maintain a custom
+    remote-access integration; HA's core `tailscale` integration
+    handles the Tailscale tailnet device status; the HACS
+    `cloudflared` add-on handles the Cloudflare Tunnel; the HA
+    Core `cloud` integration handles the Nabu Casa remote URL;
+    the HACS `wireguard` add-on handles the Wireguard server;
+    the HA Companion app's `external_url` setting handles the
+    OFF-LAN affordance.
+
+install:
+  ha_integration_domain: tailscale
+  config_flow: true
+  hacs: true
+  hacs_url: https://github.com/hassio-addons/addon-cloudflared
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_remote_access_kill_switch
+    - registers_remote_access_path_selector
+    - registers_remote_access_url
+    - registers_remote_access_active_gate
+    - registers_remote_access_active_path_indicator
+    - registers_remote_access_peer_count
+    - registers_remote_access_last_verified_minutes_ago
+    - registers_remote_access_magic_dns_resolvable_gate
+    - registers_remote_access_verify_now_button
+    - may_register_kill_switch_on_automation
+    - may_register_kill_switch_off_automation
+    - may_register_auto_verify_every_15_minutes_automation
+    - may_register_notify_on_path_switch_automation
+    - may_register_stealth_mode_suppression_automation
+
+dashboard:
+  title: "Remote access"
+  tiles:
+    - binary_sensor.rc_remote_access_enabled
+    - sensor.rc_remote_access_url
+    - binary_sensor.rc_remote_access_active
+    - sensor.rc_remote_access_active_path
+    - sensor.rc_remote_access_peer_count
+    - sensor.rc_remote_access_last_verified_minutes_ago
+    - binary_sensor.rc_remote_access_hostname_resolvable
+    - button.rc_remote_access_verify_now
+    - select.rc_remote_access_path
+
+openclaw:
+  queries:
+    - "is remote access enabled?"
+    - "what is the URL to access Home Assistant remotely?"
+    - "is remote access currently active?"
+    - "which remote-access path is currently active?"
+    - "how many remote-access clients are currently connected?"
+    - "when was remote access last verified?"
+    - "does the remote-access hostname resolve?"
+    - "is the remote-access hostname resolvable?"
+    - "trigger a remote-access verification now"
+    - "which remote-access path should I use?"
+  summary_keys:
+    - enabled
+    - url
+    - active
+    - active_path
+    - peer_count
+    - last_verified_minutes_ago
+    - hostname_resolvable
+    - verify_now_available
+    - operator_path
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_remote_access_engine
+  - recipe_depends_on_operator_choosing_one_remote_access_path
+  - requires_operator_wiring_upstream_integration_first
+  - magic_dns_cloudflare_dns_or_nabu_casa_account_setup_is_operator_owned
+  - ha_server_firewall_must_permit_chosen_path_port_range
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/tailscale/
+    - https://www.home-assistant.io/integrations/cloud/
+    - https://www.home-assistant.io/integrations/tag/
+    - https://www.home-assistant.io/integrations/scene/
+    - https://www.home-assistant.io/integrations/automation/
+    - https://companion.home-assistant.io/docs/core/sensors
+    - https://hacs.xyz/docs/integrations/active
+  cross_references:
+    - ../approach-lights/
+    - ../smart-automations/
+    - ../mode-builder/
+    - ../nfc-tags/
+    - ../hvac-basics/

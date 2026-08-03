@@ -120,6 +120,8 @@ run_if_present "connections/in-cab-tablet-dashboard/tests/test_connection_yml.py
   "Connection: In-cab tablet dashboard (tier-c) — manifest honesty smoke check"
 run_if_present "connections/nfc-tags/tests/test_connection_yml.py" \
   "Connection: NFC tags (tier-c) — manifest honesty smoke check"
+run_if_present "connections/remote-access/tests/test_connection_yml.py" \
+  "Connection: Remote access (Tailscale + Cloudflare Tunnel + Nabu Casa + Wireguard, tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
