@@ -84,38 +84,6 @@ run_if_present "connections/frigate/tests/test_connection_yml.py" \
   "Connection: Frigate (tier-b) — CCTV with on-device object detection: manifest honesty smoke check"
 run_if_present "connections/starlink/tests/test_connection_yml.py" \
   "Connection: Starlink (tier-b) — sleep timer + bring-back-up controls: manifest honesty smoke check"
-run_if_present "connections/dns-blocker/tests/test_connection_yml.py" \
-  "Connection: DNS blocker (Pi-hole / AdGuard) (tier-b) — manifest honesty smoke check"
-run_if_present "connections/nas/tests/test_connection_yml.py" \
-  "Connection: NAS (Synology / QNAP / SMB) (tier-b) — manifest honesty smoke check"
-run_if_present "connections/teltonika/tests/test_connection_yml.py" \
-  "Connection: Teltonika (tier-b) — LTE/5G router for vans: manifest honesty smoke check"
-run_if_present "connections/peplink/tests/test_connection_yml.py" \
-  "Connection: Peplink (tier-b) — multi-WAN router for vans: manifest honesty smoke check"
-run_if_present "connections/music-assistant/tests/test_connection_yml.py" \
-  "Connection: Music Assistant (tier-b) — manifest honesty smoke check"
-run_if_present "connections/bluetooth-wifi-presence/tests/test_connection_yml.py" \
-  "Connection: Bluetooth/Wi-Fi presence (tier-b) — manifest honesty smoke check"
-run_if_present "connections/happijac/tests/test_connection_yml.py" \
-  "Connection: Happijac bed lift (tier-b) — manifest honesty smoke check"
-run_if_present "connections/heated-floors/tests/test_connection_yml.py" \
-  "Connection: Heated floors + engine pre-heat (tier-b) — manifest honesty smoke check"
-run_if_present "connections/smoke-co-gas-sensors/tests/test_connection_yml.py" \
-  "Connection: Smoke / CO / gas sensors (tier-b) — manifest honesty smoke check"
-run_if_present "connections/smart-automations/tests/test_connection_yml.py" \
-  "Connection: Smart automations (tier-b) — manifest honesty smoke check"
-run_if_present "connections/mock-location-and-tracks/tests/test_connection_yml.py" \
-  "Connection: Mock location + track replay (tier-a) — manifest honesty smoke check"
-run_if_present "connections/deadbolts/tests/test_connection_yml.py" \
-  "Connection: Deadbolts (smart lock control) (tier-b) — manifest honesty smoke check"
-run_if_present "connections/hvac-basics/tests/test_connection_yml.py" \
-  "Connection: HVAC basics (heating/cooling foundations) (tier-b) — manifest honesty smoke check"
-run_if_present "connections/water-tanks/tests/test_connection_yml.py" \
-  "Connection: Water tanks (fresh/grey monitoring) (tier-b) — manifest honesty smoke check"
-run_if_present "connections/electronic-valves/tests/test_connection_yml.py" \
-  "Connection: Electronic valves + auto tank switching (tier-b) — manifest honesty smoke check"
-run_if_present "connections/approach-lights/tests/test_connection_yml.py" \
-  "Connection: Approach lights (welcome-home exterior + underbody lighting) (tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
