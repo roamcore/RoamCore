@@ -61,6 +61,12 @@ Keep this list short. Start with these and extend deliberately:
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
+- `ventilation` — roof fans + circulation + bathroom exhaust (vendor-neutral `rc_ventilation_*` ids; Wave 3 #59)
+- `vehicle` — vehicle motion + drivetrain + dash + headlights (vendor-neutral `rc_vehicle_*` ids; Wave 3 #57/58)
+- `mode` — AI mode state (Off/Auto/Travel/Camp/Stealth) + opt-in AI inference + auto-revert (vendor-neutral `rc_mode_*` ids; Wave 3 #61)
+- `demo_mode` — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + never-controls-hardware guard (vendor-neutral `rc_demo_mode_*` ids; Wave 3 #62)
+- `advanced_mode` — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block (vendor-neutral `rc_advanced_mode_*` ids; Wave 3 #63)
+- `openclaw_api` — local-agent contract surface (summary + skill + rc_dump + timeseries endpoints + enable / auth / reachability / latency tiles); vendor-neutral `rc_openclaw_api_*` ids (Wave 3 #64)
 
 ---
 

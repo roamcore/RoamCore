@@ -1,6 +1,6 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-03-31
+Last updated: 2026-08-03
 
 This is an internal status page for the remaining MVP feature build-out.
 
