@@ -66,12 +66,7 @@ Keep this list short. Start with these and extend deliberately:
 - `hvac` — heating / cooling / climate / engine pre-heat (heated floors, AC, Webasto, etc.), only if needed
 - `safety` — smoke / CO / gas / safety sensors + safety automations (smoke alarm, CO monitor, propane leak, etc.), only if needed
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
-- `presence` — who-is-home presence detection (Bluetooth / Wi-Fi / GPS)
-- `media` — audio + media playback (Music Assistant + cast devices + speakers)
-- `bed_lift` — Happijac bed lift control + position feedback
-- `hvac` — heating / cooling / ventilation (cabin thermostat + floor heating + engine pre-heat)
-- `safety` — smoke / CO / gas / leak / water-detector safety sensors + interlocks
-- `lighting` — exterior + interior lights + lighting scenes + lighting mode overrides; vendor-neutral `rc_lighting_*` ids
+- `nfc` — NFC tag interactions (NFC tag scan events + the `tag_id → scene` mapping + the Stealth-mode suppression); vendor-neutral `rc_nfc_*` ids (Wave 3 #57)
 
 ---
 
