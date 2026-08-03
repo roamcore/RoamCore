@@ -1,0 +1,179 @@
+# WiCAN Pro (OBD2 reader for van telemetry) — tier-a native integration.
+#
+# This is the FIRST tier-a native connection in the RoamCore connection
+# pipeline — RoamCore ships its own custom_components/roamcore_wican/
+# (with a config_flow, an MQTT/mDNS auto-discover hook, a polling
+# coordinator, a SQLite time-series store, and HTTP read-only views).
+#
+# Scope: GENERIC Mode-01 PIDs (SAE J1979 / ISO 15031-5). No vendor-
+# proprietary PIDs (Ford Mode-22, GM Mode-24, VAG Mode-1B, etc.) — those
+# require per-vehicle research and are a future slice.
+#
+# The slice covers:
+#   - auto-discovery via mDNS (`_wican._tcp.local.`) + MQTT discovery,
+#   - manual IP/hostname fallback in the config flow,
+#   - polling the WiCAN Pro REST endpoint `/api/diagnostics` at a
+#     configurable interval (default 5s),
+#   - decoding 17 generic Mode-01 PIDs into `rc_obd_*` sensor entities,
+#   - a `binary_sensor.rc_obd_connected` reachability indicator,
+#   - a `binary_sensor.rc_obd_dtc_active` problem indicator,
+#   - bulk-inserting readings into a SQLite time-series store at
+#     `<config_dir>/.storage/roamcore_wican.db`,
+#   - exposing the time-series as a read-only JSON HTTP endpoint for
+#     ML tools / OpenClaw queries (`/api/roamcore/wican/timeseries/...`).
+#
+# Tier-a: we ship a native HA integration with a config_flow (per
+# `iot_class: local_polling`). The `__init__.py` is NOT a stub — it
+# opens the DB, builds the coordinator, sets up sensor + binary_sensor
+# platforms, registers HTTP views, and schedules the prune loop.
+#
+# `hvac-basics` / `peplink` / `teltonika` etc. are tier-b RECIPES that
+# document upstream HA integrations; `wican-pro` is tier-a because no
+# upstream HA integration covers WiCAN Pro (no HACS integration is
+# maintained, the upstream HA `obd` integration expects a wired ELM327
+# over serial, not a WiFi REST endpoint).
+id: wican-pro
+name: "WiCAN Pro (OBD2 telemetry)"
+tier: a
+category: connectivity
+status: beta
+version: 0.1.0
+description: |
+  The WiCAN Pro is a small OBD2 reader that plugs into your vehicle's
+  diagnostic port and reports engine telemetry over WiFi. RoamCore
+  auto-discovers it on the same network, polls it for engine RPM,
+  speed, coolant temperature, throttle position, fuel level, battery
+  voltage and a dozen other generic OBD2 readings, and saves them to a
+  local time-series database. The dashboard populates automatically the
+  moment the device is discovered — no flow walkthrough required. The
+  same data is exposed as a read-only HTTP endpoint for ML tools to
+  query later (predictive maintenance, fuel-economy patterns, etc.).
+  Tier-a native integration: we ship our own config_flow + coordinator
+  + sensor entities + SQLite store, because no upstream HA integration
+  covers the WiCAN Pro's REST surface today.
+icon: car-battery
+codeowners:
+  - "@bernardc"
+tags:
+  - obd2
+  - vehicle
+  - telemetry
+  - time-series
+  - auto-discover
+
+wizard:
+  connection_kind: native
+  one_tap: true
+  auto_discover: true
+  estimated_time: "<1 min"
+  requires_reboot: false
+  setup_notes: |
+    Plug the WiCAN Pro into the vehicle's OBD2 port. Power on the
+    vehicle (or turn the key to accessory). Wait ~10 seconds for the
+    WiCAN Pro to join Wi-Fi. The integration auto-discovers it via
+    mDNS (`_wican._tcp.local.`) and offers a one-tap "Set up" button.
+    On confirm, the polling coordinator starts immediately and the
+    `rc_obd_*` sensor entities appear in the dashboard.
+
+install:
+  ha_integration_domain: roamcore_wican
+  config_flow: true
+  hacs: false
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card         # installs the rc_obd_* contract tiles
+    - creates_sqlite_db           # writes PID readings to .storage/roamcore_wican.db
+    - registers_http_views        # /api/roamcore/wican/timeseries/* (read-only)
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: subsystem prefix `obd`
+    # added in this slice (see rc-entity-naming.md §subsystem list).
+    # NO `wican`, `custic`, `elm327`, `obdlink` in any rc_ tile id.
+    - sensor.rc_obd_engine_load
+    - sensor.rc_obd_coolant_temp
+    - sensor.rc_obd_stft_bank1
+    - sensor.rc_obd_ltft_bank1
+    - sensor.rc_obd_rpm
+    - sensor.rc_obd_speed
+    - sensor.rc_obd_timing_advance
+    - sensor.rc_obd_intake_air_temp
+    - sensor.rc_obd_maf
+    - sensor.rc_obd_throttle_pct
+    - sensor.rc_obd_run_time
+    - sensor.rc_obd_fuel_rail_pressure
+    - sensor.rc_obd_fuel_level_pct
+    - sensor.rc_obd_distance_since_dtc_clear
+    - sensor.rc_obd_control_module_voltage
+    - sensor.rc_obd_ambient_air_temp
+    - sensor.rc_obd_fuel_rate
+    - sensor.rc_obd_session_readings
+    - binary_sensor.rc_obd_connected
+    - binary_sensor.rc_obd_dtc_active
+
+openclaw:
+  queries:
+    - what_is_engine_rpm
+    - what_is_vehicle_speed
+    - what_is_coolant_temperature
+    - what_is_fuel_level
+    - what_is_battery_voltage
+    - is_engine_running
+    - is_obd_reader_connected
+    - are_any_dtcs_active
+  summary_keys:
+    - obd_engine_rpm
+    - obd_vehicle_speed_kmh
+    - obd_coolant_temp_c
+    - obd_fuel_level_pct
+    - obd_control_module_voltage
+    - obd_connected
+    - obd_dtc_active
+    - obd_dtc_codes
+    - obd_session_readings
+
+# Tier-a: we ship a real HA custom component + a real SQLite store +
+# a real HTTP read-only view. Tests include unit tests against the
+# PID decoder, the DB schema, the discovery layer, and the manifest
+# itself.
+tests:
+  - tests/test_connection_yml.py
+  - tests/test_pid_decoder.py
+  - tests/test_db_schema.py
+  - tests/test_discovery.py
+
+tier_requirements:
+  - native_ha_custom_component_shipped
+  - config_flow_with_auto_discover
+  - mqtt_or_mdns_discovery
+  - sensor_entities_with_rc_obd_prefix
+  - time_series_storage_layer
+  - read_only_http_view_for_ml_tools
+  - tier_a_audit_doc_published
+
+tier_warnings:
+  - no_pytest_integration_tests_against_controlled_bench
+  - bench_fixture_gap_uses_synthetic_can_frames
+  - generic_mode01_only_no_vendor_pids
+  - ml_layer_deferred_to_followup_slice
+  - sd_card_write_load_should_use_ssd_on_van_if_possible
+
+links:
+  official:
+    - https://github.com/Custic/wican-pro   # WiCAN Pro firmware + docs
+    - https://www.sae.org/standards/content/j1979_201708/   # SAE J1979 (OBD2 PID spec)
+  custom_references:
+    - homeassistant/custom_components/roamcore_wican/__init__.py
+    - homeassistant/custom_components/roamcore_wican/config_flow.py
+    - homeassistant/custom_components/roamcore_wican/coordinator.py
+    - homeassistant/custom_components/roamcore_wican/sensor.py
+    - homeassistant/custom_components/roamcore_wican/binary_sensor.py
+    - homeassistant/custom_components/roamcore_wican/pids.py
+    - homeassistant/custom_components/roamcore_wican/db.py
+    - homeassistant/custom_components/roamcore_wican/discovery.py
+    - homeassistant/custom_components/roamcore_wican/timeseries_view.py
+  cross_references:
+    - ../nas/        # the NAS connection hosts the operator's ML tools + long-term backup
+    - ../mode/       # respects mode changes (pause OBD reads in Quiet Night)
+    - ../leveling/   # vehicle subsystem sibling

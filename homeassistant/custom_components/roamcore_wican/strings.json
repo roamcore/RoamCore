@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up RoamCore WiCAN Pro",
+        "description": "Connect to your WiCAN Pro OBD2 reader. If it's on the same Wi-Fi network, you can leave the host blank and we'll auto-discover it via mDNS.",
+        "data": {
+          "host": "Host or IP address (leave blank for auto-discover)",
+          "port": "Port",
+          "poll_interval": "Poll interval (seconds)",
+          "retention_days": "How long to keep PID readings (days)"
+        }
+      },
+      "discovery_confirm": {
+        "title": "Discovered a WiCAN Pro",
+        "description": "We found a WiCAN Pro on your network. Confirm to add it.",
+        "data": {
+          "device_name": "Device name"
+        }
+      },
+      "mqtt_confirm": {
+        "title": "Discovered a WiCAN Pro via MQTT",
+        "description": "We picked up telemetry from a WiCAN Pro on your MQTT broker. Confirm to add it.",
+        "data": {
+          "device_name": "Device name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the WiCAN Pro. Check the host, port, and that the device is on the same network.",
+      "invalid_host": "Invalid hostname or IP address.",
+      "no_device": "No WiCAN Pro was auto-discovered. Make sure it's plugged in and on the same Wi-Fi network, or enter its IP manually.",
+      "timeout": "The WiCAN Pro did not respond in time."
+    },
+    "abort": {
+      "already_configured": "This WiCAN Pro is already configured."
+    }
+  }
+}

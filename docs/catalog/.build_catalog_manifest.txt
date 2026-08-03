@@ -15,6 +15,7 @@ connectivity/peplink.md
 connectivity/remote-access.md
 connectivity/starlink.md
 connectivity/teltonika.md
+connectivity/wican-pro.md
 index.md
 location/amenities-overlay.md
 location/bluetooth-wifi-presence.md

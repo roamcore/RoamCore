@@ -23,6 +23,7 @@ Stuff you can add to your van. Pick what you want and install it.
 - **[Remote access](connectivity/remote-access.md)** — Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems.
 - **[Starlink](connectivity/starlink.md)** — Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish + router).
 - **[Teltonika](connectivity/teltonika.md)** — Teltonika RUT-series LTE/5G routers are rugged, configurable mobile-internet gateways widely used in van life.
+- **[WiCAN Pro](connectivity/wican-pro.md)** — RoamCore auto-discovers it on the same network, polls it for engine RPM, speed, coolant temperature, throttle position, fuel level, battery voltage and a dozen other generic OBD2 readings, and saves them to a local time-series database. The dashboard populates automatically the moment the device is discovered — no…
 
 ## Location
 
