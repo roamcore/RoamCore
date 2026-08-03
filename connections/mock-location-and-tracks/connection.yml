@@ -1,0 +1,177 @@
+# Mock location + track replay (dev/demo polyline generator for the map
+# page) — tier-a native connection.
+#
+# This is the FIRST tier-a connection slice in Wave 3 (all prior Wave 3
+# slices were tier-b recipe-over-upstream). Promoted from
+# docs/catalog/map/mock-location-and-tracks.md (legacy tier-A claim,
+# 21 lines). The legacy spec was honest about the tier — RoamCore owns
+# the YAML packages + the Python generator natively, there is NO
+# external broker / device / vendor dependency, the mock is opt-in via
+# input_boolean.rc_map_mock_enabled, and the integration CODE is the
+# package itself (not a wrapper around an upstream vendor integration).
+#
+# Tier-a audit markers (mandatory for Wave 3 tier-a slices — see also
+# connections/happijac/, connections/traccar/ for prior tier-b markers
+# to compare against):
+#   - wizard.connection_kind: native (NOT "recipe")
+#   - install.kind: ha_package (NOT "recipe-over-upstream")
+#   - install.packages: [list of YAML files in homeassistant/packages/]
+#   - install.config_flow: false (tier-a DOES NOT use config_flow.py
+#     because RoamCore owns the integration as a package — the
+#     operator enables it by toggling input_boolean.rc_map_mock_enabled)
+#   - NO config_flow.py at the folder root (the integration code IS
+#     the package — there is nothing for a config_flow.py to wrap)
+#   - __init__.py exports DOMAIN = "mock_location" (the audit
+#     convention for the map category uses the singular short name
+#     rather than the full hyphen-separated folder name; the
+#     `mock_location` constant is the stable contract identifier for
+#     audit + wizard lookups)
+
+id: mock-location-and-tracks
+name: "Mock location + track replay (dev/demo polyline generator for the map page) — tier-a native"
+tier: a
+category: map
+status: beta
+version: 0.1.0
+description: |
+  Mock location + track replay is the **dev/demo polyline generator**
+  for the RoamCore map page. It generates a deterministic synthetic
+  GPS track as a GeoJSON LineString and exposes it as a semicolon-
+  separated `input_text.rc_map_mock_location_trail` of lat,lon pairs
+  that the `<MapMockPolyline />` dashboard tile + the Trip Wrapped
+  dev/demo HTML report can render without any real Traccar GPS data.
+
+  RoamCore owns all of the assets natively:
+    - `homeassistant/packages/roamcore_mock_track.yaml` defines the
+      `shell_command.rc_mock_track_generate` (calls the Python
+      generator) + the `script.rc_mock_track_generate` wrapper + the
+      `automation.rc_mock_track_generate_on_startup` auto-run-on-boot
+      trigger.
+    - `homeassistant/packages/roamcore_mock_location_trail.yaml`
+      defines the `input_text.rc_map_mock_location_trail` helper
+      (semicolon-separated lat,lon pairs) that the map tile reads.
+    - `homeassistant/packages/roamcore_dev_mocks.yaml` is the
+      umbrella dev helpers package (power/net/etc input_* helpers
+      used by other recipes).
+    - `homeassistant/tools/mock_track/generate.py` is the dependency-
+      free (stdlib only) Python polyline generator with six built-in
+      presets (`uk_roadtrip`, `us_west_coast`, `alps_loop`,
+      `desert_southwest`, `scandinavia_north`, `custom`) + per-leg
+      point density + per-point jitter (meters).
+
+  The mock is **opt-in** via `input_boolean.rc_map_mock_enabled`
+  (default FALSE) — when the operator enables it, the map page
+  renders the synthetic polyline instead of (or alongside) the real
+  Traccar track. The map page (`connections/map-dashboard/`, Wave 3
+  #66) reads `input_boolean.rc_map_mock_enabled` to decide mock-vs-
+  real; Trip Wrapped (`connections/trip-wrapped/`, Wave 3 #69) treats
+  the mock as Traccar data when generating the dev/demo HTML report.
+
+  No external broker / device / vendor integration is required. The
+  polyline is generated locally by a stdlib-only Python script and
+  written to `/config/www/roamcore/mock/track.geojson`; the
+  `input_text.rc_map_mock_location_trail` is a hand-curated small
+  trail that the map tile reads directly. The recipe §11 documents
+  the promotion path to a real GPS source (Traccar — when
+  `connections/traccar/` is enabled AND
+  `input_boolean.rc_map_mock_enabled` is FALSE → map page uses real
+  Traccar; the mock is the fallback / dev / demo path).
+icon: map-pin
+codeowners:
+  - "@bernardc"
+tags:
+  - map
+  - mock
+  - dev
+  - demo
+  - polyline
+  - trip
+
+wizard:
+  connection_kind: native
+  one_tap: true
+  auto_discover: false
+  estimated_time: "~2 min"
+  requires_reboot: false
+  setup_notes: |
+    The mock auto-runs on HA startup via the existing
+    `automation.rc_mock_track_generate_on_startup` automation (in
+    `homeassistant/packages/roamcore_mock_track.yaml`) — no operator
+    action required for the package to load. The operator opts in to
+    rendering the mock polyline on the map page by toggling
+    `input_boolean.rc_map_mock_enabled` (default FALSE → OFF). No
+    config_flow.py is required (tier-a DOES NOT use config_flow.py —
+    the integration code IS the package, and the operator-side
+    enable/disable is the upstream `input_boolean`).
+
+install:
+  kind: ha_package
+  packages:
+    - homeassistant/packages/roamcore_mock_track.yaml
+    - homeassistant/packages/roamcore_mock_location_trail.yaml
+    - homeassistant/packages/roamcore_dev_mocks.yaml
+  config_flow: false
+  hacs: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - adds_input_boolean
+    - adds_input_text
+    - runs_on_startup_automation
+
+dashboard:
+  tiles:
+    - input_boolean.rc_map_mock_enabled
+    - input_text.rc_map_mock_location_trail
+    - input_select.rc_map_mock_preset
+    - input_number.rc_map_mock_points_per_leg
+    - input_number.rc_map_mock_jitter_m
+    - button.rc_map_mock_generate_now
+    - sensor.rc_map_mock_track_length_km
+    - sensor.rc_map_mock_track_point_count
+    - binary_sensor.rc_map_mock_track_fresh
+
+openclaw:
+  queries:
+    - is_mock_active
+    - current_preset
+    - point_count
+    - track_length_km
+    - regenerate_mock
+    - set_preset_uk_roadtrip
+    - set_jitter_25
+    - disable_mock
+  summary_keys:
+    - mock_enabled
+    - preset
+    - points_per_leg
+    - jitter_m
+    - track_length_km
+    - point_count
+    - fresh
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+  - python_generator_present
+  - packages_present_in_homeassistant_yaml
+
+tier_warnings:
+  - no_real_gps_for_integration_test
+  - operator_must_opt_in_via_input_boolean
+  - mock_does_not_replace_real_traccar
+  - deterministic_preset_not_real_telemetry
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/button/
+    - https://www.home-assistant.io/integrations/shell_command/
+    - https://www.home-assistant.io/integrations/script/
+    - https://www.home-assistant.io/docs/automation/
