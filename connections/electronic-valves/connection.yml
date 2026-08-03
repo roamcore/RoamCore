@@ -1,0 +1,226 @@
+# Electronic valves + auto tank switching — tier-b recipe connection.
+#
+# Promoted from docs/catalog/water/electronic-valves-and-auto-tank-switch.md
+# (legacy tier-c, ~21 lines, originally listed as "Support tier: C" with
+# no recipe + no contract + no automations — just a placeholder that said
+# "Use electronically controlled valves to automate water routing").
+# Promoted into tier-b because RoamCore does NOT ship a native valve
+# hardware; we RECIPE two upstream operator-side paths and layer a
+# vendor-neutral contract via the 17 `rc_water_valve_*` dashboard tiles
+# per `docs/reference/rc-entity-naming.md` §water subsystem (the `water`
+# subsystem is ALREADY in the allowed subsystems list from the
+# water-tanks Wave 3 #50 slice — see the §water subsystem entry in
+# rc-entity-naming.md). Valves are part of the water system, so we
+# EXTEND the existing `water` subsystem prefix rather than introducing
+# a new `valve` subsystem:
+#   - Path A — ESPHome valve node (recommended for ESPHome-friendly
+#     installs). One ESP32 per node, electrically-actuated 12 V / 24 V
+#     valves (latching solenoid / motorized ball / proportional)
+#     driven by GPIO + a safe driver (relay module / MOSFET H-bridge
+#     / BTS7960 43 A / IBOM / etc.) per valve; the ESPHome YAML
+#     exposes `switch.<node>_valve_fresh_inlet` +
+#     `switch.<node>_valve_grey_drain` +
+#     `switch.<node>_valve_aux_tank` + the
+#     `binary_sensor.<node>_valve_*_position` feedback (limit switch
+#     or current sense) + `cover` / `valve` template for proportional
+#     valves if used.
+#   - Path B — Generic relay + HA template valve (no ESPHome). A Shelly
+#     1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch wired into
+#     the 12 V / 24 V valve coils + HA core `template:` valve or
+#     `switch:` template + feedback binary_sensor for valve-position
+#     confirmation.
+#
+# Auto tank switching layers on top: the operator picks `active_tank` =
+# `auto` (default) and the recipe swaps between primary + aux tanks
+# based on `sensor.rc_water_fresh_level_pct` thresholds (from the
+# water-tanks Wave 3 #50 connection). The safety interlocks (§7)
+# cross-reference `binary_sensor.rc_water_leak_detected` +
+# `binary_sensor.rc_water_freeze_risk` from the water-tanks Wave 3
+# #50 recipe, plus the Victron `sensor.rc_power_battery_soc` +
+# `binary_sensor.rc_power_shore_connected` for low-voltage lockout.
+#
+# Honesty footnote (install.config_flow = true is NOT a tier-a marker):
+# The UPSTREAM HA core `valve` domain (since 2022.x — exposes a GUI
+# flow for the operator's choice of vendor's valve entity) + the
+# `switch` domain (since 2022.x) + the `template` integration (since
+# 2022.x) + the `input_boolean` integration (since 2022.x) + the
+# `input_select` integration (since 2022.x) + the `input_number`
+# integration (since 2022.x) + the `binary_sensor` integration
+# (since 2022.x) ALL expose a GUI flow. That's honest upstream truth,
+# NOT a tier-a marker for RoamCore's tier. The tier-a marker for
+# RoamCore would be a RoamCore-owned `config_flow.py` + RoamCore-owned
+# integration code + integration tests against a RoamCore-owned
+# electronic-valve bench (a 12 V / 24 V valve + a safe driver + an
+# ESP32 + a relay + a tank-level sensor, all wired together in a
+# controlled environment). None of those are shipped at tier-b.
+
+id: electronic-valves
+name: "Electronic valves + auto tank switching (tier-b recipe connection)"
+tier: b
+category: water
+status: beta
+version: 0.1.0
+description: |
+  Electronic valves + auto tank switching — fresh / aux tank routing,
+  grey drain valve auto-close, freeze-risk / leak-detected / low-
+  voltage lockout safety interlocks — is the vendor-neutral surface
+  that turns "which tank am I drawing from right now?" + "is the
+  grey valve about to overflow?" + "can I safely open a valve when
+  the battery is low?" into a dashboard tile + a push notification +
+  a mode-aware automation. RoamCore does NOT ship a native valve
+  hardware; this connection RECIPEs two upstream operator-side
+  paths and layers a vendor-neutral contract via the 18
+  `rc_water_valve_*` dashboard tiles per `docs/reference/rc-entity-
+  naming.md` §water subsystem (the `water` subsystem is ALREADY in
+  the allowed subsystems list from the water-tanks Wave 3 #50
+  slice; valves are part of the water system so we extend the
+  existing `water` subsystem prefix rather than introducing a new
+  `valve` subsystem). The recipe covers fresh inlet valve control +
+  grey drain valve control + aux tank switching valve control +
+  valve position feedback + valve auto / manual mode select +
+  operator-tunable auto-close-grey-minutes + operator-tunable
+  low-voltage lockout SOC threshold + auto tank switching between
+  primary and aux tank based on water-tanks §6 fresh level
+  sensors, plus safety-first interlocks (leak detected closes
+  fresh inlet + opens grey drain so the leak drips onto the floor
+  rather than into the tank; freeze risk closes all valves;
+  low-voltage lockout disables valve opens when SOC < threshold
+  AND shore disconnected; auto-close grey drain N minutes after
+  open so the grey tank doesn't overflow + grey doesn't slosh
+  onto the road while driving; mode-aware lockouts Stealth / Sleep
+  / Boost), and the multi-mode aggregate that surfaces "are the
+  valves within safe bounds?" as a single dashboard indicator.
+icon: valve
+codeowners:
+  - "@bernardc"
+tags:
+  - valve
+  - water
+  - fresh
+  - grey
+  - tank
+  - switch
+  - leak
+  - freeze
+  - mode-aware
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Electronic valves requires the operator to (a) choose one of
+    the two upstream paths (Path A ESPHome valve node + 12 V / 24 V
+    electrically-actuated valves + safe drivers + valve-position
+    feedback (limit switch or current sense); Path B generic relay
+    + HA template valve + 12 V / 24 V valve coils + valve-position
+    feedback binary_sensor), (b) confirm the operator's chosen
+    integration is already configured in HA and exposes at least
+    one upstream entity (switch.* / valve.* / binary_sensor.*),
+    (c) wire the upstream entity -> contract `rc_water_valve_*`
+    mapping via HA core `template:` (or HA core `entity` customize-
+    domain alias), (d) configure the operator-tunable thresholds
+    via `number.rc_water_valve_auto_close_grey_min` (default 15
+    min) + `number.rc_water_valve_low_voltage_lockout_soc_pct`
+    (default 20 %) + `select.rc_water_valve_active_tank`
+    (auto / primary / aux) + `select.rc_water_valve_mode` (auto /
+    manual_only / stealth_only / silent / disabled), (e) wire the
+    §7 safety interlocks (leak detected / freeze risk / low-
+    voltage lockout / auto-close grey / mode-aware lockouts / valve
+    stuck-open detector) BEFORE first use, (f) wire the §8
+    automations (auto-switch-to-aux-tank when fresh < 5 % / auto-
+    switch-back-to-primary when aux < 5 % / auto-close-grey-after-N-
+    min / leak-detected-close-fresh-open-grey / freeze-risk-close-
+    all / low-voltage-lockout / mode-aware scheduling) AFTER the
+    safety interlocks.
+
+install:
+  ha_integration_domain: valve
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - registers_switch_valve_entities_for_each_valve
+    - may_register_binary_sensor_entities_for_valve_position_feedback
+    - may_register_via_esphome_for_path_a
+    - may_register_via_relay_plus_template_for_path_b
+
+dashboard:
+  title: "Water valves"
+  tiles:
+    - switch.rc_water_valve_fresh_inlet_state
+    - switch.rc_water_valve_grey_drain_state
+    - switch.rc_water_valve_aux_tank_state
+    - binary_sensor.rc_water_valve_fresh_inlet_position
+    - binary_sensor.rc_water_valve_grey_drain_position
+    - binary_sensor.rc_water_valve_aux_tank_position
+    - binary_sensor.rc_water_valve_any_moving
+    - binary_sensor.rc_water_valve_auto_tank_switch_active
+    - binary_sensor.rc_water_valve_leak_detected_lockout
+    - binary_sensor.rc_water_valve_freeze_risk_lockout
+    - select.rc_water_valve_active_tank
+    - select.rc_water_valve_mode
+    - number.rc_water_valve_auto_close_grey_min
+    - number.rc_water_valve_low_voltage_lockout_soc_pct
+    - binary_sensor.rc_water_valve_low_voltage_lockout
+    - button.rc_water_valve_open_all
+    - button.rc_water_valve_close_all
+
+openclaw:
+  queries:
+    - "open fresh inlet"
+    - "close fresh inlet"
+    - "open grey drain"
+    - "close grey drain"
+    - "switch to aux tank"
+    - "switch to primary tank"
+    - "auto tank switching on"
+    - "auto tank switching off"
+    - "what valves are open?"
+    - "is auto-close grey enabled?"
+    - "freeze risk — close all valves"
+    - "leak detected — close all valves"
+    - "are valves locked out by low voltage?"
+    - "set auto-close grey to 15 minutes"
+    - "set water valve mode to auto/manual_only/stealth_only/silent/disabled"
+  summary_keys:
+    - fresh_inlet_state
+    - grey_drain_state
+    - aux_tank_state
+    - any_moving
+    - auto_tank_switch_active
+    - leak_detected_lockout
+    - freeze_risk_lockout
+    - low_voltage_lockout
+    - active_tank
+    - valve_mode
+    - auto_close_grey_min
+    - low_voltage_lockout_soc_pct
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_electronic_valves_for_integration_test
+  - recipe_depends_on_user_running_valves_plus_safe_drivers_plus_tank_level_sensors
+  - optional_esphome_vs_relay_driver_choice
+  - requires_operator_wiring_safety_freeze_leak_alerts_before_first_use
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/valve/
+    - https://www.home-assistant.io/integrations/switch/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_number/

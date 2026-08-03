@@ -60,7 +60,14 @@ Keep this list short. Start with these and extend deliberately:
 - `location` — GPS / positioning
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
+- `water` — fresh / grey water tanks + pump + leak + freeze
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
+- `presence` — who-is-home presence detection (Bluetooth / Wi-Fi / GPS)
+- `media` — audio + media playback (Music Assistant + cast devices + speakers)
+- `bed_lift` — Happijac bed lift control + position feedback
+- `hvac` — heating / cooling / ventilation (cabin thermostat + floor heating + engine pre-heat)
+- `safety` — smoke / CO / gas / leak / water-detector safety sensors + interlocks
+- `lighting` — exterior + interior lights + lighting scenes + lighting mode overrides; vendor-neutral `rc_lighting_*` ids
 
 ---
 
