@@ -1,5 +1,9 @@
 # Bluetooth / Wi‑Fi presence detection (who’s home?)
 
+> **Status (2026-07-30):** Promoted to a tier-b recipe connection.
+> Replaced by `connections/bluetooth-wifi-presence/` (branch `feat/connections/bluetooth-wifi-presence`,
+> PR #46 OPEN). The legacy tier-c spec below is kept for context only.
+
 **Support tier:** C
 
 Detect whether people are home (and who) using Bluetooth and/or Wi‑Fi signals from phones, watches, key fobs, or other devices — then use that to drive automations.
