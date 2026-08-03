@@ -72,11 +72,8 @@ Keep this list short. Start with these and extend deliberately:
 - `demo_mode` — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + never-controls-hardware guard (vendor-neutral `rc_demo_mode_*` ids; Wave 3 #62)
 - `advanced_mode` — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block (vendor-neutral `rc_advanced_mode_*` ids; Wave 3 #63)
 - `openclaw_api` — local-agent contract surface (summary + skill + rc_dump + timeseries endpoints + enable / auth / reachability / latency tiles); vendor-neutral `rc_openclaw_api_*` ids (Wave 3 #64)
-<<<<<<< Updated upstream
-=======
 - `map` — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache for the RoamCore dashboard map view (vendor-neutral `rc_map_*` ids; Wave 3 #66)
 - `obd` — vendor-neutral OBD2 / vehicle telemetry read from the WiCAN Pro (or any vendor-agnostic OBD2 reader); generic Mode-01 PIDs surfaced as `rc_obd_*` ids (Wave 3 #6)
->>>>>>> Stashed changes
 
 Extended subsystems added by the Wave 3 connection pipeline (each subsystem is OWNED by the slice that added it):
 
@@ -87,11 +84,8 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
 - `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
 - `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
-<<<<<<< Updated upstream
-=======
 - `map` — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache for the RoamCore dashboard map view. OWNED by `connections/map-dashboard/` (Wave 3 #66).
 - `obd` — vendor-neutral generic-Mode-01 OBD2 telemetry (RPM, speed, coolant temp, throttle position, MAF, fuel level, fuel rate, battery voltage, intake air temp, run time, distance since DTC clear, ambient air temp, engine load, timing advance, short/long term fuel trim, etc.). OWNED by `connections/wican-pro/` (Wave 3 #6).
->>>>>>> Stashed changes
 
 ---
 
