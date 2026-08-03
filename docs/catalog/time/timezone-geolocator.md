@@ -1,3 +1,7 @@
+> **SUPERSEDED** by `connections/timezone-geolocator/` (Wave 3 #54, shipped 2026-08-02).
+> This page is kept for historical context only. The canonical spec now lives in
+> `connections/timezone-geolocator/connection.yml` + `connections/timezone-geolocator/docs/recipe.md`.
+
 # Time zone auto-detection (GeoLocator)
 
 **Support tier:** C (custom/manual)
