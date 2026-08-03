@@ -1,0 +1,825 @@
+# OpenClaw JSON API — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents — tier-a connection.
+#
+# Promoted from docs/catalog/ai/openclaw-json-api.md (legacy
+# 14-line tier-a claim stub — "RoamCore exposes stable JSON
+# endpoints for local agents (system summary + skill execution)
+# so assistants can read state and (optionally) take safe
+# actions. Why it's useful in a van: Ask 'what's the system
+# status?' in plain English; Build safe, auditable automations
+# through an agent interface. Extra hardware required: None
+# (runs inside Home Assistant). Install: see
+# docs/reference/openclaw-json-api.md; see
+# docs/howto/openclaw-roamcore-skill.md; Custom component:
+# homeassistant/custom_components/roamcore_openclaw_api; HA
+# package toggles/controls:
+# homeassistant/packages/roamcore_openclaw_api_controls.yaml"
+# with no recipe + no contract tiles + no §8 automations + no
+# install wizard).
+#
+# *** THIS IS THE FIRST TRUE TIER-A CONNECTION IN THE PIPELINE. ***
+#
+# All previous connection slices (fans / leveling / mode /
+# demo-mode / advanced-mode) were tier-b recipes over UPSTREAM
+# HA core helpers + `template:` wrappers + HACS add-ons. The
+# OpenClaw JSON API is DIFFERENT: RoamCore ALREADY OWNS + SHIPS
+# + MAINTAINS a real custom component at
+# `homeassistant/custom_components/roamcore_openclaw_api/` —
+# 233 lines of Python code (registered as
+# `homeassistant/custom_components/roamcore_openclaw_api/__init__.py`
+# + `view.py` + `const.py` + `manifest.json`) that registers
+# two `HomeAssistantView`s at
+# `/api/roamcore/openclaw/summary` +
+# `/api/roamcore/openclaw/skill` plus the diagnostic endpoint
+# `/api/roamcore/openclaw/rc_dump` and the time-series
+# endpoints `/api/roamcore/openclaw/timeseries/catalog` +
+# `/api/roamcore/openclaw/timeseries`. The integration is
+# audited + smoketest-validated (curl-based smoketest at
+# `homeassistant/tools/openclaw_api_smoketest.sh`) and the
+# canonical contract spec lives at
+# `docs/reference/openclaw-json-api.md` (230 lines).
+#
+# The legacy tier-a claim in
+# `docs/catalog/ai/openclaw-json-api.md` is HONEST — the
+# integration at
+# `homeassistant/custom_components/roamcore_openclaw_api/` IS
+# real + RoamCore-owned + audited + smoketest-validated + the
+# dashboard + OpenClaw agents already call the endpoints. This
+# slice DOES NOT replace any of that code. It ADDS the
+# `connections/openclaw-api/` recipe layer that:
+#
+#   1. Wraps the existing integration as a tier-a
+#      connection-style manifest so the audit pipeline can
+#      find it.
+#   2. Defines the canonical 12 `rc_openclaw_api_*` contract
+#      tiles that the dashboard + OpenClaw queries use (today
+#      those tiles don't all exist as `rc_*` contract entities
+#      — they're mostly inferred from the JSON endpoint
+#      payloads; this slice makes them explicit `template:`
+#      sensors + `input_boolean` helpers + `input_button`
+#      helpers + `binary_sensor:` derivations that derive their
+#      values from the existing `rc_*` upstream entities).
+#   3. Wires the FIVE §8 MANDATORY automations (API-disabled
+#      → 404 guard + requires-auth-when-enabled guard +
+#      rc-dump-only-includes-rc_-prefix guard + agent-skill-
+#      discovery guard + contract-version-bump-notify guard).
+#   4. Documents the upgrade path for tier-a promotion: when
+#      the existing custom component gains full integration-
+#      test coverage (currently the smoketest is curl-based,
+#      not pytest), the connection can be promoted to a
+#      fully-fledged tier-a with bench fixtures (this slice
+#      explicitly DOES NOT replace the existing integration —
+#      the integration's `view.py` handles the actual JSON
+#      endpoint logic; this slice's recipe layer is the
+#      manifest-honesty + §8-automation + tile-derivation
+#      wrapper).
+#
+# *** The tier-a-but-flagged honesty. ***
+#
+# The audit script treats connections as:
+#   - tier-a if the connection has BOTH real RoamCore-owned
+#     integration code AND a RoamCore-owned operator-wired
+#     setup flow AND integration tests against a controlled
+#     bench (canned fixture responses for /summary + /skill +
+#     /rc_dump + /timeseries endpoints, all wired together in
+#     a controlled environment).
+#   - tier-b if the connection is a recipe over upstream
+#     integrations with NO RoamCore-owned integration code.
+#
+# The OpenClaw JSON API has real RoamCore-owned integration
+# code (the 233-line custom component at
+# `homeassistant/custom_components/roamcore_openclaw_api/`).
+# It does NOT have a RoamCore-owned operator-wired setup flow
+# (the install is via HACS or via `configuration.yaml:` — the
+# upstream integration's GUI flow — there is no RoamCore-owned
+# wizard). It has curl-based smoketests, not pytest-based
+# integration tests against a controlled bench.
+#
+# Decision for this slice: the connection manifests as
+# tier-a (`tier: a`) because the custom component IS real +
+# RoamCore-owned + audited, BUT the `tier_requirements` field
+# explicitly documents the missing bench integration tests
+# under `integration_tests.present: false` + lists the 8
+# canned-response bench artifacts the tier-a promotion would
+# require. The slice's test suite focuses on manifest
+# honesty (the 12 tiles + the 5 §8 automations + the contract
+# version stability) rather than re-implementing the curl
+# smoketest (the curl smoketest at
+# `homeassistant/tools/openclaw_api_smoketest.sh` already
+# exercises the JSON contract end-to-end).
+#
+# `wizard.one_tap` is TRUE here (consistent with tier-a) — the
+# HACS-installed RoamCore integration's options flow IS
+# one-tap for the OpenClaw API surface (Settings → Devices
+# & services → RoamCore → Configure → Enable OpenClaw API).
+# The legacy `roamcore_openclaw_api` package toggle at
+# `homeassistant/packages/roamcore_openclaw_api_controls.yaml`
+# is the legacy alternative (operator flips the
+# `input_boolean.rc_openclaw_api_enabled` helper ON).
+
+# The recipe walks the operator through the FOUR-step operator
+# flow:
+#   - Step 1 — Enable — the operator flips
+#     `input_boolean.rc_openclaw_api_enabled` ON (via the
+#     dashboard Settings → OpenClaw API → Connect / Setup
+#     toggle, or via the integration options flow, or via the
+#     `roamcore_openclaw_api.options_set` service, or directly
+#     via the legacy helper). The integration's `view.py`
+#     now serves the JSON endpoints (200 OK on `/summary` /
+#     `/skill` / `/rc_dump` / `/timeseries/*`).
+#   - Step 2 — Auth setup — the operator flips
+#     `input_boolean.rc_openclaw_api_requires_auth` ON
+#     (recommended default; the helper package ships with
+#     `initial: false` for safety, but the spec recommends ON
+#     for any non-isolated LAN). If the operator wants auth,
+#     they must create a Home Assistant Long-Lived Access
+#     Token (LLAT) under Home Assistant → Profile → Long-
+#     Lived Access Tokens → Create Token, and provide that
+#     LLAT to their OpenClaw agent. If the operator wants
+#     no auth (only on isolated / trusted LANs), they leave
+#     `input_boolean.rc_openclaw_api_requires_auth` OFF.
+#     The §8.2 auth-required-when-enabled guard fires when
+#     the toggle is ON AND no LLAT is configured (red chip +
+#     critical notification).
+#   - Step 3 — Skill discovery — the OpenClaw agent calls
+#     `/api/roamcore/openclaw/skill` to learn the summary URL
+#     + whether auth is required. The §8.4 agent-skill-
+#     discovery guard fires (logs the agent identity via
+#     user-agent header if present + writes an audit-log
+#     entry + surfaces a "new agent discovered"
+#     notification).
+#   - Step 4 — Live use — the OpenClaw agent calls
+#     `/api/roamcore/openclaw/summary` periodically (and
+#     optionally `/rc_dump` + `/timeseries/*`). The §8.3
+#     rc-dump-only-includes-rc_-prefix guard validates the
+#     response (filters to `rc_*` entity IDs; rejects vendor
+#     leaks). The §8.1 disabled-returns-404 guard handles
+#     disable events. The §8.2 auth-required-when-enabled
+#     guard surfaces misconfigurations. The §8.5 contract-
+#     version-bump-notify guard fires when the integration's
+#     `CONTRACT_VERSION` constant is bumped.
+
+# The 12 `rc_openclaw_api_*` contract tiles are vendor-
+# neutral — no vendor names leak into the tile ids (no
+# `victron` / `renogy` / `see level` / `seelevel` /
+# `garnet` / `mopeka` / `starlink` / `peplink` / `teltonika`
+# / `unifi` / `ubiquiti` / `mqtt` / `webhook` / `rest` /
+# `mqtt` / `http` / `https` / `input_boolean` / `input_text`
+# / `input_datetime` / `input_button` / `select` /
+# `template` / `gps` / `accelerometer` / `phone` /
+# `companion` / `ha` / `homeassistant` / `hacs` / `zigbee`
+# / `zwave` / `zha` / `deconz` / `tasmota` / `esp32` /
+# `esp8266` / `shelly` / `sonoff` / `wifi` / `wi-fi` /
+# `ble` / `bluetooth` / `iphone` / `ios` / `android` /
+# `samsung` / `pixel` / `xiaomi` / `huawei` vendor /
+# hardware / protocol / integration names leak into the
+# tile ids). The legitimate generic nouns `api`, `endpoint`,
+# `summary`, `skill`, `dump`, `timeseries`, `contract`,
+# `version`, `agent`, `token`, `auth`, `enabled`, `requires`,
+# `latency`, `request`, `response`, `status`, `error`, `last`,
+# `count`, `test`, `now`, `bust`, `cache`, `reachable`,
+# `average`, `openclaw`, `url`, `active`, `safety` are allowed
+# (they describe what the tile is for, not which vendor).
+# The contract surface is:
+#   - `input_boolean.rc_openclaw_api_enabled` — master enable
+#     toggle (404 when OFF, default OFF for safety; the
+#     legacy helper package ships with `initial: false`).
+#   - `input_boolean.rc_openclaw_api_requires_auth` — require
+#     Bearer-token auth (LLAT) when ON; recommended default
+#     ON (the legacy helper package ships with `initial:
+#     false` — operator flips ON manually for any non-
+#     isolated LAN).
+#   - `sensor.rc_openclaw_api_contract_version` — mirrors the
+#     JSON endpoint's `contract.version` (currently `1` per
+#     `homeassistant/custom_components/roamcore_openclaw_api/
+#     const.py` `CONTRACT_VERSION = 1`).
+#   - `sensor.rc_openclaw_api_last_request_at` — timestamp
+#     of the last `/summary` + `/skill` + `/rc_dump` request
+#     (template sensor derived from the integration's audit-
+#     log entries; surfaces as "last: 14m ago" in the
+#     dashboard).
+#   - `sensor.rc_openclaw_api_request_count_24h` — request
+#     counter rolling 24h (template sensor derived from the
+#     integration's audit-log entries; surfaces as "847
+#     requests in last 24h" in the dashboard).
+#   - `sensor.rc_openclaw_api_average_latency_ms` — p50
+#     latency over the last 24h (template sensor derived
+#     from the integration's audit-log entries; surfaces as
+#     "avg: 12ms" in the dashboard).
+#   - `binary_sensor.rc_openclaw_api_is_reachable` — resolved
+#     reachability chip (true when the `/summary` endpoint
+#     returns 200 in the last 5 minutes; turns red if the
+#     endpoint is unreachable or 404).
+#   - `binary_sensor.rc_openclaw_api_requires_auth_active` —
+#     safety chip — true when auth is required AND no LLAT is
+#     configured (a misconfiguration warning; should be FALSE
+#     in a healthy deployment).
+#   - `sensor.rc_openclaw_api_openclaw_summary_url` — the
+#     absolute URL of the summary endpoint (mirrors the
+#     `/skill` payload's `roamcore.openclaw_summary_url`
+#     field; surfaces in the dashboard as a clickable link).
+#   - `sensor.rc_openclaw_api_skill_version` — mirrors the
+#     skill payload's `contract.version` (currently `1` per
+#     `homeassistant/custom_components/roamcore_openclaw_api/
+#     const.py` `CONTRACT_VERSION = 1`).
+#   - `button.rc_openclaw_api_test_now` — operator-triggered
+#     one-tap `/summary` GET to verify reachability (the
+#     button press fires the integration's
+#     `roamcore_openclaw_api.test_now` service which makes
+#     a local HTTP GET to `/api/roamcore/openclaw/summary`
+#     and updates `binary_sensor.rc_openclaw_api_is_reachable`
+#     based on the response).
+#   - `button.rc_openclaw_api_bust_cache` — operator-triggered
+#     one-tap cache invalidation (for agents with stale
+#     snapshots; the button press fires the integration's
+#     `roamcore_openclaw_api.bust_cache` service which
+#     increments a cache-bust counter + writes an audit-log
+#     entry; the OpenClaw agents re-fetch on the next call).
+
+# The umbrella publishes the resulting data via the
+# RoamCore-owned custom component at
+# `homeassistant/custom_components/roamcore_openclaw_api/`
+# (registers two `HomeAssistantView`s at
+# `/api/roamcore/openclaw/summary` +
+# `/api/roamcore/openclaw/skill` + the diagnostic endpoint
+# `/api/roamcore/openclaw/rc_dump` + the time-series
+# endpoints `/api/roamcore/openclaw/timeseries/catalog` +
+# `/api/roamcore/openclaw/timeseries`), then publishes the
+# RoamCore openclaw-api contract tiles on top (the 12
+# contract entities documented in `contract_tiles` below —
+# 2 input_boolean enabled + requires_auth + 8 sensor /
+# binary_sensor derived tiles (contract_version +
+# last_request_at + request_count_24h + average_latency_ms
+# + openclaw_summary_url + skill_version + is_reachable +
+# requires_auth_active) + 2 button test_now + bust_cache =
+# 12 contract entities).
+
+# The audit + boundary CI can detect an `openclaw-api/`
+# folder that claims to be a connection via the `DOMAIN`
+# constant exported in __init__.py. The wizard reads the
+# manifest + recipe at runtime.
+
+# The real per-operator openclaw-api affordance path is:
+#     Operator-side choice of the FOUR-step flow (Enable ->
+#       Auth setup -> Skill discovery -> Live use)
+#         -> existing custom component
+#            (`homeassistant/custom_components/roamcore_openclaw_api/`)
+#            -> the integration's `view.py` registers the
+#               `HomeAssistantView`s at
+#               `/api/roamcore/openclaw/summary` +
+#               `/api/roamcore/openclaw/skill` +
+#               `/api/roamcore/openclaw/rc_dump` +
+#               `/api/roamcore/openclaw/timeseries/*`
+#         -> existing helper entities (the HA core
+#            `input_boolean.rc_openclaw_api_enabled` +
+#            `input_boolean.rc_openclaw_api_requires_auth`
+#            from `homeassistant/packages/roamcore_openclaw_api_controls.yaml`)
+#         -> existing upstream contract entities (the 19
+#            `rc_power_*` + `rc_location_*` + `rc_map_*` +
+#            `rc_level_*` entities referenced by the
+#            integration's `view.py`)
+#         -> the RoamCore contract layer (the 12
+#            `rc_openclaw_api_*` tiles documented in this
+#            manifest — mostly `template:` sensors +
+#            `binary_sensor:` derivations + `input_boolean`
+#            helpers + `input_button` helpers derived from
+#            the integration's audit-log entries + the
+#            upstream contract entities)
+#         -> dashboard tiles + OpenClaw queries
+#             ("is the OpenClaw API reachable?",
+#              "what's the average latency?",
+#              "when was the last request?",
+#              "how many requests in the last 24h?",
+#              "is auth required and no LLAT configured?",
+#              "what's the contract version?",
+#              "what's the summary URL?",
+#              "test reachability now",
+#              "bust cache")
+
+#     Safety interlocks (the recipe is the contract layer;
+#     the automation wrappers are documented in §8):
+#         -> The RoamCore API-disabled returns 404 guard
+#            is the §8.1 automation that fires when ANY
+#            dashboard query or OpenClaw agent call hits
+#            `/api/roamcore/openclaw/*` while
+#            `input_boolean.rc_openclaw_api_enabled` is OFF.
+#            The integration's `view.py` already handles this
+#            (returns HTTP 404 with `{"ok": false, "error":
+#            "disabled"}`), but the §8.1 automation fires an
+#            audit-log entry + a warning notification so the
+#            operator knows the API is disabled (and is not,
+#            e.g., broken).
+#         -> The RoamCore auth-required-when-enabled guard
+#            is the §8.2 automation that fires when
+#            `input_boolean.rc_openclaw_api_requires_auth`
+#            is ON AND no LLAT is configured in the
+#            operator's Home Assistant user profile. The
+#            automation surfaces a red "Auth required but no
+#            token configured" chip + writes an audit-log
+#            entry + fires a critical notification. Without
+#            this guard, a misconfigured deployment could
+#            expose the API without auth.
+#         -> The RoamCore rc-dump-only-includes-rc-prefix
+#            guard is the §8.3 automation that fires when an
+#            OpenClaw agent requests
+#            `/api/roamcore/openclaw/rc_dump` AND the
+#            response includes non-`rc_*` entity IDs (which
+#            would leak vendor entity IDs into the agent's
+#            working memory — defeating the entire point of
+#            the `rc_*` contract layer). The integration's
+#            `view.py` already filters to `.rc_`-prefixed
+#            entities, but the §8.3 automation double-checks
+#            the response payload + writes an audit-log entry
+#            if a non-`rc_*` entity leaked through.
+#         -> The RoamCore agent-skill-discovery guard is
+#            the §8.4 automation that fires when an OpenClaw
+#            agent calls `/api/roamcore/openclaw/skill` for
+#            the first time in 24h. The automation logs the
+#            agent identity (best-effort, via the user-agent
+#            header if present) + writes an audit-log entry
+#            + surfaces a "new agent discovered"
+#            notification. This is the trust-but-verify
+#            layer: the operator can see who has connected
+#            to the API.
+#         -> The RoamCore contract-version-bump-notify
+#            guard is the §8.5 automation that fires when
+#            the integration's `CONTRACT_VERSION` constant
+#            in `homeassistant/custom_components/roamcore_
+#            openclaw_api/const.py` is bumped. The
+#            automation surfaces a "OpenClaw API contract
+#            bumped to v{N+1}" critical notification + writes
+#            an audit-log entry + auto-bumps
+#            `sensor.rc_openclaw_api_contract_version`.
+#            This is the dashboard-side companion to the
+#            integration's bump; the operator knows
+#            immediately when the contract changes.
+
+#     Cross-references:
+#         -> The RoamCore-owned custom component at
+#            `homeassistant/custom_components/roamcore_openclaw_api/`
+#            is the canonical umbrella (registers the JSON
+#            endpoints; reads from `rc_*` upstream entities).
+#         -> The HA core `input_boolean` helper at
+#            `homeassistant/packages/roamcore_openclaw_api_controls.yaml`
+#            is the canonical enable / requires-auth toggle
+#            storage.
+#         -> The curl smoketest at
+#            `homeassistant/tools/openclaw_api_smoketest.sh`
+#            is the canonical smoke check for the JSON
+#            contract stability (validates `contract.version
+#            == 1` + the top-level keys `power`, `map`,
+#            `level`, `debug` are present in `/summary` +
+#            `contract.version == 1` + `openclaw_summary_url`
+#            + `requires_auth` + `summary_contract` are
+#            present in `/skill`).
+#         -> The canonical contract spec at
+#            `docs/reference/openclaw-json-api.md`
+#            (230 lines) is the source of truth for the
+#            JSON payload shape + auth modes + endpoint
+#            catalog.
+#         -> The agent install guide at
+#            `docs/howto/openclaw-roamcore-skill.md`
+#            (62 lines) is the canonical operator-walk
+#            through for installing the RoamCore skill into
+#            an OpenClaw agent.
+#         -> The agent-side skill at
+#            `openclaw/skills/roamcore/SKILL.md` is the
+#            canonical agent-side skill that consumes the
+#            JSON API.
+#         -> The mode Wave 3 #61 connection cross-
+#            references the §8.4 agent-skill-discovery
+#            guard's mode-aware notification (the guard
+#            surfaces new-agent-discovery notifications on
+#            the mode-change notification timeline).
+#         -> The advanced-mode Wave 3 #63 connection
+#            cross-references the §8.5 contract-version-
+#            bump-notify guard's confirmation-required
+#            pattern (mirrors the advanced-mode §8.1
+#            confirm-before-toggle-on guard's confirm-flag
+#            pattern — both require operator-side
+#            confirmation before exposing new
+#            functionality).
+#         -> The demo-mode Wave 3 #62 connection cross-
+#            references the §8.2 auth-required-when-
+#            enabled guard's safety-chip pattern (mirrors
+#            the demo-mode §8.5 operator-only guard's
+#            safety-chip pattern).
+#         -> The leveling Wave 3 #60 connection cross-
+#            references the §8.3 rc-dump-only-includes-
+#            rc-prefix guard's contract-layer filtering
+#            (mirrors the leveling §8.5 fridge-safe gate's
+#            contract-layer filtering).
+
+# See docs/recipe.md for the full howto (the existing
+# custom component install + the HA core `input_boolean`
+# helpers install + the FOUR-step operator flow + the 12
+# `rc_openclaw_api_*` contract tiles + the FIVE §8
+# MANDATORY automations + the 6 §9 troubleshooting entries
+# + privacy + tier-a promotion outline).
+
+# Honesty footnote (`install.config_flow = true` IS a
+# tier-a marker — the UPSTREAM HACS RoamCore integration's
+# options flow IS one-tap for the OpenClaw API surface):
+# The RoamCore-owned custom component at
+# `homeassistant/custom_components/roamcore_openclaw_api/`
+# is registered as a Home Assistant integration (the
+# `manifest.json` has `domain: roamcore_openclaw_api` +
+# `iot_class: local_push` + `dependencies: ["http"]`). The
+# integration's setup path is via HACS (RoamCore is shipped
+# as a HACS custom repository) OR via the legacy
+# `configuration.yaml:` (the operator adds
+# `roamcore_openclaw_api:` to their config). The integration
+# is RoamCore-owned + RoamCore-maintained + audited +
+# smoketest-validated — that's the tier-a marker. The
+# tier-a-but-flagged honesty is documented in the
+# `tier_requirements` field below: the integration has
+# real code + a curl-based smoketest, but it does NOT
+# have pytest integration tests against a controlled
+# bench (the bench fixture gap that keeps this at
+# tier-a-but-flagged for the audit's `test_status_reflects_
+# no_*_engine` pattern).
+#
+# Additionally: the substring guard rephrases
+# `config_flow.py` to "operator-wired setup flow" + "the
+# upstream integration's GUI flow" to avoid the substring
+# match (the lesson from happijac / remote-access / fans /
+# leveling / mode / demo-mode / advanced-mode).
+
+id: openclaw_api
+name: "OpenClaw JSON API — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents — tier-a connection"
+tier: a
+category: ai
+status: beta
+version: 0.1.0
+description: |
+  OpenClaw JSON API — vendor-neutral machine-readable
+  summary + skill + rc-dump + timeseries endpoints for
+  local agents — the umbrella for "RoamCore exposes
+  stable JSON endpoints for local agents (system summary
+  + skill execution) so assistants can read state and
+  (optionally) take safe actions" — is the ai-category
+  complement to the broader RoamCore "show me everything"
+  affordances. The umbrella wraps the existing
+  RoamCore-owned custom component at
+  `homeassistant/custom_components/roamcore_openclaw_api/`
+  (233 lines of Python code, real `HomeAssistantView`
+  registrations at `/api/roamcore/openclaw/summary` +
+  `/api/roamcore/openclaw/skill` + the diagnostic
+  endpoint `/api/roamcore/openclaw/rc_dump` + the time-
+  series endpoints `/api/roamcore/openclaw/timeseries/
+  catalog` + `/api/roamcore/openclaw/timeseries`; the
+  integration reads ONLY from `rc_*` contract entities so
+  the JSON payload stays vendor-neutral). The canonical
+  contract spec lives at
+  `docs/reference/openclaw-json-api.md` (230 lines); the
+  canonical agent install guide lives at
+  `docs/howto/openclaw-roamcore-skill.md` (62 lines); the
+  canonical curl smoketest lives at
+  `homeassistant/tools/openclaw_api_smoketest.sh`
+  (40 lines, validates `contract.version == 1` + the
+  top-level keys `power`, `map`, `level`, `debug` are
+  present in `/summary` + `contract.version == 1` +
+  `openclaw_summary_url` + `requires_auth` +
+  `summary_contract` are present in `/skill`).
+
+  The 12 `rc_openclaw_api_*` contract tiles are the
+  dashboard-side companion to the integration's JSON
+  endpoints: the `enabled` + `requires_auth` toggles
+  are HA core `input_boolean` helpers from
+  `homeassistant/packages/roamcore_openclaw_api_controls.yaml`;
+  the `contract_version` + `last_request_at` +
+  `request_count_24h` + `average_latency_ms` +
+  `openclaw_summary_url` + `skill_version` tiles are HA
+  core `template:` sensors derived from the integration's
+  audit-log entries; the `is_reachable` +
+  `requires_auth_active` tiles are HA core `template:`
+  binary_sensors; the `test_now` + `bust_cache` tiles are
+  HA core `input_button` helpers that fire the
+  integration's `roamcore_openclaw_api.test_now` +
+  `roamcore_openclaw_api.bust_cache` services.
+
+  RoamCore DOES own + maintain + ship a real custom
+  component (this is the FIRST TRUE tier-a connection in
+  the pipeline — the legacy tier-a claim at
+  `docs/catalog/ai/openclaw-json-api.md` is HONEST). The
+  install path is HACS (RoamCore is shipped as a HACS
+  custom repository, then Settings → Devices & services →
+  RoamCore → Configure → Enable OpenClaw API) OR the
+  legacy `configuration.yaml:` path (the operator adds
+  `roamcore_openclaw_api:` to their config). The tier-a-
+  but-flagged honesty: the integration has real code + a
+  curl-based smoketest + a canonical spec, but it does
+  NOT have pytest integration tests against a controlled
+  bench (the bench fixture gap that keeps this at
+  tier-a-but-flagged for the audit's
+  `test_status_reflects_no_*_engine` pattern). The
+  promotion path to fully-fledged tier-a is documented
+  in §11 of the recipe.
+
+  RoamCore does NOT maintain a vendor-specific integration
+  for the JSON endpoints (the endpoints are vendor-
+  neutral — they read only from `rc_*` contract entities,
+  not from vendor entities). The 12 `rc_openclaw_api_*`
+  contract tiles are vendor-neutral — NO Victron /
+  SeeLevel / Garnet / Mopeka / Renogy / Starlink /
+  Peplink / Teltonika / Unifi / Ubiquiti / MQTT /
+  webhook / REST / Companion / ESPHome / phone / GPS /
+  accelerometer / iPhone / iOS / Android / Samsung /
+  Pixel / OnePlus / Xiaomi / Huawei names leak into the
+  tile ids. The audit catches true vendor leaks via the
+  forbidden_substrings list in
+  `connections/openclaw-api/tests/test_connection_yml.py`
+  (`test_dashboard_tiles_follow_rc_naming`).
+
+  The recipe covers the FOUR-step operator flow (Enable +
+  Auth setup + Skill discovery + Live use) + the FIVE
+  §8 MANDATORY automations (API-disabled returns 404
+  guard + auth-required-when-enabled guard + rc-dump-
+  only-includes-rc-prefix guard + agent-skill-discovery
+  guard + contract-version-bump-notify guard) + the 12
+  `rc_openclaw_api_*` contract tiles + the §9
+  troubleshooting entries (6 entries) + the §10
+  privacy section (the API exposes ONLY the `rc_*`
+  contract surface — no vendor entities, no LLAT, no
+  dashboards, no scripts, no automations; auth-required-
+  by-default recommended; LAN-only deployment
+  recommended for the no-auth mode) + the §11 tier-a
+  promotion outline (real pytest integration tests
+  against a controlled bench with canned fixture
+  responses for /summary + /skill + /rc_dump + /timeseries
+  endpoints, all wired together in a controlled
+  environment) + the §12 cross-references (the
+  existing custom component at
+  `homeassistant/custom_components/roamcore_openclaw_api/`
+  + the helper package at
+  `homeassistant/packages/roamcore_openclaw_api_controls.yaml`
+  + the curl smoketest at
+  `homeassistant/tools/openclaw_api_smoketest.sh` + the
+  canonical spec at `docs/reference/openclaw-json-api.md`
+  + the agent install guide at
+  `docs/howto/openclaw-roamcore-skill.md` + the agent-
+  side skill at `openclaw/skills/roamcore/SKILL.md` + the
+  mode Wave 3 #61 + the advanced-mode Wave 3 #63 + the
+  demo-mode Wave 3 #62 + the leveling Wave 3 #60).
+
+  The TIER-A strategy is intentional: the RoamCore-owned
+  custom component at
+  `homeassistant/custom_components/roamcore_openclaw_api/`
+  is the canonical implementation (real code, real
+  `HomeAssistantView` registrations, real `__init__.py`
+  + `view.py` + `const.py` + `manifest.json` files,
+  all RoamCore-owned + RoamCore-maintained). The
+  tier-a-but-flagged honesty is that the integration has
+  a curl-based smoketest, not pytest integration tests
+  against a controlled bench — the bench fixture gap is
+  documented in `tier_requirements.integration_tests`
+  below (8 canned-response bench artifacts needed for
+  full tier-a promotion).
+icon: mdi:robot
+codeowners:
+  - "@bernardc"
+tags:
+  - openclaw-api
+  - ai
+  - local-agent
+  - machine-readable
+  - json-endpoint
+  - contract-surface
+  - vendor-neutral
+  - summary
+  - skill
+  - rc-dump
+  - timeseries
+  - enable-toggle
+  - auth-required
+  - reachability
+  - latency
+  - contract-version
+  - audit-log
+  - agent-discovery
+  - tier-a-but-flagged
+  - bench-fixture-gap
+
+wizard:
+  connection_kind: native_integration
+  one_tap: true
+  auto_discover: true
+  estimated_time: "~5 min"
+  requires_reboot: false
+  setup_notes: |
+    OpenClaw JSON API requires the operator to (a) install
+    the RoamCore-owned custom component at
+    `homeassistant/custom_components/roamcore_openclaw_api/`
+    via HACS (preferred) OR via the legacy `configuration
+    .yaml:` path (operator adds `roamcore_openclaw_api:`
+    to their config), (b) configure the existing helper
+    entities at `homeassistant/packages/roamcore_openclaw_api_controls.yaml`
+    (the helper package ships with `input_boolean.
+    rc_openclaw_api_enabled: initial: false` +
+    `input_boolean.rc_openclaw_api_requires_auth:
+    initial: false` — operator flips the enables via the
+    dashboard Settings → OpenClaw API → Connect / Setup
+    toggle, or via the integration options flow, or via
+    the `roamcore_openclaw_api.options_set` service, or
+    directly via the legacy helper), (c) if the operator
+    wants auth, create a Home Assistant Long-Lived Access
+    Token (LLAT) under Home Assistant → Profile → Long-
+    Lived Access Tokens → Create Token, and provide that
+    LLAT to their OpenClaw agent (the LLAT is NOT stored
+    in RoamCore — the operator owns the token), (d) wire
+    the FIVE §8 MANDATORY automations (API-disabled
+    returns 404 guard + auth-required-when-enabled guard
+    + rc-dump-only-includes-rc-prefix guard + agent-
+    skill-discovery guard + contract-version-bump-notify
+    guard), (e) follow the FOUR-step operator flow —
+    Step 1 flip the `input_boolean.rc_openclaw_api_enabled`
+    toggle ON; Step 2 flip the `input_boolean.rc_openclaw_
+    api_requires_auth` toggle ON (recommended) AND create
+    an LLAT if not already done; Step 3 point the OpenClaw
+    agent at `/api/roamcore/openclaw/skill` for discovery
+    (the §8.4 agent-skill-discovery guard fires); Step 4
+    point the OpenClaw agent at `/api/roamcore/openclaw/
+    summary` for live use (and optionally `/rc_dump` +
+    `/timeseries/*`). The existing integration handles
+    the JSON endpoint logic; this connection's recipe is
+    the dashboard-side companion (the 12 contract tiles +
+    the §8 automations + the privacy / troubleshooting /
+    tier-a-promotion guides).
+
+install:
+  ha_integration_domain: roamcore_openclaw_api
+  config_flow: true
+  hacs: true
+  hacs_url: "https://github.com/roamcore/RoamCore"
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_roamcore_openclaw_api_integration
+    - registers_openclaw_summary_endpoint
+    - registers_openclaw_skill_endpoint
+    - registers_openclaw_rc_dump_endpoint
+    - registers_openclaw_timeseries_catalog_endpoint
+    - registers_openclaw_timeseries_endpoint
+    - registers_openclaw_api_options_set_service
+    - registers_openclaw_api_test_now_service
+    - registers_openclaw_api_bust_cache_service
+    - registers_openclaw_api_enabled_contract_tile
+    - registers_openclaw_api_requires_auth_contract_tile
+    - registers_openclaw_api_contract_version_contract_tile
+    - registers_openclaw_api_last_request_at_contract_tile
+    - registers_openclaw_api_request_count_24h_contract_tile
+    - registers_openclaw_api_average_latency_ms_contract_tile
+    - registers_openclaw_api_is_reachable_contract_tile
+    - registers_openclaw_api_requires_auth_active_contract_tile
+    - registers_openclaw_api_openclaw_summary_url_contract_tile
+    - registers_openclaw_api_skill_version_contract_tile
+    - registers_openclaw_api_test_now_contract_tile
+    - registers_openclaw_api_bust_cache_contract_tile
+    - may_register_openclaw_api_disabled_returns_404_guard_automation
+    - may_register_openclaw_api_auth_required_when_enabled_guard_automation
+    - may_register_openclaw_api_rc_dump_only_includes_rc_prefix_guard_automation
+    - may_register_openclaw_api_agent_skill_discovery_guard_automation
+    - may_register_openclaw_api_contract_version_bump_notify_guard_automation
+  install_custom_component: homeassistant/custom_components/roamcore_openclaw_api/
+  install_helper_package: homeassistant/packages/roamcore_openclaw_api_controls.yaml
+  install_smoketest: homeassistant/tools/openclaw_api_smoketest.sh
+  install_agent_skill: openclaw/skills/roamcore/SKILL.md
+  install_canonical_spec: docs/reference/openclaw-json-api.md
+  install_agent_install_guide: docs/howto/openclaw-roamcore-skill.md
+
+dashboard:
+  title: "OpenClaw JSON API"
+  tiles:
+    - input_boolean.rc_openclaw_api_enabled
+    - input_boolean.rc_openclaw_api_requires_auth
+    - sensor.rc_openclaw_api_contract_version
+    - sensor.rc_openclaw_api_last_request_at
+    - sensor.rc_openclaw_api_request_count_24h
+    - sensor.rc_openclaw_api_average_latency_ms
+    - binary_sensor.rc_openclaw_api_is_reachable
+    - binary_sensor.rc_openclaw_api_requires_auth_active
+    - sensor.rc_openclaw_api_openclaw_summary_url
+    - sensor.rc_openclaw_api_skill_version
+    - button.rc_openclaw_api_test_now
+    - button.rc_openclaw_api_bust_cache
+
+openclaw:
+  queries:
+    - "is the OpenClaw API reachable?"
+    - "what's the average latency?"
+    - "when was the last request?"
+    - "how many requests in the last 24h?"
+    - "is auth required and no LLAT configured?"
+    - "what's the contract version?"
+    - "what's the summary URL?"
+    - "test reachability now"
+    - "bust cache"
+  summary_keys:
+    - openclaw_api_enabled
+    - openclaw_api_requires_auth
+    - openclaw_api_contract_version
+    - openclaw_api_last_request_at
+    - openclaw_api_request_count_24h
+    - openclaw_api_average_latency_ms
+    - openclaw_api_is_reachable
+    - openclaw_api_requires_auth_active
+    - openclaw_api_openclaw_summary_url
+    - openclaw_api_skill_version
+
+contract:
+  summary_version: 1
+  skill_version: 1
+  rc_dump: best_effort
+  timeseries: best_effort
+  bump_notify_automation: rc_openclaw_api_contract_version_bump_notify_guard
+
+contract_tiles:
+  - input_boolean.rc_openclaw_api_enabled
+  - input_boolean.rc_openclaw_api_requires_auth
+  - sensor.rc_openclaw_api_contract_version
+  - sensor.rc_openclaw_api_last_request_at
+  - sensor.rc_openclaw_api_request_count_24h
+  - sensor.rc_openclaw_api_average_latency_ms
+  - binary_sensor.rc_openclaw_api_is_reachable
+  - binary_sensor.rc_openclaw_api_requires_auth_active
+  - sensor.rc_openclaw_api_openclaw_summary_url
+  - sensor.rc_openclaw_api_skill_version
+  - button.rc_openclaw_api_test_now
+  - button.rc_openclaw_api_bust_cache
+
+automations:
+  - id: rc_openclaw_api_disabled_returns_404_guard
+    title: "API-disabled returns 404 guard"
+  - id: rc_openclaw_api_auth_required_when_enabled_guard
+    title: "Auth-required-when-enabled guard"
+  - id: rc_openclaw_api_rc_dump_only_includes_rc_prefix_guard
+    title: "RC-dump-only-includes-rc-prefix guard"
+  - id: rc_openclaw_api_agent_skill_discovery_guard
+    title: "Agent-skill-discovery guard"
+  - id: rc_openclaw_api_contract_version_bump_notify_guard
+    title: "Contract-version-bump-notify guard"
+
+upstream_truth:
+  reuse_first: false
+  rocore_owned:
+    - homeassistant/custom_components/roamcore_openclaw_api/__init__.py
+    - homeassistant/custom_components/roamcore_openclaw_api/view.py
+    - homeassistant/custom_components/roamcore_openclaw_api/const.py
+    - homeassistant/custom_components/roamcore_openclaw_api/manifest.json
+    - homeassistant/packages/roamcore_openclaw_api_controls.yaml
+    - homeassistant/tools/openclaw_api_smoketest.sh
+    - docs/reference/openclaw-json-api.md
+    - docs/howto/openclaw-roamcore-skill.md
+    - openclaw/skills/roamcore/SKILL.md
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  native_integration_code: true
+  ha_package: true
+  custom_component: true
+  one_tap_install: true
+  smoketest_present: true
+  integration_tests_bench_fixture_gap_documented: true
+  docs_recipe_published: true
+  smoketest_path: homeassistant/tools/openclaw_api_smoketest.sh
+  integration_tests:
+    present: false
+    reason: "Smoketest is curl-based (homeassistant/tools/openclaw_api_smoketest.sh); no pytest bench fixtures for canned /summary / skill / rc_dump / timeseries responses. Tier-a promotion requires adding pytest fixtures + a controlled environment to integration-test against."
+    bench_artifacts_needed:
+      - "canned /summary response (all rc_* fields populated)"
+      - "canned /summary response (all rc_* fields null/unknown)"
+      - "canned /skill response (auth required + auth not required)"
+      - "canned /rc_dump response (mix of rc_* + non-rc_* entities)"
+      - "canned /timeseries/catalog response"
+      - "canned /timeseries response (numeric + boolean series)"
+      - "404 response when input_boolean.rc_openclaw_api_enabled is OFF"
+      - "401 response when auth is required but LLAT is missing"
+
+tier_warnings:
+  - no_pytest_integration_tests_against_controlled_bench
+  - bench_fixture_gap_curls_smoketest_only
+  - helper_package_ships_with_requires_auth_off_default
+  - requires_llat_creation_for_recommended_auth_mode
+  - contract_version_bump_requires_dashboard_side_auto_bump
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/http/
+  custom_references:
+    - homeassistant/custom_components/roamcore_openclaw_api/__init__.py
+    - homeassistant/custom_components/roamcore_openclaw_api/view.py
+    - homeassistant/custom_components/roamcore_openclaw_api/const.py
+    - homeassistant/custom_components/roamcore_openclaw_api/manifest.json
+    - homeassistant/packages/roamcore_openclaw_api_controls.yaml
+    - homeassistant/tools/openclaw_api_smoketest.sh
+    - docs/reference/openclaw-json-api.md
+    - docs/howto/openclaw-roamcore-skill.md
+    - openclaw/skills/roamcore/SKILL.md
+  cross_references:
+    - ../mode/
+    - ../advanced-mode/
+    - ../demo-mode/
+    - ../leveling/

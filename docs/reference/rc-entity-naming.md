@@ -66,11 +66,12 @@ Keep this list short. Start with these and extend deliberately:
 - `hvac` — heating / cooling / climate / engine pre-heat (heated floors, AC, Webasto, etc.), only if needed
 - `safety` — smoke / CO / gas / safety sensors + safety automations (smoke alarm, CO monitor, propane leak, etc.), only if needed
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
-- `ventilation` — fans + climate-aware airflow + ventilation mode overrides + rain-sensor safety blocks; vendor-neutral `rc_fan_*` ids (Wave 3 #59)
-- `vehicle` — vehicle-level sensors + levelling + fridges + levelling-jack controls + fridge-safe gates; vendor-neutral `rc_level_*` ids (Wave 3 #60)
-- `mode` — operator-facing mode state (Off / Auto / Travel / Camp / Stealth) + opt-in AI inference summary + auto-revert on manual override + confirm-before-power-changing-action guard + stealth-mode audit-log entry; vendor-neutral `rc_mode_*` ids (Wave 3 #61)
-- `demo_mode` — operator-facing demo scenario state (Off / Battery / Water / Connectivity) + auto-disable on real sensor reconnect + never-controls-actual-hardware guard + blocks-remote-access guard + audit-log entry + operator-only guard; vendor-neutral `rc_demo_mode_*` ids (Wave 3 #62)
-- `advanced_mode` — operator-facing power-user toggle + confirm-flag + session-timeout guard + audit-log-entry + hides-for-non-owners guard + blocks-destructive-irreversible-service-calls guard; vendor-neutral `rc_advanced_mode_*` ids (Wave 3 #63)
+- `ventilation` — roof fans + circulation + bathroom exhaust (vendor-neutral `rc_ventilation_*` ids; Wave 3 #59)
+- `vehicle` — vehicle motion + drivetrain + dash + headlights (vendor-neutral `rc_vehicle_*` ids; Wave 3 #57/58)
+- `mode` — AI mode state (Off/Auto/Travel/Camp/Stealth) + opt-in AI inference + auto-revert (vendor-neutral `rc_mode_*` ids; Wave 3 #61)
+- `demo_mode` — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + never-controls-hardware guard (vendor-neutral `rc_demo_mode_*` ids; Wave 3 #62)
+- `advanced_mode` — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block (vendor-neutral `rc_advanced_mode_*` ids; Wave 3 #63)
+- `openclaw_api` — local-agent contract surface (summary + skill + rc_dump + timeseries endpoints + enable / auth / reachability / latency tiles); vendor-neutral `rc_openclaw_api_*` ids (Wave 3 #64)
 
 ---
 
