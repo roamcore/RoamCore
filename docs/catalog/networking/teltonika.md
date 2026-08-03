@@ -1,5 +1,7 @@
 # Teltonika (LTE/5G router for vans)
 
+> ⚠️ SUPERSEDED: This legacy tier-c spec has been promoted to a tier-b connection at [`connections/teltonika/`](../../connections/teltonika/) (Wave 3 #39, tier-b recipe). This page is retained for historical context only. The current recipe (SNMP wiring, REST/RMS wiring, HA helpers, reboot affordance via plug or REST, mode-aware automations, troubleshooting, tier-a promotion outline) lives at [`connections/teltonika/docs/recipe.md`](../../connections/teltonika/docs/recipe.md).
+
 **Support tier:** C (custom/manual)
 
 ## What this is
