@@ -1,0 +1,571 @@
+# Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella for
+# HA — phone IMU + permanent IMU board + levelling jacks + Bluetooth
+# pads, operator picks ONE path) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/level-sensor/leveling.md (legacy tier-a
+# claim, ~18 lines — "RoamCore defines a levelling contract
+# (`rc_level_*`) and supports pitch/roll sensors so the dashboard
+# can show an easy levelling status. Better sleep and cooking. Quick
+# 'good enough' check without guessing. A pitch/roll sensor (often
+# via ESPHome / accelerometer)" with no recipe + no contract + no
+# automations + no install path). The legacy stub's tier-a claim is
+# honest-upstream-truth: RoamCore ships NO native levelling engine
+# (no `custom_components/level/` directory in the repo today). The
+# picker promotes the legacy stub into tier-b because the contract
+# layer is the canonical RoamCore contribution (the 10
+# `rc_level_*` tiles + the recipe + the §8 MANDATORY automations)
+# while the upstream engines are HA core + the upstream HA
+# Companion app's phone IMU + the ESPHome `mpu6050` / `mpu9250`
+# / `bno055` / `lsm6ds3` firmware (all in the upstream ESPHome
+# codebase since 2022.x) + the HACS `mopeka` / `bno055` /
+# `esp32_imu` integrations + the well-known pneumatic / hydraulic
+# levelling jacks driven via relay. RoamCore does NOT fork any of
+# these; the wrapper is the contract layer + the recipe + the
+# §8 MANDATORY automations + the fridge-safe gate. The legacy doc
+# now carries a SUPERSEDED banner pointing at this connection.
+
+# The recipe walks the operator through FOUR operator-pickable
+# paths based on their levelling hardware choice:
+#   - Path A — Phone IMU (recommended for most operators; no
+#     extra hardware). The HA Companion app on iOS / Android
+#     exposes the phone's built-in IMU (the accelerometer +
+#     gyroscope) as `sensor.<phone>_accelerometer` +
+#     `sensor.<phone>_gyroscope` +
+#     `sensor.<phone>_orientation` entities (since HA
+#     Companion iOS 2022.x / Android 2022.x). The operator
+#     picks a phone, mounts it face-up on the dashboard, and
+#     the RoamCore contract tiles publish from the phone's
+#     orientation. Path A is the default for any van that
+#     doesn't need a permanent IMU board.
+#   - Path B — Permanent IMU board (ESPHome + MPU-6050 /
+#     MPU-9250 / BNO055 / LSM6DS3). A $5-15 IMU breakout
+#     wired to a $5-10 ESP32 / ESP8266 board running the
+#     standard ESPHome `mpu6050` / `mpu9250` / `bno055` /
+#     `lsm6ds3` firmware (all in the upstream ESPHome
+#     codebase since 2022.x) + a USB-C cable to the head
+#     unit. Path B is the default for vans that want a
+#     permanent / reliable reading. Path B covers four sub-
+#     flavors:
+#     - Path B1 — ESPHome MPU-6050 (the operator wires a
+#       $5 MPU-6050 IMU breakout to an ESP32 via I²C +
+#       flashes the upstream ESPHome `mpu6050` component
+#       firmware + the ESPHome integration surfaces the
+#       sensor as `sensor.<board>_mpu6050_accel_x` +
+#       `sensor.<board>_mpu6050_accel_y` +
+#       `sensor.<board>_mpu6050_accel_z`).
+#     - Path B2 — ESPHome MPU-9250 (the operator wires a
+#       $10 MPU-9250 IMU breakout to an ESP32 via I²C +
+#       flashes the upstream ESPHome `mpu9250` component
+#       firmware + the ESPHome integration surfaces the
+#       sensor as `sensor.<board>_mpu9250_accel_x` +
+#       `sensor.<board>_mpu9250_accel_y` +
+#       `sensor.<board>_mpu9250_accel_z`).
+#     - Path B3 — ESPHome BNO055 (the operator wires a
+#       $15 BNO055 IMU breakout to an ESP32 via I²C +
+#       flashes the upstream ESPHome `bno055` component
+#       firmware + the ESPHome integration surfaces the
+#       sensor as `sensor.<board>_bno055_orientation_x` +
+#       `sensor.<board>_bno055_orientation_y` +
+#       `sensor.<board>_bno055_orientation_z` +
+#       `sensor.<board>_bno055_calibration`).
+#     - Path B4 — ESPHome LSM6DS3 (the operator wires a
+#       $5 LSM6DS3 IMU breakout to an ESP32 via I²C +
+#       flashes the upstream ESPHome `lsm6ds3` component
+#       firmware + the ESPHome integration surfaces the
+#       sensor as `sensor.<board>_lsm6ds3_accel_x` +
+#       `sensor.<board>_lsm6ds3_accel_y` +
+#       `sensor.<board>_lsm6ds3_accel_z`).
+#   - Path C — Levelling jacks (HWH / Lippert / Power Gear
+#     / Bigfoot via relay + manual control). The 4-point /
+#     6-point hydraulic levelling jacks wired through a
+#     $30-80 relay board (8-channel / 12-channel / 16-
+#     channel 5 V or 12 V relays) to the head unit. The
+#     operator presses a button, the relay turns on the
+#     pump, the jack extends. Path C covers three sub-
+#     flavors:
+#     - Path C1 — HWH via 8-channel relay + the HA core
+#       `template:` switch wrapper (since 2022.x — wraps
+#       any relay state into a virtual `switch.*` entity)
+#       for the pump + each of the 4 jacks.
+#     - Path C2 — Lippert via 12-channel relay + the HA
+#       core `template:` switch wrapper (since 2022.x —
+#       wraps any relay state into a virtual `switch.*`
+#       entity) for the pump + each of the 6 jacks.
+#     - Path C3 — Power Gear / Bigfoot via 16-channel
+#       relay + the HA core `template:` switch wrapper
+#       (since 2022.x — wraps any relay state into a
+#       virtual `switch.*` entity) for the pump + each of
+#       the 6 jacks + the optional slide-out room.
+#   - Path D — Bluetooth levelling pads (Mopeka / Lippert /
+#     TireMinder). The optional HACS `mopeka` integration
+#     (and the Lippert / TireMinder Bluetooth levelling
+#     pads) expose a `sensor.<pad>_pitch` /
+#     `sensor.<pad>_roll` entity over BLE. Path D covers
+#     three sub-flavors:
+#     - Path D1 — Mopeka (the operator installs the HACS
+#       `mopeka` integration + wires the Mopeka BLE
+#       adapter + mounts the pads under each corner of
+#       the van).
+#     - Path D2 — Lippert (the operator installs the
+#       Lippert OneControl app + wires the Lippert
+#       Bluetooth adapter + mounts the pads under each
+#       corner of the van).
+#     - Path D3 — TireMinder (the operator installs the
+#       TireMinder app + wires the TireMinder Bluetooth
+#       adapter + mounts the pads under each corner of
+#       the van).
+
+# The 10 `rc_level_*` contract tiles are vendor-neutral — no
+# vendor names leak into the tile ids (no MPU-6050 / MPU-9250
+# / BNO055 / LSM6DS3 / HWH / Lippert / Power Gear / Bigfoot /
+# Mopeka / TireMinder / ESPHome / Companion / HA / Tasmota /
+# ESP32 / ESP8266 / Shelly / Sonoff / HACS / Z-Wave / ZHA /
+# Zigbee / MQTT / phone / BLE / Wi-Fi / jack / pump / relay /
+# sensor / accelerometer / gyroscope / magnetometer /
+# orientation / quaternion / euler / tilt / compass /
+# heading / pitch / roll / yaw names leak into the tile
+# ids). The contract surface is:
+#   - `sensor.rc_level_pitch_degrees` — current pitch in
+#     degrees, −90 to +90. The tile is a `template:`
+#     sensor (since 2022.x) that derives from the upstream
+#     `sensor.<phone>_accelerometer` (Path A) OR the
+#     upstream `sensor.<board>_mpu6050_accel_x` (Path B1)
+#     OR the upstream `sensor.<board>_mpu9250_accel_x`
+#     (Path B2) OR the upstream
+#     `sensor.<board>_bno055_orientation_x` (Path B3) OR
+#     the upstream `sensor.<board>_lsm6ds3_accel_x` (Path
+#     B4) OR the upstream `sensor.<pad>_pitch` (Path D1 /
+#     Path D2 / Path D3).
+#   - `sensor.rc_level_roll_degrees` — current roll in
+#     degrees, −90 to +90. The tile is a `template:`
+#     sensor (since 2022.x) that derives from the upstream
+#     `sensor.<phone>_accelerometer` (Path A) OR the
+#     upstream `sensor.<board>_mpu6050_accel_y` (Path B1)
+#     OR the upstream `sensor.<board>_mpu9250_accel_y`
+#     (Path B2) OR the upstream
+#     `sensor.<board>_bno055_orientation_y` (Path B3) OR
+#     the upstream `sensor.<board>_lsm6ds3_accel_y` (Path
+#     B4) OR the upstream `sensor.<pad>_roll` (Path D1 /
+#     Path D2 / Path D3).
+#   - `sensor.rc_level_max_tilt_degrees` — the max of
+#     `|pitch|` + `|roll|`. The tile is a `template:`
+#     sensor (since 2022.x) that derives from
+#     `sensor.rc_level_pitch_degrees` +
+#     `sensor.rc_level_roll_degrees`.
+#   - `binary_sensor.rc_level_is_level` — TRUE iff
+#     `sensor.rc_level_max_tilt_degrees < 0.5`. The tile
+#     is a `template:` binary_sensor (since 2022.x) that
+#     derives from `sensor.rc_level_max_tilt_degrees`.
+#   - `binary_sensor.rc_level_is_close_to_level` — TRUE
+#     iff `sensor.rc_level_max_tilt_degrees < 1.5`. The
+#     tile is a `template:` binary_sensor (since 2022.x)
+#     that derives from `sensor.rc_level_max_tilt_degrees`.
+#   - `select.rc_level_mode` — the operator's chosen mode
+#     (one of `off` / `read_only` / `auto_warn` /
+#     `auto_jack`). The tile is a `select:` domain entity
+#     (since 2022.x) that the operator picks from a list.
+#   - `sensor.rc_level_last_calibrated_at` — timestamp of
+#     the last operator-initiated calibration. The tile is
+#     a `template:` sensor (since 2022.x) that the
+#     operator's automations write to before pressing
+#     `button.rc_level_calibrate_now`.
+#   - `button.rc_level_calibrate_now` — the operator-
+#     triggered calibration (touches the calibration
+#     offset and updates `last_calibrated_at`). The button
+#     is an `input_button:` domain entity (since 2022.x)
+#     that fires an automation that updates the
+#     calibration offset.
+#   - `sensor.rc_level_jack_status` — `None` / `Retracted`
+#     / `Extending` / `Extended` / `Lowering` / `Lowered`
+#     / `Error` (only present when Path C jacks are
+#     wired). The tile is an `input_text:` domain entity
+#     (since 2022.x) that the operator's automations write
+#     to.
+#   - `binary_sensor.rc_level_fridge_safe` — TRUE iff the
+#     fridge is safe to run (the §8 MANDATORY automation
+#     target). The tile is a `template:` binary_sensor
+#     (since 2022.x) that derives from the operator's
+#     fridge-safe logic (a fridge-safe threshold of ±3°
+#     around level; the §8.3 fridge-safety gate
+#     automation reads from this tile).
+
+# The umbrella publishes the resulting data via the upstream
+# HA core `sensor` integration + the HA core `template:`
+# sensor wrapper + the HA core `template:` binary_sensor
+# wrapper + the HA core `template:` switch wrapper + the HA
+# core `input_select` / `input_text` / `input_button` /
+# `input_number` helper entities + the HA Companion app's
+# phone IMU + the ESPHome `mpu6050` / `mpu9250` / `bno055` /
+# `lsm6ds3` firmware + the HACS `mopeka` / `bno055` /
+# `esp32_imu` integrations + the well-known pneumatic /
+# hydraulic levelling jacks driven via relay + the HA core
+# MQTT bridge for the operator's path choice.
+
+# The recipe §1 + §3 + §4 + §5 + §6 + §7 + §8 walks through
+# the umbrella + the FOUR operator-pickable paths + the §7
+# contract entities + the §8 FIVE MANDATORY automations:
+#   - §8.1 Auto-warn when out of level. The automation
+#     fires when the mode is `auto_warn` AND
+#     `sensor.rc_level_max_tilt_degrees > 1.5` for ≥ 30 s.
+#     The automation fires a persistent notification on
+#     the dashboard + (optionally) a Telegram message via
+#     the OpenClaw bridge.
+#   - §8.2 Sleep-mode warning. The automation fires when
+#     the mode is `auto_warn` AND `select.rc_mode` (from
+#     the mode/automation-builder Wave 2 #23 recipe) is in
+#     `sleep` mode AND
+#     `sensor.rc_level_max_tilt_degrees > 2.0`. The
+#     automation fires a critical notification on the
+#     bedroom tile + dims the cabin lights to red.
+#   - §8.3 Fridge safety gate. The automation fires when
+#     the mode is `auto_warn` AND
+#     `binary_sensor.rc_level_fridge_safe` transitions
+#     from `true` to `false`. The automation fires an
+#     immediate notification warning the operator to turn
+#     off the fridge compressor (most compressor fridges
+#     tolerate ±3° but anything beyond that risks damage).
+#   - §8.4 Auto-jack extend (Path C only). The automation
+#     fires when the mode is `auto_jack` AND the operator
+#     presses `button.rc_level_extend_jacks`. The
+#     automation fires the relay sequence to extend the 4
+#     / 6 jacks until
+#     `sensor.rc_level_max_tilt_degrees < 0.3` for ≥ 5 s,
+#     then stops the pump.
+#   - §8.5 Calibration reminder. Every 30 days, the
+#     automation fires a notification reminding the
+#     operator to re-calibrate the IMU (the
+#     `button.rc_level_calibrate_now` button). The
+#     operator can dismiss the reminder.
+
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): The UPSTREAM HA core `sensor` integration
+# (since 2022.x — exposes a GUI flow for the operator to
+# add a `sensor.*` entity from the upstream IMU board OR
+# the operator's chosen path) + the UPSTREAM HA Companion
+# app (iOS / Android — exposes the phone's IMU as
+# `sensor.<phone>_accelerometer` + `sensor.<phone>_gyroscope`
+# + `sensor.<phone>_orientation` entities since 2022.x) +
+# the ESPHome `mpu6050` / `mpu9250` / `bno055` / `lsm6ds3`
+# components (since 2022.x — expose a GUI flow via the
+# ESPHome integration's device-discovery flow + the
+# `sensor.<board>_*` entity) + the HACS `mopeka`
+# integration (HACS — exposes a GUI flow for the operator
+# to add a Mopeka BLE adapter) + the HACS `bno055`
+# integration (HACS — exposes a GUI flow for the operator
+# to add a BNO055 BLE adapter) + the HACS `esp32_imu`
+# integration (HACS — exposes a GUI flow for the operator
+# to add an ESP32-based IMU board) ALL expose a GUI flow.
+# That's honest upstream truth, NOT a tier-a marker for
+# RoamCore's tier. The tier-a marker for RoamCore would be
+# a RoamCore-owned operator-wired setup flow + RoamCore-
+# owned integration code + integration tests against a
+# RoamCore-owned levelling bench. None of those are shipped
+# at tier-b. Tier-b honesty: MPU-6050 / MPU-9250 / BNO055 /
+# LSM6DS3 / HWH / Lippert / Power Gear / Bigfoot / Mopeka /
+# TireMinder / ESPHome / Companion / HA / HACS / phone
+# IMU / BLE / Wi-Fi / jack / pump / relay / accelerometer
+# / gyroscope are all upstream / vendor / HACS / hardware
+# code; the RoamCore wrapper is a thin upstream-entity-
+# aggregation layer + the contract layer + the fridge-safe
+# gate + the §8 MANDATORY automations.
+
+id: leveling
+name: "Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella for HA — phone IMU + permanent IMU + levelling jacks + Bluetooth pads, operator picks ONE path) — tier-b recipe connection"
+tier: b
+category: vehicle
+status: beta
+version: 0.1.0
+description: |
+  Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella
+  for HA, covering phone IMU + permanent IMU board + levelling
+  jacks + Bluetooth pads — phone IMU covers the most-asked
+  user-facing question "Are we level?" without extra hardware;
+  permanent IMU board covers the always-on / reliable reading;
+  levelling jacks cover the auto-extend / auto-retract affordance
+  for motorhomes; Bluetooth pads cover the aftermarket pad-
+  mounted levelling) — the umbrella for "Better sleep and
+  cooking. Quick 'good enough' check without guessing" — is
+  the vehicle-category complement to the broader RoamCore
+  comfort affordances. The single "are we level?" tile
+  aggregates the upstream pitch / roll into one dashboard
+  indicator; the "pitch" tile surfaces the current pitch in
+  degrees; the "roll" tile surfaces the current roll in
+  degrees; the "max tilt" tile is the max of `|pitch|` +
+  `|roll|`; the "is level" tile is the strict level gate
+  (TRUE iff max_tilt < 0.5°); the "is close to level" tile
+  is the relaxed level gate (TRUE iff max_tilt < 1.5°); the
+  "mode" selector is the operator-facing affordance (one of
+  `off` / `read_only` / `auto_warn` / `auto_jack`); the
+  "last calibrated at" tile surfaces the timestamp of the
+  last operator-initiated calibration; the "calibrate now"
+  button is the operator-triggered calibration (touches the
+  calibration offset and updates last_calibrated_at); the
+  "jack status" tile surfaces the jack state (only when Path
+  C jacks are wired); the "fridge safe" tile is the §8
+  MANDATORY automation target (TRUE iff the fridge is safe
+  to run).
+
+  RoamCore does NOT ship a native levelling engine; we RECIPE
+  the well-understood upstream HA core `sensor` integration
+  (since 2022.x — has exposed a `sensor.*` entity with
+  `degrees` unit + `state_class: measurement` + the
+  `sensor.set_value` service + the `sensor` domain) + the
+  HA core `template:` sensor wrapper (since 2022.x — wraps
+  any upstream sensor state into a derived `sensor.*`
+  entity that exposes the standard `state` attribute) + the
+  HA core `template:` binary_sensor wrapper (since 2022.x —
+  wraps any upstream sensor threshold into a derived
+  `binary_sensor.*` entity) + the HA Companion app on iOS /
+  Android (since 2022.x — exposes the phone's built-in IMU
+  as `sensor.<phone>_accelerometer` +
+  `sensor.<phone>_gyroscope` +
+  `sensor.<phone>_orientation` entities) + the ESPHome
+  `mpu6050` / `mpu9250` / `bno055` / `lsm6ds3` components
+  (since 2022.x — flash to an ESP32 / ESP8266 board via the
+  ESPHome integration's device-discovery flow + the
+  resulting `sensor.<board>_*` entities) + the HACS `mopeka`
+  integration (HACS — surfaces Mopeka BLE levelling pads
+  as `sensor.<pad>_pitch` + `sensor.<pad>_roll` entities) +
+  the HACS `bno055` integration (HACS — surfaces BNO055
+  BLE IMU boards as `sensor.<board>_orientation` entities)
+  + the HACS `esp32_imu` integration (HACS — surfaces
+  ESP32-based IMU boards as `sensor.<board>_*` entities).
+  The umbrella publishes the 10 `rc_level_*` contract tiles
+  documented below (vendor-neutral — no MPU-6050 / MPU-9250
+  / BNO055 / LSM6DS3 / HWH / Lippert / Power Gear / Bigfoot
+  / Mopeka / TireMinder / ESPHome / Companion / HA / HACS
+  / phone / BLE / Wi-Fi / jack / pump / relay / accelerometer
+  / gyroscope names leak into the tile ids). RoamCore does
+  NOT fork any of the upstream IMU integrations; the
+  contract layer is a thin upstream-entity-aggregation
+  wrapper + the vendor-neutral tile surface + the fridge-
+  safe gate + the §8 MANDATORY automations.
+
+  The recipe covers the FOUR operator-pickable paths (Path A
+  phone IMU + Path B permanent IMU board with four sub-flavors
+  ESPHome MPU-6050 / ESPHome MPU-9250 / ESPHome BNO055 /
+  ESPHome LSM6DS3 + Path C levelling jacks with three sub-
+  flavors HWH / Lippert / Power Gear / Bigfoot + Path D
+  Bluetooth pads with three sub-flavors Mopeka / Lippert /
+  TireMinder) + the FIVE §8 MANDATORY automations (auto-
+  warn when out of level + sleep-mode warning + fridge safety
+  gate + auto-jack extend + calibration reminder) + the 10
+  `rc_level_*` contract tiles + the 6 §9 troubleshooting
+  entries + the §10 privacy section (no RoamCore-side
+  telemetry; the upstream IMU entity's logs are operator-
+  owned via the HA core logbook; the HA Companion app's
+  phone IMU requires its own platform auth for first-time
+  setup if the operator selects Path A but subsequent runs
+  are local; the ESPHome flash is local; the HACS `mopeka` /
+  `bno055` / `esp32_imu` integrations are local) + the §11
+  tier-a promotion outline (real IMU board + ESPHome flash
+  + levelling-jack relay bench + canned fixture responses
+  for pitch / roll events on CI bench + RoamCore-owned
+  operator-wired setup flow walking the operator through
+  choosing Path A / B / C / D + declaring the upstream
+  entities + the fridge-safe gate + integration tests
+  asserting an out-of-level event triggers the auto-warn +
+  a fridge-unsafe event triggers the fridge-safety gate +
+  a Sleep mode change triggers the sleep-mode warning) +
+  the §12 cross-references (the time-atomic Wave 3 #55
+  connection for the time-of-day / sunrise-sunset primitives
+  used by the §8.5 calibration reminder + the mode/
+  automation-builder Wave 2 #23 recipe for the
+  `select.rc_mode` tile + the HVAC basics Wave 3 #49
+  connection for the cabin temperature sensor used by the
+  §8.2 sleep-mode warning's cabin-light-dim behavior + the
+  approach lights Wave 3 #52 connection for the cabin
+  lighting scene cross-referenced by the §8.2 sleep-mode
+  warning + the NFC tags Wave 3 #57 connection for the
+  optional NFC-tag-triggered calibration affordance + the
+  fans Wave 3 #59 connection for the §8.4 auto-jack extend
+  cross-referencing the fan-off-on-tilt behavior).
+
+  The REUSE-FIRST strategy is intentional: HA's core
+  `sensor` integration (since 2022.x) handles the upstream
+  IMU board OR the upstream Bluetooth pad OR the upstream
+  relay state (95%+ of operator-facing levelling operators);
+  the HA core `template:` sensor wrapper (since 2022.x)
+  derives the pitch / roll / max-tilt / is-level / is-close-
+  to-level / fridge-safe tiles from the upstream entities;
+  the HA Companion app (since 2022.x) exposes the phone's
+  built-in IMU without extra hardware; the ESPHome `mpu6050`
+  / `mpu9250` / `bno055` / `lsm6ds3` components (since
+  2022.x) handle the permanent IMU board wiring; the HACS
+  `mopeka` / `bno055` / `esp32_imu` integrations (HACS)
+  handle the Bluetooth pad wiring; the well-known pneumatic
+  / hydraulic levelling jacks driven via relay handle Path
+  C. All upstream integrations are upstream / vendor / HACS
+  code; the RoamCore wrapper is a thin upstream-entity-
+  aggregation layer + the contract layer + the fridge-safe
+  gate + the §8 MANDATORY automations.
+icon: mdi-axis-arrow
+codeowners:
+  - "@bernardc"
+tags:
+  - leveling
+  - level
+  - pitch
+  - roll
+  - imu
+  - accelerometer
+  - gyroscope
+  - orientation
+  - fridge-safe
+  - sleep-warning
+  - auto-warn
+  - auto-jack
+  - calibration
+  - levelling-jacks
+  - bluetooth-pads
+  - vehicle
+  - ha-integration
+  - hacs
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~45 min"
+  requires_reboot: false
+  setup_notes: |
+    Leveling requires the operator to (a) pick ONE of the
+    FOUR paths (Path A phone IMU + Path B permanent IMU
+    board with four sub-flavors ESPHome MPU-6050 / ESPHome
+    MPU-9250 / ESPHome BNO055 / ESPHome LSM6DS3 + Path C
+    levelling jacks with three sub-flavors HWH / Lippert /
+    Power Gear / Bigfoot + Path D Bluetooth pads with
+    three sub-flavors Mopeka / Lippert / TireMinder), (b)
+    set up the chosen path's upstream integration (Path A —
+    install the HA Companion app on the operator's phone +
+    enable the IMU sensor permission; Path B — flash the
+    ESPHome firmware to the ESP32 / ESP8266 + the ESPHome
+    integration auto-discovers the IMU board; Path C —
+    wire the 8-channel / 12-channel / 16-channel relay
+    board + the HA core `template:` switch wrapper; Path D
+    — install the HACS `mopeka` / `bno055` / `esp32_imu`
+    integration OR the vendor app), (c) verify the upstream
+    `sensor.*` entities exist (Path A — `sensor.<phone>_
+    accelerometer` + `sensor.<phone>_gyroscope` +
+    `sensor.<phone>_orientation`; Path B —
+    `sensor.<board>_mpu6050_accel_x` etc. OR
+    `sensor.<board>_bno055_orientation_x` etc.; Path D —
+    `sensor.<pad>_pitch` + `sensor.<pad>_roll`), (d)
+    configure the operator-facing `sensor.rc_level_pitch_
+    degrees` + `sensor.rc_level_roll_degrees` +
+    `sensor.rc_level_max_tilt_degrees` +
+    `binary_sensor.rc_level_is_level` +
+    `binary_sensor.rc_level_is_close_to_level` contract
+    tiles to point at the operator's chosen upstream
+    `sensor.*` entities, (e) configure `select.rc_level_
+    mode` to the operator's chosen starting mode (default
+    `read_only`), (f) wire the FIVE §8 MANDATORY automations
+    (auto-warn when out of level + sleep-mode warning +
+    fridge safety gate + auto-jack extend (Path C only) +
+    calibration reminder), (g) press `button.rc_level_
+    calibrate_now` once to seed the calibration offset
+    (REQUIRED before first use — the fridge-safe tile
+    depends on a calibrated zero). RoamCore does NOT maintain
+    a custom levelling integration; the HA core `sensor`
+    integration + the HA core `template:` sensor wrapper
+    + the HA Companion app + the ESPHome components + the
+    HACS `mopeka` / `bno055` / `esp32_imu` integrations +
+    the upstream pneumatic / hydraulic levelling jack
+    relay wiring handle 95%+ of operator-facing levelling
+    operators.
+
+install:
+  ha_integration_domain: sensor
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_level_pitch_degrees_contract_tile
+    - registers_level_roll_degrees_contract_tile
+    - registers_level_max_tilt_degrees_contract_tile
+    - registers_level_is_level_contract_tile
+    - registers_level_is_close_to_level_contract_tile
+    - registers_level_mode_contract_tile
+    - registers_level_last_calibrated_at_contract_tile
+    - registers_level_calibrate_now_contract_tile
+    - registers_level_jack_status_contract_tile
+    - registers_level_fridge_safe_contract_tile
+    - may_register_auto_warn_when_out_of_level_automation
+    - may_register_sleep_mode_warning_automation
+    - may_register_fridge_safety_gate_automation
+    - may_register_auto_jack_extend_automation
+    - may_register_calibration_reminder_automation
+
+dashboard:
+  title: "Leveling"
+  tiles:
+    - sensor.rc_level_pitch_degrees
+    - sensor.rc_level_roll_degrees
+    - sensor.rc_level_max_tilt_degrees
+    - binary_sensor.rc_level_is_level
+    - binary_sensor.rc_level_is_close_to_level
+    - select.rc_level_mode
+    - sensor.rc_level_last_calibrated_at
+    - button.rc_level_calibrate_now
+    - sensor.rc_level_jack_status
+    - binary_sensor.rc_level_fridge_safe
+
+openclaw:
+  queries:
+    - "are we level?"
+    - "what is the current pitch?"
+    - "what is the current roll?"
+    - "what is the max tilt?"
+    - "is the fridge safe to run?"
+    - "what is the leveling mode?"
+    - "when was the IMU last calibrated?"
+    - "calibrate the IMU now"
+    - "extend the levelling jacks"
+    - "is the sleep-mode warning active?"
+  summary_keys:
+    - is_level
+    - max_tilt_degrees
+    - mode
+    - fridge_safe
+    - last_calibrated_at
+    - jack_status
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_levelling_board_for_integration_test
+  - recipe_depends_on_user_running_imu_plus_template_wrapper_plus_fridge_sensor
+  - optional_phone_imu_vs_permanent_imu_vs_jacks_vs_bluetooth_pads_choice
+  - requires_operator_wiring_calibration_before_first_use
+  - fridge_safety_gate_must_be_wired_before_fridge_use
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/sensor/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/input_button/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/cover/
+    - https://www.home-assistant.io/integrations/switch/
+    - https://www.home-assistant.io/integrations/esphome/
+    - https://companion.home-assistant.io/
+    - https://hacs.xyz/docs/integrations/active
+  cross_references:
+    - ../hvac-basics/
+    - ../time-atomic/
+    - ../approach-lights/
+    - ../motion-based-lighting/
+    - ../nfc-tags/
+    - ../remote-access/
+    - ../fans/
+    - ../smart-automations/

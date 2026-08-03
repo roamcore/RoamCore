@@ -124,6 +124,8 @@ run_if_present "connections/remote-access/tests/test_connection_yml.py" \
   "Connection: Remote access (Tailscale + Cloudflare Tunnel + Nabu Casa + Wireguard, tier-b) — manifest honesty smoke check"
 run_if_present "connections/fans/tests/test_connection_yml.py" \
   "Connection: Fans (rooftop + circulation) (tier-b) — vendor-neutral fan controller + rain-sensor safety block: manifest honesty smoke check"
+run_if_present "connections/leveling/tests/test_connection_yml.py" \
+  "Connection: Leveling (IMU) (tier-b) — vendor-neutral pitch/roll + auto-jack + fridge-safe gate: manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
