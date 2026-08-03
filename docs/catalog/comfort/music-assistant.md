@@ -1,6 +1,6 @@
 # Music Assistant
 
-Music Assistant (<.
+Music Assistant is a provider- agnostic multi-room audio orchestrator very popular in HA installs — it unifies Spotify, Apple Music, TuneIn/radio, local files, and Chromecast/AirPlay/Sonos receivers behind a single "play everywhere" surface with per-zone controls.
 
 ## What you need
 

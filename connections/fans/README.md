@@ -43,7 +43,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require a RoamCore-owned fan engine + integration code + integration tests against a real fan bench (a controlled environment with a Z-Wave fan controller + a 12 V fan + a Bond Home + a MaxxAir + a rain sensor + canned fixture responses for humidity/temperature/rain events — all wired together in a controlled environment). We have no operator-side fan bench on the CI to integration-test against (the bench requires the operator's chosen upstream fan controller + a 12 V / 24 V fan + a humidity sensor + a temperature sensor + a rain sensor + canned fixture responses for humidity/temperature/rain events — all wired together in a controlled environment). Tier-b is the honest tier: MaxxAir / Fan-Tastic / MAXXAIR Deluxe / Bond Home / Hunter SIMPLEconnect / Tuya / Z-Wave / Zigbee / Shelly / Zooz / Aeotec / Inovelli are all upstream / vendor / HACS code (not RoamCore-owned); the RoamCore wrapper is a thin upstream-entity-aggregation layer + the contract layer + the rain-sensor safety block. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/fans/index.md` — 14-line tier-c stub, originally listed "Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather. This section covers fan controllers, vent fans, and easy automations like 'run when humidity is high'" with no recipe + no contract + no vendor-neutral coverage — just a placeholder) is now superseded by this tier-b recipe connection.
+The legacy catalog page (the legacy spec — 14-line tier-c stub, originally listed "Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather. This section covers fan controllers, vent fans, and easy automations like 'run when humidity is high'" with no recipe + no contract + no vendor-neutral coverage — just a placeholder) is now superseded by this tier-b recipe connection.
 
 ## Files
 
@@ -54,7 +54,7 @@ The legacy catalog page (`docs/catalog/fans/index.md` — 14-line tier-c stub, o
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/fans/index.md`](../../docs/catalog/fans/index.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `fan` integration (the canonical umbrella): https://www.home-assistant.io/integrations/fan/
 - HA core `zwave_js` integration (Path A1 Z-Wave fan controllers): https://www.home-assistant.io/integrations/zwave_js/
 - HA core `zha` integration (Path A2 Zigbee fan controllers): https://www.home-assistant.io/integrations/zha/

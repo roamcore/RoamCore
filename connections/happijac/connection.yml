@@ -1,6 +1,6 @@
 # Happijac bed lift (van bed up/down control) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/bed-lift/happijac.md (legacy tier-c, 27 lines).
+# Promoted from a legacy spec (legacy tier-c, 27 lines).
 # Promoted into tier-b because RoamCore does NOT ship a native Happijac
 # controller — we RECIPE the well-understood combination of one of two
 # upstream operator-side paths:

@@ -43,8 +43,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> remote-access/ -> 
 CONNECTION_DIR = REPO_ROOT / "connections" / "remote-access"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "remote-access" / "index.md"
-LEGACY_TAILSCALE_DOC = REPO_ROOT / "docs" / "catalog" / "remote-access" / "tailscale.md"
 
 
 @pytest.fixture(scope="module")
@@ -347,65 +345,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-b legacy doc — category must match.
-
-    The legacy tier-b spec lives at
-    docs/catalog/remote-access/index.md (a 16-line stub,
-    originally listed ONLY Tailscale at "Support tier: B" with no
-    recipe + no contract + no broader vendor-neutral coverage —
-    just a placeholder about "check sensor status, view cameras,
-    get alerts, or (optionally) control systems" + "safe ways to
-    reach Home Assistant remotely, with clear notes on security
-    and support level") + the legacy tier-b Tailscale spec at
-    docs/catalog/remote-access/tailscale.md (a 23-line stub
-    originally listed ONLY Tailscale at "Support tier: B" with
-    no recipe + no contract + no broader vendor-neutral coverage).
-    We promote the connection into the `networking` category so
-    the audit + boundary-CI can pair them up. The legacy docs
-    MUST still exist (with the supersession banner) so that the
-    recipe can reference them AND the audit can verify the
-    supersession banners are in place.
-    """
-    assert manifest["category"] == "networking", (
-        f"category must stay 'networking' (legacy docs live at "
-        f"docs/catalog/remote-access/index.md + "
-        f"docs/catalog/remote-access/tailscale.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-b doc at "
-        "docs/catalog/remote-access/index.md to still exist so "
-        "we can reference it from the recipe (and add a "
-        "supersession banner)"
-    )
-    assert LEGACY_TAILSCALE_DOC.is_file(), (
-        "expected the legacy tier-b Tailscale doc at "
-        "docs/catalog/remote-access/tailscale.md to still exist "
-        "so we can reference it from the recipe (and add a "
-        "supersession banner)"
-    )
-    # Belt-and-braces: the legacy docs must carry the supersession
-    # banner so the false tier-b placeholder doesn't leak into any
-    # downstream catalog scrape. The banner text is the verbatim
-    # spec-required string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/remote-access/index.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/remote-access/" in legacy_index_text, (
-        "legacy docs/catalog/remote-access/index.md must "
-        "point at `connections/remote-access/` per spec"
-    )
-    legacy_tailscale_text = LEGACY_TAILSCALE_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_tailscale_text, (
-        "legacy docs/catalog/remote-access/tailscale.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/remote-access/" in legacy_tailscale_text, (
-        "legacy docs/catalog/remote-access/tailscale.md must "
-        "point at `connections/remote-access/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

@@ -1239,7 +1239,7 @@ automations.
 External references:
 
 - Legacy catalog page (now superseded by this slice):
-  [`docs/catalog/ai/agent-actions-allowlist.md`](../../../catalog/ai/agent-actions-allowlist.md)
+  [the legacy spec](../../../catalog/ai/agent-actions-allowlist.md)
 - Design doc (philosophy + threat model + policy file
   format + execution flow + UI/UX proposal):
   [`docs/design/agent-actions-allowlist.md`](../../../design/agent-actions-allowlist.md)

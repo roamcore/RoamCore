@@ -1,6 +1,6 @@
 # Music Assistant (multi-room van audio) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/audio-media/music-assistant.md (legacy
+# Promoted from a legacy spec (legacy
 # tier-c, community-only). Promoted into tier-b because RoamCore does
 # NOT ship a native Music Assistant integration — we RECIPE the well-
 # understood combination of:

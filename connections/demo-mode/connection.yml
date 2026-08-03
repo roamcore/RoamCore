@@ -2,7 +2,7 @@
 # + auto-disable on real sensor reconnect + hard-block from
 # controlling real hardware + tier-b recipe connection.
 #
-# Promoted from docs/catalog/ai/demo-mode.md (legacy tier-a
+# Promoted from a legacy spec (legacy tier-a
 # claim stub, 14 lines — "Demo Mode lets RoamCore show
 # example values when critical sensors are missing, so the
 # UI still looks and feels complete during setup or demos.

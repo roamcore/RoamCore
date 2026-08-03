@@ -1,14 +1,14 @@
 # Time (atomic) (NTP-synchronized time with offline-resilience) — tier-c
 # recipe connection.
 #
-# Promoted from docs/catalog/time/atomic-time.md (legacy spec — note
+# Promoted from a legacy spec (legacy spec — note
 # that the unified-backlog row #55 says "Connection: Time (atomic)
-# | docs/catalog/time/index.md"; the legacy spec pointer is
-# docs/catalog/time/atomic-time.md which this slice creates + marks
+# | the legacy spec"; the legacy spec pointer is
+# the legacy spec which this slice creates + marks
 # SUPERSEDED, mirroring how Wave 3 #54 timezone-geolocator promoted
-# docs/catalog/time/timezone-geolocator.md. The legacy `docs/catalog/
+# the legacy spec. The legacy `docs/catalog/
 # time/index.md` is a thin folder overview; the actual atomic-time
-# spec pointer is the new docs/catalog/time/atomic-time.md created
+# spec pointer is the new the legacy spec created
 # in this slice).
 #
 # RoamCore does NOT ship a native atomic-clock or NTP engine; we

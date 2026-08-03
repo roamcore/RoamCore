@@ -38,7 +38,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests against a real approach-light bench (a Shelly 1 + 12 V / 24 V LED strip + Hue Bridge + Frigate entry zone, all wired together in a controlled environment), and `wizard.one_tap: true`. We have no operator-side approach-light bench on the CI to integration-test against (the bench requires physical hardware: a Shelly 1 + LED strip + Hue Bridge + Frigate entry zone, all wired together in a controlled environment + a way to simulate the first-arrival / dark / Frigate `person` trigger conditions). So this connection is honestly beta-tier: the recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/lighting/approach-and-underbody-lights.md`) listed "Support tier: C" with no recipe + no contract + no automations — just a placeholder that said "Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you're stepping and feel like the van is welcoming you home". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
+The original legacy catalog page (the legacy spec) listed "Support tier: C" with no recipe + no contract + no automations — just a placeholder that said "Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you're stepping and feel like the van is welcoming you home". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
 
 ## Files
 
@@ -49,7 +49,7 @@ The original legacy catalog page (`docs/catalog/lighting/approach-and-underbody-
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/lighting/approach-and-underbody-lights.md`](../../docs/catalog/lighting/approach-and-underbody-lights.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Bluetooth / Wi-Fi presence connection (companion for the §7.1 first-arrival trigger — Wave 3 #42): `connections/bluetooth-wifi-presence/`
 - Frigate connection (companion for the §7.4 camera-override soft-deterrent — Wave 3 #35): `connections/frigate/`
 - Mode / automation-builder connection (companion for the §7.5 Stealth-mode-suppression automation): `connections/mode-automation-builder/`

@@ -36,7 +36,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests against a real HVAC bench (a thermostat + a heater + an AC + a fan), and `wizard.one_tap: true`. We have no operator-side HVAC bench on the CI to integration-test against (the bench requires physical hardware: a thermostat + a heater + an AC + a fan + a temperature/humidity sensor + a relay board, all wired together in a controlled environment). So this connection is honestly beta-tier: the recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/hvac/hvac-basics.md`) mis-claimed "Support tier: A (RoamCore native)" — that claim was aspirational and false. RoamCore does NOT ship a native HVAC appliance; this connection is tier-b and the supersession banner on the legacy page reflects that.
+The original legacy catalog page (the legacy spec) mis-claimed "Support tier: A (RoamCore native)" — that claim was aspirational and false. RoamCore does NOT ship a native HVAC appliance; this connection is tier-b and the supersession banner on the legacy page reflects that.
 
 ## Files
 
@@ -47,7 +47,7 @@ The original legacy catalog page (`docs/catalog/hvac/hvac-basics.md`) mis-claime
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/hvac/hvac-basics.md`](../../docs/catalog/hvac/hvac-basics.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Heated floors + engine pre-heat connection (companion for the floor heat + engine pre-heat surface; Wave 3 #44): `connections/heated-floors/`
 - Victron (power) connection (companion for the §7 low-voltage lockout — diesel heater + AC pull 10–30 A sustained): `connections/victron/`
 - Mode / automation-builder connection (companion for the §7 mode-aware lockouts + the §8.1 Stealth / §8.2 Sleep / §8.3 Boost automations): `connections/mode-automation-builder/`

@@ -1,6 +1,6 @@
 # Starlink (sleep timer + bring-back-up controls) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/networking/starlink-sleep-timer.md (was tier-c,
+# Promoted from a legacy spec (was tier-c,
 # legacy/community-only). Stays at tier-b because RoamCore does NOT ship a
 # Starlink terminal (we have no Gen-2/Gen-3 dish on the bench to integration-
 # test against) and no native HA integration exists for the operator-side

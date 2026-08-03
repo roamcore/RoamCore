@@ -114,16 +114,16 @@ the test to assert the new flow is real.
 ## See also
 
 - Legacy catalog pages (now superseded by the connection manifest):
-  - [`docs/catalog/homelab/pi-hole.md`](../../docs/catalog/homelab/pi-hole.md)
-  - [`docs/catalog/homelab/adguard-home.md`](../../docs/catalog/homelab/adguard-home.md)
-- Catalog category index: `docs/catalog/homelab/index.md`
+  - [the legacy spec](../../the legacy spec)
+  - [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - RoamCore entity naming: `docs/reference/rc-entity-naming.md`
   (§net subsystem, `rc_net_dns_*` prefix).
 - OpenWrt router controls (the DNS blocker plugs into the LAN
   behind OpenWrt's DHCP options — the OpenWrt router pushes the
   blocker's IP as the LAN's only DNS server):
   `connections/openwrt-controls/`
-  (see `docs/catalog/networking/openwrt-controls.md`)
+  (see the legacy spec)
 - Starlink mobile-internet slice (peers with DNS blocker under
   the §net subsystem): `connections/starlink/`
 - Frigate NVR slice (uses the LAN but not the DNS subsystem):

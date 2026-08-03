@@ -1,7 +1,7 @@
 # Smoke / CO / gas safety sensors (van life safety monitoring) — tier-b
 # recipe connection.
 #
-# Promoted from docs/catalog/safety/smoke-co-gas-sensors.md (legacy
+# Promoted from a legacy spec (legacy
 # tier-c, ~28 lines). Promoted into tier-b because RoamCore does NOT
 # ship a native smoke detector, a CO detector, or a propane/LPG leak
 # sensor — we RECIPE three upstream operator-side paths:

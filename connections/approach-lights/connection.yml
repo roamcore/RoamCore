@@ -1,7 +1,6 @@
 # Approach lights (welcome-home exterior + underbody lighting) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/lighting/approach-and-underbody-lights.md
-# (legacy tier-c, ~24 lines, originally listed as "Support tier: C" with
+# Promoted from a legacy spec # (legacy tier-c, ~24 lines, originally listed as "Support tier: C" with
 # no recipe + no contract + no automations — just a placeholder that
 # said "Turn on exterior/underbody lights automatically when you
 # approach the van after dark, so you can see where you're stepping

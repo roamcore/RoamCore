@@ -50,7 +50,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> leveling/ -> conne
 CONNECTION_DIR = REPO_ROOT / "connections" / "leveling"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "level-sensor" / "leveling.md"
 
 
 @pytest.fixture(scope="module")
@@ -426,48 +425,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-a claim stub — category must match.
-
-    The legacy spec lives at
-    docs/catalog/level-sensor/leveling.md (an 18-line tier-a
-    claim stub, originally listed "RoamCore defines a levelling
-    contract (`rc_level_*`) and supports pitch/roll sensors so
-    the dashboard can show an easy levelling status. Better
-    sleep and cooking. Quick 'good enough' check without
-    guessing. A pitch/roll sensor (often via ESPHome /
-    accelerometer)" with no recipe + no contract + no
-    automations + no install path — just a placeholder with an
-    aspirational tier-a claim). We promote the connection into
-    the `vehicle` category so the audit + boundary-CI can pair
-    them up. The legacy doc MUST still exist (with the
-    supersession banner) so that the recipe can reference it
-    AND the audit can verify the supersession banner is in
-    place.
-    """
-    assert manifest["category"] == "vehicle", (
-        f"category must stay 'vehicle' (legacy doc lives at "
-        f"docs/catalog/level-sensor/leveling.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "docs/catalog/level-sensor/leveling.md to still "
-        "exist so we can reference it from the recipe (and "
-        "add a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim doesn't
-    # leak into any downstream catalog scrape. The banner
-    # text is the verbatim spec-required string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/level-sensor/leveling.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/leveling/" in legacy_index_text, (
-        "legacy docs/catalog/level-sensor/leveling.md must "
-        "point at `connections/leveling/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

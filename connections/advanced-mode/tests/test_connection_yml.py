@@ -50,7 +50,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> advanced-mode/ -> 
 CONNECTION_DIR = REPO_ROOT / "connections" / "advanced-mode"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_INDEX_DOC = REPO_ROOT / "docs" / "catalog" / "ai" / "advanced-mode.md"
 
 
 @pytest.fixture(scope="module")
@@ -458,51 +457,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-a claim stub — category
-    must match.
-
-    The legacy spec lives at docs/catalog/ai/advanced-
-    mode.md (a 13-line tier-a claim stub, originally
-    listed "RoamCore includes an Advanced Mode toggle that
-    can reveal extra controls and diagnostics without
-    cluttering the default UI. Keeps the dashboard clean
-    for daily use. Still gives power users access to
-    deeper controls when needed. None. HA package:
-    homeassistant/packages/roamcore_advanced_mode.yaml"
-    with no recipe + no contract + no automations + no
-    install path — just a placeholder with an aspirational
-    tier-a claim). We promote the connection into the
-    `ai` category so the audit + boundary-CI can pair them
-    up. The legacy doc MUST still exist (with the
-    supersession banner) so that the recipe can reference
-    it AND the audit can verify the supersession banner
-    is in place.
-    """
-    assert manifest["category"] == "ai", (
-        f"category must stay 'ai' (legacy doc lives at "
-        f"docs/catalog/ai/advanced-mode.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "docs/catalog/ai/advanced-mode.md to still exist "
-        "so we can reference it from the recipe (and add "
-        "a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim
-    # doesn't leak into any downstream catalog scrape.
-    # The banner text is the verbatim spec-required
-    # string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/ai/advanced-mode.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/advanced-mode/" in legacy_index_text, (
-        "legacy docs/catalog/ai/advanced-mode.md must "
-        "point at `connections/advanced-mode/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

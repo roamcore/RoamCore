@@ -1,7 +1,7 @@
 # Deadbolts (smart lock control for van doors) — tier-b recipe
 # connection.
 #
-# Promoted from docs/catalog/safety/deadbolts.md (legacy tier-c,
+# Promoted from a legacy spec (legacy tier-c,
 # ~30 lines). Promoted into tier-b because RoamCore does NOT
 # ship a native smart deadbolt — we RECIPE three upstream
 # operator-side paths:

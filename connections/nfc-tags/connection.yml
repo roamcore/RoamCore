@@ -1,7 +1,7 @@
 # NFC tags (vendor-neutral NFC-triggered scenes mapped via tag_id → scene
 # mapping) — tier-c recipe connection.
 #
-# Promoted from docs/catalog/nfc-tags/index.md (legacy 14-line stub —
+# Promoted from a legacy spec (legacy 14-line stub —
 # originally listed as "Support tier: C" with no recipe + no contract +
 # no automations — just a placeholder about "easy NFC-based automations
 # and practical places to put tags in a van" + "Lights off", "Bedtime",

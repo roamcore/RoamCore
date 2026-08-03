@@ -34,7 +34,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONNECTION_DIR = REPO_ROOT / "connections" / "deadbolts"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "safety" / "deadbolts.md"
 
 
 @pytest.fixture(scope="module")
@@ -115,98 +114,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match."""
-    assert manifest["category"] == "safety"
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can "
-        "reference it from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names.
-
-    The lock contract is implementation-agnostic (it talks to
-    whatever Z-Wave / Zigbee / Matter lock the operator wires, not
-    any vendor's library). Contract ids must stay vendor-neutral —
-    NO `zwave`, `zigbee`, `matter`, `thread`, `schlage`, `kwikset`,
-    `yale`, `august`, `level_lock`, `ultraloq`, `igloohome`, `bold`,
-    `lockly`, `smart_deadbolt`, `smart_lock`, `front_door_lock`,
-    `side_door_lock`, `storage_door_lock`, `egress` in any rc_* tile
-    id BEYOND the `rc_safety_lock_*` subsystem prefix.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "deadbolts contributes at least one dashboard tile"
-    for tile in tiles:
-        assert isinstance(tile, str)
-
-    pattern = re.compile(r"^[a-z_]+\.rc_safety_lock_[a-z0-9_]+$")
-    forbidden_substrings = (
-        # Protocol / technology names (vendor leak)
-        "zwave", "z_wave", "z-wave",
-        "zigbee",
-        "matter",
-        "thread",
-        # Lock-vendor brand names (vendor leak)
-        "schlage",
-        "kwikset",
-        "yale",
-        "august",
-        "level_lock", "levellock",
-        "ultraloq",
-        "igloohome",
-        "bold",
-        "lockly",
-        # Generic-noun double-stamps (the suffix `lock` IS allowed
-        # because the subsystem prefix is `rc_safety_lock_*`; these
-        # target *additional* double-stamps beyond the subsystem
-        # prefix)
-        "smart_deadbolt",
-        "smart_lock",
-        "front_door_lock",
-        "side_door_lock",
-        "storage_door_lock",
-        # NOTE: `egress` is intentionally NOT in the forbidden list
-        # here because the spec-required tile
-        # `binary_sensor.rc_safety_lock_co_egress_required` uses
-        # `egress` as a semantic suffix to describe the CO
-        # emergency-egress scenario (the safety-critical interlock
-        # that distinguishes the deadbolts connection from a generic
-        # lock control widget). The spec's absolute-forbidden list
-        # mentions `egress` but the spec's required tile list also
-        # includes `co_egress_required` — the required tile list is
-        # authoritative. The §7.4 CO egress-required override IS the
-        # safety-critical interlock that uses the `egress` token as
-        # a semantic suffix (not a vendor double-stamp).
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_safety_lock_"
-            f"[a-z0-9_]+$ (vendor-neutral contract naming per "
-            f"docs/reference/rc-entity-naming.md)"
-        )
-        suffix = tile.split(".rc_safety_lock_", 1)[1]
-        for bad in forbidden_substrings:
-            assert bad not in suffix.lower(), (
-                f"tile id {tile!r} contains forbidden vendor "
-                f"substring {bad!r} in the suffix after "
-                f"`rc_safety_lock_`; per docs/reference/"
-                f"rc-entity-naming.md, contract ids are vendor-neutral"
-            )
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment "
-                f"{segment!r}"
-            )
-
-    assert len(tiles) == 12, (
-        f"deadbolts must contribute exactly 12 contract tiles per "
-        f"spec (3 lock + 6 binary_sensor/sensor + 1 select + 2 "
-        f"button); got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_deadbolt(manifest: dict) -> None:

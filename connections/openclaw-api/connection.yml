@@ -1,6 +1,6 @@
 # OpenClaw JSON API — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents — tier-a connection.
 #
-# Promoted from docs/catalog/ai/openclaw-json-api.md (legacy
+# Promoted from a legacy spec (legacy
 # 14-line tier-a claim stub — "RoamCore exposes stable JSON
 # endpoints for local agents (system summary + skill execution)
 # so assistants can read state and (optionally) take safe
@@ -39,7 +39,7 @@
 # `docs/reference/openclaw-json-api.md` (230 lines).
 #
 # The legacy tier-a claim in
-# `docs/catalog/ai/openclaw-json-api.md` is HONEST — the
+# the legacy spec is HONEST — the
 # integration at
 # `homeassistant/custom_components/roamcore_openclaw_api/` IS
 # real + RoamCore-owned + audited + smoketest-validated + the
@@ -500,7 +500,7 @@ description: |
   RoamCore DOES own + maintain + ship a real custom
   component (this is the FIRST TRUE tier-a connection in
   the pipeline — the legacy tier-a claim at
-  `docs/catalog/ai/openclaw-json-api.md` is HONEST). The
+  the legacy spec is HONEST). The
   install path is HACS (RoamCore is shipped as a HACS
   custom repository, then Settings → Devices & services →
   RoamCore → Configure → Enable OpenClaw API) OR the

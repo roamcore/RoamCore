@@ -120,12 +120,12 @@ test to assert the new flow is real.
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/homelab/nas.md`](../../docs/catalog/homelab/nas.md)
+  [the legacy spec](../../the legacy spec)
   — note that the legacy page is actually tagged tier-b (not
   tier-c like some other legacy pages) per its frontmatter, and
   has been promoted into this single tier-b connection slice with
   Path A / Path B / Path C.
-- Catalog category index: `docs/catalog/homelab/index.md`
+- Catalog category index: the legacy spec
 - RoamCore entity naming: `docs/reference/rc-entity-naming.md`
   (`homelab` subsystem mapping for self-hosted appliances — the
   canonicalization pass will codify this in a follow-up).

@@ -44,7 +44,7 @@ Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests aga
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/safety/deadbolts.md`](../../docs/catalog/safety/deadbolts.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Smoke / CO / gas safety sensors connection (companion for the §7 CO egress-required override): `connections/smoke-co-gas-sensors/`
 - Bluetooth / Wi-Fi presence connection (companion for the §7 unattended-unlock alarm): `connections/bluetooth-wifi-presence/`
 - Mode / automation-builder connection (companion for the §7 Away + Sleep mode-aware auto-lock): `connections/mode-automation-builder/`

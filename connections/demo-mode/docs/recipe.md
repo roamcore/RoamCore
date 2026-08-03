@@ -958,7 +958,7 @@ Until those three are in place, the slice is tier-b.
 
 Cross-references:
 - Legacy catalog page (now superseded by this slice):
-  `docs/catalog/ai/demo-mode.md`.
+  the legacy spec.
 - HA core `input_boolean` integration (the canonical
   demo-enabled helper umbrella): https://www.home-assistant.io/integrations/input_boolean/.
 - HA core `input_select` integration (the canonical

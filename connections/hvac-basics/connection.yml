@@ -1,6 +1,6 @@
 # HVAC basics (heating/cooling foundations) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/hvac/hvac-basics.md (legacy tier-c, ~15 lines,
+# Promoted from a legacy spec (legacy tier-c, ~15 lines,
 # originally mis-claimed as "Support tier: A — RoamCore native", which was
 # aspirational and false). Promoted into tier-b because RoamCore does NOT
 # ship a native HVAC appliance or bench — we RECIPE four upstream

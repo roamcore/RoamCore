@@ -1,7 +1,6 @@
 # Timezone geolocator (location-aware HA timezone) — tier-c recipe connection.
 #
-# Promoted from docs/catalog/time/timezone-geolocator.md
-# (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
+# Promoted from a legacy spec # (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
 # with no recipe + no contract + no automations — just a placeholder
 # that said "RoamCore includes notes for using GeoLocator to keep
 # time zone correct based on location"). Promoted into tier-c

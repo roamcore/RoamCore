@@ -1,7 +1,6 @@
 # Motion-based lighting (driving + arrival) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/lighting/motion-based-lighting.md
-# (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
+# Promoted from a legacy spec # (legacy tier-c, ~14 lines, originally listed as "Support tier: C"
 # with no recipe + no contract + no automations — just a placeholder
 # that said "Make lighting feel automatic: turn off interior house
 # lights when the vehicle starts moving, turn on soft interior lights

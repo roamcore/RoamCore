@@ -69,7 +69,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require pytest integration tests against a controlled bench (a controlled environment with canned fixture responses for the `/summary` endpoint with all `rc_*` fields populated, the `/summary` endpoint with all `rc_*` fields null/unknown, the `/skill` endpoint with auth required + auth not required, the `/rc_dump` endpoint with a mix of `rc_*` + non-`rc_*` entities, the `/timeseries/catalog` + `/timeseries` endpoints, the 404 response when `input_boolean.rc_openclaw_api_enabled` is OFF, and the 401 response when auth is required but LLAT is missing — all wired together in a controlled environment). We have a curl-based smoketest (`homeassistant/tools/openclaw_api_smoketest.sh`) that exercises the JSON contract end-to-end, but no pytest bench fixtures for canned `/summary` + `/skill` + `/rc_dump` + `/timeseries` responses. Tier-a-but-flagged is the honest tier: the integration HAS real code (the 233-line custom component) + a curl smoketest + a canonical spec, but the bench fixture gap is documented in `tier_requirements.integration_tests` below (8 canned-response bench artifacts needed for full tier-a promotion).
 
-The legacy catalog page (`docs/catalog/ai/openclaw-json-api.md` — 14-line tier-a claim stub) is preserved with a SUPERSEDED banner pointing at this connection (the legacy tier-a claim is HONEST — the integration IS real + RoamCore-owned + audited + smoketest-validated; this slice DOES NOT replace the existing code, only ADDS the connection-style manifest wrapper).
+The legacy catalog page (the legacy spec — 14-line tier-a claim stub) is preserved with a SUPERSEDED banner pointing at this connection (the legacy tier-a claim is HONEST — the integration IS real + RoamCore-owned + audited + smoketest-validated; this slice DOES NOT replace the existing code, only ADDS the connection-style manifest wrapper).
 
 ## Files
 
@@ -80,7 +80,7 @@ The legacy catalog page (`docs/catalog/ai/openclaw-json-api.md` — 14-line tier
 
 ## See also
 
-- Legacy catalog page (preserved with SUPERSEDED banner — the tier-a claim is HONEST): [`docs/catalog/ai/openclaw-json-api.md`](../../docs/catalog/ai/openclaw-json-api.md)
+- Legacy catalog page (preserved with SUPERSEDED banner — the tier-a claim is HONEST): [the legacy spec](../../the legacy spec)
 - Canonical contract spec: [`docs/reference/openclaw-json-api.md`](../../docs/reference/openclaw-json-api.md) (230 lines — the source of truth for the JSON payload shape + auth modes + endpoint catalog)
 - Agent install guide: [`docs/howto/openclaw-roamcore-skill.md`](../../docs/howto/openclaw-roamcore-skill.md) (62 lines — the canonical operator-walk through for installing the RoamCore skill into an OpenClaw agent)
 - Existing custom component: [`homeassistant/custom_components/roamcore_openclaw_api/`](../../homeassistant/custom_components/roamcore_openclaw_api/) (233 lines — the canonical implementation; registers the `HomeAssistantView`s at `/summary` + `/skill` + `/rc_dump` + `/timeseries/*`)

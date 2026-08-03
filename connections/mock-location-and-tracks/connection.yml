@@ -3,7 +3,7 @@
 #
 # This is the FIRST tier-a connection slice in Wave 3 (all prior Wave 3
 # slices were tier-b recipe-over-upstream). Promoted from
-# docs/catalog/map/mock-location-and-tracks.md (legacy tier-A claim,
+# the legacy spec (legacy tier-A claim,
 # 21 lines). The legacy spec was honest about the tier — RoamCore owns
 # the YAML packages + the Python generator natively, there is NO
 # external broker / device / vendor dependency, the mock is opt-in via

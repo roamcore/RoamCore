@@ -2,7 +2,7 @@
 # HA — phone IMU + permanent IMU board + levelling jacks + Bluetooth
 # pads, operator picks ONE path) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/level-sensor/leveling.md (legacy tier-a
+# Promoted from a legacy spec (legacy tier-a
 # claim, ~18 lines — "RoamCore defines a levelling contract
 # (`rc_level_*`) and supports pitch/roll sensors so the dashboard
 # can show an easy levelling status. Better sleep and cooking. Quick

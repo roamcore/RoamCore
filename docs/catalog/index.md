@@ -14,7 +14,7 @@ Stuff you can add to your van. Pick what you want and install it.
 - **[Happijac bed lift](comfort/happijac.md)** — Bed lift control — van bed up / down.
 - **[Heated floors + engine pre-heat](comfort/heated-floors.md)** — Heated floors + engine pre-heat — cold-weather comfort controls for vans — are the foundation of every "Warm up" automation in winter van life.
 - **[Motion-based lighting](comfort/motion-based-lighting.md)** — Motion-based lighting (driving + arrival).
-- **[Music Assistant](comfort/music-assistant.md)** — Music Assistant (<.
+- **[Music Assistant](comfort/music-assistant.md)** — Music Assistant is a provider- agnostic multi-room audio orchestrator very popular in HA installs — it unifies Spotify, Apple Music, TuneIn/radio, local files, and Chromecast/AirPlay/Sonos receivers behind a single "play everywhere" surface with per-zone controls.
 
 ## Connectivity
 

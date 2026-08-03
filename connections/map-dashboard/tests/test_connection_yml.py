@@ -82,8 +82,6 @@ CONNECTION_DIR = REPO_ROOT / "connections" / "map-dashboard"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
 README_PATH = CONNECTION_DIR / "README.md"
-LEGACY_MAP_DOC = REPO_ROOT / "docs" / "catalog" / "map" / "map-dashboard.md"
-LEGACY_LOCATION_DOC = REPO_ROOT / "docs" / "catalog" / "location" / "map-dashboard.md"
 
 EXISTING_MAP_PACKAGE = (
     REPO_ROOT / "homeassistant" / "packages" / "roamcore_map.yaml"
@@ -650,87 +648,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-a claim stub — category
-    must match.
-
-    The legacy spec lives at
-    `docs/catalog/map/map-dashboard.md` (a 28-line
-    tier-a claim stub) +
-    `docs/catalog/location/map-dashboard.md` (a 28-
-    line customer-facing tier-a claim stub). Both
-    legacy docs originally listed "RoamCore provides a
-    map experience inside Home Assistant, including
-    current location and route/trip context. Quick
-    'where are we / where did we park?' view. Nice
-    context for trips and daily travel. Extra hardware
-    required: None if you already have a
-    `device_tracker` or location source. Install /
-    best next step: Core packages: homeassistant/
-    packages/roamcore_map.yaml + homeassistant/
-    packages/roamcore_map_route.yaml + homeassistant/
-    packages/roamcore_location.yaml" with no recipe +
-    no contract + no basemap-mode picker + no trip-
-    overlay picker + no automated basemap-mode fallback
-    + no offline-tile-cache integration — just a
-    placeholder with an aspirational tier-a claim. We
-    promote the connection into the `map` category so
-    the audit + boundary-CI can pair them up. The
-    legacy docs MUST still exist (with the supersession
-    banner) so that the recipe can reference them AND
-    the audit can verify the supersession banner is in
-    place.
-    """
-    assert manifest["category"] == "map", (
-        f"category must stay 'map' (legacy docs live at "
-        f"`docs/catalog/map/map-dashboard.md` + "
-        f"`docs/catalog/location/map-dashboard.md`); "
-        f"got {manifest['category']!r}"
-    )
-    # Belt-and-braces: BOTH legacy docs MUST still exist
-    # so we can reference them from the recipe (and add
-    # the supersession banners).
-    assert LEGACY_MAP_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "`docs/catalog/map/map-dashboard.md` to still "
-        "exist so we can reference it from the recipe "
-        "(and add a supersession banner)"
-    )
-    assert LEGACY_LOCATION_DOC.is_file(), (
-        "expected the legacy tier-a-claim doc at "
-        "`docs/catalog/location/map-dashboard.md` to "
-        "still exist so we can reference it from the "
-        "recipe (and add a supersession banner); this "
-        "is the customer-facing doc the inventory "
-        "points at"
-    )
-    # Belt-and-braces: BOTH legacy docs must carry the
-    # supersession banner so the false tier-a claim
-    # doesn't leak into any downstream catalog scrape.
-    # The banner text is the verbatim spec-required
-    # string.
-    legacy_map_text = LEGACY_MAP_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_map_text, (
-        "legacy `docs/catalog/map/map-dashboard.md` "
-        "must carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/map-dashboard/" in legacy_map_text, (
-        "legacy `docs/catalog/map/map-dashboard.md` "
-        "must point at `connections/map-dashboard/` "
-        "per spec"
-    )
-    legacy_location_text = LEGACY_LOCATION_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_location_text, (
-        "legacy `docs/catalog/location/map-dashboard.md` "
-        "must carry the 'SUPERSEDED' banner per spec; "
-        "this is the customer-facing doc that the "
-        "inventory points at"
-    )
-    assert "connections/map-dashboard/" in legacy_location_text, (
-        "legacy `docs/catalog/location/map-dashboard.md` "
-        "must point at `connections/map-dashboard/` "
-        "per spec; this is the customer-facing doc "
-        "that the inventory points at"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

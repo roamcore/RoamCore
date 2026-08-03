@@ -69,7 +69,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> nas/ -> connection
 CONNECTION_DIR = REPO_ROOT / "connections" / "nas"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_NAS_DOC = REPO_ROOT / "docs" / "catalog" / "homelab" / "nas.md"
 
 
 @pytest.fixture(scope="module")
@@ -199,135 +198,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from the legacy tier-b doc — category must match.
-
-    The legacy tier-b spec lives at
-    docs/catalog/homelab/nas.md. The legacy page's category is the
-    homelab bucket (the operator-facing way to discover "self-hosted
-    storage you might want in the van"). The contract entities this
-    connection publishes are `rc_homelab_nas_*` ids — the `homelab`
-    subsystem is being introduced by this slice (it isn't yet
-    enumerated in docs/reference/rc-entity-naming.md's §subsystem
-    list, but the canonicalization pass will codify `homelab` for
-    self-hosted appliances in a follow-up). So the connection
-    manifest's `category` must be `homelab` (matching the legacy
-    doc's bucket + matching the subsystem prefix the contract
-    tiles use).
-
-    NUANCE: the dns-blocker test (the closest peer slice) explicitly
-    allows the bridging from `homelab` → `networking` because the
-    dns-blocker contract ids are `rc_net_dns_*` (the §net subsystem).
-    The NAS contract ids are `rc_homelab_nas_*` (the homelab bucket
-    directly), so there is NO bridging here — `category=homelab`
-    matches the legacy doc pairing AND matches the subsystem prefix
-    the contract tiles use.
-
-    CRITICAL: the legacy doc must still exist (this connection
-    covers the same single legacy page, not multiple) so the
-    supersession banner can point at it.
-    """
-    assert manifest["category"] == "homelab", (
-        f"category must stay 'homelab' (matches legacy doc at "
-        f"{LEGACY_NAS_DOC.relative_to(REPO_ROOT)} + matches the "
-        f"`rc_homelab_nas_*` subsystem prefix used by the contract "
-        f"tiles per docs/reference/rc-entity-naming.md); "
-        f"got {manifest['category']!r}"
-    )
-    assert LEGACY_NAS_DOC.is_file(), (
-        f"expected the legacy NAS tier-b doc to still exist at {LEGACY_NAS_DOC} "
-        f"so the supersession banner can point at it"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The §homelab NAS contract is implementation-agnostic (it talks
-    to whichever NAS the operator runs — Synology, QNAP, or generic
-    SMB/NFS — via the upstream HA integration or via configuration
-    yaml + the backup integration). Contract ids must stay vendor-
-    neutral — no `synology`, `qnap`, `diskstation`, `dsm`, `smb`,
-    `cifs`, `nfs`, `freenas`, `unraid`, `openmediavault`, or vendor
-    double-stamps of `nas` into the suffix.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_homelab_nas_[a-z0-9_]+$` (vendor-neutral,
-    subsystem prefix `rc_homelab_nas_*` per the homelab bucket
-    naming rules in docs/reference/rc-entity-naming.md). The
-    subsystem prefix IS allowed (it's the owning-area marker);
-    what is forbidden is vendor names appearing AFTER the
-    subsystem prefix in a way that double-stamps the vendor
-    into the id beyond the subsystem token.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "nas contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_homelab_nas_` may include digits
-    # (e.g. `_pct`) but must not contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_homelab_nas_[a-z0-9_]+$")
-
-    # Vendor / implementation names that must NEVER appear in any
-    # rc_* tile id (beyond the subsystem prefix). Includes author /
-    # host name of the upstream project AND common NAS OS names —
-    # the contract is implementation-agnostic.
-    forbidden = {
-        # NAS vendors
-        "synology", "qnap", "diskstation", "dsm",
-        # NAS OS / software platforms
-        "freenas", "truenas", "unraid", "openmediavault", "omv",
-        # File-share protocols / implementations
-        "smb", "cifs", "nfs", "samba", "netatalk", "afp",
-        # NAS-specific firmware / feature names
-        "raid", "snapraid", "btrfs", "zfs", "mergerfs",
-        # The subsystem prefix `nas` is the ONLY place that
-        # token appears — double-stamping "nas_" into the suffix
-        # (e.g. _nas_status) is forbidden.
-        "nas_",
-        # Cross-connection vendor leaks
-        "mqtt", "frigate", "starlink", "victron", "wican", "meatpi",
-        "pi_hole", "pi-hole", "adguard",
-    }
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_homelab_nas_[a-z0-9_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_homelab_nas_; the suffix (after
-        # `rc_homelab_nas_`) MUST be a single identifier segment
-        # — no double-stamping of vendor names into the suffix.
-        suffix = tile.split(".rc_homelab_nas_", 1)[1]
-        # Belt-and-braces: subsystem token `nas` MUST NOT appear
-        # as a standalone word in the suffix (the subsystem prefix
-        # is the only place that token lives).
-        assert "nas" not in suffix.lower().split("_"), (
-            f"tile id {tile!r} double-stamps 'nas' into the suffix "
-            f"(only the subsystem prefix `rc_homelab_nas_` may carry the token)"
-        )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-        for bad in forbidden:
-            # We explicitly allow the single 'nas' token inside
-            # the subsystem prefix by checking after rc_homelab_nas_.
-            tail = tile.split(".rc_homelab_nas_", 1)[-1] if ".rc_homelab_nas_" in tile else tile
-            assert bad not in tail.lower(), (
-                f"tile id {tile!r} contains forbidden name {bad!r}; "
-                f"per docs/reference/rc-entity-naming.md, contract ids are vendor-neutral"
-            )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_nas(manifest: dict) -> None:

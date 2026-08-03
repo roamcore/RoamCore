@@ -33,7 +33,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a requires a working RoamCore-owned `config_flow.py`, integration tests against a real electronic valve bench (a 12 V / 24 V electrically-actuated valve + a safe driver + an ESP32 + a relay + a tank-level sensor, all wired together in a controlled environment), and `wizard.one_tap: true`. We have no operator-side electronic valve bench on the CI to integration-test against (the bench requires physical hardware: a 12 V / 24 V electrically-actuated valve + a safe driver + an ESP32 + a relay + a tank-level sensor, all wired together in a controlled environment + a way to simulate the leak / freeze / low-voltage trigger conditions). So this connection is honestly beta-tier: the recipe is sound but we cannot claim one-tap automation.
 
-The original legacy catalog page (`docs/catalog/water/electronic-valves-and-auto-tank-switch.md`) listed "Support tier: C" with no recipe + no contract + no automations — just a placeholder that said "Use electronically controlled valves to automate water routing". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
+The original legacy catalog page (the legacy spec) listed "Support tier: C" with no recipe + no contract + no automations — just a placeholder that said "Use electronically controlled valves to automate water routing". The supersession banner on the legacy page reflects that the connection has been promoted to tier-b.
 
 ## Files
 
@@ -44,7 +44,7 @@ The original legacy catalog page (`docs/catalog/water/electronic-valves-and-auto
 
 ## See also
 
-- Legacy catalog page (now superseded): [`docs/catalog/water/electronic-valves-and-auto-tank-switch.md`](../../docs/catalog/water/electronic-valves-and-auto-tank-switch.md)
+- Legacy catalog page (now superseded): [the legacy spec](../../the legacy spec)
 - Water tanks connection (companion for the §6 auto tank switching source signals + the §7.1 / §7.2 safety interlock cross-references — Wave 3 #50): `connections/water-tanks/`
 - Victron (power) connection (companion for the §7.3 low-voltage lockout safety interlock — uses `sensor.rc_power_battery_soc` + `binary_sensor.rc_power_shore_connected`): `connections/victron/`
 - Heated floors + engine pre-heat connection (companion for the §7.2 freeze risk pattern — Wave 3 #44): `connections/heated-floors/`

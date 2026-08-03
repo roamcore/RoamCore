@@ -61,7 +61,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require a RoamCore-owned advanced-mode engine + integration code + integration tests against a real advanced-mode engine bench (a controlled environment with canned fixture responses for session-expired events + canned fixture responses for destructive-service-call blocking events + canned fixture responses for non-owner dashboard session events — all wired together in a controlled environment). We have no operator-side advanced-mode engine bench on the CI to integration-test against (the bench requires the operator's chosen destructive irreversible service call targets + canned fixture responses for session-expired events — all wired together in a controlled environment). Tier-b is the honest tier: HA core `input_boolean` + `input_text` + `input_datetime` + `input_button` + `select` + HA core `template:` are all upstream / vendor / HACS / hardware code (not RoamCore-owned); the RoamCore wrapper is a thin upstream-entity-aggregation layer + the contract layer + the FIVE §8 MANDATORY automations. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/ai/advanced-mode.md` — 13-line tier-a claim stub, originally listed "RoamCore includes an Advanced Mode toggle that can reveal extra controls and diagnostics without cluttering the default UI. Keeps the dashboard clean for daily use. Still gives power users access to deeper controls when needed. None. HA package: homeassistant/packages/roamcore_advanced_mode.yaml" with no recipe + no contract + no automations + no install path — just a placeholder with an aspirational tier-a claim) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore advanced-mode engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §8 automations as tier-b.
+The legacy catalog page (the legacy spec — 13-line tier-a claim stub, originally listed "RoamCore includes an Advanced Mode toggle that can reveal extra controls and diagnostics without cluttering the default UI. Keeps the dashboard clean for daily use. Still gives power users access to deeper controls when needed. None. HA package: homeassistant/packages/roamcore_advanced_mode.yaml" with no recipe + no contract + no automations + no install path — just a placeholder with an aspirational tier-a claim) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore advanced-mode engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §8 automations as tier-b.
 
 ## Files
 
@@ -72,7 +72,7 @@ The legacy catalog page (`docs/catalog/ai/advanced-mode.md` — 13-line tier-a c
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/ai/advanced-mode.md`](../../docs/catalog/ai/advanced-mode.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `input_boolean` integration (the canonical confirm-flag + enable-toggle helper umbrella): https://www.home-assistant.io/integrations/input_boolean/
 - HA core `input_text` integration (the canonical destructive-call-targets helper): https://www.home-assistant.io/integrations/input_text/
 - HA core `input_datetime` integration (the canonical session-expiry-timestamp helper): https://www.home-assistant.io/integrations/input_datetime/

@@ -92,11 +92,11 @@ synthetic plug-toggle, and flip `tier_requirements` to include
 ## See also
 
 - Legacy catalog page (now superseded by the connection manifest):
-  [`docs/catalog/networking/starlink-sleep-timer.md`](../../docs/catalog/networking/starlink-sleep-timer.md)
-- Catalog category index: `docs/catalog/networking/index.md`
+  [the legacy spec](../../the legacy spec)
+- Catalog category index: the legacy spec
 - MQTT broker (cross-reference — future Starlink telemetry could ride
   MQTT if a community exporter is installed): `connections/mqtt/`
 - RoamCore entity naming: `docs/reference/rc-entity-naming.md`
 - OpenWrt router controls (Starlink plugs into the LAN behind the
   OpenWrt WAN): `connections/openwrt-controls/`
-  (see `docs/catalog/networking/openwrt-controls.md`)
+  (see the legacy spec)

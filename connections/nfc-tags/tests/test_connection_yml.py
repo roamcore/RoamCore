@@ -43,7 +43,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> nfc-tags/ -> conne
 CONNECTION_DIR = REPO_ROOT / "connections" / "nfc-tags"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "nfc-tags" / "index.md"
 
 
 @pytest.fixture(scope="module")
@@ -320,42 +319,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/nfc-tags/index.md (a 14-line stub, originally
-    listed as "Support tier: C" with no recipe + no contract + no
-    automations — just a placeholder about "easy NFC-based
-    automations and practical places to put tags in a van" +
-    "Lights off", "Bedtime", "Leave camp" as example scene
-    names). We promote the connection into the `access_control`
-    category so the audit + boundary-CI can pair them up. The
-    legacy doc MUST still exist (with the supersession banner)
-    so that the recipe can reference it AND the audit can verify
-    the supersession banner is in place.
-    """
-    assert manifest["category"] == "access_control", (
-        f"category must stay 'access_control' (legacy doc lives "
-        f"at docs/catalog/nfc-tags/index.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can "
-        "reference it from the recipe (and add a supersession banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the supersession
-    # banner so the false tier-c placeholder doesn't leak into any
-    # downstream catalog scrape. The banner text is the verbatim
-    # spec-required string.
-    legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_text, (
-        "legacy docs/catalog/nfc-tags/index.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/nfc-tags/" in legacy_text, (
-        "legacy docs/catalog/nfc-tags/index.md must "
-        "point at `connections/nfc-tags/` per spec"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

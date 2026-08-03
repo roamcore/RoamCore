@@ -77,7 +77,7 @@ Status is `beta` because there are no pytest integration tests for the map packa
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/map/map-dashboard.md`](../../docs/catalog/map/map-dashboard.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - Existing RoamCore-owned map package (preserved verbatim): [`homeassistant/packages/roamcore_map.yaml`](../../homeassistant/packages/roamcore_map.yaml) (31 LOC — declares the `input_text.rc_map_tile_url` + `rc_map_tile_url_online` + `rc_map_style_url` + `input_number.rc_map_offline_max_zoom` helpers)
 - Existing RoamCore-owned map route package (preserved verbatim): [`homeassistant/packages/roamcore_map_route.yaml`](../../homeassistant/packages/roamcore_map_route.yaml) (10 LOC — declares the `input_number.rc_map_route_device_id` helper)
 - Existing RoamCore-owned location package (preserved verbatim): [`homeassistant/packages/roamcore_location.yaml`](../../homeassistant/packages/roamcore_location.yaml) (123 LOC — declares the `input_text.rc_location_tracker_entity` helper + the 11 `template:` sensors that map a configurable `device_tracker.*` → `rc_location_*`)

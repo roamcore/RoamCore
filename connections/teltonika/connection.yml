@@ -1,6 +1,6 @@
 # Teltonika (LTE/5G router for vans) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/networking/teltonika.md (legacy tier-c,
+# Promoted from a legacy spec (legacy tier-c,
 # community-only). Promoted into tier-b because RoamCore does NOT ship a
 # native Teltonika integration — we RECIPE the well-understood combination
 # of:

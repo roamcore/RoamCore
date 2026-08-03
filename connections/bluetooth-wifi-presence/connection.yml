@@ -1,6 +1,6 @@
 # Bluetooth / Wi-Fi presence (who's home?) — tier-b recipe connection.
 #
-# Promoted from docs/catalog/presence/bluetooth-wifi-presence.md (legacy
+# Promoted from a legacy spec (legacy
 # tier-c, 27 lines). Promoted into tier-b because RoamCore does NOT ship
 # a native presence scanner — we RECIPE the well-understood combination
 # of one of three upstream operator-side device-tracking paths:

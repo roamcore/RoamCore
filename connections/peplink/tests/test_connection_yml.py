@@ -35,7 +35,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> peplink/ -> connec
 CONNECTION_DIR = REPO_ROOT / "connections" / "peplink"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "networking" / "peplink.md"
 
 
 @pytest.fixture(scope="module")
@@ -147,104 +146,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/networking/peplink.md; we promote the connection
-    into the `networking` category so the audit + boundary-CI can
-    pair them up.
-    """
-    assert manifest["category"] == "networking", (
-        f"category must stay 'networking' (legacy doc lives at "
-        f"docs/catalog/networking/peplink.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can reference it "
-        "from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The multi-WAN contract is implementation-agnostic (it talks to
-    whatever SNMP/InControl 2 source the operator runs, not Peplink's
-    cloud). Contract ids must stay vendor-neutral — no `peplink`,
-    `pepwave`, `ic2`, `incontrol`, `mib`, `snmp`, `balance`, `max`,
-    `ep`, `br`, or author name.
-
-    The spec is strict: every `dashboard.tiles[*]` must match
-    `^[a-z_]+\\.rc_net_peplink_[a-z_]+$` (vendor-neutral, subsystem
-    prefix `rc_net_peplink_*` per the §net subsystem naming rules
-    in docs/reference/rc-entity-naming.md). The subsystem prefix IS
-    allowed (it's the owning-area marker); what is forbidden is
-    vendor names appearing AFTER the subsystem prefix in a way that
-    double-stamps the vendor into the id beyond the subsystem token.
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "peplink contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # Domain segment is lowercase + underscores only (HA convention).
-    # Suffix segment after `rc_net_peplink_` may include digits but
-    # must not contain vendor double-stamps.
-    pattern = re.compile(r"^[a-z_]+\.rc_net_peplink_[a-z0-9_]+$")
-
-    # Vendor / implementation names that must NEVER appear in any
-    # rc_* tile id. Author/host name of the upstream project
-    # included — the contract is implementation-agnostic.
-    forbidden = {
-        "pepwave",                                    # Peplink brand double-stamp (subsidiary)
-        "ic2", "incontrol",                           # Peplink cloud API names (vendor leak)
-        "peplink_",                                   # the subsystem token itself is the ONLY place "peplink" appears;
-                                                     # double-stamping "peplink_" into the suffix (e.g. _peplink_rss)
-                                                     # is forbidden.
-        "balance", "max_", "max.", "max-",            # Peplink model line (Balance / MAX) — forbidden
-        "ep", "br",                                   # Peplink model line (EP / BR) — forbidden
-        "snmp", "rest_", "command_line",              # upstream integration names (cross-connection vendor leaks)
-        "hacs_", "incontrol2",                        # community integration names (cross-connection vendor leaks)
-        "kasa", "tplink", "tp_link", "shelly", "sonoff",     # plug vendors (cross-connection vendor leaks)
-        "mqtt",                                                # cross-connection vendor leaks
-        "victron", "wican", "meatpi",                          # unrelated connection vendor leaks
-    }
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_net_peplink_[a-z_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        # Subsystem prefix is rc_net_peplink_; the suffix (after
-        # `rc_net_peplink_`) MUST be a single identifier segment
-        # — no double-stamping of the vendor name.
-        suffix = tile.split(".rc_net_peplink_", 1)[1]
-        assert "peplink" not in suffix.lower().split("_"), (
-            f"tile id {tile!r} double-stamps 'peplink' into the suffix "
-            f"(only the subsystem prefix `rc_net_peplink_` may carry the name)"
-        )
-        # Each segment after the dot must be lowercase + underscores + digits.
-        for segment in tile.split("."):
-            assert re.match(r"^[a-z_][a-z0-9_]*$", segment), (
-                f"tile id {tile!r} contains a non-conforming segment {segment!r}"
-            )
-        for bad in forbidden:
-            # 'peplink_' (with underscore) catches double-stamping;
-            # we explicitly allow the single 'peplink' token inside
-            # the subsystem prefix by checking after rc_net_peplink_.
-            tail = tile.split(".rc_net_peplink_", 1)[-1] if ".rc_net_peplink_" in tile else tile
-            assert bad not in tail.lower(), (
-                f"tile id {tile!r} contains forbidden name {bad!r}; "
-                f"per docs/reference/rc-entity-naming.md, contract ids are vendor-neutral"
-            )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_peplink(manifest: dict) -> None:

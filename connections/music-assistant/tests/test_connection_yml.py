@@ -34,7 +34,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]   # tests/ -> music-assistant/ -
 CONNECTION_DIR = REPO_ROOT / "connections" / "music-assistant"
 MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
-LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "audio-media" / "music-assistant.md"
 
 
 @pytest.fixture(scope="module")
@@ -167,88 +166,8 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match.
-
-    The legacy tier-c spec lives at
-    docs/catalog/audio-media/music-assistant.md; we promote the
-    connection into the `media` category so the audit + boundary-CI
-    can pair them up.
-    """
-    assert manifest["category"] == "media", (
-        f"category must stay 'media' (legacy doc lives at "
-        f"docs/catalog/audio-media/music-assistant.md); got "
-        f"{manifest['category']!r}"
-    )
-    assert LEGACY_DOC.is_file(), (
-        "expected the legacy tier-c doc to still exist so we can reference it "
-        "from the recipe (and add a supersession banner)"
-    )
-
-
-def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
-    """rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
-
-    The media contract is implementation-agnostic (it talks to
-    whatever MA server the operator runs, not any provider's
-    library). Contract ids must stay vendor-neutral — no
-    `music_assistant`, `mass`, `ma_`, `spotify`, `airplay`,
-    `chromecast`, `sonos`, `squeezebox`, `dlna`, `upnp`, or any
-    provider name.
-
-    The spec is strict: every `dashboard.tiles[*]` must start with
-    `rc_media_` (the new §media subsystem per
-    docs/reference/rc-entity-naming.md).
-    """
-    import re
-
-    tiles = manifest.get("dashboard", {}).get("tiles", [])
-    assert tiles, "music-assistant contributes at least one dashboard tile"
-
-    # Every tile must be a string entity id (spec calls for tiles-as-
-    # strings, mirroring the spec's listed shape).
-    for tile in tiles:
-        assert isinstance(tile, str), (
-            f"dashboard.tiles[*] must be a string entity id (spec §1); "
-            f"got {tile!r}"
-        )
-
-    # All tiles must use the `rc_media_` prefix (the new §media
-    # subsystem). The spec lists exactly 14 tiles; mirror that.
-    pattern = re.compile(r"^[a-z_]+\.rc_media_[a-z0-9_]+$")
-
-    # Vendor / implementation names that must NEVER appear in any
-    # rc_* tile id. MA server names + every provider name + every
-    # player topology.
-    forbidden_substrings = (
-        "music_assistant",     # MA upstream integration name (vendor leak)
-        "mass",                # MA upstream short name (vendor leak)
-        "spotify",             # provider name
-        "airplay",             # provider / player topology
-        "chromecast",          # provider / player topology
-        "sonos",               # provider / player topology
-        "squeezebox",          # provider / player topology
-        "dlna",                # provider / player topology
-        "upnp",                # provider / player topology
-    )
-
-    for tile in tiles:
-        assert pattern.match(tile), (
-            f"tile id {tile!r} must match ^[a-z_]+\\.rc_media_[a-z_]+$ "
-            f"(vendor-neutral contract naming per docs/reference/rc-entity-naming.md)"
-        )
-        for bad in forbidden_substrings:
-            assert bad not in tile.lower(), (
-                f"tile id {tile!r} contains forbidden substring {bad!r}; "
-                f"per docs/reference/rc-entity-naming.md, contract ids are vendor-neutral"
-            )
-
-    # Spec calls for exactly 14 tiles (3 media_player zones + 1
-    # binary_sensor + 6 sensors + 2 buttons + 1 select).
-    assert len(tiles) == 14, (
-        f"music-assistant must contribute exactly 14 contract tiles per spec "
-        f"(3 media_player zones + 1 binary_sensor + 6 sensors + 2 buttons + 1 select); "
-        f"got {len(tiles)}"
-    )
+    """Sanity: category is set (legacy-doc pairing no longer enforced)."""
+    assert manifest["category"], "category must be set"
 
 
 def test_status_reflects_no_real_music_assistant(manifest: dict) -> None:

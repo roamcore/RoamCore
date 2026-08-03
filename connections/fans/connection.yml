@@ -5,7 +5,7 @@
 # `fan.*` entity that RoamCore does NOT own) — tier-b recipe
 # connection.
 #
-# Promoted from docs/catalog/fans/index.md (legacy tier-c; ~14 lines —
+# Promoted from a legacy spec (legacy tier-c; ~14 lines —
 # a minimal stub about "Fans are a simple upgrade that massively
 # improves comfort: airflow, condensation control, cooking smells,
 # and keeping the van livable in warm weather. This section covers

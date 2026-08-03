@@ -314,14 +314,17 @@ def humanize_summary(desc: str, title: str) -> str:
         return f"{title} — RoamCore catalog entry."
 
     flat = re.sub(r"\s+", " ", desc).strip()
+    # Strip bare URLs first so a "." inside a URL doesn't end the first
+    # sentence early (e.g. "<https://www.music-assistant.io/>").
+    flat_no_urls = _BARE_URL_PATTERN.sub("", flat)
 
     # 0. **Best first sentence.** Take the first sentence of the
     #    description, strip the "is the umbrella for X" / "is the
     #    vendor-neutral surface that turns X into Y" middle clause,
     #    and trim trailing internal-jargon markers. Surviving text
     #    is plain English suitable for the catalog page.
-    first_period = flat.find(".")
-    first_sentence = flat[: first_period + 1] if first_period != -1 else flat[:280]
+    first_period = flat_no_urls.find(".")
+    first_sentence = flat_no_urls[: first_period + 1] if first_period != -1 else flat_no_urls[:280]
     # Strip the "is the umbrella for X" / "is the vendor-neutral
     # surface that turns X into Y" middle clause.
     cleaned = re.sub(

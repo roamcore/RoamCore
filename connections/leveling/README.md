@@ -41,7 +41,7 @@ Full howto: see [`docs/recipe.md`](docs/recipe.md).
 
 Tier-a would require a RoamCore-owned levelling engine + integration code + integration tests against a real levelling bench (a controlled environment with an ESPHome-flashed IMU board + a 4-jack relay bench + a Mopeka BLE adapter + canned fixture responses for pitch / roll / fridge-unsafe events — all wired together in a controlled environment). We have no operator-side levelling bench on the CI to integration-test against (the bench requires the operator's chosen upstream IMU + a 4-jack relay bench + a Bluetooth adapter + canned fixture responses for pitch / roll / fridge-unsafe events — all wired together in a controlled environment). Tier-b is the honest tier: MPU-6050 / MPU-9250 / BNO055 / LSM6DS3 / HWH / Lippert / Power Gear / Bigfoot / Mopeka / TireMinder / ESPHome / Companion / HA / HACS are all upstream / vendor / HACS / hardware code (not RoamCore-owned); the RoamCore wrapper is a thin upstream-entity-aggregation layer + the contract layer + the fridge-safe gate + the §8 MANDATORY automations. The recipe is sound but we cannot claim one-tap automation.
 
-The legacy catalog page (`docs/catalog/level-sensor/leveling.md` — 18-line tier-a claim stub, originally listed "RoamCore defines a levelling contract (`rc_level_*`) and supports pitch/roll sensors so the dashboard can show an easy levelling status. Better sleep and cooking. Quick 'good enough' check without guessing. A pitch/roll sensor (often via ESPHome / accelerometer)" with no recipe + no contract + no automations + no install path — just a placeholder) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore levelling engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §8 automations as tier-b.
+The legacy catalog page (the legacy spec — 18-line tier-a claim stub, originally listed "RoamCore defines a levelling contract (`rc_level_*`) and supports pitch/roll sensors so the dashboard can show an easy levelling status. Better sleep and cooking. Quick 'good enough' check without guessing. A pitch/roll sensor (often via ESPHome / accelerometer)" with no recipe + no contract + no automations + no install path — just a placeholder) is now superseded by this tier-b recipe connection. The legacy tier-a claim was aspirational (no native RoamCore levelling engine in the repo today); the picker is honest and ships the contract layer + the recipe + the §8 automations as tier-b.
 
 ## Files
 
@@ -52,7 +52,7 @@ The legacy catalog page (`docs/catalog/level-sensor/leveling.md` — 18-line tie
 
 ## See also
 
-- Legacy catalog page (now superseded by this slice): [`docs/catalog/level-sensor/leveling.md`](../../docs/catalog/level-sensor/leveling.md)
+- Legacy catalog page (now superseded by this slice): [the legacy spec](../../the legacy spec)
 - HA core `sensor` integration (the canonical umbrella): https://www.home-assistant.io/integrations/sensor/
 - HA core `template:` sensor wrapper (the canonical pitch / roll / max_tilt derivation): https://www.home-assistant.io/integrations/template/
 - HA Companion app (the canonical Path A phone IMU source): https://companion.home-assistant.io/
