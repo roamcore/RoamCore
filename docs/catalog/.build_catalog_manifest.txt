@@ -24,6 +24,7 @@ maintenance/in-cab-tablet-dashboard.md
 maintenance/index.md
 maintenance/leveling.md
 misc/index.md
+misc/mqtt.md
 misc/nas.md
 misc/time-atomic.md
 misc/timezone-geolocator.md
