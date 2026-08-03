@@ -130,6 +130,8 @@ run_if_present "connections/mode/tests/test_connection_yml.py" \
   "Connection: Mode (AI mode) (tier-b) — vendor-neutral mode state (Off/Auto/Travel/Camp/Stealth) + opt-in AI inference + auto-revert: manifest honesty smoke check"
 run_if_present "connections/demo-mode/tests/test_connection_yml.py" \
   "Connection: Demo mode (tier-b) — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + never-controls-hardware guard: manifest honesty smoke check"
+run_if_present "connections/advanced-mode/tests/test_connection_yml.py" \
+  "Connection: Advanced mode (tier-b) — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block: manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"

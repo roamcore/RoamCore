@@ -70,6 +70,7 @@ Keep this list short. Start with these and extend deliberately:
 - `vehicle` — vehicle-level sensors + levelling + fridges + levelling-jack controls + fridge-safe gates; vendor-neutral `rc_level_*` ids (Wave 3 #60)
 - `mode` — operator-facing mode state (Off / Auto / Travel / Camp / Stealth) + opt-in AI inference summary + auto-revert on manual override + confirm-before-power-changing-action guard + stealth-mode audit-log entry; vendor-neutral `rc_mode_*` ids (Wave 3 #61)
 - `demo_mode` — operator-facing demo scenario state (Off / Battery / Water / Connectivity) + auto-disable on real sensor reconnect + never-controls-actual-hardware guard + blocks-remote-access guard + audit-log entry + operator-only guard; vendor-neutral `rc_demo_mode_*` ids (Wave 3 #62)
+- `advanced_mode` — operator-facing power-user toggle + confirm-flag + session-timeout guard + audit-log-entry + hides-for-non-owners guard + blocks-destructive-irreversible-service-calls guard; vendor-neutral `rc_advanced_mode_*` ids (Wave 3 #63)
 
 ---
 
