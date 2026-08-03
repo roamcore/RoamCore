@@ -126,6 +126,8 @@ run_if_present "connections/fans/tests/test_connection_yml.py" \
   "Connection: Fans (rooftop + circulation) (tier-b) — vendor-neutral fan controller + rain-sensor safety block: manifest honesty smoke check"
 run_if_present "connections/leveling/tests/test_connection_yml.py" \
   "Connection: Leveling (IMU) (tier-b) — vendor-neutral pitch/roll + auto-jack + fridge-safe gate: manifest honesty smoke check"
+run_if_present "connections/mode/tests/test_connection_yml.py" \
+  "Connection: Mode (AI mode) (tier-b) — vendor-neutral mode state (Off/Auto/Travel/Camp/Stealth) + opt-in AI inference + auto-revert: manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"

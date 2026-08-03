@@ -1,0 +1,488 @@
+# Mode (AI mode) — vendor-neutral mode state (Off / Auto / Travel
+# / Camp / Stealth) + opt-in AI inference summary + auto-revert
+# on manual override — tier-b recipe connection.
+#
+# Promoted from docs/catalog/ai/mode.md (legacy tier-a claim
+# stub, ~18 lines — "RoamCore defines a simple 'Mode' entity
+# and convenience scripts (Auto/Travel/Camp/Stealth/Off). This
+# shows up as a user-facing control in the dashboard and is a
+# foundation for future 'one tap' behavior changes. Quickly
+# switch the van between common states (driving, parked,
+# quiet night). A clean way to group automations later
+# without building everything at once. None. HA package:
+# homeassistant/packages/roamcore_mode.yaml" with no recipe +
+# no contract + no automations + no install path). The legacy
+# stub's tier-a claim is honest-upstream-truth: RoamCore ships
+# NO native mode engine (no `custom_components/mode/`
+# directory in the repo today). The picker promotes the
+# legacy stub into tier-b because the contract layer is the
+# canonical RoamCore contribution (the 10 `rc_mode_*` tiles +
+# the recipe + the §9 MANDATORY automations) while the
+# upstream engines are HA core (`input_select` +
+# `input_boolean` + `input_text` + `input_button` helpers +
+# the HA core `template:` binary_sensor wrapper) + the HA
+# core Conversation agent (the canonical upstream opt-in AI
+# path) + the optional operator-selected LLM add-ons (NOT
+# RoamCore-owned). The legacy doc now carries a SUPERSEDED
+# banner pointing at this connection.
+
+# The recipe walks the operator through the FIVE operator-
+# pickable modes the legacy spec lists (Off / Auto / Travel
+# / Camp / Stealth):
+#   - Off — explicitly off. No auto-mode inference, no
+#     automations triggered by mode. Used when the operator
+#     wants to be fully manual (rare — most operators prefer
+#     Auto).
+#   - Auto — RoamCore infers the current mode from the
+#     upstream sensors (motion, location, plug-state, time-
+#     of-day, presence). This is the default for most
+#     operators.
+#   - Travel — the van is moving. Inferred from GPS speed >
+#     5 km/h OR the ignition-on input. Manual override is
+#     "I'm parked but I want travel-mode anyway" (e.g.,
+#     pulling a trailer).
+#   - Camp — the van is parked + occupied + utilities are
+#     available. Inferred from GPS speed = 0 + presence
+#     detected + time-of-day in daylight OR plug connected.
+#     Manual override is "I'm parked but not camping" (e.g.,
+#     quick grocery stop).
+#   - Stealth — the van is parked + occupied + utilities are
+#     restricted (no plug, no shore power). Used for
+#     overnight stealth camping in urban areas. Inferred from
+#     GPS speed = 0 + presence detected + time-of-day in
+#     night + no plug. Manual override is "I'm stealth
+#     camping during the day" (rare).
+
+# The 10 `rc_mode_*` contract tiles are vendor-neutral — no
+# vendor names leak into the tile ids (no `openai` /
+# `anthropic` / `claude` / `gpt` / `conversation` / `llm` /
+# `mqtt` / `webhook` / `rest` / `api` / `http` / `https` /
+# `input_select` / `input_boolean` / `input_text` /
+# `input_button` / `template` / `gps` / `accelerometer` /
+# `phone` / `companion` / `ha` / `homeassistant` / `hacs` /
+# `zigbee` / `zwave` / `zha` / `deconz` / `tasmota` /
+# `esp32` / `esp8266` / `shelly` / `sonoff` / `wifi` /
+# `wi-fi` / `ble` / `bluetooth` / `iphone` / `ios` /
+# `android` / `samsung` / `pixel` / `xiaomi` / `huawei`
+# vendor / hardware / protocol / integration names leak
+# into the tile ids). The legitimate generic nouns `mode`,
+# `auto`, `travel`, `camp`, `stealth`, `inference`,
+# `override`, `confidence`, `state`, `previous`, `summary`,
+# `changed`, `at`, `is`, `manual`, `revert`, `force`,
+# `now`, `ai` are allowed (they describe what the tile is
+# for, not which vendor). The contract surface is:
+#   - `select.rc_mode_state` — Off / Auto / Travel / Camp /
+#     Stealth (current mode, operator-overridable from the
+#     dashboard). The tile is an `input_select:` domain
+#     entity (since 2022.x) that the operator picks from a
+#     list.
+#   - `select.rc_mode_state_previous` — the mode before the
+#     last change (useful for "auto-revert in 30 minutes"
+#     automations). The tile is an `input_select:` domain
+#     entity (since 2022.x) that the operator's automations
+#     write to before a manual override.
+#   - `binary_sensor.rc_mode_is_auto_inferred` — TRUE when
+#     mode was inferred by the upstream sensors, FALSE when
+#     manually overridden. The tile is a `template:`
+#     binary_sensor (since 2022.x) that derives from the
+#     §9.2 manual override automation's tracking state.
+#   - `binary_sensor.rc_mode_is_manual_override` — TRUE
+#     when operator has overridden the auto-inference;
+#     auto-clears after 30 minutes unless re-poked. The tile
+#     is an `input_boolean:` domain entity (since 2022.x)
+#     that the §9.2 manual override automation toggles.
+#   - `sensor.rc_mode_changed_at` — ISO timestamp of last
+#     mode change. The tile is an `input_text:` domain
+#     entity (since 2022.x) that the operator's automations
+#     write to on every mode change.
+#   - `sensor.rc_mode_inference_confidence` — 0.0–1.0; the
+#     upstream inference's confidence in the current mode.
+#     The tile is a `template:` sensor (since 2022.x) that
+#     the §9.1 auto-mode inference automation writes to.
+#   - `text.rc_mode_ai_summary` — a short natural-language
+#     summary of WHY the mode is what it is; populated by
+#     the opt-in AI path via the upstream HA core
+#     Conversation agent + the optional operator-selected
+#     LLM add-ons (RoamCore ships NO custom LLM code). The
+#     tile is a `text:` domain entity (since 2024.x) that
+#     the §9.5 mode-change notification automation writes
+#     to.
+#   - `button.rc_mode_revert_to_auto` — operator-triggered:
+#     drop the manual override and let auto-inference take
+#     over. The button is an `input_button:` domain entity
+#     (since 2022.x) that fires the §9.2 manual override
+#     auto-revert automation.
+#   - `button.rc_mode_force_stealth` — operator-triggered:
+#     force Stealth mode regardless of inference. The
+#     button is an `input_button:` domain entity (since
+#     2022.x) that fires the §9.2 manual override
+#     automation with the `stealth` option.
+#   - `button.rc_mode_force_travel` — operator-triggered:
+#     force Travel mode regardless of inference. The button
+#     is an `input_button:` domain entity (since 2022.x)
+#     that fires the §9.2 manual override automation with
+#     the `travel` option.
+
+# The umbrella publishes the resulting data via the upstream
+# HA core `input_select` + `input_boolean` + `input_text` +
+# `input_button` + `input_number` helper entities + the HA
+# core `template:` sensor + `template:` binary_sensor
+# wrappers + the HA core Conversation agent (the canonical
+# upstream opt-in AI path) + the optional operator-selected
+# LLM add-ons (NOT RoamCore-owned) + a thin RoamCore
+# upstream-entity-aggregation wrapper that maps each upstream
+# signal (GPS speed + ignition-on input + presence detection
+# + plug-state + time-of-day) into the `rc_mode_state`
+# contract tile.
+
+# The recipe §1 + §3 + §4 + §5 + §6 + §7 + §8 + §9 walks
+# through the umbrella + the FIVE operator-pickable modes +
+# the §8 contract entities + the §9 FIVE MANDATORY
+# automations:
+#   - §9.1 Auto-mode inference from GPS + motion + plug +
+#     time-of-day. The automation reads the upstream GPS
+#     speed + ignition-on input + presence detection +
+#     plug-state + time-of-day primitives + writes
+#     `select.rc_mode_state` based on the inferred state +
+#     updates `sensor.rc_mode_inference_confidence` with
+#     the inference confidence. The automation fires every
+#     30 seconds.
+#   - §9.2 Manual override + auto-revert. The automation
+#     fires when the operator picks a mode directly via the
+#     dashboard OR presses one of the force_* buttons. The
+#     automation sets `binary_sensor.rc_mode_is_manual_
+#     override` to TRUE + starts a 30-minute timer; after
+#     30 minutes, the automation clears the manual override
+#     + reverts to the auto-inferred mode.
+#   - §9.3 Confirm-before-power-changing-action guard. The
+#     automation fires when the §9.1 auto-mode inference
+#     suggests Travel mode AND the §9.2 manual override is
+#     active (the operator manually forced a mode). The
+#     automation fires a confirmation notification before
+#     any power-changing action fires (e.g., turning off the
+#     fridge compressor when entering Travel mode — the
+#     operator must confirm).
+#   - §9.4 Stealth-mode audit-log entry. The automation
+#     fires when the mode transitions to Stealth. The
+#     automation writes an audit-log entry + fires a
+#     notification warning the operator to check the
+#     cabin-light state (the §9.4 audit-log entry is the
+#     operator's record of every stealth-mode entry for
+#     future review).
+#   - §9.5 Mode-change notification. The automation fires
+#     when `select.rc_mode_state` changes. The automation
+#     updates `select.rc_mode_state_previous` + writes
+#     `sensor.rc_mode_changed_at` + (if the AI path is
+#     opted-in) asks the upstream Conversation agent for a
+#     short natural-language summary that gets written to
+#     `text.rc_mode_ai_summary`.
+
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): The UPSTREAM HA core `input_select` +
+# `input_boolean` + `input_text` + `input_button` helpers
+# (since 2022.x — expose a GUI flow for the operator to
+# add the helper entities from the HA UI) + the HA core
+# `template:` sensor + `template:` binary_sensor wrappers
+# (since 2022.x — expose a GUI flow for the operator to
+# add a derived entity from the upstream sensors) + the HA
+# core Conversation agent (since 2022.x — exposes a GUI
+# flow for the operator to enable the Conversation agent
+# from the HA UI; the agent handles natural-language
+# queries + the opt-in AI inference path) + the optional
+# OpenAI / Anthropic add-ons (since 2023.x — expose a GUI
+# flow for the operator to add their API key + provider)
+# ALL expose a GUI flow. That's honest upstream truth, NOT
+# a tier-a marker for RoamCore's tier. The tier-a marker
+# for RoamCore would be a RoamCore-owned operator-wired
+# setup flow + RoamCore-owned integration code + integration
+# tests against a RoamCore-owned mode engine bench (a
+# controlled environment with canned fixture responses for
+# GPS / motion / plug-state / time-of-day events + canned
+# fixture responses for the Conversation agent's natural-
+# language mode queries). None of those are shipped at
+# tier-b. Tier-b honesty: HA core `input_select` /
+# `input_boolean` / `input_text` / `input_button` + HA core
+# `template:` + the HA core Conversation agent + the
+# optional operator-selected LLM add-ons are all upstream /
+# vendor / HACS code; the RoamCore wrapper is a thin
+# upstream-entity-aggregation layer + the contract layer +
+# the §9 MANDATORY automations.
+
+id: mode
+name: "Mode (AI mode) — vendor-neutral mode state (Off / Auto / Travel / Camp / Stealth) + opt-in AI inference summary + auto-revert on manual override — tier-b recipe connection"
+tier: b
+category: ai
+status: beta
+version: 0.1.0
+description: |
+  Mode (AI mode) — vendor-neutral mode state (Off / Auto /
+  Travel / Camp / Stealth) + opt-in AI inference summary +
+  auto-revert on manual override — the umbrella for "Quickly
+  switch the van between common states (driving, parked,
+  quiet night). A clean way to group automations later
+  without building everything at once" — is the
+  ai-category complement to the broader RoamCore
+  automation affordances. The single "current mode" tile
+  collapses a pile of inferred state (motion, location,
+  plug-state, time-of-day, presence) into one dashboard
+  indicator; the "previous mode" tile surfaces the mode
+  before the last change (useful for "auto-revert in 30
+  minutes" automations); the "is auto inferred" tile is the
+  TRUE / FALSE indicator of whether the mode was auto-
+  inferred or manually overridden; the "is manual override"
+  tile is the TRUE / FALSE indicator of whether the
+  operator has overridden the auto-inference (auto-clears
+  after 30 minutes unless re-poked); the "changed at" tile
+  surfaces the ISO timestamp of the last mode change; the
+  "inference confidence" tile surfaces the upstream
+  inference's confidence in the current mode (0.0–1.0); the
+  "AI summary" tile is the short natural-language summary
+  of WHY the mode is what it is (populated by the opt-in AI
+  path via the upstream HA core Conversation agent +
+  optional operator-selected LLM add-ons); the "revert to
+  auto" button is the operator-triggered manual-override
+  drop; the "force stealth" button is the operator-triggered
+  Stealth-mode force; the "force travel" button is the
+  operator-triggered Travel-mode force.
+
+  RoamCore does NOT ship a native mode engine; we RECIPE
+  the well-understood upstream HA core `input_select` +
+  `input_boolean` + `input_text` + `input_button` +
+  `input_number` helper entities (since 2022.x — expose
+  a GUI flow for the operator to add the helper entities
+  from the HA UI) + the HA core `template:` sensor +
+  `template:` binary_sensor wrappers (since 2022.x —
+  expose a GUI flow for the operator to add a derived
+  entity from the upstream sensors) + the HA core
+  Conversation agent (since 2022.x — the canonical
+  upstream opt-in AI path; exposes a GUI flow for the
+  operator to enable the agent from the HA UI) + the
+  optional operator-selected LLM add-ons (since 2023.x —
+  expose a GUI flow for the operator to add their API key
+  + provider). The umbrella publishes the 10
+  `rc_mode_*` contract tiles documented below (vendor-
+  neutral — no OpenAI / Anthropic / Claude / GPT /
+  Conversation / LLM / GPS / accelerometer / phone /
+  Companion / HA / HACS / MQTT / webhook / REST / API /
+  HTTP / HTTPS / input_select / input_boolean / input_text
+  / input_button / template names leak into the tile ids).
+  RoamCore does NOT fork any of the upstream helpers; the
+  contract layer is a thin upstream-entity-aggregation
+  wrapper + the vendor-neutral tile surface + the §9
+  MANDATORY automations.
+
+  The recipe covers the FIVE operator-pickable modes (Off
+  + Auto + Travel + Camp + Stealth) + the FIVE §9
+  MANDATORY automations (auto-mode inference from GPS +
+  motion + plug + time-of-day + manual override + auto-
+  revert + confirm-before-power-changing-action guard +
+  stealth-mode audit-log entry + mode-change notification)
+  + the 10 `rc_mode_*` contract tiles + the §10
+  troubleshooting entries (6 entries) + the §11 privacy
+  section (no RoamCore-side telemetry; the upstream helper
+  entities' logs are operator-owned via the HA core
+  logbook; the Conversation agent's natural-language
+  queries are local unless the operator opts in to a cloud
+  LLM provider) + the §12 tier-a promotion outline (real
+  mode engine + canned fixture responses for GPS / motion /
+  plug-state / time-of-day events on CI bench +
+  RoamCore-owned operator-wired setup flow walking the
+  operator through choosing Off / Auto / Travel / Camp /
+  Stealth + declaring the upstream entities + the §9
+  automations + integration tests asserting an auto-mode
+  inference event updates the contract tiles + a manual
+  override event triggers the auto-revert timer + a
+  power-changing action fires the confirmation guard) +
+  the §13 cross-references (the time-atomic Wave 3 #55
+  connection for the time-of-day primitives used by the
+  §9.1 auto-mode inference + the motion-based-lighting
+  Wave 3 #53 connection for the presence-detection
+  primitive used by the §9.1 auto-mode inference + the
+  approach lights Wave 3 #52 connection for the cabin-
+  lighting scene that the §9.4 stealth-mode audit-log
+  entry cross-references + the remote-access Wave 3 #58
+  connection for the VPN primitive used by the §9.5
+  mode-change notification's optional Telegram delivery
+  + the fans Wave 3 #59 connection for the §9.3 confirm-
+  before-power-changing-action guard's fan-off-on-mode-
+  change behavior + the leveling Wave 3 #60 connection for
+  the §9.5 mode-change notification's level-cross-
+  reference).
+
+  The REUSE-FIRST strategy is intentional: HA's core
+  `input_select` + `input_boolean` + `input_text` +
+  `input_button` + `input_number` helper entities (since
+  2022.x) handle the upstream mode-state storage (95%+
+  of operator-facing mode operators); the HA core
+  `template:` sensor wrapper (since 2022.x) derives the
+  inference-confidence + AI-summary tiles from the
+  upstream state; the HA core `template:` binary_sensor
+  wrapper (since 2022.x) derives the is-auto-inferred +
+  is-manual-override tiles from the upstream state; the HA
+  core Conversation agent (since 2022.x) is the canonical
+  upstream opt-in AI path; the optional operator-selected
+  LLM add-ons (since 2023.x) handle the natural-language
+  AI summary. All upstream helpers + integrations are
+  upstream / vendor / HACS code; the RoamCore wrapper is
+  a thin upstream-entity-aggregation layer + the contract
+  layer + the §9 MANDATORY automations.
+icon: mdi-route
+codeowners:
+  - "@bernardc"
+tags:
+  - mode
+  - ai
+  - ai-mode
+  - auto
+  - travel
+  - camp
+  - stealth
+  - off
+  - mode-state
+  - auto-inference
+  - manual-override
+  - auto-revert
+  - confirm-guard
+  - audit-log
+  - ai-summary
+  - conversation
+  - opt-in-ai
+  - vehicle
+  - ha-integration
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Mode requires the operator to (a) install the upstream
+    HA core `input_select` + `input_boolean` + `input_text`
+    + `input_button` + `input_number` helpers (HA core
+    since 2022.x — these are auto-installed in every HA
+    install + exposed via the HA UI under Settings →
+    Helpers), (b) wire the upstream GPS speed +
+    ignition-on input + presence detection + plug-state
+    + time-of-day primitives (the operator uses their
+    existing HA integrations — Traccar for GPS + the
+    ignition-on input from the vehicle + the HA Companion
+    app for presence + the plug-state from the shore-power
+    integration + the time-of-day from the time-atomic
+    Wave 3 #55 connection), (c) configure the operator-
+    facing `select.rc_mode_state` + `select.rc_mode_state_
+    previous` + `binary_sensor.rc_mode_is_auto_inferred`
+    + `binary_sensor.rc_mode_is_manual_override` +
+    `sensor.rc_mode_changed_at` + `sensor.rc_mode_
+    inference_confidence` + `text.rc_mode_ai_summary`
+    contract tiles to point at the upstream entities, (d)
+    wire the FIVE §9 MANDATORY automations (auto-mode
+    inference from GPS + motion + plug + time-of-day +
+    manual override + auto-revert + confirm-before-power-
+    changing-action guard + stealth-mode audit-log entry +
+    mode-change notification), (e) optionally enable the
+    Conversation agent (HA core since 2022.x — Settings →
+    Voice assistants → Conversation agent) + add the
+    optional operator-selected LLM add-ons (since 2023.x
+    — Settings → Integrations → add the LLM provider) for
+    the opt-in AI inference summary. RoamCore does NOT
+    maintain a custom mode engine; the HA core `input_
+    select` + `input_boolean` + `input_text` + `input_
+    button` helpers + the HA core `template:` sensor +
+    `template:` binary_sensor wrappers + the HA core
+    Conversation agent + the optional operator-selected
+    LLM add-ons handle 95%+ of operator-facing mode
+    operators.
+
+install:
+  ha_integration_domain: input_select
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_mode_state_contract_tile
+    - registers_mode_state_previous_contract_tile
+    - registers_mode_is_auto_inferred_contract_tile
+    - registers_mode_is_manual_override_contract_tile
+    - registers_mode_changed_at_contract_tile
+    - registers_mode_inference_confidence_contract_tile
+    - registers_mode_ai_summary_contract_tile
+    - registers_mode_revert_to_auto_contract_tile
+    - registers_mode_force_stealth_contract_tile
+    - registers_mode_force_travel_contract_tile
+    - may_register_auto_mode_inference_automation
+    - may_register_manual_override_auto_revert_automation
+    - may_register_confirm_before_power_changing_action_automation
+    - may_register_stealth_mode_audit_log_automation
+    - may_register_mode_change_notification_automation
+
+dashboard:
+  title: "Mode"
+  tiles:
+    - select.rc_mode_state
+    - select.rc_mode_state_previous
+    - binary_sensor.rc_mode_is_auto_inferred
+    - binary_sensor.rc_mode_is_manual_override
+    - sensor.rc_mode_changed_at
+    - sensor.rc_mode_inference_confidence
+    - text.rc_mode_ai_summary
+    - button.rc_mode_revert_to_auto
+    - button.rc_mode_force_stealth
+    - button.rc_mode_force_travel
+
+openclaw:
+  queries:
+    - "what mode are we in?"
+    - "what was the previous mode?"
+    - "was the mode auto-inferred?"
+    - "is the manual override active?"
+    - "when did the mode last change?"
+    - "what is the inference confidence?"
+    - "why are we in travel mode?"
+    - "revert to auto"
+    - "force stealth mode"
+    - "force travel mode"
+  summary_keys:
+    - mode_state
+    - mode_state_previous
+    - is_auto_inferred
+    - is_manual_override
+    - changed_at
+    - inference_confidence
+    - ai_summary
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_mode_engine_for_integration_test
+  - recipe_depends_on_user_wiring_gps_motion_plug_presence_time_of_day_signals
+  - optional_conversation_agent_and_llm_addon_for_ai_summary
+  - requires_operator_wiring_manual_override_auto_revert_before_first_use
+  - confirm_before_power_changing_action_guard_must_be_wired
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_button/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/conversation/
+  cross_references:
+    - ../time-atomic/
+    - ../motion-based-lighting/
+    - ../approach-lights/
+    - ../remote-access/
+    - ../fans/
+    - ../leveling/
+    - ../nfc-tags/
+    - ../smart-automations/
