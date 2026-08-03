@@ -82,6 +82,8 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
 - `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
 - `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
+- `security` — vendor-neutral NVR backend contract surface (per-camera online + per-camera recording + per-camera last-motion + per-camera motion-mask + per-camera detection counts for person / car / animal / package labels). OWNED by `connections/frigate/` (Wave 3 #35).
+- `storage` — vendor-neutral recording/storage contract surface (master enable + storage-used + storage-free + retention-today-count tiles). OWNED by `connections/frigate/` (Wave 3 #35).
 
 ---
 

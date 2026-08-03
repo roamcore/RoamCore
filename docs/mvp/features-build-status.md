@@ -66,6 +66,17 @@ This is an internal status page for the remaining MVP feature build-out.
   - Cross-references: time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64.
   - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #69 OPEN against `main`.
 
+- Frigate (NVR + on-device person / car / animal / package detection — the camera backend everything depends on)
+  - Connection: [`connections/frigate/`](../../connections/frigate/) (Wave 3 #35, PR #<NEW>)
+  - Tier-b recipe connection over the upstream HA core `frigate` integration (since 2022.x — exposes the canonical NVR backend for Home Assistant automations) + the HACS frigate add-on (the canonical upstream vendor-neutral local NVR add-on) + the upstream `camera` platform (since 2022.x) + the HA core `recorder` integration (since 2022.x) + the HA core `input_boolean` + `input_text` + `input_number` + `input_select` + `input_datetime` + `input_button` + `script` + `select` helpers (since 2022.x) + the HA core `template:` sensor + binary_sensor wrappers (since 2022.x) + the HA core `logbook` integration (since 2022.x) + the upstream `script:` integration (since 2022.x). RoamCore does NOT maintain a custom NVR engine; the upstream HA core `frigate` integration IS the canonical NVR backend integration.
+  - 12 vendor-neutral `rc_security_*` + `rc_storage_*` contract tiles (4 cameras `rc_security_camera_*` + 4 detection `rc_security_detection_*` + 4 recording/storage `rc_storage_recording_*`) — no Frigate / go2rtc / blakeblackshear / Reolink / Hikvision / Dahua / Amcrest / ONVIF / RTSP / Coral / TPU / Google / Intel / Nvidia / SSD / NVMe / HDD / PoE / NVR / camera / recorder / MQTT / webhook / REST / API / HTTP / HTTPS / ESPHome / Companion / phone / GPS / accelerometer / iPhone / iOS / Android / Samsung / Pixel / OnePlus / Xiaomi / Huawei / mosquitto / hive / emqx / vernemq / rabbit / nats / kafka / redis / input_boolean / input_text / input_number / input_select / input_datetime / input_button / script / template / logbook / Z-Wave / Zigbee / ZHA / Deconz / Tasmota / Shelly / Sonoff / ESP32 / ESP8266 / Wi-Fi / BLE / Bluetooth names leak into the tile ids.
+  - 5 §8 MANDATORY automations (per-camera offline guard + cameras-online guard + per-camera motion-mask guard + storage-full guard + records-on-motion guard).
+  - Three upstream NVR paths documented in the recipe (Path A HACS frigate add-on — recommended; Path B external / cloud NVR; Path C local container / VM NVR).
+  - 14-§section recipe (incl. the §10 Privacy section + the §14 Storage rotation policy section).
+  - Legacy catalog doc [`docs/catalog/cctv/frigate.md`](../catalog/cctv/frigate.md) now superseded (the SUPERSEDED banner is appended at the end of the doc).
+  - Cross-references: MQTT Wave 3 #34 + mode Wave 3 #61 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64 + agent-actions-allowlist Wave 3 #65 + remote-access Wave 3 #58 + dns-blocker Wave 3 #37 + hvac-basics Wave 3 #49 + fans Wave 3 #59.
+  - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #<NEW> OPEN against `main`.
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
