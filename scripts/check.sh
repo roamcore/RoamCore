@@ -139,6 +139,11 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
 run_if_present "connections/map-dashboard/tests/test_connection_yml.py" \
   "Connection: Map dashboard (tier-a) — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache for the RoamCore dashboard map view: manifest honesty smoke check"
 
+# Catalog anti-slop smoke: catches stale `_inventory.yml` flags,
+# placeholder lines, broken intra-docs links, etc. Always runs.
+run_if_present "scripts/checks/catalog-anti-slop.sh" \
+  "Catalog: anti-slop + link-check smoke"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

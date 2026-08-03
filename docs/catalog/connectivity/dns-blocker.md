@@ -14,4 +14,10 @@ Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker blockers (DNS sink
 
 ## What it shows on your dashboard
 
-- A Pi-hole or AdGuard Home tile that updates automatically.
+- Dns blocked today
+- Dns blocked pct
+- Dns blocker reachable
+- Dns queries total
+- Dns blocker enabled
+- Dns resolver status
+- Dns gravity updated

@@ -1,3 +1,3 @@
 # Security
 
-- **[NFC tags](nfc-tags.md)** — Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp).
+- **[NFC tags](nfc-tags.md)** — NFC tags (vendor-neutral NFC-triggered scenes mapped via `tag_id → scene` mapping).

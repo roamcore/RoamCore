@@ -1,6 +1,6 @@
 # Happijac bed lift
 
-Bed lift control — van bed up / down — is the foundation of every sleep-cycle automation in a van with a Happijac (or any 2-relay + 2-limit-switch bed lift: LCI Happijac, DIY linear actuators, winch + strap, etc.
+Bed lift control — van bed up / down.
 
 ## What you need
 
@@ -14,4 +14,15 @@ Bed lift control — van bed up / down — is the foundation of every sleep-cycl
 
 ## What it shows on your dashboard
 
-- A Happijac bed lift tile that updates automatically.
+- Lift position
+- Lift up limit
+- Lift down limit
+- Lift moving
+- Lift position pct
+- Lift safety ok
+- Lift lift
+- Lift lower
+- Lift stop
+- Lift obstruction detected
+- Lift low voltage lockout
+- Lift mode

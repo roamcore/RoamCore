@@ -1,6 +1,6 @@
 # Bluetooth / Wi-Fi presence
 
-Presence detection — who is currently home in the van — is the foundation of every occupied/away automation in RoamCore: shut down inverter + pump when nobody is home, turn on approach lighting when the first person returns after dark, suppress Stealth-silent-hours actions when only the driver is present, alert…
+Presence detection — who is currently home in the van.
 
 ## What you need
 
@@ -14,4 +14,13 @@ Presence detection — who is currently home in the van — is the foundation of
 
 ## What it shows on your dashboard
 
-- A Bluetooth / Wi-Fi presence tile that updates automatically.
+- Person alice
+- Person bob
+- Anyone home
+- Only driver home
+- Persons home count
+- Last arrival
+- Last departure
+- All away
+- Refresh now
+- Occupied threshold minutes

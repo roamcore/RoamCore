@@ -2,7 +2,7 @@
 
 > **SUPERSEDED — Wave 3 #52 (2026-08-02).** This legacy tier-c
 > placeholder spec has been promoted to a tier-b recipe connection at
-> [`connections/approach-lights/`](../../connections/approach-lights/) (PR
+> [`connections/approach-lights/`](../../../connections/approach-lights/) (PR
 > #N). The new connection ships a 12-tile vendor-neutral
 > `rc_lighting_*` contract, a full howto recipe covering Path A
 > (smart switches / smart bulbs — Shelly / Zooz / Aeotec / Hue / LIFX /
@@ -16,9 +16,9 @@
 > from this doc; use the recipe + contract layer in the connection
 > folder.
 
-**Replaced by:** [`connections/approach-lights/`](../../connections/approach-lights/)
+**Replaced by:** [`connections/approach-lights/`](../../../connections/approach-lights/)
 
-**Recipe:** [`connections/approach-lights/docs/recipe.md`](../../connections/approach-lights/docs/recipe.md)
+**Recipe:** [`connections/approach-lights/docs/recipe.md`](../../../connections/approach-lights/docs/recipe.md)
 
 ---
 

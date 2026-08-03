@@ -1,6 +1,6 @@
 # HVAC basics
 
-HVAC basics — RoamCore catalog entry.
+HVAC basics — cabin heating/cooling foundations for vans.
 
 ## What you need
 
@@ -14,4 +14,14 @@ HVAC basics — RoamCore catalog entry.
 
 ## What it shows on your dashboard
 
-- A HVAC basics tile that updates automatically.
+- Cabin thermostat
+- Cabin temperature
+- Cabin humidity
+- Heater active
+- Ac active
+- Cabin fan
+- Fan speed
+- Outdoor temperature
+- Frost warning
+- Over temp warning
+- Mode

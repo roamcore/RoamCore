@@ -15,4 +15,13 @@ Better sleep and cooking. Quick 'good enough' check without guessing.
 
 ## What it shows on your dashboard
 
-- A Leveling tile that updates automatically.
+- Pitch degrees
+- Roll degrees
+- Max tilt degrees
+- Is level
+- Is close to level
+- Mode
+- Last calibrated at
+- Calibrate now
+- Jack status
+- Fridge safe

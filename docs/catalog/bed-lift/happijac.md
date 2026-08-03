@@ -2,7 +2,7 @@
 
 **Support tier:** C (custom/manual)
 
-> **Superseded by the tier-b connection:** this catalog page is retained for context. For the install + recipe + contract tiles, see [connections/happijac/](../../../connections/happijac/) and [docs/recipe.md](../../../connections/happijac/docs/recipe.md).
+> **Superseded by the tier-b connection:** this catalog page is retained for context. For the install + recipe + contract tiles, see [connections/happijac/](../../../../connections/happijac/) and [docs/recipe.md](../../../../connections/happijac/docs/recipe.md).
 
 ## What this is
 HappiJac bed lifts are a popular off-the-shelf system. The HA integration is usually custom because the stock controller is not designed as a smart-home device.

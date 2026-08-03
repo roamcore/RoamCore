@@ -224,7 +224,7 @@ class Connection:
     tags: list[str] = field(default_factory=list)
     additional_hardware: list[str] = field(default_factory=list)
     install_instructions: str = ""
-    needs_curation_review: bool = False
+    dashboard_tiles: list[str] = field(default_factory=list)
     excluded: bool = False
     src_path: Path | None = None
 
@@ -314,6 +314,48 @@ def humanize_summary(desc: str, title: str) -> str:
         return f"{title} — RoamCore catalog entry."
 
     flat = re.sub(r"\s+", " ", desc).strip()
+
+    # 0. **Best first sentence.** Take the first sentence of the
+    #    description, strip the "is the umbrella for X" / "is the
+    #    vendor-neutral surface that turns X into Y" middle clause,
+    #    and trim trailing internal-jargon markers. Surviving text
+    #    is plain English suitable for the catalog page.
+    first_period = flat.find(".")
+    first_sentence = flat[: first_period + 1] if first_period != -1 else flat[:280]
+    # Strip the "is the umbrella for X" / "is the vendor-neutral
+    # surface that turns X into Y" middle clause.
+    cleaned = re.sub(
+        r"\s*[—-]\s*is the (?:umbrella for|vendor-neutral surface that turns)[^.]*(\.|$)",
+        lambda m: m.group(1) or "",
+        first_sentence,
+        flags=re.IGNORECASE,
+    )
+    # Also strip the "— the umbrella for X + Y + Z —" mid-clause
+    # (legacy " <!-- the umbrella for X + Y + Z -->" pattern), keeping
+    # the surrounding em-dash clauses. Allow internal hyphens but
+    # require the OUTER delimiter to be a real em-dash.
+    cleaned = re.sub(
+        r"[—-]\s*the umbrella for[^.\n]*?[\.\u2014]\s*",
+        lambda m: "\u2014 ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    # Strip any leading "Title (Subsystem) —" boilerplate that just
+    # restates the YAML's name field (no new information).
+    cleaned = re.sub(
+        r"^[A-Z][^.\n—\-]{0,60}\(\s*[A-Z][^)]*\s*\)\s*[—-]\s*",
+        "",
+        cleaned,
+    )
+    # Strip a trailing "is the X" phrase if no period was followed.
+    cleaned = re.sub(r"\s+is the\s+\S+.*$", "", cleaned, flags=re.IGNORECASE)
+    # Trim trailing em-dashes / dashes left over from the strip.
+    cleaned = re.sub(r"\s+[—-]+\s*$", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned and cleaned[-1] not in ".!?":
+        cleaned += "."
+    if 20 <= len(cleaned) <= 280 and _looks_like_real_sentence(cleaned):
+        return _clean(cleaned)
 
     # 1. the umbrella for "X" (quoted)
     umbrella = _UMBRELLA_FOR_PATTERN.search(flat)
@@ -701,11 +743,43 @@ def sensible_tags(yaml_tags: list[str], slug: str, title: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def _humanise_tile(entity_id: str) -> str:
+    """Turn ``sensor.rc_hvac_cabin_temperature`` into ``Cabin temperature``.
+
+    Strips the ``rc_<subsystem>_`` prefix + the entity domain so the
+    user-facing copy reads as a normal dashboard tile name, not a
+    programmer entity id.
+    """
+
+    s = (entity_id or "").strip()
+    if not s:
+        return ""
+    # Split off the domain (`sensor.`, `binary_sensor.`, etc).
+    if "." in s:
+        domain, _, rest = s.partition(".")
+        s = rest
+    # Strip the `rc_<subsystem>_` prefix when present.
+    if s.startswith("rc_"):
+        parts = s.split("_")
+        # rc_hvac_cabin_temperature -> ["rc","hvac","cabin","temperature"]
+        if len(parts) >= 4:
+            s = "_".join(parts[2:])
+        elif len(parts) == 3:
+            s = parts[-1]
+        else:
+            s = s[3:]
+    # Convert underscores to spaces + tidy.
+    s = s.replace("_", " ").strip()
+    if not s:
+        return ""
+    return s[:1].upper() + s[1:]
+
+
 def render_page(conn: Connection) -> str:
     """Render a single catalog page in IKEA style.
 
     Plain English. No frontmatter. No warnings. No tier letters.
-    No status jargon. No Source manifest footer.
+    No status jargon. No Source manifest footer. No slop.
     """
 
     hardware_block = ""
@@ -713,6 +787,20 @@ def render_page(conn: Connection) -> str:
         hardware_block = "\n".join(f"- {h}" for h in conn.additional_hardware)
 
     install = install_block(conn.slug, conn.install_method).strip()
+
+    # Build the "What it shows on your dashboard" list from the
+    # YAML's dashboard.tiles — never from a generic placeholder.
+    if conn.dashboard_tiles:
+        rendered_tiles = [
+            f"- {_humanise_tile(t)}" for t in conn.dashboard_tiles if _humanise_tile(t)
+        ]
+        tiles_block = "\n".join(rendered_tiles) if rendered_tiles else (
+            "- The dashboard tiles appear automatically once installed."
+        )
+    else:
+        tiles_block = (
+            "- The dashboard tiles appear automatically once installed."
+        )
 
     body = f"""# {conn.title}
 
@@ -728,7 +816,7 @@ def render_page(conn: Connection) -> str:
 
 ## What it shows on your dashboard
 
-- A {conn.title} tile that updates automatically.
+{tiles_block}
 """
 
     return body
@@ -789,6 +877,22 @@ def curate_connection(slug: str, raw: dict[str, Any], src_path: Path | None = No
     method = _install_method(install_block_raw if isinstance(install_block_raw, dict) else {}, hacs, config_flow)
     hardware = sensible_hardware_defaults(slug, title)
 
+    # Pull the dashboard tiles from the YAML so the user-facing
+    # catalog page can list real, concrete tiles (not a generic
+    # "A X tile that updates automatically." placeholder).
+    dashboard_block = raw.get("dashboard") or {}
+    if isinstance(dashboard_block, dict):
+        raw_tiles = dashboard_block.get("tiles") or []
+    else:
+        raw_tiles = []
+    tiles: list[str] = []
+    for t in raw_tiles:
+        if not isinstance(t, str):
+            continue
+        t = t.strip()
+        if t and t not in tiles:
+            tiles.append(t)
+
     return Connection(
         slug=slug,
         raw_id=raw_id,
@@ -804,27 +908,7 @@ def curate_connection(slug: str, raw: dict[str, Any], src_path: Path | None = No
         tags=tags,
         additional_hardware=hardware,
         install_instructions=install_block(slug, method),
-        needs_curation_review=slug in {
-            "mode",
-            "demo-mode",
-            "advanced-mode",
-            "smart-automations",
-            "map-dashboard",
-            "motion-based-lighting",
-            "bluetooth-wifi-presence",
-            "hvac-basics",
-            "electronic-valves",
-            "music-assistant",
-            "mqtt",
-            "happijac",
-            "heated-floors",
-            "water-tanks",
-            "mock-location-and-tracks",
-            "timezone-geolocator",
-            "in-cab-tablet-dashboard",
-            "agent-actions-allowlist",
-            "openclaw-api",
-        },
+        dashboard_tiles=tiles,
         excluded=False,
         src_path=src_path,
     )

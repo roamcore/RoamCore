@@ -14,4 +14,12 @@ A NAS gives RoamCore a reliable local-storage target for media, camera footage, 
 
 ## What it shows on your dashboard
 
-- A Network Attached Storage tile that updates automatically.
+- Nas storage used pct
+- Nas storage total gb
+- Nas storage free gb
+- Nas reachable
+- Nas smart status ok
+- Nas last backup at
+- Nas backup running
+- Nas cpu pct
+- Nas memory pct

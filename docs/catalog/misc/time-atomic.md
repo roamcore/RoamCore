@@ -14,4 +14,11 @@ Keep HA's clock accurate even when offline (in a van with intermittent connectiv
 
 ## What it shows on your dashboard
 
-- A Time tile that updates automatically.
+- Current
+- Ntp source
+- Last sync minutes ago
+- Drift seconds
+- Synced
+- Stale
+- Ntp reachable
+- Rtc present

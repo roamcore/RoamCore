@@ -138,8 +138,6 @@ def emit_inventory(items: list[dict[str, object]], full: bool = False) -> str:
         out.write(f"    status: {_yaml_escape(str(item['status']))}\n")
         out.write(f"    page: catalog/{item['category']}/{item['slug']}.md\n")
         out.write(f"    summary: {_yaml_escape(str(item['summary']))}\n")
-        if item.get("needs_curation_review"):
-            out.write("    needs_curation_review: true\n")
         out.write("    tags:\n")
         for t in item["tags"]:  # type: ignore[index]
             out.write(f"      - {_yaml_escape(str(t))}\n")
@@ -161,7 +159,6 @@ def inventory_items_for(connections: list[lib.Connection]) -> list[dict[str, obj
                 "status": c.status,
                 "summary": c.summary,
                 "tags": c.tags,
-                "needs_curation_review": c.needs_curation_review,
             }
         )
     return items

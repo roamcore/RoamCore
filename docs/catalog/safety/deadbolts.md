@@ -14,4 +14,15 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## What it shows on your dashboard
 
-- A Deadbolts tile that updates automatically.
+- Lock front door
+- Lock side door
+- Lock storage compartment
+- Lock any unlocked
+- Lock unlocked count
+- Lock last action age min
+- Lock unexpected unlock
+- Lock co egress required
+- Lock low voltage lockout
+- Lock mode
+- Lock lock all
+- Lock unlock all

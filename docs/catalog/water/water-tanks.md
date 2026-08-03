@@ -1,6 +1,6 @@
 # Water tanks
 
-Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns "is the fresh tank still full enough to last the night?" into a dashboard tile + a push notification + a mode-aware automation.
+Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans.
 
 ## What you need
 
@@ -15,4 +15,20 @@ Water tanks — fresh + grey water telemetry + pump runtime + leak detection + f
 
 ## What it shows on your dashboard
 
-- A Water tanks tile that updates automatically.
+- Fresh level pct
+- Fresh level l
+- Fresh days remaining
+- Grey level pct
+- Grey level l
+- Grey full warning
+- Fresh low warning
+- Fresh empty warning
+- Pump running
+- Pump runtime min last 24h
+- Pump running too long
+- Leak detected
+- Freeze risk
+- Fresh temperature c
+- Fresh tank size l
+- Grey tank size l
+- Mode

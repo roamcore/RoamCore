@@ -14,8 +14,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/automation/advanced-mode.md
-    summary: RoamCore includes an Advanced Mode toggle that can reveal extra controls and diagnostics without cluttering the default UI. Keeps the dashboard clean for daily use. Still gives power users access to deeper controls when needed.
-    needs_curation_review: true
+    summary: Advanced mode — vendor-neutral power-user toggle + session- timeout guard + destructive-calls block.
     tags:
       - advanced-mode
       - ai
@@ -31,8 +30,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/automation/agent-actions-allowlist.md
-    summary: "Agent actions allowlist (safety gateway): A safety layer that defaults to deny and only permits explicitly-allowed agent actions, with a kill switch. Lets you use automation/agents without fear of unexpected device control; Clear boundary between read-only and can change things."
-    needs_curation_review: true
+    summary: Agent actions allowlist — vendor-neutral kill-switch + per- action allowlist + audit-log gateway for safe agent-driven RoamCore actions.
     tags:
       - agent-actions
       - ai
@@ -48,8 +46,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/automation/demo-mode.md
-    summary: Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos.
-    needs_curation_review: true
+    summary: Demo mode — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + hard-block from controlling real hardware.
     tags:
       - demo-mode
       - ai
@@ -66,7 +63,6 @@ items:
     status: beta
     page: catalog/automation/mode.md
     summary: Quickly switch the van between common states (driving, parked, quiet night). A clean way to group automations later without building everything at once.
-    needs_curation_review: true
     tags:
       - mode
       - ai
@@ -82,8 +78,7 @@ items:
     install_method: hacs
     status: beta
     page: catalog/automation/openclaw-api.md
-    summary: RoamCore exposes stable JSON endpoints for local agents (system summary + skill execution) so assistants can read state and (optionally) take safe actions.
-    needs_curation_review: true
+    summary: OpenClaw JSON API — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents.
     tags:
       - openclaw-api
       - ai
@@ -115,7 +110,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/fans.md
-    summary: "Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather."
+    summary: "Fans (vendor-neutral fan-controller umbrella for HA, covering rooftop vent fans + circulation fans + bathroom exhaust fans — rooftop + circulation fans cover the climate-aware airflow + the rain-sensor safety block; bathroom exhaust fans wire as a separate downstream `fan."
     tags:
       - fan
       - ventilation
@@ -131,8 +126,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/hvac-basics.md
-    summary: HVAC basics — RoamCore catalog entry.
-    needs_curation_review: true
+    summary: HVAC basics — cabin heating/cooling foundations for vans.
     tags:
       - hvac
       - climate
@@ -148,8 +142,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/happijac.md
-    summary: "Bed lift control — van bed up / down — is the foundation of every sleep-cycle automation in a van with a Happijac (or any 2-relay + 2-limit-switch bed lift: LCI Happijac, DIY linear actuators, winch + strap, etc."
-    needs_curation_review: true
+    summary: Bed lift control — van bed up / down.
     tags:
       - bed-lift
       - happijac
@@ -166,7 +159,6 @@ items:
     status: beta
     page: catalog/comfort/heated-floors.md
     summary: "Heated floors + engine pre-heat — cold-weather comfort controls for vans — are the foundation of every \"Warm up\" automation in winter van life."
-    needs_curation_review: true
     tags:
       - hvac
       - heated-floor
@@ -182,8 +174,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/motion-based-lighting.md
-    summary: Motion-based lighting — RoamCore catalog entry.
-    needs_curation_review: true
+    summary: Motion-based lighting (driving + arrival).
     tags:
       - lighting
       - motion
@@ -199,8 +190,7 @@ items:
     install_method: hacs
     status: beta
     page: catalog/comfort/music-assistant.md
-    summary: "Music Assistant is a provider- agnostic multi-room audio orchestrator very popular in HA installs — it unifies Spotify, Apple Music, TuneIn/radio, local files, and Chromecast/AirPlay/Sonos receivers behind a single \"play everywhere\" surface with per-zone controls."
-    needs_curation_review: true
+    summary: Music Assistant (<.
     tags:
       - music-assistant
       - media
@@ -248,7 +238,7 @@ items:
     install_method: hacs
     status: beta
     page: catalog/connectivity/remote-access.md
-    summary: "Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems."
+    summary: Remote access (vendor-neutral remote-access umbrella for HA, covering Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud + Wireguard — operator picks ONE path).
     tags:
       - remote-access
       - tailscale
@@ -311,8 +301,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/location/bluetooth-wifi-presence.md
-    summary: "Presence detection — who is currently home in the van — is the foundation of every occupied/away automation in RoamCore: shut down inverter + pump when nobody is home, turn on approach lighting when the first person returns after dark, suppress Stealth-silent-hours actions when only the driver is present, alert…"
-    needs_curation_review: true
+    summary: Presence detection — who is currently home in the van.
     tags:
       - presence
       - bluetooth
@@ -328,8 +317,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/location/map-dashboard.md
-    summary: "RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…"
-    needs_curation_review: true
+    summary: Map dashboard — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache.
     tags:
       - map
       - map-dashboard
@@ -345,8 +333,7 @@ items:
     install_method: manual
     status: beta
     page: catalog/location/mock-location-and-tracks.md
-    summary: Mock location + track replay is the dev/demo polyline generator for the RoamCore map page.
-    needs_curation_review: true
+    summary: Mock location + track replay.
     tags:
       - map
       - mock
@@ -362,8 +349,7 @@ items:
     install_method: manual
     status: recipe_published
     page: catalog/maintenance/in-cab-tablet-dashboard.md
-    summary: Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving + a richer control surface on arrival + a battery-friendly lock screen while parked.
-    needs_curation_review: true
+    summary: In-cab tablet dashboard (driving / arrival / lock-screen Lovelace views with ignition-aware auto-switch).
     tags:
       - vehicle
       - in-cab
@@ -427,8 +413,7 @@ items:
     install_method: hacs
     status: recipe_published
     page: catalog/misc/timezone-geolocator.md
-    summary: "Keep HA's system timezone correct as the van travels across regions so that time-based automations (sun events + `now` + `today_at`) keep working."
-    needs_curation_review: true
+    summary: Timezone geolocator (location-aware HA timezone).
     tags:
       - time
       - timezone
@@ -461,7 +446,6 @@ items:
     status: beta
     page: catalog/safety/smart-automations.md
     summary: "Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…"
-    needs_curation_review: true
     tags:
       - safety
       - automation
@@ -493,7 +477,7 @@ items:
     install_method: hacs
     status: recipe_published
     page: catalog/security/nfc-tags.md
-    summary: "Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp)."
+    summary: "NFC tags (vendor-neutral NFC-triggered scenes mapped via `tag_id → scene` mapping)."
     tags:
       - nfc
       - tag
@@ -509,8 +493,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/water/electronic-valves.md
-    summary: "Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns \"which tank am I drawing from right now?\" + \"is the grey valve about to overflow?\" + \"can I safely open a…"
-    needs_curation_review: true
+    summary: Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks.
     tags:
       - valve
       - water
@@ -526,8 +509,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/water/water-tanks.md
-    summary: "Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns \"is the fresh tank still full enough to last the night?\" into a dashboard tile + a push notification + a mode-aware automation."
-    needs_curation_review: true
+    summary: Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans.
     tags:
       - water
       - fresh
