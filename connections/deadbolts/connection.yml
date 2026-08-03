@@ -1,0 +1,150 @@
+# Deadbolts (smart lock control for van doors) — tier-b recipe
+# connection.
+#
+# Promoted from docs/catalog/safety/deadbolts.md (legacy tier-c,
+# ~30 lines). Promoted into tier-b because RoamCore does NOT
+# ship a native smart deadbolt — we RECIPE three upstream
+# operator-side paths:
+#   - Path A — Z-Wave deadbolts (Schlage Encode Plus, Yale
+#     Assure 2, Kwikset Halo) via the HA core `zwave_js` Z-Wave
+#     JS GUI flow (the Z-Wave JS integration exposes a
+#     config_flow since 2022.x); the upstream integration
+#     exposes lock.<name> entities directly.
+#   - Path B — Zigbee deadbolts (Aqara A100, Yale Assure 2
+#     Zigbee) via the HA core `zha` Zigbee Home Automation
+#     integration's GUI flow (or `zigbee2mqtt` MQTT-bridged
+#     approach); the upstream integration exposes lock.<name>
+#     entities directly.
+#   - Path C — Matter/Thread deadbolts (Level Lock+, Yale
+#     Assure 2 Matter variant) via the HA core `matter`
+#     integration's GUI flow; requires a Thread border router
+#     (OpenWrt VM, Apple HomePod mini, Nest Hub v2, or Aeotec
+#     Border Router) on the LAN.
+
+id: deadbolts
+name: "Deadbolts (smart lock control for van doors) — tier-b recipe connection"
+tier: b
+category: safety
+status: beta
+version: 0.1.0
+description: |
+  Smart deadbolts — van door lock control for vans — are the
+  "did I forget to lock the van?" answer. This connection is a
+  recipe: it documents the three upstream operator-side paths
+  and layers a vendor-neutral contract via the 12
+  `rc_safety_lock_*` dashboard tiles per
+  docs/reference/rc-entity-naming.md §safety subsystem
+  (already in the allowed subsystems list — no backfill needed).
+  The 6 mode-aware safety automations cover Away auto-lock,
+  Sleep auto-lock + auto-relock, unattended-unlock alarm, CO
+  egress-required override, low-voltage lockout, and the
+  multi-door aggregate that surfaces "is ANY lock unlocked?"
+  as a single dashboard tile.
+icon: lock
+codeowners:
+  - "@bernardc"
+tags:
+  - safety
+  - lock
+  - deadbolt
+  - smart-lock
+  - z-wave
+  - zigbee
+  - matter
+  - thread
+  - away-mode
+  - egress
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Deadbolts require the operator to (a) choose one or more of
+    the three upstream paths (Path A Z-Wave deadbolts via
+    zwave_js; Path B Zigbee deadbolts via zha or zigbee2mqtt;
+    Path C Matter/Thread deadbolts via the matter integration
+    + a Thread border router), (b) confirm the operator's chosen
+    protocol integration is already configured in HA and exposes
+    at least one `lock.<name>` entity, (c) decide which of the
+    contract tile slots each upstream lock fills
+    (rc_safety_lock_front_door / rc_safety_lock_side_door /
+    rc_safety_lock_storage_compartment), (d) wire the upstream
+    `lock.<name>` -> contract `lock.rc_safety_lock_*` mapping
+    via HA core `template:` locks (or alias / customize domain),
+    (e) wire the 6 §7 safety interlocks (Away auto-lock / Sleep
+    auto-lock + auto-relock / unattended-unlock alarm / CO
+    egress-required override / low-voltage lockout / multi-door
+    aggregate) BEFORE first use.
+
+install:
+  ha_integration_domain: lock
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - registers_lock_entities
+    - may_register_zwave_js_devices_for_path_a
+    - may_register_zha_devices_for_path_b
+    - may_register_matter_devices_for_path_c
+
+dashboard:
+  tiles:
+    - lock.rc_safety_lock_front_door
+    - lock.rc_safety_lock_side_door
+    - lock.rc_safety_lock_storage_compartment
+    - binary_sensor.rc_safety_lock_any_unlocked
+    - sensor.rc_safety_lock_unlocked_count
+    - sensor.rc_safety_lock_last_action_age_min
+    - binary_sensor.rc_safety_lock_unexpected_unlock
+    - binary_sensor.rc_safety_lock_co_egress_required
+    - binary_sensor.rc_safety_lock_low_voltage_lockout
+    - select.rc_safety_lock_mode
+    - button.rc_safety_lock_lock_all
+    - button.rc_safety_lock_unlock_all
+
+openclaw:
+  queries:
+    - is_van_locked
+    - lock_all
+    - unlock_all
+    - unlock_front_door
+    - lock_side_door
+    - is_storage_unlocked
+    - is_unexpected_unlock
+    - is_co_egress_required
+    - is_low_voltage_lockout
+    - set_lock_mode
+  summary_keys:
+    - any_unlocked
+    - unlocked_count
+    - last_action_age_min
+    - unexpected_unlock
+    - co_egress_required
+    - low_voltage_lockout
+    - lock_mode
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_deadbolt_for_integration_test
+  - recipe_depends_on_user_running_zwave_or_zigbee_or_matter_lock_plus_protocol_integration
+  - requires_zwave_js_or_zha_or_matter_integration_already_configured
+  - requires_thread_border_router_for_path_c
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/lock/
+    - https://www.home-assistant.io/integrations/zwave_js/
+    - https://www.home-assistant.io/integrations/zha/
+    - https://www.home-assistant.io/integrations/matter/
+    - https://www.home-assistant.io/integrations/template/
