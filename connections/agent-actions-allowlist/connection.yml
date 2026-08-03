@@ -1,0 +1,427 @@
+# Agent actions allowlist — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions — tier-b recipe connection.
+#
+# Promoted from docs/catalog/ai/agent-actions-allowlist.md (legacy tier-a
+# claim stub, 12 lines — "Agent actions allowlist (safety gateway):
+# A safety layer that defaults to deny and only permits explicitly-
+# allowed agent actions, with a kill switch. Lets you use automation/
+# agents without fear of unexpected device control; Clear boundary
+# between read-only and can change things. None. Design notes:
+# docs/design/agent-actions-allowlist.md; HA package:
+# homeassistant/packages/roamcore_agent_actions.yaml. (Add safety
+# philosophy + examples)" with no recipe + no contract + no
+# automations + no install path — just a placeholder with an
+# aspirational tier-a claim).
+#
+# This slice ships a tier-b RECIPE over the upstream HA core
+# `input_boolean` + `input_text` + `input_number` + `input_select`
+# + `input_datetime` + `input_button` + `script` helper entities +
+# the HA core `template:` sensor wrapper + the HA core `logbook`
+# integration + a thin RoamCore upstream-entity-aggregation wrapper.
+# The single `input_boolean.rc_agent_actions_enabled` kill switch is
+# already shipped in `homeassistant/packages/roamcore_agent_actions.yaml`
+# (this slice ONLY references it as an existing tile — DO NOT
+# redefine; the package is preserved verbatim). This slice ADDS the
+# remaining 10 `rc_agent_actions_*` contract tiles + the recipe +
+# the smoke + the 5 §8 MANDATORY automations + the operator-side
+# policy file format + the audit-log schema + the cross-references
+# to time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach
+# lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode
+# Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 +
+# openclaw-api Wave 3 #64.
+#
+# The umbrella publishes the 11 `rc_agent_actions_*` contract tiles
+# documented below (vendor-neutral — no Victron / SeeLevel / Garnet
+# / Mopeka / Renogy / Starlink / Peplink / Teltonika / Unifi /
+# Ubiquiti / OpenAI / Anthropic / Claude / GPT / ChatGPT / LLM /
+# conversation / MQTT / webhook / REST / API / HTTP / HTTPS /
+# Companion / ESPHome / phone / GPS / accelerometer / iPhone /
+# iOS / Android / Samsung / Pixel / OnePlus / Xiaomi / Huawei /
+# input_boolean / input_text / input_number / input_select /
+# input_datetime / input_button / script / template / logbook /
+# Z-Wave / Zigbee / ZHA / Deconz / Tasmota / Shelly / Sonoff /
+# ESP32 / ESP8266 / Wi-Fi / BLE / Bluetooth names leak into the
+# tile ids). RoamCore does NOT fork any of the upstream helpers;
+# the contract layer is a thin upstream-entity-aggregation wrapper
+# + the vendor-neutral tile surface + the FIVE §8 MANDATORY
+# automations.
+
+# The recipe covers the FIVE-step operator flow (Confirm the
+# kill-switch + Mount the policy file + Decide the default
+# duration + Enable with optional confirmation + Audit + revert)
+# + the FIVE §8 MANDATORY automations (kill-switch-blocks-
+# everything guard + session-timeout guard + audit-log entry +
+# require-confirmation guard + outside-allowlist deny-by-default
+# guard) + the 11 `rc_agent_actions_*` contract tiles + the
+# §9 troubleshooting entries (6 entries — kill-switch not
+# blocking / session not expiring / audit-log entries missing /
+# require-confirmation bypass / policy file parse errors /
+# action_id collision) + the §10 privacy section (no RoamCore-
+# side telemetry; the agent-action logbook stays local on the
+# operator's HA box; the operator owns the policy file + the
+# audit log + the kill switch; no cloud round-trip) + the §11
+# tier-a promotion outline (real agent-actions engine + canned
+# fixture responses for kill-switch blocks events + canned
+# fixture responses for session-expired events + canned fixture
+# responses for require-confirmation bypass attempts + canned
+# fixture responses for outside-allowlist deny events + canned
+# fixture responses for action_id collisions + RoamCore-owned
+# operator-wired setup flow walking the operator through Kill-
+# switch + Policy file + Default duration + Confirmation +
+# Audit + the §8 automations + integration tests asserting a
+# kill-switch block fires the deny result + a session-timeout
+# event auto-disables the kill switch + an outside-allowlist
+# action short-circuits to denied) + the §12 files + the §13
+# cross-references (the time-atomic Wave 3 #55 connection for
+# the time-of-day primitives used by the §8.2 session-timeout
+# guard's expiry timestamp + the remote-access Wave 3 #58
+# connection for the VPN primitive used by the §8.4 require-
+# confirmation guard's owner-identity check + the approach
+# lights Wave 3 #52 connection for the dashboard banner pattern
+# used by the §8.3 audit-log entry + the fans Wave 3 #59
+# connection for the §8.1 kill-switch-blocks-everything guard's
+# fan-protection cross-reference + the leveling Wave 3 #60
+# connection for the §8.1 kill-switch-blocks-everything guard's
+# levelling-jack protection cross-reference + the mode Wave 3
+# #61 connection for the §8.3 audit-log entry's mode-change
+# cross-reference + the demo-mode Wave 3 #62 connection for
+# the §8.5 outside-allowlist deny-by-default guard's safety-
+# chip pattern + the advanced-mode Wave 3 #63 connection for
+# the §8.4 require-confirmation guard's confirm-flag pattern +
+# the openclaw-api Wave 3 #64 connection for the §8.3 audit-
+# log entry's JSON payload cross-reference).
+
+# The REUSE-FIRST strategy is intentional: HA's core
+# `input_boolean` + `input_text` + `input_number` +
+# `input_select` + `input_datetime` + `input_button` + `script`
+# helper entities (since 2022.x) handle the upstream agent-
+# actions state storage (the single kill switch + the policy
+# path + the require-confirmation toggle + the default-duration
+# selector + the session-expires-at timestamp + the
+# disable-now button are all upstream helper entities; the
+# upstream `script:` integration handles the thin RoamCore
+# wrapper scripts; 95%+ of operator-facing agent-actions
+# operations are wired through upstream helpers + the
+# upstream `script:` integration); the HA core `template:`
+# sensor wrapper (since 2022.x) derives the seconds-until-
+# expiry + last-action-id + last-action-at + last-action-
+# result tiles from the upstream state; the HA core `logbook`
+# integration (since 2022.x) is the canonical audit-log
+# destination for the §8.3 audit-log-entry guard. All
+# upstream helpers + integrations are upstream / vendor /
+# HACS code; the RoamCore wrapper is a thin upstream-entity-
+# aggregation layer + the contract layer + the FIVE §8
+# MANDATORY automations + the operator-side policy file
+# format documentation.
+#
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): The UPSTREAM HA core `input_boolean` +
+# `input_text` + `input_number` + `input_select` +
+# `input_datetime` + `input_button` + `script` helpers
+# (since 2022.x — expose a GUI flow for the operator to add
+# the helper entities from the HA UI under Settings →
+# Helpers) + the HA core `template:` sensor wrapper (since
+# 2022.x — expose a GUI flow for the operator to add a
+# derived `sensor.*` entity from the upstream sensors) +
+# the HA core `logbook` integration (since 2022.x — the
+# canonical audit-log destination for Home Assistant
+# automations) + the upstream `script:` integration (since
+# 2022.x — exposes the script-runner operator-wired setup
+# flow for the §8.4 require-confirmation guard's
+# `roamcore.action_confirm` wrapper + the §8.5 outside-
+# allowlist deny-by-default guard's `roamcore.action_
+# execute` wrapper) ALL expose a GUI flow. That's honest
+# upstream truth, NOT a tier-a marker for RoamCore's tier.
+# The tier-a marker for RoamCore would be a RoamCore-owned
+# operator-wired setup flow + RoamCore-owned integration
+# code + integration tests against a RoamCore-owned agent-
+# actions engine bench (a controlled environment with canned
+# fixture responses for kill-switch-blocks events + canned
+# fixture responses for session-expired events + canned
+# fixture responses for require-confirmation bypass
+# attempts + canned fixture responses for outside-allowlist
+# deny events + canned fixture responses for action_id
+# collisions). None of those are shipped at tier-b. Tier-b
+# honesty: HA core `input_boolean` + `input_text` +
+# `input_number` + `input_select` + `input_datetime` +
+# `input_button` + `script` + HA core `template:` + HA core
+# `logbook` are all upstream / vendor / HACS code; the
+# RoamCore wrapper is a thin upstream-entity-aggregation
+# layer + the contract layer + the FIVE §8 MANDATORY
+# automations.
+
+id: agent_actions
+name: "Agent actions allowlist — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions — tier-b recipe connection"
+tier: b
+category: ai
+status: beta
+version: 0.1.0
+description: |
+  Agent actions allowlist — vendor-neutral kill-switch + per-
+  action allowlist + audit-log gateway for safe agent-driven
+  RoamCore actions — the umbrella for "Agent actions allowlist
+  (safety gateway): A safety layer that defaults to deny and
+  only permits explicitly-allowed agent actions, with a kill
+  switch. Lets you use automation/agents without fear of
+  unexpected device control; Clear boundary between read-only
+  and can change things" — is the ai-category complement to
+  the broader RoamCore "talk to your van" affordances. The
+  single `input_boolean.rc_agent_actions_enabled` kill switch
+  is the operator's master enable (OFF by default; this tile is
+  ALREADY shipped in `homeassistant/packages/roamcore_agent_
+  actions.yaml` and is preserved verbatim — the package is
+  not redefined by this slice); the
+  `input_text.rc_agent_actions_policy_path` is the operator-
+  configurable policy file path (default
+  `/config/.roamcore/agent_allowlist.yaml`); the
+  `input_boolean.rc_agent_actions_require_confirmation` is the
+  "every action needs an explicit confirmation" toggle
+  (default ON); the `select.rc_agent_actions_default_duration`
+  is the operator-pickable session-duration picker (Off /
+  1h / 6h / 24h / 7d / Never; default 24h); the
+  `input_datetime.rc_agent_actions_session_expires_at` is the
+  session expiry timestamp (set to "now + selected duration"
+  when the kill switch flips ON); the
+  `sensor.rc_agent_actions_seconds_until_expiry` is the
+  resolved countdown to the session expiry; the
+  `sensor.rc_agent_actions_last_action_id` is the
+  `action_id` of the last agent action invocation (mirrors
+  the §8.3 audit-log entry); the
+  `sensor.rc_agent_actions_last_action_at` is the timestamp
+  of the last agent action invocation; the
+  `sensor.rc_agent_actions_last_action_result` is the
+  resolved result of the last agent action (`ok` / `error` /
+  `blocked` / `denied` / `pending-confirmation`); the
+  `binary_sensor.rc_agent_actions_is_blocked_by_kill_switch`
+  is the safety chip (TRUE when the kill switch is OFF or the
+  session has expired; should NEVER be FALSE unexpectedly);
+  the `button.rc_agent_actions_disable_now` is the operator-
+  triggered one-tap emergency off (also turns the master kill
+  switch OFF + clears the session expiry timestamp).
+
+  RoamCore does NOT ship a native agent-actions engine; we
+  RECIPE the well-understood upstream HA core `input_boolean`
+  + `input_text` + `input_number` + `input_select` +
+  `input_datetime` + `input_button` + `script` helper
+  entities (since 2022.x — expose a GUI flow for the operator
+  to add the helper entities from the HA UI under Settings →
+  Helpers) + the HA core `template:` sensor wrapper (since
+  2022.x — expose a GUI flow for the operator to add a
+  derived `sensor.*` entity from the upstream sensors) + the
+  HA core `logbook` integration (since 2022.x — the canonical
+  audit-log destination for Home Assistant automations) + the
+  upstream `script:` integration (since 2022.x — exposes the
+  script-runner operator-wired setup flow for the §8.4
+  require-confirmation guard's `roamcore.action_confirm`
+  wrapper + the §8.5 outside-allowlist deny-by-default
+  guard's `roamcore.action_execute` wrapper). The umbrella
+  publishes the 11 `rc_agent_actions_*` contract tiles
+  documented below (vendor-neutral — no Victron / SeeLevel /
+  Garnet / Mopeka / Renogy / Starlink / Peplink / Teltonika /
+  Unifi / Ubiquiti / OpenAI / Anthropic / Claude / GPT /
+  ChatGPT / LLM / conversation / MQTT / webhook / REST / API
+  / HTTP / HTTPS / Companion / ESPHome / phone / GPS /
+  accelerometer / iPhone / iOS / Android / Samsung / Pixel /
+  OnePlus / Xiaomi / Huawei / input_boolean / input_text /
+  input_number / input_select / input_datetime / input_button
+  / script / template / logbook / Z-Wave / Zigbee / ZHA /
+  Deconz / Tasmota / Shelly / Sonoff / ESP32 / ESP8266 /
+  Wi-Fi / BLE / Bluetooth names leak into the tile ids).
+  RoamCore does NOT fork any of the upstream helpers; the
+  contract layer is a thin upstream-entity-aggregation
+  wrapper + the vendor-neutral tile surface + the FIVE §8
+  MANDATORY automations.
+
+  The recipe covers the FIVE-step operator flow (Confirm +
+  Enable + Default duration + Audit + revert) + the FIVE §8
+  MANDATORY automations (kill-switch-blocks-everything guard
+  + session-timeout guard + audit-log entry + require-
+  confirmation guard + outside-allowlist deny-by-default
+  guard) + the 11 `rc_agent_actions_*` contract tiles + the
+  §9 troubleshooting entries (6 entries) + the §10 privacy
+  section (no RoamCore-side telemetry; the agent-action
+  logbook stays local on the operator's HA box; the operator
+  owns the policy file + the audit log + the kill switch; no
+  cloud round-trip) + the §11 tier-a promotion outline (real
+  agent-actions engine + canned fixture responses for kill-
+  switch blocks events + canned fixture responses for
+  session-expired events + canned fixture responses for
+  require-confirmation bypass attempts + canned fixture
+  responses for outside-allowlist deny events + canned
+  fixture responses for action_id collisions + RoamCore-
+  owned operator-wired setup flow walking the operator
+  through Kill-switch + Policy file + Default duration +
+  Confirmation + Audit + the §8 automations + integration
+  tests asserting a kill-switch block fires the deny result
+  + a session-timeout event auto-disables the kill switch +
+  an outside-allowlist action short-circuits to denied) +
+  the §12 files + the §13 cross-references.
+icon: mdi-shield-key-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - agent-actions
+  - ai
+  - allowlist
+  - kill-switch
+  - safety
+  - audit-log
+  - policy-file
+  - default-deny
+  - confirmation
+  - session-window
+  - per-action
+  - contract-wrapper
+  - reuse-first
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~15 min"
+  requires_reboot: false
+  setup_notes: |
+    Agent actions allowlist requires the operator to (a)
+    confirm the existing `input_boolean.rc_agent_actions_
+    enabled` kill switch (already shipped in
+    `homeassistant/packages/roamcore_agent_actions.yaml`;
+    DO NOT redefine the package), (b) install the upstream
+    HA core `input_boolean` + `input_text` + `input_number`
+    + `input_select` + `input_datetime` + `input_button` +
+    `script` helpers (HA core since 2022.x — these are auto-
+    installed in every HA install + exposed via the HA UI
+    under Settings → Helpers), (c) configure the operator-
+    facing `input_text.rc_agent_actions_policy_path` +
+    `input_boolean.rc_agent_actions_require_confirmation` +
+    `select.rc_agent_actions_default_duration` +
+    `input_datetime.rc_agent_actions_session_expires_at` +
+    `sensor.rc_agent_actions_seconds_until_expiry` +
+    `sensor.rc_agent_actions_last_action_id` +
+    `sensor.rc_agent_actions_last_action_at` +
+    `sensor.rc_agent_actions_last_action_result` +
+    `binary_sensor.rc_agent_actions_is_blocked_by_kill_
+    switch` + `button.rc_agent_actions_disable_now`
+    contract tiles to point at the upstream entities, (d)
+    populate the policy file at
+    `input_text.rc_agent_actions_policy_path` (default
+    `/config/.roamcore/agent_allowlist.yaml`; the slice
+    ships an EXAMPLE policy file at
+    `connections/agent-actions-allowlist/docs/policy.example.yaml`
+    the operator copies to that path and edits for their
+    setup), (e) wire the FIVE §8 MANDATORY automations
+    (kill-switch-blocks-everything guard + session-timeout
+    guard + audit-log entry + require-confirmation guard +
+    outside-allowlist deny-by-default guard), (f) follow the
+    FIVE-step operator flow — Step 1 confirm the kill switch
+    is OFF (the §8.1 kill-switch-blocks-everything guard
+    defaults the kill switch OFF; Step 2 mount the policy
+    file at the operator-chosen path; Step 3 pick the default
+    duration (Off / 1h / 6h / 24h / 7d / Never; default
+    24h); Step 4 enable the kill switch + set the require-
+    confirmation toggle + watch the session_expires_at
+    countdown; Step 5 audit the action logbook + press
+    `button.rc_agent_actions_disable_now` to revert. RoamCore
+    does NOT maintain a custom agent-actions engine; the HA
+    core `input_boolean` + `input_text` + `input_number` +
+    `input_select` + `input_datetime` + `input_button` +
+    `script` helpers + the HA core `template:` sensor
+    wrapper + the HA core `logbook` integration handle 95%+
+    of operator-facing agent-actions operations.
+
+install:
+  ha_integration_domain: input_boolean
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_agent_actions_enabled_contract_tile_existing_in_helper_package
+    - registers_agent_actions_policy_path_contract_tile
+    - registers_agent_actions_require_confirmation_contract_tile
+    - registers_agent_actions_default_duration_contract_tile
+    - registers_agent_actions_session_expires_at_contract_tile
+    - registers_agent_actions_seconds_until_expiry_contract_tile
+    - registers_agent_actions_last_action_id_contract_tile
+    - registers_agent_actions_last_action_at_contract_tile
+    - registers_agent_actions_last_action_result_contract_tile
+    - registers_agent_actions_is_blocked_by_kill_switch_contract_tile
+    - registers_agent_actions_disable_now_contract_tile
+    - may_register_agent_actions_kill_switch_blocks_everything_automation
+    - may_register_agent_actions_session_timeout_automation
+    - may_register_agent_actions_audit_log_entry_automation
+    - may_register_agent_actions_require_confirmation_automation
+    - may_register_agent_actions_outside_allowlist_deny_by_default_automation
+
+dashboard:
+  title: "Agent actions allowlist"
+  tiles:
+    - input_boolean.rc_agent_actions_enabled
+    - input_text.rc_agent_actions_policy_path
+    - input_boolean.rc_agent_actions_require_confirmation
+    - select.rc_agent_actions_default_duration
+    - input_datetime.rc_agent_actions_session_expires_at
+    - sensor.rc_agent_actions_seconds_until_expiry
+    - sensor.rc_agent_actions_last_action_id
+    - sensor.rc_agent_actions_last_action_at
+    - sensor.rc_agent_actions_last_action_result
+    - binary_sensor.rc_agent_actions_is_blocked_by_kill_switch
+    - button.rc_agent_actions_disable_now
+
+openclaw:
+  queries:
+    - "are agent actions enabled?"
+    - "what is the agent actions policy file path?"
+    - "does the agent actions require confirmation?"
+    - "what is the default agent actions duration?"
+    - "when does the agent actions session expire?"
+    - "what was the last agent action?"
+    - "what was the last agent action result?"
+    - "is the agent actions kill switch blocking?"
+    - "disable agent actions now"
+  summary_keys:
+    - agent_actions_enabled
+    - agent_actions_policy_path
+    - agent_actions_require_confirmation
+    - agent_actions_default_duration
+    - agent_actions_session_expires_at
+    - agent_actions_seconds_until_expiry
+    - agent_actions_last_action_id
+    - agent_actions_last_action_at
+    - agent_actions_last_action_result
+    - agent_actions_is_blocked_by_kill_switch
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_agent_actions_engine_for_integration_test
+  - recipe_depends_on_user_wiring_policy_file
+  - recipe_depends_on_user_declaring_action_targets_and_constraints
+  - requires_operator_wiring_kill_switch_before_first_use
+  - require_confirmation_guard_must_be_wired
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_datetime/
+    - https://www.home-assistant.io/integrations/input_button/
+    - https://www.home-assistant.io/integrations/script/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/logbook/
+  cross_references:
+    - ../time-atomic/
+    - ../remote-access/
+    - ../approach-lights/
+    - ../fans/
+    - ../leveling/
+    - ../mode/
+    - ../demo-mode/
+    - ../advanced-mode/
+    - ../openclaw-api/

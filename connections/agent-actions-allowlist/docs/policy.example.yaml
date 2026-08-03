@@ -1,0 +1,85 @@
+# Example RoamCore agent-actions allowlist policy file.
+#
+# This is an EXAMPLE; copy to /config/.roamcore/agent_allowlist.yaml and edit
+# for your setup. The agent will be DENIED if no policy file is mounted AND
+# `input_boolean.rc_agent_actions_require_confirmation` is OFF. The slice ships
+# this example file as operator-side documentation only; RoamCore does NOT ship
+# a custom YAML loader. The recipe at connections/agent-actions-allowlist/docs/
+# recipe.md walks the operator through mounting this file + populating the
+# `actions:` list with the per-action entries the agent is permitted to invoke.
+#
+# File format reference: docs/design/agent-actions-allowlist.md (the canonical
+# design doc; the v1 format is stable — version: 1 header).
+#
+# The policy file is read by the §8.5 outside-allowlist deny-by-default
+# automation + the §8.4 require-confirmation automation + the §8.3 audit-log
+# entry automation. The agent's proposed action_id is matched against the
+# `actions:` list below; an absent action_id short-circuits to `denied` + writes
+# a `denied` audit-log entry + fires a critical notification.
+#
+# IMPORTANT: this example file is documentation-only. The recipe at
+# `connections/agent-actions-allowlist/docs/recipe.md` explains the operator-
+# side workflow for editing this file + wiring the upstream script-runner
+# wrappers (`roamcore.action_execute` + `roamcore.action_confirm`) to read it.
+
+version: 1
+
+# `defaults:` block — applies to all actions unless overridden per-action.
+# `require_confirmation: true` means the agent must call
+# `roamcore.action_confirm` BEFORE `roamcore.action_execute`; the second call
+# without confirmation short-circuits to `pending-confirmation`. Set to false
+# if you want to skip the confirmation step (NOT recommended for anything that
+# modifies state).
+defaults:
+  require_confirmation: true
+
+# `actions:` list — the per-action allowlist. Each entry has `id` +
+# `description` + `kind` (set_helper or run_script) + `target` (the entity
+# being targeted) + optional `constraints` (regex pattern for strings;
+# numeric min/max; enum allowlist) + optional `require_confirmation`
+# (overrides the default).
+actions:
+  # set_helper on input_text with regex pattern constraint.
+  # Use case: agent sets the Trip Wrapped range (from / to ISO8601 Zulu).
+  - id: set_trip_wrapped_range
+    description: "Set Trip Wrapped from/to ISO timestamps"
+    kind: set_helper
+    target:
+      entity_id:
+        - input_text.rc_trip_wrapped_from
+        - input_text.rc_trip_wrapped_to
+    constraints:
+      # Only allow ISO8601 Zulu strings.
+      pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.?\\d*Z$"
+
+  # run_script on script.rc_* (the recommended constraint). The script
+  # itself is the canonical Trip Wrapped runner; the agent is permitted to
+  # trigger it without an explicit confirmation step (because the script is
+  # idempotent + read-only).
+  - id: generate_trip_wrapped
+    description: "Generate Trip Wrapped latest report"
+    kind: run_script
+    target:
+      entity_id: script.rc_trip_wrapped_run
+    require_confirmation: false
+
+  # set_helper on input_number with numeric min/max constraint.
+  # Use case: agent sets the target battery SoC percentage (between 20% and
+  # 90%; the lower bound protects the battery from over-discharge; the upper
+  # bound protects the battery from over-charge).
+  - id: set_target_soc_percent
+    description: "Set the target battery state-of-charge percentage"
+    kind: set_helper
+    target:
+      entity_id:
+        - input_number.rc_target_soc_percent
+    constraints:
+      min: 20
+      max: 90
+      unit_of_measurement: "%"
+
+# End of example file. The recipe explains how to wire this file to
+# `input_text.rc_agent_actions_policy_path` + how to populate the upstream
+# `roamcore.action_execute` + `roamcore.action_confirm` script-runner
+# wrappers to read this file at invocation time. See:
+# connections/agent-actions-allowlist/docs/recipe.md.

@@ -73,6 +73,16 @@ Keep this list short. Start with these and extend deliberately:
 - `advanced_mode` — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block (vendor-neutral `rc_advanced_mode_*` ids; Wave 3 #63)
 - `openclaw_api` — local-agent contract surface (summary + skill + rc_dump + timeseries endpoints + enable / auth / reachability / latency tiles); vendor-neutral `rc_openclaw_api_*` ids (Wave 3 #64)
 
+Extended subsystems added by the Wave 3 connection pipeline (each subsystem is OWNED by the slice that added it):
+
+- `ventilation` — fans (rooftop + circulation). OWNED by `connections/fans/` (Wave 3 #59).
+- `vehicle` — vehicle-mounted pitch/roll / levelling / fridge-safe gate. OWNED by `connections/leveling/` (Wave 3 #60).
+- `mode` — operator-facing mode state (Off / Auto / Travel / Camp / Stealth). OWNED by `connections/mode/` (Wave 3 #61).
+- `demo_mode` — demo-mode state for the operator-facing demo scenarios. OWNED by `connections/demo-mode/` (Wave 3 #62).
+- `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
+- `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
+- `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
+
 ---
 
 ## Metric naming rules
