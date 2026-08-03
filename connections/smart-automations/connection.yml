@@ -1,0 +1,181 @@
+# Smart Automations (one-click enable / disable for the 17 prebuilt
+# van-life automations) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/safety/smart-automations.md (legacy
+# tier-c, ~16 lines). The legacy spec claimed tier-A "RoamCore
+# native" but RoamCore ships NO native automation engine — we
+# RECIPE the upstream HA Core `automation:` + `script:` + `template:`
+# domains and the operator-side managed-marker convention from
+# docs/guides/smart-automations.md. So this is honestly tier-b:
+# the 17 automations live in HA Core's automation engine; RoamCore
+# only RECIPE-s them + audits the managed-marker + publishes the
+# "what's enabled / missing-dependencies" contract surface on top.
+# The recipe doc mirrors docs/guides/smart-automations.md (213
+# lines, 17 automations).
+
+id: smart-automations
+name: "Smart Automations (one-click enable / disable — 17 prebuilt van-life automations) — tier-b recipe connection"
+tier: b
+category: safety
+status: beta
+version: 0.1.0
+description: |
+  Smart automations are the **day-to-day convenience layer** of a
+  RoamCore van: 17 prebuilt Home Assistant automations that handle
+  mode-aware transitions (Night Mode Stealth/Auto), power-aware
+  responses (Low Battery Mode → Camp, Battery Full Alert,
+  Battery Critical Alert, Solar is Crushing It), safety alerts
+  (Inverter Overheat Alert, Router Overheat Alert, Freeze
+  Protection), trip accounting (Daily Trip Log, Arrive at Camp,
+  Depart Travel Mode), connectivity resilience (Auto Internet
+  Failover, Internet Recovery, Shore Power Connected / Disconnected),
+  and bedtime reminders (Bedtime Level Check, Quiet Hours
+  Reminder). All 17 are **fully native Home Assistant automations**
+  (editable in HA) — RoamCore does not ship a hidden automation
+  engine. The 1-click enable/disable affordance lives in
+  `RoamCore → Settings → Smart Automations` and is implemented as
+  HA core `template:` + `button:` + `select:` entities that audit
+  each managed automation's description for the `Managed by
+  RoamCore Smart Automations v0.1` marker + the `key=<name>` +
+  `hash=<template hash>` invariants, and expose 25 `rc_safety_*`
+  contract tiles per docs/reference/rc-entity-naming.md §safety
+  subsystem (already in the allowed subsystems list — no backfill
+  needed).
+icon: zap
+codeowners:
+  - "@bernardc"
+tags:
+  - safety
+  - automation
+  - preset
+  - mode
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~15 min"
+  requires_reboot: false
+  setup_notes: |
+    Smart automations require the operator to (a) confirm HA Core
+    is at 2023.8 or newer (the upstream `automation:` + `template:`
+    + `button:` + `select:` domains expose a GUI config_flow since
+    2023.x — the recipe §2 lists the per-automation prerequisites);
+    (b) confirm the per-automation prerequisite sensors are wired
+    (Victron `sensor.rc_power_battery_soc` + `binary_sensor.rc_power_shore_connected`
+    for Low Battery Mode; Traccar `sensor.rc_trip_distance_today_mi`
+    + `sensor.rc_trip_time_today` for Daily Trip Log; Leveling
+    `binary_sensor.rc_level` + `sensor.rc_level_status` for Bedtime
+    Level Check; OpenWrt `script.rc_openwrt_prefer_auto` +
+    `script.rc_openwrt_restart_network` for Auto Internet Failover
+    + Internet Recovery; Victron `sensor.rc_power_inverter_temperature`
+    for Inverter Overheat Alert; OpenWrt `sensor.rc_router_temperature`
+    for Router Overheat Alert; Victron `sensor.rc_power_solar_power`
+    for Solar is Crushing It; GPS `sensor.rc_location_speed` for
+    Arrive at Camp + Depart Travel Mode; Weather
+    `sensor.rc_weather_temp_c` for Freeze Protection; Mode
+    `input_select.rc_mode` + `script.rc_mode_set_*` for Quiet Hours
+    Reminder + Night Mode + Arrive at Camp + Depart Travel Mode;
+    Network `sensor.rc_net_wan_status` + `binary_sensor.rc_net_internet_reachable`
+    for Auto Internet Failover + Internet Recovery; Power
+    `binary_sensor.rc_power_shore_connected` for Shore Power
+    Connected + Shore Power Disconnected); (c) choose which of the
+    17 automations to enable from the `RoamCore → Settings → Smart
+    Automations` page (each automation is independently toggled
+    via its `binary_sensor.rc_safety_automation_<name>` mirror +
+    the upstream HA automation's own enable/disable).
+
+install:
+  ha_integration_domain: automation
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - registers_automation_summary_template_binary_sensors
+    - registers_managed_automation_marker_audit_helper
+    - may_register_input_boolean_per_managed_automation
+
+dashboard:
+  tiles:
+    - sensor.rc_safety_automations_enabled_count
+    - sensor.rc_safety_automations_total_count
+    - sensor.rc_safety_automations_missing_count
+    - binary_sensor.rc_safety_automations_all_ready
+    - select.rc_safety_automations_view
+    - button.rc_safety_automations_enable_all_ready
+    - button.rc_safety_automations_disable_all
+    - binary_sensor.rc_safety_automation_night_mode
+    - binary_sensor.rc_safety_automation_auto_internet_failover
+    - binary_sensor.rc_safety_automation_low_battery_mode
+    - binary_sensor.rc_safety_automation_freeze_protection
+    - binary_sensor.rc_safety_automation_daily_trip_log
+    - binary_sensor.rc_safety_automation_battery_full_alert
+    - binary_sensor.rc_safety_automation_inverter_overheat_alert
+    - binary_sensor.rc_safety_automation_router_overheat_alert
+    - binary_sensor.rc_safety_automation_shore_power_connected
+    - binary_sensor.rc_safety_automation_shore_power_disconnected
+    - binary_sensor.rc_safety_automation_internet_recovery
+    - binary_sensor.rc_safety_automation_arrive_at_camp
+    - binary_sensor.rc_safety_automation_depart_travel_mode
+    - binary_sensor.rc_safety_automation_solar_crushing_it
+    - binary_sensor.rc_safety_automation_battery_critical_alert
+    - binary_sensor.rc_safety_automation_bedtime_level_check
+    - binary_sensor.rc_safety_automation_quiet_hours_reminder
+
+openclaw:
+  queries:
+    - list_smart_automations
+    - enable_smart_automation
+    - disable_smart_automation
+    - enable_all_ready_smart_automations
+    - disable_all_smart_automations
+    - smart_automations_missing_dependencies
+    - smart_automations_enabled_count
+    - is_smart_automation_enabled
+    - smart_automation_describe
+  summary_keys:
+    - smart_automations_enabled_count
+    - smart_automations_total_count
+    - smart_automations_missing_count
+    - smart_automations_all_ready
+    - smart_automations_view
+    - smart_automation_night_mode
+    - smart_automation_auto_internet_failover
+    - smart_automation_low_battery_mode
+    - smart_automation_freeze_protection
+    - smart_automation_daily_trip_log
+    - smart_automation_battery_full_alert
+    - smart_automation_inverter_overheat_alert
+    - smart_automation_router_overheat_alert
+    - smart_automation_shore_power_connected
+    - smart_automation_shore_power_disconnected
+    - smart_automation_internet_recovery
+    - smart_automation_arrive_at_camp
+    - smart_automation_depart_travel_mode
+    - smart_automation_solar_crushing_it
+    - smart_automation_battery_critical_alert
+    - smart_automation_bedtime_level_check
+    - smart_automation_quiet_hours_reminder
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_automation_engine_for_integration_test
+  - recipe_depends_on_user_running_ha_core_automation
+  - requires_operator_to_enable_per_automation
+  - some_automations_require_specific_connections_already_shipped
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/automation/
+    - https://www.home-assistant.io/integrations/script/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/button/
+    - https://www.home-assistant.io/integrations/select/
