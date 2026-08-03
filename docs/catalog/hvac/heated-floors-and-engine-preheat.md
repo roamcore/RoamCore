@@ -2,6 +2,8 @@
 
 **Support tier:** C
 
+> **Superseded by the tier-b connection:** this catalog page is retained for context. For the install + recipe + contract tiles, see [connections/heated-floors/](../../../connections/heated-floors/) and [docs/recipe.md](../../../connections/heated-floors/docs/recipe.md).
+
 Bring cold-weather comfort controls into one place: heated floors, engine pre-heat, and other “warm-up” routines that make winter van life less punishing.
 
 ## What you need
