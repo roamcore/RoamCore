@@ -49,6 +49,7 @@ Tip: use your browser’s find (Ctrl/Cmd+F) to jump quickly (e.g. ‘victron’,
 
 ## Time
 
+- [Time (atomic) — NTP-synchronized time with offline-resilience](time/atomic-time/) — RoamCore includes notes for keeping HA's clock accurate even when offline
 - [Time zone auto-detection (GeoLocator)](time/timezone-geolocator/) — RoamCore includes notes for using GeoLocator to keep time zone correct based on location.
 
 ## Vehicle Obd

@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-08-02 by `connections/in-cab-tablet-dashboard/connection.yml` + `connections/in-cab-tablet-dashboard/docs/recipe.md`. This legacy tier-c catalog page is kept as a thin folder-overview pointer for backward compatibility.**
+
 # In‑cab dashboard (driving tablet)
 
 **Support tier:** C
