@@ -61,6 +61,8 @@ Keep this list short. Start with these and extend deliberately:
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
+- `ventilation` — fans + climate-aware airflow + ventilation mode overrides + rain-sensor safety blocks; vendor-neutral `rc_fan_*` ids (Wave 3 #59)
+- `vehicle` — vehicle-level sensors + levelling + fridges + levelling-jack controls + fridge-safe gates; vendor-neutral `rc_level_*` ids (Wave 3 #60)
 
 ---
 
