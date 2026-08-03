@@ -1,6 +1,4 @@
 _inventory.yml
-automation/advanced-mode.md
-automation/demo-mode.md
 automation/index.md
 automation/mode.md
 comfort/approach-lights.md
@@ -22,7 +20,6 @@ location/amenities-overlay.md
 location/bluetooth-wifi-presence.md
 location/index.md
 location/map-dashboard.md
-location/mock-location-and-tracks.md
 maintenance/in-cab-tablet-dashboard.md
 maintenance/index.md
 maintenance/leveling.md

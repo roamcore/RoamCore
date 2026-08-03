@@ -6,40 +6,6 @@
 inventory_full: false
 
 items:
-  - id: advanced_mode
-    title: Advanced mode
-    category: automation
-    yaml_category: ai
-    support_tier: B
-    install_method: one_line
-    status: beta
-    page: catalog/automation/advanced-mode.md
-    summary: RoamCore includes an Advanced Mode toggle that can reveal extra controls and diagnostics without cluttering the default UI. Keeps the dashboard clean for daily use. Still gives power users access to deeper controls when needed.
-    needs_curation_review: true
-    tags:
-      - advanced-mode
-      - ai
-      - power-user
-      - toggle
-      - extra-controls
-      - diagnostics
-  - id: demo_mode
-    title: Demo mode
-    category: automation
-    yaml_category: ai
-    support_tier: B
-    install_method: one_line
-    status: beta
-    page: catalog/automation/demo-mode.md
-    summary: Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos.
-    needs_curation_review: true
-    tags:
-      - demo-mode
-      - ai
-      - demo
-      - show-example-values
-      - missing-sensors
-      - setup-flow
   - id: mode
     title: Mode
     category: automation
@@ -97,7 +63,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/hvac-basics.md
-    summary: HVAC basics — cabin heating/cooling foundations for vans — is the umbrella for thermostat + diesel heater + rooftop AC + cabin ventilation control.
+    summary: HVAC basics — RoamCore catalog entry.
     needs_curation_review: true
     tags:
       - hvac
@@ -148,7 +114,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/motion-based-lighting.md
-    summary: "Motion-based lighting (driving + arrival) — the umbrella for ignition-driven interior auto-off + ignition-driven soft-interior on stop + presence-driven arrival cue + motion-driven interior camping + mode-aware Stealth suppression — is the lighting- category complement to the approach-lights Wave 3 #52 welcome-…"
+    summary: Motion-based lighting — RoamCore catalog entry.
     needs_curation_review: true
     tags:
       - lighting
@@ -303,23 +269,6 @@ items:
       - gps
       - tiles
       - basemap
-  - id: mock-location-and-tracks
-    title: Mock location + track replay
-    category: location
-    yaml_category: map
-    support_tier: A
-    install_method: manual
-    status: beta
-    page: catalog/location/mock-location-and-tracks.md
-    summary: Mock location + track replay is the dev/demo polyline generator for the RoamCore map page.
-    needs_curation_review: true
-    tags:
-      - map
-      - mock
-      - dev
-      - demo
-      - polyline
-      - trip
   - id: in-cab-tablet-dashboard
     title: In-cab tablet dashboard
     category: maintenance

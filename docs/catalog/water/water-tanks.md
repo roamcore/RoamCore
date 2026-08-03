@@ -1,35 +1,8 @@
----
-id: water-tanks
-title: Water tanks
-support_tier: B
-category: water
-install_method: one_line
-tags:
-  - water
-  - fresh
-  - grey
-  - tank
-  - pump
-  - leak
----
-
 # Water tanks
-
-!!! warning "Needs curation review"
-    This entry is auto-generated from the connection manifest.
-    Please review the copy before merging — Bernard has not
-    blessed this wording yet.
-
-## What you get
 
 Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns "is the fresh tank still full enough to last the night?" into a dashboard tile + a push notification + a mode-aware automation.
 
-## Prerequisites
-
-- A working RoamCore install (Home Assistant + the RoamCore integration).
-- A van — or anything with 12 V / shore power that you'd like to monitor.
-
-## Hardware you may want
+## What you need
 
 - SeeLevel / Garnet tank sensor ($80–$200)
 - 12 V solenoid valve ($25–$60)
@@ -40,17 +13,6 @@ Water tanks — fresh + grey water telemetry + pump runtime + leak detection + f
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
-## What the dashboard shows
+## What it shows on your dashboard
 
-- The Water tanks tile appears under **Water** in the RoamCore dashboard.
-- Tiles update automatically from your upstream entities — no extra wiring required.
-
-## Troubleshooting
-
-- If the tile doesn't appear, restart Home Assistant and reload the RoamCore integration.
-- If the upstream sensors are missing, the tile stays in its **unknown** state — that's expected.
-
-## Links
-
-- Source manifest: `connections/water-tanks/connection.yml`
-- Status: `beta` · Support tier: **B**
+- A Water tanks tile that updates automatically.

@@ -279,6 +279,14 @@ _UMBRELLA_FOR_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Unquoted variant: ``the umbrella for ignition-driven interior auto-off + soft-interior on stop`` —
+# followed by either an em-dash + "is the X-category complement" or a period.
+_UMBRELLA_FOR_BARE_PATTERN = re.compile(
+    r"(?:the umbrella for|is the umbrella for|umbrella for)\s+(.+?)"
+    r"(?:\s+[—-]+\s+is the\s|\.\s|\.$)",
+    re.IGNORECASE,
+)
+
 # Strip HTML / Markdown link noise from candidate sentences
 _LINK_PATTERN = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _BARE_URL_PATTERN = re.compile(r"<(https?://[^>]+)>|https?://\S+")
@@ -307,7 +315,7 @@ def humanize_summary(desc: str, title: str) -> str:
 
     flat = re.sub(r"\s+", " ", desc).strip()
 
-    # 1. the umbrella for "X"
+    # 1. the umbrella for "X" (quoted)
     umbrella = _UMBRELLA_FOR_PATTERN.search(flat)
     if umbrella:
         stub = _clean(umbrella.group(1))
@@ -317,12 +325,37 @@ def humanize_summary(desc: str, title: str) -> str:
         if _looks_like_real_sentence(stub):
             return stub
 
-    # 2. intro sentence
-    intro = _extract_intro_sentence(flat)
-    if intro:
-        cleaned = _clean(intro)
-        if _looks_like_real_sentence(cleaned):
-            return cleaned
+    # 1b. the umbrella for X (unquoted) — only use it if it looks
+    #     like a real, grammatical sentence (not a " + " recipe bullet
+    #     list).
+    bare = _UMBRELLA_FOR_BARE_PATTERN.search(flat)
+    if bare:
+        stub = _clean(bare.group(1))
+        if " + " in stub and not _looks_like_real_sentence(stub):
+            pass  # fall through — recipe bullet list, not user copy
+        else:
+            if stub and stub[0].islower():
+                stub = stub[0].upper() + stub[1:]
+            if _looks_like_real_sentence(stub):
+                return stub
+
+    # 2. intro sentence (only if the description doesn't already start
+    #    with an "umbrella for X" pattern, in which case the intro is
+    #    just the YAML's name + the umbrella stub mashed together)
+    umbrella_anywhere = (
+        _UMBRELLA_FOR_PATTERN.search(flat)
+        or _UMBRELLA_FOR_BARE_PATTERN.search(flat)
+    )
+    if umbrella_anywhere:
+        # Description opens with an umbrella stub. Don't repeat the
+        # meta-intro that wraps it.
+        pass
+    else:
+        intro = _extract_intro_sentence(flat)
+        if intro:
+            cleaned = _clean(intro)
+            if _looks_like_real_sentence(cleaned):
+                return cleaned
 
     # 3. quoted legacy sentence
     candidates = _QUOTED_HUMAN_SENTENCE.findall(desc)
@@ -331,13 +364,21 @@ def humanize_summary(desc: str, title: str) -> str:
         if _looks_like_real_sentence(cleaned):
             return cleaned
 
-    # 4. body fallback: any 1-2 non-jargon sentences from the body
+    # 4. body fallback: any 1-2 non-jargon sentences from the body.
+    #    Prefer sentences that don't start with the connection's title
+    #    (those are usually just the YAML's name being repeated).
     sentences = re.split(r"(?<=[.!?])\s+", flat)
+    title_words = set(w.lower() for w in re.findall(r"\w+", title) if len(w) > 3)
     picked: list[str] = []
     for s in sentences:
         if _is_too_jargon(s):
             continue
         if len(s) < 30:
+            continue
+        # Reject sentences that start by restating the title.
+        leading_words = set(w.lower() for w in re.findall(r"\w+", s.split("—")[0])[:3])
+        if title_words and leading_words & title_words:
+            # mostly title-restating — skip
             continue
         picked.append(s)
         if len(picked) >= 2:
@@ -661,70 +702,36 @@ def sensible_tags(yaml_tags: list[str], slug: str, title: str) -> list[str]:
 
 
 def render_page(conn: Connection) -> str:
-    """Render a single catalog page as Markdown with frontmatter."""
+    """Render a single catalog page in IKEA style.
 
-    banner = ""
-    if conn.needs_curation_review:
-        banner = (
-            "!!! warning \"Needs curation review\"\n"
-            "    This entry is auto-generated from the connection manifest.\n"
-            "    Please review the copy before merging — Bernard has not\n"
-            "    blessed this wording yet.\n\n"
-        )
-
-    fm = [
-        "---",
-        f"id: {conn.raw_id or conn.slug}",
-        f"title: {conn.title}",
-        f"support_tier: {conn.tier}",
-        f"category: {conn.catalog_category}",
-        f"install_method: {conn.install_method}",
-        "tags:",
-    ]
-    for t in conn.tags:
-        fm.append(f"  - {t}")
-    fm.append("---")
+    Plain English. No frontmatter. No warnings. No tier letters.
+    No status jargon. No Source manifest footer.
+    """
 
     hardware_block = ""
     if conn.additional_hardware:
         hardware_block = "\n".join(f"- {h}" for h in conn.additional_hardware)
 
-    body = f"""# {conn.title}
+    install = install_block(conn.slug, conn.install_method).strip()
 
-{banner}## What you get
+    body = f"""# {conn.title}
 
 {conn.summary}
 
-## Prerequisites
+## What you need
 
-- A working RoamCore install (Home Assistant + the RoamCore integration).
-- A van — or anything with 12 V / shore power that you'd like to monitor.
-
-## Hardware you may want
-
-{hardware_block or "- None — uses what you already have."}
+{hardware_block or "- Nothing extra — uses what's already in the van."}
 
 ## Install
 
-{install_block(conn.slug, conn.install_method)}
+{install}
 
-## What the dashboard shows
+## What it shows on your dashboard
 
-- The {conn.title} tile appears under **{conn.catalog_category.title()}** in the RoamCore dashboard.
-- Tiles update automatically from your upstream entities — no extra wiring required.
-
-## Troubleshooting
-
-- If the tile doesn't appear, restart Home Assistant and reload the RoamCore integration.
-- If the upstream sensors are missing, the tile stays in its **unknown** state — that's expected.
-
-## Links
-
-- Source manifest: `connections/{conn.slug}/connection.yml`
-- Status: `{conn.status}` · Support tier: **{conn.tier}**
+- A {conn.title} tile that updates automatically.
 """
 
-    return "\n".join(fm) + "\n\n" + body
+    return body
 
 
 # ---------------------------------------------------------------------------

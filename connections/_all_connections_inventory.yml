@@ -131,7 +131,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/hvac-basics.md
-    summary: HVAC basics — cabin heating/cooling foundations for vans — is the umbrella for thermostat + diesel heater + rooftop AC + cabin ventilation control.
+    summary: HVAC basics — RoamCore catalog entry.
     needs_curation_review: true
     tags:
       - hvac
@@ -182,7 +182,7 @@ items:
     install_method: one_line
     status: beta
     page: catalog/comfort/motion-based-lighting.md
-    summary: "Motion-based lighting (driving + arrival) — the umbrella for ignition-driven interior auto-off + ignition-driven soft-interior on stop + presence-driven arrival cue + motion-driven interior camping + mode-aware Stealth suppression — is the lighting- category complement to the approach-lights Wave 3 #52 welcome-…"
+    summary: Motion-based lighting — RoamCore catalog entry.
     needs_curation_review: true
     tags:
       - lighting

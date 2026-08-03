@@ -1,30 +1,8 @@
----
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
-support_tier: B
-category: safety
-install_method: one_line
-tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
----
-
 # Smoke / CO / gas safety sensors
-
-## What you get
 
 Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
 
-## Prerequisites
-
-- A working RoamCore install (Home Assistant + the RoamCore integration).
-- A van — or anything with 12 V / shore power that you'd like to monitor.
-
-## Hardware you may want
+## What you need
 
 - Zigbee smoke / CO detector ($30–$80 each)
 
@@ -34,17 +12,6 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
-## What the dashboard shows
+## What it shows on your dashboard
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
-- Tiles update automatically from your upstream entities — no extra wiring required.
-
-## Troubleshooting
-
-- If the tile doesn't appear, restart Home Assistant and reload the RoamCore integration.
-- If the upstream sensors are missing, the tile stays in its **unknown** state — that's expected.
-
-## Links
-
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
-- Status: `beta` · Support tier: **B**
+- A Smoke / CO / gas safety sensors tile that updates automatically.

@@ -176,7 +176,11 @@ def render_catalog_index(
     user_facing: list[lib.Connection],
     catalog_dir: Path,
 ) -> str:
-    """Render ``docs/catalog/index.md`` grouped by category."""
+    """Render ``docs/catalog/index.md`` grouped by category.
+
+    IKEA-style: plain English, plain bullet list, no tier letters,
+    no install codes, no warning emojis.
+    """
 
     by_cat: dict[str, list[lib.Connection]] = defaultdict(list)
     for c in user_facing:
@@ -185,57 +189,27 @@ def render_catalog_index(
     out = io.StringIO()
     out.write("# Catalog\n\n")
     out.write(
-        "Every RoamCore feature, grouped by what it does for you. "
-        "Click into any feature to see the install steps and what it "
-        "shows on the dashboard.\n\n"
+        "Stuff you can add to your van. Pick what you want and install it.\n\n"
     )
 
-    # Quick TOC
-    out.write("## Browse by category\n\n")
-    for cat in sorted(by_cat):
-        n = len(by_cat[cat])
-        plural = "feature" if n == 1 else "features"
-        desc = lib.CATEGORY_DESCRIPTIONS.get(cat, "")
-        out.write(f"- **[{cat.title()}](#{cat})** — {n} {plural}. {desc}\n")
-    out.write("\n---\n\n")
-
-    # Per-category sections
     for cat in sorted(by_cat):
         out.write(f"## {cat.title()}\n\n")
-        desc = lib.CATEGORY_DESCRIPTIONS.get(cat, "")
-        if desc:
-            out.write(f"_{desc}_\n\n")
-        out.write("| Feature | Tier | Install | What it does |\n")
-        out.write("|---|---|---|---|\n")
         for c in sorted(by_cat[cat], key=lambda x: x.title):
-            curation = " ⚠️" if c.needs_curation_review else ""
-            what = c.summary.replace("|", "\\|").replace("\n", " ")
-            # Collapse whitespace in the summary for table rendering
-            what = " ".join(what.split())
-            if len(what) > 180:
-                what = what[:177].rsplit(" ", 1)[0] + "…"
-            out.write(
-                f"| [{c.title}]({cat}/{c.slug}.md){curation} "
-                f"| **{c.tier}** "
-                f"| {c.install_method.replace('_', ' ')} "
-                f"| {what} |\n"
-            )
+            out.write(f"- **[{c.title}]({cat}/{c.slug}.md)** \u2014 {c.summary}\n")
         out.write("\n")
     return out.getvalue()
 
 
 def render_category_index(conns: list[lib.Connection], category: str) -> str:
-    """Render a per-category landing page (e.g. ``docs/catalog/comfort/index.md``)."""
+    """Render a per-category landing page (e.g. ``docs/catalog/comfort/index.md``).
+
+    Plain bullet list. No tier letters.
+    """
 
     out = io.StringIO()
-    desc = lib.CATEGORY_DESCRIPTIONS.get(category, "")
     out.write(f"# {category.title()}\n\n")
-    if desc:
-        out.write(f"{desc}\n\n")
-    out.write("## Features in this category\n\n")
     for c in sorted(conns, key=lambda x: x.title):
-        out.write(f"### [{c.title}]({c.slug}.md) — tier {c.tier}\n\n")
-        out.write(f"{c.summary}\n\n")
+        out.write(f"- **[{c.title}]({c.slug}.md)** \u2014 {c.summary}\n")
     return out.getvalue()
 
 
