@@ -1,23 +1,23 @@
 ---
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
+id: leveling
+title: Leveling
 support_tier: B
-category: safety
+category: maintenance
 install_method: one_line
 tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
+  - leveling
+  - level
+  - pitch
+  - roll
+  - imu
+  - accelerometer
 ---
 
-# Smoke / CO / gas safety sensors
+# Leveling
 
 ## What you get
 
-Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+Better sleep and cooking. Quick 'good enough' check without guessing.
 
 ## Prerequisites
 
@@ -26,17 +26,18 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Hardware you may want
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- Phone IMU (no cost — uses the HA Companion app)
+- Dedicated MPU-6050 / BNO085 IMU module ($10–$40)
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smoke-co-gas-sensors`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature leveling`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
+- The Leveling tile appears under **Maintenance** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +47,5 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Links
 
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
+- Source manifest: `connections/leveling/connection.yml`
 - Status: `beta` · Support tier: **B**

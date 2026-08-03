@@ -1,23 +1,23 @@
 ---
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
+id: dns-blocker
+title: Pi-hole or AdGuard Home
 support_tier: B
-category: safety
+category: connectivity
 install_method: one_line
 tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
+  - dns
+  - ad-blocker
+  - pi-hole
+  - adguard-home
+  - networking
+  - recipe
 ---
 
-# Smoke / CO / gas safety sensors
+# Pi-hole or AdGuard Home
 
 ## What you get
 
-Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker blockers (DNS sinkhole + blocklist + per-client query stats).
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Hardware you may want
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smoke-co-gas-sensors`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature dns-blocker`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
+- The Pi-hole or AdGuard Home tile appears under **Connectivity** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Links
 
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
+- Source manifest: `connections/dns-blocker/connection.yml`
 - Status: `beta` · Support tier: **B**

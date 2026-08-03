@@ -1,23 +1,22 @@
 ---
-id: deadbolts
-title: Deadbolts
+id: starlink
+title: Starlink
 support_tier: B
-category: safety
-install_method: one_line
+category: connectivity
+install_method: manual
 tags:
-  - safety
-  - lock
-  - deadbolt
-  - smart-lock
-  - z-wave
-  - zigbee
+  - starlink
+  - networking
+  - sleep-timer
+  - mobile-internet
+  - recipe
 ---
 
-# Deadbolts
+# Starlink
 
 ## What you get
 
-Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
+Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish + router).
 
 ## Prerequisites
 
@@ -26,17 +25,17 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Hardware you may want
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature deadbolts`.
+- Follow the **Setup** steps in the recipe — this is a manual install that wires a few entities together.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Deadbolts tile appears under **Safety** in the RoamCore dashboard.
+- The Starlink tile appears under **Connectivity** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +45,5 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Links
 
-- Source manifest: `connections/deadbolts/connection.yml`
+- Source manifest: `connections/starlink/connection.yml`
 - Status: `beta` · Support tier: **B**

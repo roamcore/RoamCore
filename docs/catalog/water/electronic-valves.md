@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
+id: electronic-valves
+title: Electronic valves + auto tank switching
 support_tier: B
-category: safety
+category: water
 install_method: one_line
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - valve
+  - water
+  - fresh
+  - grey
+  - tank
+  - switch
 ---
 
-# Smart Automations
+# Electronic valves + auto tank switching
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns "which tank am I drawing from right now?" + "is the grey valve about to overflow?" + "can I safely open a…
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature electronic-valves`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The Electronic valves + auto tank switching tile appears under **Water** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
+- Source manifest: `connections/electronic-valves/connection.yml`
 - Status: `beta` · Support tier: **B**

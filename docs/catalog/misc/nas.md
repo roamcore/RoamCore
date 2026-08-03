@@ -1,23 +1,23 @@
 ---
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
+id: nas
+title: Network Attached Storage
 support_tier: B
-category: safety
+category: misc
 install_method: one_line
 tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
+  - nas
+  - storage
+  - synology
+  - qnap
+  - smb
+  - nfs
 ---
 
-# Smoke / CO / gas safety sensors
+# Network Attached Storage
 
 ## What you get
 
-Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+A NAS gives RoamCore a reliable local-storage target for media, camera footage, backups, and logs — especially valuable when you don't want to depend on cloud services.
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Hardware you may want
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smoke-co-gas-sensors`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature nas`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
+- The Network Attached Storage tile appears under **Misc** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Links
 
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
+- Source manifest: `connections/nas/connection.yml`
 - Status: `beta` · Support tier: **B**

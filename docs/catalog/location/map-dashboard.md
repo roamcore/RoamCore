@@ -1,19 +1,19 @@
 ---
-id: water-tanks
-title: Water tanks
-support_tier: B
-category: water
+id: map
+title: Map dashboard
+support_tier: A
+category: location
 install_method: one_line
 tags:
-  - water
-  - fresh
-  - grey
-  - tank
-  - pump
-  - leak
+  - map
+  - map-dashboard
+  - device_tracker
+  - gps
+  - tiles
+  - basemap
 ---
 
-# Water tanks
+# Map dashboard
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns "is the fresh tank still full enough to last the night?" into a dashboard tile + a push notification + a mode-aware automation.
+RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…
 
 ## Prerequisites
 
@@ -31,18 +31,17 @@ Water tanks — fresh + grey water telemetry + pump runtime + leak detection + f
 
 ## Hardware you may want
 
-- SeeLevel / Garnet tank sensor ($80–$200)
-- 12 V solenoid valve ($25–$60)
+- Teltonika or other GPS tracker (often already in the LTE router)
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature water-tanks`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature map-dashboard`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Water tanks tile appears under **Water** in the RoamCore dashboard.
+- The Map dashboard tile appears under **Location** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -52,5 +51,5 @@ Water tanks — fresh + grey water telemetry + pump runtime + leak detection + f
 
 ## Links
 
-- Source manifest: `connections/water-tanks/connection.yml`
-- Status: `beta` · Support tier: **B**
+- Source manifest: `connections/map-dashboard/connection.yml`
+- Status: `beta` · Support tier: **A**

@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
+id: heated-floors
+title: Heated floors + engine pre-heat
 support_tier: B
-category: safety
+category: comfort
 install_method: one_line
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - hvac
+  - heated-floor
+  - engine-preheat
+  - comfort
+  - winter
+  - thermostat
 ---
 
-# Smart Automations
+# Heated floors + engine pre-heat
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Heated floors + engine pre-heat — cold-weather comfort controls for vans — are the foundation of every "Warm up" automation in winter van life.
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature heated-floors`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The Heated floors + engine pre-heat tile appears under **Comfort** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
+- Source manifest: `connections/heated-floors/connection.yml`
 - Status: `beta` · Support tier: **B**

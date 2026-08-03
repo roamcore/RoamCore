@@ -1,23 +1,23 @@
 ---
-id: deadbolts
-title: Deadbolts
-support_tier: B
-category: safety
-install_method: one_line
+id: nfc-tags
+title: NFC tags
+support_tier: C
+category: security
+install_method: hacs
 tags:
-  - safety
-  - lock
-  - deadbolt
-  - smart-lock
-  - z-wave
-  - zigbee
+  - nfc
+  - tag
+  - scene
+  - automation
+  - access-control
+  - phone
 ---
 
-# Deadbolts
+# NFC tags
 
 ## What you get
 
-Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
+Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp).
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Hardware you may want
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature deadbolts`.
+- Add this repo as a **HACS custom repository** (Category: *Integration*), then install **nfc-tags**.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Deadbolts tile appears under **Safety** in the RoamCore dashboard.
+- The NFC tags tile appears under **Security** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Links
 
-- Source manifest: `connections/deadbolts/connection.yml`
-- Status: `beta` · Support tier: **B**
+- Source manifest: `connections/nfc-tags/connection.yml`
+- Status: `recipe_published` · Support tier: **C**

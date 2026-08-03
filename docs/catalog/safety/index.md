@@ -1,18 +1,18 @@
 # Safety
 
-This folder is the **Safety** tag in the RoamCore catalog.
+Smoke, CO, gas, locks, and the alerts that keep you and the van out of trouble.
 
-## Overview
-Safety is about early warning and clear alerts: CO/smoke, propane, leaks, low battery, and temperature risks. This section focuses on integrations and recipes that help you catch problems fast—especially when you’re asleep or away from the van.
+## Features in this category
 
-<!-- RC_FEATURE_LIST_START -->
+### [Deadbolts](deadbolts.md) — tier B
 
-## Features
+Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="deadbolts/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Deadbolts (smart locks)</div><div class="rc-feature-sub">Smart deadbolts let you monitor lock state (locked/unlocked) and (optionally) control it from Home Assistant.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
-  <a class="rc-feature" href="smart-automations/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Smart Automations (one-click enable)</div><div class="rc-feature-sub">A small set of prebuilt automations you can enable/disable from the RoamCore UI (implemented as native HA automations under the hood).</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
-  <a class="rc-feature" href="smoke-co-gas-sensors/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Smoke / CO / Gas sensors</div><div class="rc-feature-sub">Safety sensors that trigger clear alerts when something dangerous happens: smoke, carbon monoxide, propane/LPG, or other gases.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
-</div>
+### [Smart Automations](smart-automations.md) — tier B
 
-<!-- RC_FEATURE_LIST_END -->
+Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+
+### [Smoke / CO / gas safety sensors](smoke-co-gas-sensors.md) — tier B
+
+Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+

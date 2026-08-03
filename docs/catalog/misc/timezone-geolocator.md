@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
-support_tier: B
-category: safety
-install_method: one_line
+id: timezone-geolocator
+title: Timezone geolocator
+support_tier: C
+category: misc
+install_method: hacs
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - time
+  - timezone
+  - geolocator
+  - gps
+  - zone
+  - travel
 ---
 
-# Smart Automations
+# Timezone geolocator
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Keep HA's system timezone correct as the van travels across regions so that time-based automations (sun events + `now` + `today_at`) keep working.
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Add this repo as a **HACS custom repository** (Category: *Integration*), then install **timezone-geolocator**.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The Timezone geolocator tile appears under **Misc** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
-- Status: `beta` · Support tier: **B**
+- Source manifest: `connections/timezone-geolocator/connection.yml`
+- Status: `recipe_published` · Support tier: **C**

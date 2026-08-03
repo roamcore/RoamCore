@@ -1,23 +1,23 @@
 ---
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
+id: amenities_overlay
+title: Amenities overlay
 support_tier: B
-category: safety
+category: location
 install_method: one_line
 tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
+  - amenities-overlay
+  - map
+  - poi
+  - nearby-places
+  - overpass
+  - openstreetmap
 ---
 
-# Smoke / CO / gas safety sensors
+# Amenities overlay
 
 ## What you get
 
-Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+Amenities overlay (nearby places) — See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Hardware you may want
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smoke-co-gas-sensors`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature amenities-overlay`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
+- The Amenities overlay tile appears under **Location** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Links
 
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
+- Source manifest: `connections/amenities-overlay/connection.yml`
 - Status: `beta` · Support tier: **B**

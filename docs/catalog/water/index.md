@@ -1,17 +1,14 @@
 # Water
 
-This folder is the **Water** tag in the RoamCore catalog.
+Tanks, pumps, valves, leaks.
 
-## Overview
-Water systems are easy to forget until something goes wrong. This section covers ways to track fresh/grey levels, pump activity, leaks, and usage trends—so you can avoid surprises and plan refills/dumps around your travel.
+## Features in this category
 
-<!-- RC_FEATURE_LIST_START -->
+### [Electronic valves + auto tank switching](electronic-valves.md) — tier B
 
-## Features
+Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns "which tank am I drawing from right now?" + "is the grey valve about to overflow?" + "can I safely open a…
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="electronic-valves-and-auto-tank-switch/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Electronic valves + auto tank switching</div><div class="rc-feature-sub">Use electronically controlled valves to automate water routing: switching between primary/aux tanks, closing a grey valve if it’s left open, and protecting the </div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="water-tanks/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh/grey) monitoring</div><div class="rc-feature-sub">A placeholder for common water monitoring approaches (fresh/grey tank levels, pump runtime, leak sensors). RoamCore doesn’t ship a single mandated hardware solu</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-</div>
+### [Water tanks](water-tanks.md) — tier B
 
-<!-- RC_FEATURE_LIST_END -->
+Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns "is the fresh tank still full enough to last the night?" into a dashboard tile + a push notification + a mode-aware automation.
+

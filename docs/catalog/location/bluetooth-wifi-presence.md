@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
+id: bluetooth-wifi-presence
+title: Bluetooth / Wi-Fi presence
 support_tier: B
-category: safety
+category: location
 install_method: one_line
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - presence
+  - bluetooth
+  - wifi
+  - device-tracker
+  - person
+  - recipe
 ---
 
-# Smart Automations
+# Bluetooth / Wi-Fi presence
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Presence detection — who is currently home in the van — is the foundation of every occupied/away automation in RoamCore: shut down inverter + pump when nobody is home, turn on approach lighting when the first person returns after dark, suppress Stealth-silent-hours actions when only the driver is present, alert…
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature bluetooth-wifi-presence`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The Bluetooth / Wi-Fi presence tile appears under **Location** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
+- Source manifest: `connections/bluetooth-wifi-presence/connection.yml`
 - Status: `beta` · Support tier: **B**

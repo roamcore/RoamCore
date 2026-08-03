@@ -1,23 +1,23 @@
 ---
-id: deadbolts
-title: Deadbolts
+id: teltonika
+title: Teltonika
 support_tier: B
-category: safety
-install_method: one_line
+category: connectivity
+install_method: manual
 tags:
-  - safety
-  - lock
-  - deadbolt
-  - smart-lock
-  - z-wave
-  - zigbee
+  - teltonika
+  - networking
+  - lte
+  - 5g
+  - mobile-internet
+  - router
 ---
 
-# Deadbolts
+# Teltonika
 
 ## What you get
 
-Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
+Teltonika RUT-series LTE/5G routers are rugged, configurable mobile-internet gateways widely used in van life.
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Hardware you may want
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature deadbolts`.
+- Follow the **Setup** steps in the recipe — this is a manual install that wires a few entities together.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Deadbolts tile appears under **Safety** in the RoamCore dashboard.
+- The Teltonika tile appears under **Connectivity** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Links
 
-- Source manifest: `connections/deadbolts/connection.yml`
+- Source manifest: `connections/teltonika/connection.yml`
 - Status: `beta` · Support tier: **B**

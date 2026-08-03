@@ -1,23 +1,23 @@
 ---
-id: deadbolts
-title: Deadbolts
-support_tier: B
-category: safety
+id: time-atomic
+title: Time
+support_tier: C
+category: misc
 install_method: one_line
 tags:
-  - safety
-  - lock
-  - deadbolt
-  - smart-lock
-  - z-wave
-  - zigbee
+  - time
+  - atomic
+  - ntp
+  - gps
+  - rtc
+  - offline-resilience
 ---
 
-# Deadbolts
+# Time
 
 ## What you get
 
-Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
+Keep HA's clock accurate even when offline (in a van with intermittent connectivity).
 
 ## Prerequisites
 
@@ -26,17 +26,17 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Hardware you may want
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- None — uses what you already have.
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature deadbolts`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature time-atomic`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Deadbolts tile appears under **Safety** in the RoamCore dashboard.
+- The Time tile appears under **Misc** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +46,5 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Links
 
-- Source manifest: `connections/deadbolts/connection.yml`
-- Status: `beta` · Support tier: **B**
+- Source manifest: `connections/time-atomic/connection.yml`
+- Status: `recipe_published` · Support tier: **C**

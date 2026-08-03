@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
+id: demo_mode
+title: Demo mode
 support_tier: B
-category: safety
+category: automation
 install_method: one_line
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - demo-mode
+  - ai
+  - demo
+  - show-example-values
+  - missing-sensors
+  - setup-flow
 ---
 
-# Smart Automations
+# Demo mode
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos.
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature demo-mode`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The Demo mode tile appears under **Automation** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
+- Source manifest: `connections/demo-mode/connection.yml`
 - Status: `beta` · Support tier: **B**

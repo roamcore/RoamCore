@@ -1,19 +1,19 @@
 ---
-id: smart-automations
-title: Smart Automations
-support_tier: B
-category: safety
-install_method: one_line
+id: in-cab-tablet-dashboard
+title: In-cab tablet dashboard
+support_tier: C
+category: maintenance
+install_method: manual
 tags:
-  - safety
-  - automation
-  - preset
-  - mode
-  - smart-automations
-  - smart automations
+  - vehicle
+  - in-cab
+  - tablet
+  - dashboard
+  - driving
+  - arrival
 ---
 
-# Smart Automations
+# In-cab tablet dashboard
 
 !!! warning "Needs curation review"
     This entry is auto-generated from the connection manifest.
@@ -22,7 +22,7 @@ tags:
 
 ## What you get
 
-Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…
+Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving + a richer control surface on arrival + a battery-friendly lock screen while parked.
 
 ## Prerequisites
 
@@ -35,13 +35,13 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smart-automations`.
+- Follow the **Setup** steps in the recipe — this is a manual install that wires a few entities together.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smart Automations tile appears under **Safety** in the RoamCore dashboard.
+- The In-cab tablet dashboard tile appears under **Maintenance** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -51,5 +51,5 @@ Smart automations are the day-to-day convenience layer of a RoamCore van: 17 pre
 
 ## Links
 
-- Source manifest: `connections/smart-automations/connection.yml`
-- Status: `beta` · Support tier: **B**
+- Source manifest: `connections/in-cab-tablet-dashboard/connection.yml`
+- Status: `recipe_published` · Support tier: **C**

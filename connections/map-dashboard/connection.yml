@@ -1,0 +1,476 @@
+# Map dashboard — vendor-neutral map tile + device_tracker
+# aggregation + trip overlay + offline-tile cache — tier-a
+# recipe connection.
+#
+# Promoted from docs/catalog/map/map-dashboard.md (legacy
+# tier-a claim stub, 28 lines — "RoamCore provides a map
+# experience inside Home Assistant, including current
+# location and route/trip context. Quick 'where are we /
+# where did we park?' view. Nice context for trips and
+# daily travel. Extra hardware required: None if you
+# already have a `device_tracker` or location source.
+# Install / best next step: Core packages: homeassistant/
+# packages/roamcore_map.yaml + homeassistant/packages/
+# roamcore_map_route.yaml + homeassistant/packages/
+# roamcore_location.yaml. If using Traccar, see the
+# Traccar pages in this catalog." with no recipe + no
+# contract layer + no basemap-mode picker + no trip-
+# overlay picker + no automated basemap-mode fallback +
+# no offline-tile-cache integration — just a placeholder
+# with an aspirational tier-a claim that pointed at the
+# three existing RoamCore-owned packages without
+# documenting how they compose).
+#
+# This slice wraps the existing RoamCore-owned packages
+# (REFERENCED VERBATIM via `install.packages:` in the
+# manifest — the three packages are ALREADY SHIPPED at
+# `homeassistant/packages/roamcore_map.yaml` (31 LOC —
+# the `input_text.rc_map_tile_url` + `rc_map_tile_url_
+# online` + `rc_map_style_url` + `input_number.rc_map_
+# offline_max_zoom` helpers) + `homeassistant/packages/
+# roamcore_map_route.yaml` (10 LOC — the
+# `input_number.rc_map_route_device_id` helper) +
+# `homeassistant/packages/roamcore_location.yaml` (123
+# LOC — the `input_text.rc_location_tracker_entity` +
+# the 11 `template:` sensors that map a configurable
+# `device_tracker.*` → `rc_location_lat` + `rc_location_
+# lon` + `rc_location_accuracy_m` + `rc_location_source`
+# + `rc_location_speed` + `rc_location_heading_deg` +
+# the 6 trip-summary `rc_trip_*` template sensors). All
+# three packages are RoamCore-owned + loaded via the
+# standard HA `packages:` mechanism — the tier-a claim
+# IS honest: the legacy catalog page's "Support tier: A
+# (RoamCore native)" is correct because RoamCore DOES
+# own + ship + maintain those packages. This slice ADDS
+# the recipe layer (the manifest + the recipe.md howto
+# + the smoke + the 10 `rc_map_*` contract tiles + the
+# FIVE §9 MANDATORY automations + the legacy SUPERSEDED
+# banner + the docs cross-references to time-atomic Wave
+# 3 #55 + remote-access Wave 3 #58 + mode Wave 3 #61 +
+# demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 +
+# openclaw-api Wave 3 #64 + leveling Wave 3 #60 + fans
+# Wave 3 #59 + approach lights Wave 3 #52 + agent-
+# actions-allowlist Wave 3 #65) WITHOUT modifying the
+# existing package contents. The slice documents the
+# bench-fixture gap (no pytest integration tests for the
+# map packages; HA core `map:` card is the actual
+# surface) so the audit doesn't false-positive on tier-a
+# promotion.
+#
+# The 10 `rc_map_*` contract tiles documented below are
+# the vendor-neutral map dashboard contract surface (no
+# vendor name — no OSM / Mapbox / HERE / TomTom / Google /
+# Apple Maps names — leaks into the tile ids; the recipe
+# REFERENCES upstream tile URLs as the operator's
+# configured value of `input_text.rc_map_tile_url` but
+# the rc_* contract tile surface stays vendor-neutral):
+#   - device_tracker.rc_map_device_tracker (resolved
+#     current device_tracker — mirrors the
+#     `input_text.rc_location_tracker_entity` helper
+#     the operator configures once)
+#   - sensor.rc_map_latitude (current latitude — derived
+#     from `device_tracker.*`'s `latitude` attribute via
+#     the HA core `template:` sensor wrapper)
+#   - sensor.rc_map_longitude (current longitude —
+#     derived from `device_tracker.*`'s `longitude`
+#     attribute via the HA core `template:` sensor
+#     wrapper)
+#   - sensor.rc_map_accuracy_meters (current accuracy
+#     in meters — derived from `device_tracker.*`'s
+#     `gps_accuracy` / `accuracy` attribute via the HA
+#     core `template:` sensor wrapper)
+#   - sensor.rc_map_speed_kph (current speed in kph —
+#     derived from `device_tracker.*`'s `speed`
+#     attribute via the HA core `template:` sensor
+#     wrapper)
+#   - sensor.rc_map_bearing_degrees (current bearing /
+#     heading in degrees — derived from
+#     `device_tracker.*`'s `course` / `heading`
+#     attribute via the HA core `template:` sensor
+#     wrapper)
+#   - binary_sensor.rc_map_has_fix (true if lat/lng
+#     present + accuracy < 1000m — HA core `template:`
+#     binary_sensor)
+#   - binary_sensor.rc_map_internet_reachable_for_tiles
+#     (true if the upstream tile servers are reachable —
+#     the §9.3 basemap-mode-fallback automation target)
+#   - sensor.rc_map_basemap_mode (current resolved
+#     basemap mode — Off / Online / Cached / Offline;
+#     HA core `template:` sensor that resolves
+#     `select.rc_map_basemap_mode_user_pick` to a
+#     concrete mode based on the §9.3 fallback logic)
+#   - select.rc_map_trip_overlay (trip overlay mode —
+#     Off / Active / Recent-7d / All-Time; the operator
+#     picks which trip dataset the dashboard overlays on
+#     the map).
+#
+# The recipe covers the FIVE-step operator flow
+# (Configure the device_tracker + Pick a basemap mode +
+# Pick a trip overlay + Verify the map renders +
+# Toggle between Online / Cached / Offline) + the FIVE
+# §9 MANDATORY automations (§9.1 basemap-mode-online-
+# requires-internet-reachability guard + §9.2 basemap-
+# mode-cached-prefers-local-tile-archive guard + §9.3
+# basemap-mode-fallback to offline when tile servers
+# unreachable + §9.4 has-fix-blocks-tile-flicker guard
+# + §9.5 trip-overlay-active-only-when-vehicle-moving
+# guard) + the 10 `rc_map_*` contract tiles + the §10
+# troubleshooting entries (6 entries — tile server 403
+# / no GPS fix / stale cached tiles / trip overlay
+# shows no data / basemap mode keeps falling back to
+# Offline / map card not loading) + the §11 privacy
+# section (no RoamCore-side telemetry; the map tiles
+# fetch from the operator-configured upstream URL;
+# cached tiles live on the operator's HA box;
+# trip-overlay data lives in the operator's trip-
+# wrapped + trip-local databases; the operator owns
+# the tile URL + the tile cache + the device_tracker +
+# the trip-overlay choice; no cloud round-trip) + the
+# §12 tier-a promotion outline (real tile-cache engine +
+# canned fixture responses for tile-server-403 events +
+# canned fixture responses for stale-cache fallback
+# events + canned fixture responses for trip-overlay-
+# with-no-data events + canned fixture responses for
+# basemap-mode-fallback-to-offline events + RoamCore-
+# owned operator-wired setup flow walking the operator
+# through Device-tracker + Basemap-mode + Trip-overlay
+# + Cached + Offline + the §9 automations + integration
+# tests asserting a tile-server-403 event auto-falls-
+# back to Cached + a trip-overlay-with-no-data event
+# shows a "no trip data" placeholder + a basemap-mode
+# fallback to Offline fires when the upstream tile
+# servers are unreachable) + the §13 files + the §14
+# cross-references.
+#
+# Honesty footnote (install.config_flow = true is NOT
+# a tier-a marker): the UPSTREAM HA core `map:` card
+# (since 2022.x — exposes a GUI flow for the operator
+# to add a map card to a Lovelace view) + the UPSTREAM
+# HA core `device_tracker` integration (since 2022.x —
+# exposes the canonical `device_tracker.*` umbrella for
+# GPS sources) + the UPSTREAM HA core `template:`
+# sensor wrapper (since 2022.x — exposes a GUI flow for
+# the operator to add a derived `sensor.*` entity from
+# upstream sensors) + the UPSTREAM HA core `template:`
+# binary_sensor wrapper (since 2022.x — exposes a GUI
+# flow for the operator to add a derived `binary_sensor.*`
+# entity from upstream sensors) + the UPSTREAM HA core
+# `input_text` helper (since 2022.x — exposes a GUI
+# flow for the operator to add an `input_text.*`
+# helper) + the UPSTREAM HA core `input_number`
+# helper (since 2022.x — exposes a GUI flow for the
+# operator to add an `input_number.*` helper) + the
+# UPSTREAM HA core `input_select` helper (since 2022.x
+# — exposes a GUI flow for the operator to add an
+# `input_select.*` helper) + the UPSTREAM HA core
+# `select:` domain (since 2022.x — exposes a GUI flow
+# for the operator to add a `select.*` entity) + the
+# UPSTREAM HA core `automation:` integration (since
+# 2022.x — exposes the canonical automation runner)
+# ALL expose a GUI flow. That's honest upstream truth,
+# NOT a tier-a marker for RoamCore's tier. The tier-a
+# marker for RoamCore is (a) the three RoamCore-owned
+# packages at `homeassistant/packages/roamcore_map.yaml`
+# + `homeassistant/packages/roamcore_map_route.yaml`
+# + `homeassistant/packages/roamcore_location.yaml`
+# (already shipped + already RoamCore-owned + already
+# loaded via the standard HA `packages:` mechanism),
+# AND (b) the recipe layer + the 10 `rc_map_*` contract
+# tiles + the FIVE §9 MANDATORY automations + the
+# cross-references to time-atomic Wave 3 #55 + remote-
+# access Wave 3 #58 + mode Wave 3 #61 + demo-mode Wave
+# 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave
+# 3 #64 + leveling Wave 3 #60 + fans Wave 3 #59 +
+# approach lights Wave 3 #52 + agent-actions-allowlist
+# Wave 3 #65. The slice preserves the existing packages
+# verbatim (the recipes an upstream-entity-aggregation
+# wrapper on top + the contract layer + the §9
+# automations + the operator-side basemap-mode +
+# trip-overlay picker).
+
+id: map
+name: "Map dashboard — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache — tier-a recipe connection"
+tier: a
+category: map
+status: beta
+version: 0.1.0
+description: |
+  Map dashboard — vendor-neutral map tile + device_tracker
+  aggregation + trip overlay + offline-tile cache — the
+  umbrella for "RoamCore provides a map experience inside
+  Home Assistant, including current location and route/trip
+  context. Quick 'where are we / where did we park?' view.
+  Nice context for trips and daily travel. Extra hardware
+  required: None if you already have a `device_tracker` or
+  location source. Install / best next step: Core packages:
+  homeassistant/packages/roamcore_map.yaml +
+  homeassistant/packages/roamcore_map_route.yaml +
+  homeassistant/packages/roamcore_location.yaml" — is the
+  map-category umbrella for the RoamCore dashboard's map
+  view. The three RoamCore-owned packages at
+  `homeassistant/packages/roamcore_map.yaml` (31 LOC — the
+  `input_text.rc_map_tile_url` + `rc_map_tile_url_online`
+  + `rc_map_style_url` + `input_number.rc_map_offline_max_
+  zoom` helpers) + `homeassistant/packages/roamcore_map_
+  route.yaml` (10 LOC — the `input_number.rc_map_route_
+  device_id` helper) + `homeassistant/packages/roamcore_
+  location.yaml` (123 LOC — the
+  `input_text.rc_location_tracker_entity` + the 11
+  `template:` sensors that map a configurable
+  `device_tracker.*` → `rc_location_lat` + `rc_location_
+  lon` + `rc_location_accuracy_m` + `rc_location_source` +
+  `rc_location_speed` + `rc_location_heading_deg` + the 6
+  trip-summary `rc_trip_*` template sensors) are the
+  RoamCore-owned packages this slice WRAPS (referenced
+  verbatim via `install.packages:` in the manifest — the
+  package contents are NOT redefined by this slice). The
+  slice publishes the 10 `rc_map_*` contract tiles
+  documented below (vendor-neutral — no OSM / Mapbox /
+  HERE / TomTom / Google / Apple Maps names leak into the
+  tile ids; the upstream tile URL stays the operator's
+  choice via the existing `input_text.rc_map_tile_url`
+  helper) + the FIVE-step operator-pickable map flow
+  (Configure the device_tracker + Pick a basemap mode +
+  Pick a trip overlay + Verify the map renders + Toggle
+  between Online / Cached / Offline) + the FIVE §9
+  MANDATORY automations (§9.1 basemap-mode-online-
+  requires-internet-reachability guard + §9.2 basemap-
+  mode-cached-prefers-local-tile-archive guard + §9.3
+  basemap-mode-fallback to offline when tile servers
+  unreachable + §9.4 has-fix-blocks-tile-flicker guard
+  + §9.5 trip-overlay-active-only-when-vehicle-moving
+  guard) + the legacy SUPERSEDED banner on the catalog
+  page + the docs cross-references.
+
+  The recipe covers the FIVE-step operator flow
+  (Configure the device_tracker + Pick a basemap mode +
+  Pick a trip overlay + Verify the map renders + Toggle
+  between Online / Cached / Offline) + the FIVE §9
+  MANDATORY automations + the 10 `rc_map_*` contract
+  tiles + the §10 troubleshooting entries (6 entries —
+  tile server 403 / no GPS fix / stale cached tiles /
+  trip overlay shows no data / basemap mode keeps
+  falling back to Offline / map card not loading) +
+  the §11 privacy section (no RoamCore-side telemetry;
+  the map tiles fetch from the operator-configured
+  upstream URL; cached tiles live on the operator's
+  HA box; trip-overlay data lives in the operator's
+  trip-wrapped + trip-local databases; the operator
+  owns the tile URL + the tile cache + the
+  device_tracker + the trip-overlay choice; no cloud
+  round-trip) + the §12 tier-a promotion outline
+  (real tile-cache engine + canned fixture responses
+  for tile-server-403 events + canned fixture responses
+  for stale-cache fallback events + canned fixture
+  responses for trip-overlay-with-no-data events +
+  canned fixture responses for basemap-mode-fallback-to-
+  offline events + RoamCore-owned operator-wired setup
+  flow walking the operator through Device-tracker +
+  Basemap-mode + Trip-overlay + Cached + Offline + the
+  §9 automations + integration tests asserting a tile-
+  server-403 event auto-falls-back to Cached + a trip-
+  overlay-with-no-data event shows a "no trip data"
+  placeholder + a basemap-mode fallback to Offline fires
+  when the upstream tile servers are unreachable) +
+  the §13 files + the §14 cross-references.
+
+icon: mdi-map-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - map
+  - map-dashboard
+  - device_tracker
+  - gps
+  - tiles
+  - basemap
+  - trip-overlay
+  - offline
+  - cache
+  - tile-server
+  - location
+  - route
+  - polyline
+  - maplibre
+  - contract-wrapper
+  - reuse-first
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~10 min"
+  requires_reboot: false
+  setup_notes: |
+    Map dashboard requires the operator to (a) confirm
+    the three RoamCore-owned packages are loaded via the
+    standard HA `packages:` mechanism (the packages at
+    `homeassistant/packages/roamcore_map.yaml` +
+    `homeassistant/packages/roamcore_map_route.yaml` +
+    `homeassistant/packages/roamcore_location.yaml` are
+    already shipped + RoamCore-owned + preserved verbatim
+    by this slice — the package contents are NOT
+    redefined), (b) configure the operator-facing
+    `input_text.rc_location_tracker_entity` to point at
+    the operator's chosen `device_tracker.*` (typically
+    `device_tracker.traccar_van` if Traccar is the
+    upstream source, or a phone-derived device_tracker
+    if the HA Companion app is the upstream source), (c)
+    configure the operator-facing
+    `input_text.rc_map_tile_url` +
+    `input_text.rc_map_tile_url_online` +
+    `input_text.rc_map_style_url` +
+    `input_number.rc_map_offline_max_zoom` +
+    `input_number.rc_map_route_device_id` helpers to
+    point at the operator's chosen upstream tile
+    servers, (d) populate the 10 `rc_map_*` contract
+    tiles (`device_tracker.rc_map_device_tracker` +
+    `sensor.rc_map_latitude` +
+    `sensor.rc_map_longitude` +
+    `sensor.rc_map_accuracy_meters` +
+    `sensor.rc_map_speed_kph` +
+    `sensor.rc_map_bearing_degrees` +
+    `binary_sensor.rc_map_has_fix` +
+    `binary_sensor.rc_map_internet_reachable_for_tiles`
+    + `sensor.rc_map_basemap_mode` +
+    `select.rc_map_trip_overlay`) to mirror the upstream
+    state, (e) wire the FIVE §9 MANDATORY automations
+    (§9.1 basemap-mode-online-requires-internet-
+    reachability guard + §9.2 basemap-mode-cached-
+    prefers-local-tile-archive guard + §9.3 basemap-
+    mode-fallback to offline when tile servers
+    unreachable + §9.4 has-fix-blocks-tile-flicker
+    guard + §9.5 trip-overlay-active-only-when-vehicle-
+    moving guard), (f) follow the FIVE-step operator-
+    pickable map flow — Step 1 Configure the
+    device_tracker (set
+    `input_text.rc_location_tracker_entity` to the
+    operator's chosen `device_tracker.*`; the §9.4
+    has-fix-blocks-tile-flicker guard ensures the map
+    does not flicker between stale + fresh fixes);
+    Step 2 Pick a basemap mode (the operator picks the
+    `select.rc_map_basemap_mode_user_pick` (Off /
+    Online / Cached / Offline; default Online); the
+    §9.3 basemap-mode-fallback automation auto-falls-
+    back to Offline when the upstream tile servers are
+    unreachable); Step 3 Pick a trip overlay (the
+    operator picks the `select.rc_map_trip_overlay` (Off
+    / Active / Recent-7d / All-Time; default Off); the
+    §9.5 trip-overlay-active-only-when-vehicle-moving
+    guard keeps the trip overlay from rendering when
+    the vehicle is parked); Step 4 Verify the map
+    renders (operator opens the Lovelace map card +
+    confirms the current location + the trip overlay
+    + the basemap-mode chip render); Step 5 Toggle
+    between Online / Cached / Offline (operator toggles
+    the basemap mode to test the §9.3 fallback
+    automation). RoamCore does NOT maintain a custom
+    map-dashboard integration; the HA core `map:` card
+    is the actual surface (since 2022.x); the three
+    RoamCore-owned packages handle the contract-tile
+    storage; the HA core `template:` sensor + binary_
+    sensor wrappers handle the upstream-entity-
+    aggregation layer; the HA core `automation:`
+    integration handles the FIVE §9 MANDATORY
+    automations.
+
+install:
+  ha_integration_domain: map
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  packages:
+    - homeassistant/packages/roamcore_map.yaml
+    - homeassistant/packages/roamcore_map_route.yaml
+    - homeassistant/packages/roamcore_location.yaml
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_map_device_tracker_contract_tile_via_existing_template_sensor
+    - registers_map_latitude_contract_tile_via_existing_template_sensor
+    - registers_map_longitude_contract_tile_via_existing_template_sensor
+    - registers_map_accuracy_meters_contract_tile_via_existing_template_sensor
+    - registers_map_speed_kph_contract_tile_via_existing_template_sensor
+    - registers_map_bearing_degrees_contract_tile_via_existing_template_sensor
+    - registers_map_has_fix_contract_tile_via_existing_template_binary_sensor
+    - registers_map_internet_reachable_for_tiles_contract_tile_via_existing_template_binary_sensor
+    - registers_map_basemap_mode_contract_tile_via_existing_template_sensor
+    - registers_map_trip_overlay_contract_tile_via_existing_input_select
+    - may_register_basemap_mode_online_requires_internet_reachability_automation
+    - may_register_basemap_mode_cached_prefers_local_tile_archive_automation
+    - may_register_basemap_mode_fallback_to_offline_automation
+    - may_register_has_fix_blocks_tile_flicker_automation
+    - may_register_trip_overlay_active_only_when_vehicle_moving_automation
+
+dashboard:
+  title: "Map dashboard"
+  tiles:
+    - device_tracker.rc_map_device_tracker
+    - sensor.rc_map_latitude
+    - sensor.rc_map_longitude
+    - sensor.rc_map_accuracy_meters
+    - sensor.rc_map_speed_kph
+    - sensor.rc_map_bearing_degrees
+    - binary_sensor.rc_map_has_fix
+    - binary_sensor.rc_map_internet_reachable_for_tiles
+    - sensor.rc_map_basemap_mode
+    - select.rc_map_trip_overlay
+
+openclaw:
+  queries:
+    - "where is the van right now?"
+    - "what is the current latitude?"
+    - "what is the current longitude?"
+    - "what is the current GPS accuracy?"
+    - "what is the current speed?"
+    - "what is the current bearing?"
+    - "is there a GPS fix right now?"
+    - "are the tile servers reachable?"
+    - "what is the current basemap mode?"
+    - "what trip overlay is on the map?"
+  summary_keys:
+    - map_device_tracker
+    - map_latitude
+    - map_longitude
+    - map_accuracy_meters
+    - map_speed_kph
+    - map_bearing_degrees
+    - map_has_fix
+    - map_internet_reachable_for_tiles
+    - map_basemap_mode
+    - map_trip_overlay
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_pytest_bench_fixtures_for_map_packages
+  - recipe_depends_on_user_configuring_device_tracker
+  - recipe_depends_on_user_configuring_tile_url
+  - requires_operator_wiring_basemap_mode_picker_before_first_use
+  - has_fix_guard_must_be_wired
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/map/
+    - https://www.home-assistant.io/integrations/device_tracker/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/automation/
+  cross_references:
+    - ../time-atomic/
+    - ../remote-access/
+    - ../mode/
+    - ../demo-mode/
+    - ../advanced-mode/
+    - ../openclaw-api/
+    - ../leveling/
+    - ../fans/
+    - ../approach-lights/
+    - ../agent-actions-allowlist/

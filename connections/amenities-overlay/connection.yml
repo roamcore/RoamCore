@@ -1,0 +1,682 @@
+# Amenities overlay — vendor-neutral iOverlander-style
+# POI overlay on the RoamCore Map page + offline cache
+# fallback + 8 POI categories + 5 §8 MANDATORY
+# automations — tier-b recipe connection.
+#
+# Promoted from docs/catalog/map/amenities-overlay.md
+# (legacy tier-c claim stub, 39 lines — "Amenities
+# overlay (nearby places) — See nearby things you
+# actually care about when living on the road — water
+# taps, laundrettes, gyms, dump points, campsites,
+# supermarkets, and more — directly on the RoamCore map.
+# An optional map overlay layer that adds 'points of
+# interest' (POIs) around your current location. The goal
+# is practical: when you're parked somewhere new, you can
+# answer: Where's the nearest water fill? Is there a
+# laundrette nearby? Where can I find a quiet overnight
+# spot or a campsite? RoamCore will fetch POIs from one or
+# more data sources (e.g. OpenStreetMap-based APIs) and
+# render them as an overlay layer on the map. Design
+# constraints: Must fail safe (no blank map if the overlay
+# fails) + Must be rate-limited and cache results + Must
+# be user-configurable (categories on/off)" with no
+# recipe + no contract layer + no install path + no
+# automations + no offline-cache integration — just a
+# placeholder with an aspirational tier-c claim). The
+# picker promotes the legacy stub into tier-b because the
+# contract layer is the canonical RoamCore contribution
+# (the 31 `rc_amenities_overlay_*` tiles + the recipe +
+# the FIVE §8 MANDATORY automations) while the upstream
+# engines are the Overpass API (`https://overpass-api.de/
+# api/interpreter` — an OpenStreetMap project, fully open
+# + free + community-run since 2013; stable query
+# language; widely used by trucker / camper / van apps
+# worldwide — iOverlander itself uses Overpass for its
+# amenity queries) + the HA core `rest:` integration
+# (since 2017 — exposes a GUI flow for the operator to
+# add a derived `sensor.*` entity from an HTTP endpoint)
+# + the HA core `input_boolean` + `input_number` +
+# `input_select` helpers (since 2022.x — expose a GUI
+# flow for the operator to add the helper entities from
+# the HA UI under Settings → Helpers) + the HA core
+# `template:` sensor + `template:` binary_sensor wrappers
+# (since 2022.x — expose a GUI flow for the operator to
+# add a derived `sensor.*` / `binary_sensor.*` entity
+# from the upstream sensors). The legacy doc now carries
+# a SUPERSEDED banner pointing at this connection.
+
+# The recipe walks the operator through the EIGHT
+# operator-pickable POI categories the legacy spec
+# implies (mapped to OpenStreetMap amenity keys):
+#   - water — `amenity=drinking_water` (drinking-water
+#     fountains + water-bottle refill stations).
+#   - laundry — `shop=laundry` (laundrettes +
+#     laundromats).
+#   - gym — `leisure=fitness_centre` (gyms + fitness
+#     centres).
+#   - dump_point — `amenity=sanitary_dump_station` (RV
+#     / motorhome dump stations for grey + black tanks).
+#   - campsite — `tourism=camp_site` (established
+#     campgrounds with facilities).
+#   - wild_camping — `tourism=wild_camping` (legal /
+#     tolerated overnight parking spots).
+#   - supermarket — `shop=supermarket` (full-size
+#     grocery stores).
+#   - fuel — `amenity=fuel` (petrol / diesel stations).
+# (water / laundry / gym / dump_point / campsite /
+# wild_camping / supermarket / fuel = 8 categories
+# total. The recipe walks the operator through toggling
+# each category on / off + picking the max-distance
+# radius + the cache-TTL before the overlay becomes
+# useful.)
+
+# The 31 `rc_amenities_overlay_*` contract tiles are
+# vendor-neutral — no vendor names leak into the tile
+# ids (no `overpass` / `openstreetmap` / `osm` /
+# `ioverlander` / `wikimedia` / `maptiler` / `mapbox` /
+# `google` / `here` / `tomtom` / `mqtt` / `webhook` /
+# `rest` / `api` / `http` / `https` / `input_boolean` /
+# `input_select` / `input_number` / `input_button` /
+# `template` / `gps` / `accelerometer` / `phone` /
+# `companion` / `ha` / `homeassistant` / `hacs` /
+# `zigbee` / `zwave` / `zha` / `tasmota` / `esphome` /
+# `esp32` / `esp8266` / `shelly` / `sonoff` / `wifi` /
+# `wi-fi` / `ble` / `bluetooth` / `iphone` / `ios` /
+# `android` / `samsung` / `pixel` / `xiaomi` / `huawei`
+# vendor / hardware / protocol / integration names leak
+# into the tile ids). The legitimate generic nouns
+# `amenities`, `overlay`, `category`, `radius`, `cache`,
+# `poi`, `count`, `water`, `laundry`, `gym`, `dump`,
+# `campsite`, `fuel`, `supermarket`, `wild`, `camping`,
+# `nearest`, `km`, `min`, `ttl`, `rate`, `limit`,
+# `refresh`, `clear`, `enable`, `disable`, `now`, `ago`,
+# `loaded`, `offline`, `source`, `data`, `safe`, `tileserver`
+# are allowed (they describe what the tile is for, not
+# which vendor). The contract surface is:
+#   - `input_boolean.rc_amenities_overlay_enabled`
+#     (master enable toggle — OFF by default; the
+#     operator must explicitly turn it ON before any
+#     POIs surface on the map).
+#   - `input_boolean.rc_amenities_overlay_fail_safe`
+#     (safety toggle — must be ON; surfaces in the
+#     dashboard as a green "overlay fail-safe" chip;
+#     if OFF, the §8.1 fail-safe guard is bypassed).
+#   - `select.rc_amenities_overlay_radius_km` (radius
+#     selector for the POI search — 1 / 2 / 5 / 10 / 25
+#     / 50 km from the current location; default 5 km).
+#   - `select.rc_amenities_overlay_data_source`
+#     (Overpass / Offline cache / Auto — "Auto" tries
+#     Overpass first, falls back to the offline cache
+#     if Overpass fails or rate-limits).
+#   - `number.rc_amenities_overlay_cache_ttl_min`
+#     (cache time-to-live in minutes — default 60;
+#     range 5–1440).
+#   - `number.rc_amenities_overlay_rate_limit_per_hour`
+#     (max Overpass requests per hour — default 30;
+#     range 1–100).
+#   - `binary_sensor.rc_amenities_overlay_is_loaded`
+#     (true when the overlay has at least one POI
+#     within the current radius).
+#   - `binary_sensor.rc_amenities_overlay_is_rate_limited`
+#     (true when Overpass returned 429 in the last hour
+#     — the overlay auto-disables temporarily + uses
+#     the offline cache).
+#   - `binary_sensor.rc_amenities_overlay_is_offline_cache_active`
+#     (true when serving POIs from the offline cache
+#     because Overpass is unavailable / rate-limited /
+#     disconnected).
+#   - `sensor.rc_amenities_overlay_poi_count_total`
+#     (total POIs in the current view, aggregated
+#     across all 8 enabled categories).
+#   - `sensor.rc_amenities_overlay_poi_count_water`
+#     (count of `amenity=drinking_water` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_laundry`
+#     (count of `shop=laundry` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_gym`
+#     (count of `leisure=fitness_centre` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_dump_point`
+#     (count of `amenity=sanitary_dump_station` POIs
+#     in view).
+#   - `sensor.rc_amenities_overlay_poi_count_campsite`
+#     (count of `tourism=camp_site` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_wild_camping`
+#     (count of `tourism=wild_camping` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_supermarket`
+#     (count of `shop=supermarket` POIs in view).
+#   - `sensor.rc_amenities_overlay_poi_count_fuel`
+#     (count of `amenity=fuel` POIs in view).
+#   - `sensor.rc_amenities_overlay_last_refresh_minutes_ago`
+#     (minutes since the last successful Overpass
+#     refresh).
+#   - `sensor.rc_amenities_overlay_nearest_water_km`
+#     (distance to the nearest `amenity=drinking_water`
+#     POI in km; `-1` when no POI in view).
+#   - `sensor.rc_amenities_overlay_nearest_campsite_km`
+#     (distance to the nearest `tourism=camp_site` POI
+#     in km; `-1` when no POI in view).
+#   - `button.rc_amenities_overlay_refresh_now`
+#     (operator-triggered: one-tap force-refresh from
+#     Overpass, bypassing the cache).
+#   - `button.rc_amenities_overlay_clear_cache`
+#     (operator-triggered: one-tap clear the offline +
+#     in-memory POI cache).
+#   - `button.rc_amenities_overlay_enable_water`
+#     (one-tap enable the `water` category — flips
+#     the per-category visibility toggle for water).
+#   - `button.rc_amenities_overlay_enable_laundry`
+#   - `button.rc_amenities_overlay_enable_gym`
+#   - `button.rc_amenities_overlay_enable_dump_point`
+#   - `button.rc_amenities_overlay_enable_campsite`
+#   - `button.rc_amenities_overlay_enable_wild_camping`
+#   - `button.rc_amenities_overlay_enable_supermarket`
+#   - `button.rc_amenities_overlay_enable_fuel`
+
+# The umbrella publishes the resulting data via the
+# upstream HA core `rest:` integration (since 2017 —
+# wraps any upstream HTTP endpoint into a derived
+# `sensor.*` entity) + the HA core `input_boolean` +
+# `input_select` + `input_number` helpers (since 2022.x
+# — expose a GUI flow for the operator to add the helper
+# entities from the HA UI under Settings → Helpers) +
+# the HA core `template:` sensor wrapper (since 2022.x
+# — wraps any upstream sensor state into a derived
+# `sensor.*` entity) + the HA core `template:`
+# binary_sensor wrapper (since 2022.x — wraps any
+# upstream sensor threshold into a derived
+# `binary_sensor.*` entity) + the optional RoamCore
+# TileServer add-on (Wave 2 catalog #21 — serves
+# pre-cached POI mbtiles for offline use) + a thin
+# RoamCore upstream-entity-aggregation wrapper that
+# maps each upstream signal (Overpass query response +
+# per-category toggle + radius selector + cache TTL +
+# rate-limit + fail-safe guard) into the 31
+# `rc_amenities_overlay_*` contract tiles.
+
+# The recipe §1 + §2 + §3 + §4 + §5 + §6 + §7 + §8 +
+# §9 + §10 + §11 + §12 walks through the umbrella +
+# the EIGHT operator-pickable POI categories (water /
+# laundry / gym / dump_point / campsite / wild_camping /
+# supermarket / fuel) + the §7 contract entities + the
+# §8 FIVE MANDATORY automations:
+#   - §8.1 Amenities overlay must fail safe (no blank
+#     map if overlay fails). The automation fires when
+#     `input_boolean.rc_amenities_overlay_fail_safe`
+#     is OFF OR when `binary_sensor.rc_amenities_
+#     overlay_is_loaded` has been FALSE for > 5 minutes
+#     AND the upstream Overpass query has returned an
+#     error. The automation flips the fail-safe toggle
+#     back to ON + clears the enable toggle (so the
+#     overlay goes back to the safe OFF state) + writes
+#     an audit-log entry + fires a critical notification
+#     warning the operator that the overlay has
+#     auto-disabled.
+#   - §8.2 Amenities overlay must be rate-limited +
+#     cache results. The automation fires when
+#     `number.rc_amenities_overlay_rate_limit_per_hour`
+#     Overpass requests have been made in the last hour
+#     OR when
+#     `sensor.rc_amenities_overlay_last_refresh_
+#     minutes_ago` < `number.rc_amenities_overlay_
+#     cache_ttl_min`. The automation surfaces a "rate-
+#     limited / using cached data" banner in the map
+#     page + flips
+#     `binary_sensor.rc_amenities_overlay_is_rate_
+#     limited` to TRUE + switches the data source to
+#     the offline cache.
+#   - §8.3 Amenities overlay must be user-configurable
+#     (categories on/off). The automation fires when
+#     ANY of the per-category visibility toggles (the
+#     per-category buttons in the recipe) flip OFF AND
+#     `input_boolean.rc_amenities_overlay_enabled` is
+#     ON. The automation re-fetches the POI list from
+#     Overpass (or the offline cache if rate-limited)
+#     with only the enabled categories + writes an
+#     audit-log entry showing the new enabled-category
+#     list.
+#   - §8.4 Amenities overlay must require internet OR
+#     a populated offline cache. The automation fires
+#     when `binary_sensor.rc_amenities_overlay_is_
+#     loaded` is FALSE AND the offline cache has never
+#     been populated (the operator has never wired the
+#     optional RoamCore TileServer add-on). The
+#     automation surfaces a "no internet + no offline
+#     cache — overlay disabled" banner in the map page
+#     + disables the overlay + writes an audit-log
+#     entry.
+#   - §8.5 Amenities overlay auto-disables when vehicle
+#     is moving > N km/h. The automation fires when
+#     `device_tracker.rc_location_current` reports a
+#     speed > 10 km/h AND
+#     `input_boolean.rc_amenities_overlay_enabled` is
+#     ON. The automation clears the enable toggle (so
+#     the overlay goes back to the safe OFF state while
+#     the vehicle is moving — POIs don't make sense at
+#     highway speeds) + writes an audit-log entry +
+#     fires a notification. The automation re-enables
+#     the overlay once the vehicle speed drops below
+#     5 km/h for > 2 minutes (so the overlay auto-
+#     resumes when parked).
+
+# Honesty footnote (install.config_flow = true is NOT
+# a tier-a marker): The UPSTREAM HA core `rest:`
+# integration (since 2017 — exposes a GUI flow for the
+# operator to add a derived `sensor.*` entity from an
+# HTTP endpoint) + the UPSTREAM HA core `input_boolean`
+# + `input_select` + `input_number` helpers (since
+# 2022.x — expose a GUI flow for the operator to add
+# the helper entities from the HA UI under Settings →
+# Helpers) + the UPSTREAM HA core `template:` sensor
+# wrapper (since 2022.x — exposes a GUI flow for the
+# operator to add a derived `sensor.*` entity from the
+# upstream sensors) + the UPSTREAM HA core `template:`
+# binary_sensor wrapper (since 2022.x — exposes a GUI
+# flow for the operator to add a derived `binary_sensor.*`
+# entity from the upstream sensors) ALL expose a GUI
+# flow. That's honest upstream truth, NOT a tier-a
+# marker for RoamCore's tier. The tier-a marker for
+# RoamCore would be a RoamCore-owned operator-wired
+# setup flow + RoamCore-owned integration code +
+# integration tests against a RoamCore-owned
+# amenities-overlay engine bench (a controlled
+# environment with canned fixture responses for
+# Overpass queries + canned fixture responses for
+# rate-limit events + canned fixture responses for
+# offline-cache fallbacks + canned fixture responses
+# for vehicle-moving events — all wired together in a
+# controlled environment). None of those are shipped
+# at tier-b. Tier-b honesty: HA core `rest:` + HA core
+# `input_boolean` + HA core `input_select` + HA core
+# `input_number` + HA core `template:` are all upstream
+# / vendor / HACS code; the RoamCore wrapper is a thin
+# upstream-entity-aggregation layer + the contract
+# layer + the §8 MANDATORY automations.
+
+id: amenities_overlay
+name: "Amenities overlay — vendor-neutral iOverlander-style POI overlay on the RoamCore Map page + offline cache fallback + 8 POI categories + 5 §8 MANDATORY automations — tier-b recipe connection"
+tier: b
+category: map
+status: beta
+version: 0.1.0
+description: |
+  Amenities overlay — vendor-neutral iOverlander-style
+  POI overlay on the RoamCore Map page + offline cache
+  fallback + 8 POI categories + 5 §8 MANDATORY
+  automations — the umbrella for "Amenities overlay
+  (nearby places) — See nearby things you actually
+  care about when living on the road — water taps,
+  laundrettes, gyms, dump points, campsites,
+  supermarkets, and more — directly on the RoamCore
+  map" — is the map-category complement to the broader
+  RoamCore "where am I + what's around me?" affordances.
+  The master enable toggle is the operator's master
+  switch (OFF by default; no POIs surface on the map
+  unless the operator explicitly turns it ON); the
+  fail-safe toggle is the safety interlock (must be ON;
+  the §8.1 fail-safe guard is bypassed if OFF); the
+  radius selector picks the max-distance radius (1 / 2
+  / 5 / 10 / 25 / 50 km from the current location;
+  default 5 km); the data-source selector picks where
+  to fetch POIs from (Overpass / Offline cache / Auto);
+  the cache-TTL picker controls how long the in-memory
+  POI cache survives (5–1440 minutes; default 60); the
+  rate-limit picker controls how many Overpass requests
+  per hour are allowed (1–100; default 30); the
+  is-loaded binary sensor surfaces whether the overlay
+  has at least one POI in view; the is-rate-limited
+  binary sensor surfaces whether Overpass returned 429
+  in the last hour; the is-offline-cache-active binary
+  sensor surfaces whether the offline cache is serving
+  POIs; the count-total + count-water + count-laundry
+  + count-gym + count-dump-point + count-campsite +
+  count-wild-camping + count-supermarket + count-fuel
+  sensors surface the per-category POI counts in view;
+  the last-refresh-minutes-ago sensor surfaces how long
+  ago the last successful Overpass refresh was; the
+  nearest-water-km + nearest-campsite-km sensors surface
+  the distance to the nearest POI in km (-1 when no
+  POI in view); the refresh-now button is the operator-
+  triggered one-tap force-refresh from Overpass,
+  bypassing the cache; the clear-cache button is the
+  operator-triggered one-tap clear the offline + in-
+  memory POI cache; the enable-water + enable-laundry
+  + enable-gym + enable-dump-point + enable-campsite +
+  enable-wild-camping + enable-supermarket + enable-fuel
+  buttons are the operator-triggered one-tap per-
+  category visibility toggle.
+
+  RoamCore does NOT ship a native amenities-overlay
+  engine; we RECIPE the well-understood upstream
+  Overpass API (`https://overpass-api.de/api/interpreter`
+  — an OpenStreetMap project, fully open + free +
+  community-run since 2013; stable query language;
+  widely used by trucker / camper / van apps worldwide
+  — iOverlander itself uses Overpass for its amenity
+  queries) + the HA core `rest:` integration (since
+  2017 — exposes a GUI flow for the operator to add a
+  derived `sensor.*` entity from an HTTP endpoint) +
+  the HA core `input_boolean` + `input_select` +
+  `input_number` helpers (since 2022.x — expose a GUI
+  flow for the operator to add the helper entities
+  from the HA UI under Settings → Helpers) + the HA
+  core `template:` sensor wrapper (since 2022.x —
+  exposes a GUI flow for the operator to add a
+  derived `sensor.*` entity from the upstream sensors)
+  + the HA core `template:` binary_sensor wrapper
+  (since 2022.x — exposes a GUI flow for the operator
+  to add a derived `binary_sensor.*` entity from the
+  upstream sensors) + the optional RoamCore TileServer
+  add-on (Wave 2 catalog #21 — serves pre-cached POI
+  mbtiles for offline use). The umbrella publishes
+  the 31 `rc_amenities_overlay_*` contract tiles
+  documented below (vendor-neutral — no overpass /
+  openstreetmap / osm / ioverlander / wikimedia /
+  maptiler / mapbox / google / here / tomtom / mqtt /
+  webhook / rest / api / http / https / ha /
+  homeassistant / hacs / companion / esphome / phone /
+  gps / accelerometer / iphone / ios / android /
+  samsung / pixel / xiaomi / huawei / input_boolean /
+  input_select / input_number / input_button /
+  template / zwave / zha / zigbee / deconz / tasmota /
+  shelly / sonoff / esp32 / esp8266 / wifi / wi-fi /
+  ble / bluetooth names leak into the tile ids).
+  RoamCore does NOT fork any of the upstream
+  integrations; the contract layer is a thin upstream-
+  entity-aggregation wrapper + the vendor-neutral tile
+  surface + the §8 MANDATORY automations.
+
+  The recipe covers the EIGHT operator-pickable POI
+  categories (water + laundry + gym + dump_point +
+  campsite + wild_camping + supermarket + fuel) + the
+  FIVE §8 MANDATORY automations (overlay must fail
+  safe + overlay must be rate-limited + overlay must
+  be user-configurable + overlay must require internet
+  OR offline cache + overlay auto-disables when
+  vehicle is moving > N km/h) + the 31
+  `rc_amenities_overlay_*` contract tiles + the §9
+  troubleshooting entries (6 entries) + the §10
+  privacy section (no telemetry beyond local POI
+  counts + cache state; Overpass API is queried from
+  HA directly with no proxy; no telemetry goes to
+  RoamCore; no telemetry goes to iOverlander / OSM /
+  Wikimedia) + the §11 tier-a promotion outline
+  (real Overpass bench + populated offline cache on
+  CI + RoamCore-owned operator-wired setup flow
+  walking the 8 categories + integration tests
+  asserting a mock Overpass response with 5 POIs
+  surfaces as `count_total = 5` + per-category counts
+  add up + the 5 safety guards all flip when wired
+  to canned fixture responses) + the §12 cross-
+  references (the map-dashboard Wave 3 #66 connection
+  for the basemap mode + the time-atomic Wave 3 #55
+  connection for the §8.5 vehicle-moving time gate +
+  the bluetooth-wifi-presence Wave 3 #42 connection
+  for the §8.5 vehicle-moving speed attribute).
+
+  The REUSE-FIRST strategy is intentional: the
+  upstream Overpass API (`https://overpass-api.de/api/
+  interpreter`) handles the POI query (95%+ of
+  operator-facing amenities-overlay operations); the
+  HA core `rest:` integration handles the HTTP
+  primitive; the HA core `input_boolean` + `input_
+  select` + `input_number` helpers handle the per-
+  category + radius + cache-TTL + rate-limit + data-
+  source state storage; the HA core `template:` sensor
+  + binary_sensor wrappers handle the per-category
+  count + nearest-POI + is-loaded derivation; the
+  optional RoamCore TileServer add-on (Wave 2 catalog
+  #21) handles the offline POI cache. All upstream
+  integrations + add-ons are upstream / vendor / HACS
+  code; the RoamCore wrapper is a thin upstream-
+  entity-aggregation layer + the contract layer + the
+  §8 MANDATORY automations.
+icon: mdi-map-marker-radius-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - amenities-overlay
+  - map
+  - poi
+  - nearby-places
+  - overpass
+  - openstreetmap
+  - ioverlander-style
+  - water
+  - laundry
+  - gym
+  - dump-point
+  - campsite
+  - wild-camping
+  - supermarket
+  - fuel
+  - fail-safe
+  - rate-limited
+  - user-configurable
+  - offline-cache
+  - auto-disable-when-moving
+  - ha-integration
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~25 min"
+  requires_reboot: false
+  setup_notes: |
+    Amenities overlay requires the operator to (a)
+    verify the upstream Overpass API
+    (`https://overpass-api.de/api/interpreter`) is
+    reachable from the HA host (curl the endpoint
+    with a minimal query), (b) install the upstream
+    HA core `rest:` integration (auto-installed in
+    every HA install since 2017 — exposes a GUI flow
+    for the operator to add a derived `sensor.*`
+    entity from an HTTP endpoint under Settings →
+    Devices & Services → Add Integration → REST),
+    (c) install the upstream HA core `input_boolean`
+    + `input_select` + `input_number` helpers (HA
+    core since 2022.x — auto-installed in every HA
+    install + exposed via the HA UI under Settings →
+    Helpers), (d) wire the upstream Overpass `rest:`
+    sensor (the operator configures the REST endpoint
+    + the JSON path + the scan interval pointing at
+    `https://overpass-api.de/api/interpreter` with a
+    minimal `amenity=drinking_water` query for the
+    water category + an equivalent query for each of
+    the 8 categories), (e) optionally install the
+    RoamCore TileServer add-on (Wave 2 catalog #21)
+    for the offline POI cache + populate the cache
+    with POIs for the operator's most-travelled
+    areas, (f) configure the operator-facing
+    `input_boolean.rc_amenities_overlay_enabled` +
+    `input_boolean.rc_amenities_overlay_fail_safe` +
+    `select.rc_amenities_overlay_radius_km` +
+    `select.rc_amenities_overlay_data_source` +
+    `number.rc_amenities_overlay_cache_ttl_min` +
+    `number.rc_amenities_overlay_rate_limit_per_hour`
+    contract tiles to point at the upstream helpers,
+    (g) wire the FIVE §8 MANDATORY automations
+    (overlay must fail safe + overlay must be rate-
+    limited + overlay must be user-configurable +
+    overlay must require internet OR offline cache +
+    overlay auto-disables when vehicle is moving > N
+    km/h), (h) enable amenities overlay via
+    `input_boolean.rc_amenities_overlay_enabled` +
+    pick the POI categories via the per-category
+    enable buttons + pick the radius + pick the data
+    source. RoamCore does NOT maintain a custom
+    amenities-overlay engine; the upstream Overpass
+    API + the HA core `rest:` integration + the HA
+    core `input_boolean` + `input_select` +
+    `input_number` helpers + the HA core `template:`
+    sensor + `template:` binary_sensor wrappers +
+    the optional RoamCore TileServer add-on handle
+    95%+ of operator-facing amenities-overlay
+    operations.
+
+install:
+  ha_integration_domain: rest
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_amenities_overlay_enabled_contract_tile
+    - registers_amenities_overlay_fail_safe_contract_tile
+    - registers_amenities_overlay_radius_km_contract_tile
+    - registers_amenities_overlay_data_source_contract_tile
+    - registers_amenities_overlay_cache_ttl_min_contract_tile
+    - registers_amenities_overlay_rate_limit_per_hour_contract_tile
+    - registers_amenities_overlay_is_loaded_contract_tile
+    - registers_amenities_overlay_is_rate_limited_contract_tile
+    - registers_amenities_overlay_is_offline_cache_active_contract_tile
+    - registers_amenities_overlay_poi_count_total_contract_tile
+    - registers_amenities_overlay_poi_count_water_contract_tile
+    - registers_amenities_overlay_poi_count_laundry_contract_tile
+    - registers_amenities_overlay_poi_count_gym_contract_tile
+    - registers_amenities_overlay_poi_count_dump_point_contract_tile
+    - registers_amenities_overlay_poi_count_campsite_contract_tile
+    - registers_amenities_overlay_poi_count_wild_camping_contract_tile
+    - registers_amenities_overlay_poi_count_supermarket_contract_tile
+    - registers_amenities_overlay_poi_count_fuel_contract_tile
+    - registers_amenities_overlay_last_refresh_minutes_ago_contract_tile
+    - registers_amenities_overlay_nearest_water_km_contract_tile
+    - registers_amenities_overlay_nearest_campsite_km_contract_tile
+    - registers_amenities_overlay_refresh_now_contract_tile
+    - registers_amenities_overlay_clear_cache_contract_tile
+    - registers_amenities_overlay_enable_water_contract_tile
+    - registers_amenities_overlay_enable_laundry_contract_tile
+    - registers_amenities_overlay_enable_gym_contract_tile
+    - registers_amenities_overlay_enable_dump_point_contract_tile
+    - registers_amenities_overlay_enable_campsite_contract_tile
+    - registers_amenities_overlay_enable_wild_camping_contract_tile
+    - registers_amenities_overlay_enable_supermarket_contract_tile
+    - registers_amenities_overlay_enable_fuel_contract_tile
+    - may_register_amenities_overlay_fail_safe_automation
+    - may_register_amenities_overlay_rate_limit_automation
+    - may_register_amenities_overlay_user_configurable_automation
+    - may_register_amenities_overlay_internet_or_cache_automation
+    - may_register_amenities_overlay_vehicle_moving_automation
+
+dashboard:
+  title: "Amenities overlay"
+  tiles:
+    - input_boolean.rc_amenities_overlay_enabled
+    - input_boolean.rc_amenities_overlay_fail_safe
+    - select.rc_amenities_overlay_radius_km
+    - select.rc_amenities_overlay_data_source
+    - number.rc_amenities_overlay_cache_ttl_min
+    - number.rc_amenities_overlay_rate_limit_per_hour
+    - binary_sensor.rc_amenities_overlay_is_loaded
+    - binary_sensor.rc_amenities_overlay_is_rate_limited
+    - binary_sensor.rc_amenities_overlay_is_offline_cache_active
+    - sensor.rc_amenities_overlay_poi_count_total
+    - sensor.rc_amenities_overlay_poi_count_water
+    - sensor.rc_amenities_overlay_poi_count_laundry
+    - sensor.rc_amenities_overlay_poi_count_gym
+    - sensor.rc_amenities_overlay_poi_count_dump_point
+    - sensor.rc_amenities_overlay_poi_count_campsite
+    - sensor.rc_amenities_overlay_poi_count_wild_camping
+    - sensor.rc_amenities_overlay_poi_count_supermarket
+    - sensor.rc_amenities_overlay_poi_count_fuel
+    - sensor.rc_amenities_overlay_last_refresh_minutes_ago
+    - sensor.rc_amenities_overlay_nearest_water_km
+    - sensor.rc_amenities_overlay_nearest_campsite_km
+    - button.rc_amenities_overlay_refresh_now
+    - button.rc_amenities_overlay_clear_cache
+    - button.rc_amenities_overlay_enable_water
+    - button.rc_amenities_overlay_enable_laundry
+    - button.rc_amenities_overlay_enable_gym
+    - button.rc_amenities_overlay_enable_dump_point
+    - button.rc_amenities_overlay_enable_campsite
+    - button.rc_amenities_overlay_enable_wild_camping
+    - button.rc_amenities_overlay_enable_supermarket
+    - button.rc_amenities_overlay_enable_fuel
+
+openclaw:
+  queries:
+    - "is amenities overlay enabled?"
+    - "is the overlay fail-safe guard on?"
+    - "what is the overlay search radius?"
+    - "what data source is the overlay using?"
+    - "what is the cache TTL?"
+    - "what is the rate limit?"
+    - "is the overlay loaded?"
+    - "is the overlay rate-limited?"
+    - "is the offline cache active?"
+    - "how many POIs are in view?"
+    - "how many water POIs are in view?"
+    - "how many laundry POIs are in view?"
+    - "how many gym POIs are in view?"
+    - "how many dump-point POIs are in view?"
+    - "how many campsite POIs are in view?"
+    - "how many wild-camping POIs are in view?"
+    - "how many supermarket POIs are in view?"
+    - "how many fuel POIs are in view?"
+    - "how many minutes ago was the last refresh?"
+    - "how far is the nearest water POI?"
+    - "how far is the nearest campsite?"
+    - "refresh the overlay now"
+    - "clear the overlay cache"
+    - "enable water POIs"
+    - "enable laundry POIs"
+    - "enable gym POIs"
+    - "enable dump-point POIs"
+    - "enable campsite POIs"
+    - "enable wild-camping POIs"
+    - "enable supermarket POIs"
+    - "enable fuel POIs"
+  summary_keys:
+    - amenities_overlay_enabled
+    - amenities_overlay_fail_safe
+    - amenities_overlay_radius_km
+    - amenities_overlay_data_source
+    - amenities_overlay_cache_ttl_min
+    - amenities_overlay_rate_limit_per_hour
+    - amenities_overlay_is_loaded
+    - amenities_overlay_is_rate_limited
+    - amenities_overlay_is_offline_cache_active
+    - amenities_overlay_poi_count_total
+    - amenities_overlay_poi_count_water
+    - amenities_overlay_poi_count_laundry
+    - amenities_overlay_poi_count_gym
+    - amenities_overlay_poi_count_dump_point
+    - amenities_overlay_poi_count_campsite
+    - amenities_overlay_poi_count_wild_camping
+    - amenities_overlay_poi_count_supermarket
+    - amenities_overlay_poi_count_fuel
+    - amenities_overlay_last_refresh_minutes_ago
+    - amenities_overlay_nearest_water_km
+    - amenities_overlay_nearest_campsite_km
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_amenities_overlay_engine_for_integration_test
+  - recipe_depends_on_overpass_api_reachability
+  - recipe_depends_on_user_wiring_per_category_visibility_toggles
+  - requires_operator_wiring_fail_safe_guard_before_first_use
+  - amenities_overlay_must_use_offline_cache_or_internet_guard_must_be_wired
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/rest/
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/template/
+    - https://wiki.openstreetmap.org/wiki/Overpass_API
+  cross_references:
+    - ../map-dashboard/
+    - ../time-atomic/
+    - ../bluetooth-wifi-presence/
+    - ../mode/
+    - ../demo-mode/
+    - ../advanced-mode/

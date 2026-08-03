@@ -1,23 +1,23 @@
 ---
-id: deadbolts
-title: Deadbolts
+id: remote-access
+title: Remote access
 support_tier: B
-category: safety
-install_method: one_line
+category: connectivity
+install_method: hacs
 tags:
-  - safety
-  - lock
-  - deadbolt
-  - smart-lock
-  - z-wave
-  - zigbee
+  - remote-access
+  - tailscale
+  - cloudflare-tunnel
+  - nabu-casa
+  - wireguard
+  - mesh-vpn
 ---
 
-# Deadbolts
+# Remote access
 
 ## What you get
 
-Smart deadbolts — van door lock control for vans — are the "did I forget to lock the van?" answer.
+Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems.
 
 ## Prerequisites
 
@@ -26,17 +26,18 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Hardware you may want
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- Tailscale account (free for personal use)
+- Cloudflare account for Cloudflare Tunnel (free tier)
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature deadbolts`.
+- Add this repo as a **HACS custom repository** (Category: *Integration*), then install **remote-access**.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Deadbolts tile appears under **Safety** in the RoamCore dashboard.
+- The Remote access tile appears under **Connectivity** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +47,5 @@ Smart deadbolts — van door lock control for vans — are the "did I forget to 
 
 ## Links
 
-- Source manifest: `connections/deadbolts/connection.yml`
+- Source manifest: `connections/remote-access/connection.yml`
 - Status: `beta` · Support tier: **B**

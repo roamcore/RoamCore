@@ -1,23 +1,23 @@
 ---
-id: smoke-co-gas-sensors
-title: Smoke / CO / gas safety sensors
+id: fans
+title: Fans
 support_tier: B
-category: safety
+category: comfort
 install_method: one_line
 tags:
-  - safety
-  - smoke
-  - carbon-monoxide
-  - co
-  - gas
-  - propane
+  - fan
+  - ventilation
+  - rooftop-vent
+  - circulation
+  - bathroom-exhaust
+  - climate-aware
 ---
 
-# Smoke / CO / gas safety sensors
+# Fans
 
 ## What you get
 
-Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every "is it safe to sleep in the van?" question.
+Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather.
 
 ## Prerequisites
 
@@ -26,17 +26,18 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Hardware you may want
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- MaxxAir / Fan-Tastic rooftop vent fan ($250–$450)
+- Generic 12 V circulation fan + Shelly 1 relay ($30–$80)
 
 ## Install
 
-- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature smoke-co-gas-sensors`.
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature fans`.
 - Restart Home Assistant.
 - Done — the tiles appear under the relevant section in the dashboard.
 
 ## What the dashboard shows
 
-- The Smoke / CO / gas safety sensors tile appears under **Safety** in the RoamCore dashboard.
+- The Fans tile appears under **Comfort** in the RoamCore dashboard.
 - Tiles update automatically from your upstream entities — no extra wiring required.
 
 ## Troubleshooting
@@ -46,5 +47,5 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
 
 ## Links
 
-- Source manifest: `connections/smoke-co-gas-sensors/connection.yml`
+- Source manifest: `connections/fans/connection.yml`
 - Status: `beta` · Support tier: **B**
