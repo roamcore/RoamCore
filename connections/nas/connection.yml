@@ -1,0 +1,241 @@
+# NAS (Network Attached Storage — Synology / QNAP / generic SMB) — tier-b recipe connection.
+#
+# Promoted from the single legacy tier-b spec:
+#   - docs/catalog/homelab/nas.md
+#
+# The legacy page is tagged tier-b in the homelab catalog index, and the
+# underlying RoamCore tier is honestly tier-b: RoamCore does NOT ship a
+# NAS container / VM / appliance of its own (no RoamCore-owned image, no
+# config_flow.py wrapping the upstream Synology DSM / QNAP / SMB HA
+# integrations), and there is no NAS on the CI bench to integration-test
+# against. So we promote the single legacy tier-b page into a SINGLE
+# tier-b connection slice with three operator-facing paths: Path A =
+# Synology DSM (richest integration surface), Path B = QNAP (alternative
+# NAS vendor), and Path C = generic SMB/NFS (any NAS that exposes
+# shares). All three paths cover the RoamCore `rc_homelab_nas_*`
+# contract.
+#
+# Category bridging note (homelab → subsystem):
+# The legacy page lives under docs/catalog/homelab/ (because the
+# homelab-on-wheels catalog tag is the operator-facing way to discover
+# "self-hosted storage you might want in the van"). The contract
+# entities this connection publishes are `rc_homelab_nas_*` ids per
+# the canonicalization pass — `homelab` is the closest existing
+# catalog bucket (the legacy doc clearly lives in the homelab bucket,
+# and the rc-entity-naming.md §subsystem list does not currently
+# enumerate a `homelab` subsystem; this slice treats `homelab` as the
+# canonical subsystem for self-hosted appliances and the §subsystem
+# list canonicalization pass will codify that mapping later). So we
+# set category=homelab (matching the legacy doc + matching the
+# catalog homelab tag the operator discovers). The legacy
+# docs/catalog/homelab/ page remains (with a supersession banner) so
+# the homelab catalog tag still has something to discover.
+#
+# Config-flow note (UPSTREAM truth, NOT a RoamCore claim):
+# All three upstream HA integrations either have a working
+# config_flow in Home Assistant core, OR are non-config_flow
+# integrations the operator adds differently:
+#   - Synology DSM (`ha_integration_domain: synology_dsm`):
+#     config_flow landed in HA core 2020.12 and has been the
+#     recommended install path since. See
+#     https://www.home-assistant.io/integrations/synology_dsm/
+#   - QNAP (`ha_integration_domain: qnap`): config_flow landed in
+#     HA core 2017 (legacy) and was modernized in 2022.4. The
+#     current upstream ships a config_flow. See
+#     https://www.home-assistant.io/integrations/qnap/
+#   - Generic SMB/NFS (`ha_integration_domain: smb` for the
+#     network-storage share path): NOT a config_flow integration
+#     in the modern sense — it's added via `configuration.yaml`
+#     `homeassistant` block, but the operator-driven BACKUP target
+#     selection uses HA's backup integration which DOES have a
+#     config_flow.
+# RoamCore does NOT ship a RoamCore-owned config_flow.py wrapping any
+# upstream — `install.config_flow: true` here reflects the UPSTREAM
+# truth for the Synology DSM + QNAP paths (the operator adds those via
+# HA's own config_flow), NOT a RoamCore-owned config flow. The
+# `__init__.py` is a DOMAIN-stub only. If we ever flip to a
+# RoamCore-owned native integration, we'd add a `config_flow.py` in
+# this folder and bump the tier to tier-a.
+#
+# This connection is the local-storage slice of RoamCore:
+#   - powers the `rc_homelab_nas_storage_used_pct` /
+#     `rc_homelab_nas_storage_total_gb` /
+#     `rc_homelab_nas_storage_free_gb` /
+#     `rc_homelab_nas_reachable` /
+#     `rc_homelab_nas_smart_status_ok` /
+#     `rc_homelab_nas_last_backup_at` /
+#     `rc_homelab_nas_backup_running` /
+#     `rc_homelab_nas_cpu_pct` /
+#     `rc_homelab_nas_memory_pct` tiles,
+#   - feeds OpenClaw queries ("how much storage is used on the NAS?",
+#     "is the NAS reachable?", "is the latest backup running?",
+#     "when was the last backup?", "is the NAS drive healthy?",
+#     "is the NAS CPU high?", "is the NAS memory high?"),
+#   - respects RoamCore modes (auto-trigger a backup before departure
+#     via a Mode-based automation hook; pause Trip Wrapped exports
+#     when the NAS is unreachable; alert when storage crosses 90%
+#     used).
+id: nas
+name: "Network Attached Storage (Synology / QNAP / generic SMB)"
+tier: b
+category: homelab
+status: beta
+version: 0.1.0
+description: |
+  A NAS gives RoamCore a reliable local-storage target for media,
+  camera footage, backups, and logs — especially valuable when you
+  don't want to depend on cloud services. Tier-b recipe: we publish
+  the documented setup for running a NAS (Synology / QNAP / generic
+  SMB share) on the van's LAN, exposing it to Home Assistant via
+  the upstream HA core integration, and layering a contract on top
+  (`rc_homelab_nas_*` dashboard tiles: storage used %, storage total
+  GB, storage free GB, NAS reachability, S.M.A.R.T. health, last
+  backup timestamp, backup-running indicator, CPU %, memory %). Path
+  A = Synology DSM (richest integration surface, ~30 sensors
+  including storage, S.M.A.R.T., CPU, memory, active users, volume
+  health). Path B = QNAP (alternative NAS vendor with a similarly
+  rich integration). Path C = Generic SMB/NFS (any NAS that exposes
+  shares — wired via HA's `homeassistant` network-storage block plus
+  the HA backup integration). No native RoamCore-owned config_flow —
+  we RECIPE all three paths and you bring whichever NAS hardware (or
+  any SMB-capable box) you want on your LAN.
+icon: homelab
+codeowners:
+  - "@bernardc"
+tags:
+  - nas
+  - storage
+  - synology
+  - qnap
+  - smb
+  - nfs
+  - homelab
+  - recipe
+
+wizard:
+  # Recipe = "stand up a NAS (Synology, QNAP, or any SMB/NFS-capable
+  # box) on the van's LAN with a static IP, expose its shares, wire
+  # the upstream HA integration (Path A Synology DSM, Path B QNAP,
+  # or Path C `homeassistant` storage + backup integration), point
+  # the connection at it, and import the contract template helpers
+  # from the recipe §6 snippet block". No one-tap, no auto-discover
+  # — NASes aren't reliably discoverable on the LAN via mDNS/SSDP
+  # in a way that survives moving between Wi-Fi networks.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    A NAS is a separate LAN device you run alongside Home Assistant —
+    typically a dedicated Synology DiskStation, a QNAP NAS, or any
+    mini-PC / spare box with one or more disks formatted and shared
+    out over SMB (and optionally NFS). RoamCore does NOT ship a NAS
+    appliance of its own and does NOT bake one into the RoamCore
+    container image. You bring the NAS (Path A = Synology at
+    https://www.synology.com/, Path B = QNAP at https://www.qnap.com/,
+    Path C = any SMB/NFS-capable box), assign it a static IP on the
+    LAN, expose its shares, and HA's upstream integration picks it
+    up via config_flow (Synology/QNAP) or via the `homeassistant`
+    network-storage block + the backup integration (SMB). RoamCore
+    then publishes the contract tiles (`rc_homelab_nas_*`) that wrap
+    the upstream sensors into vendor-neutral ids.
+
+install:
+  # UPSTREAM truth: Synology DSM (ha_integration_domain: synology_dsm)
+  # has a working config_flow in Home Assistant core since 2020.12,
+  # and QNAP (ha_integration_domain: qnap) since 2017 / modernized
+  # 2022.4. Path C (generic SMB/NFS) is NOT a config_flow integration
+  # in the modern sense — it's a `homeassistant` network-storage
+  # block + the HA backup integration (which DOES have a config_flow).
+  # RoamCore does NOT ship a RoamCore-owned config_flow.py —
+  # `config_flow: true` here is the UPSTREAM truth for Path A + Path
+  # B (the operator adds those via HA's own config_flow), NOT a
+  # RoamCore-owned config flow. The `__init__.py` is a DOMAIN stub;
+  # the recipe documents the config_flow steps for Path A + Path B
+  # and the configuration.yaml steps for Path C. If a future
+  # RoamCore release ships a native wrapper around the upstream
+  # config_flow (e.g. a wizard-side helper that auto-creates the
+  # rc_homelab_nas_* tiles post-config_flow), this field would stay
+  # true AND a `config_flow.py` would land in this folder, bumping
+  # the tier to tier-a.
+  ha_integration_domain: synology_dsm
+  config_flow: true            # UPSTREAM truth (Synology DSM has had config_flow in HA core since 2020.12; QNAP since 2017 / 2022.4); NOT a RoamCore-owned config_flow
+  hacs: false                  # tier-b: no HACS integration of our own
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - adds_dashboard_card               # installs the rc_homelab_nas_* contract tiles
+    - optional_backup_target            # the operator chooses whether to point HA backups at the NAS
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_homelab_*
+    # ids (subsystem prefix `rc_homelab_nas_*` per the homelab bucket
+    # canonicalization — the legacy doc lives in the homelab bucket and
+    # the rc-entity-naming.md §subsystem list will codify `homelab` for
+    # self-hosted appliances in a follow-up canonicalization pass). NO
+    # `synology`, `qnap`, `diskstation`, `dsm`, `smb`, `cifs`, `nfs` in
+    # any rc_ tile id beyond the subsystem prefix `rc_homelab_nas_*`
+    # (the subsystem prefix is the contract's owning-area marker; the
+    # rule against vendor names forbids vendor names appearing AFTER
+    # the subsystem marker, not the subsystem marker itself). The
+    # subsystem token `nas` is the ONLY place that string appears —
+    # never double-stamped into the suffix.
+    - sensor.rc_homelab_nas_storage_used_pct
+    - sensor.rc_homelab_nas_storage_total_gb
+    - sensor.rc_homelab_nas_storage_free_gb
+    - binary_sensor.rc_homelab_nas_reachable
+    - binary_sensor.rc_homelab_nas_smart_status_ok
+    - sensor.rc_homelab_nas_last_backup_at
+    - binary_sensor.rc_homelab_nas_backup_running
+    - sensor.rc_homelab_nas_cpu_pct
+    - sensor.rc_homelab_nas_memory_pct
+
+openclaw:
+  queries:
+    - how_much_storage_is_used_on_the_nas
+    - is_nas_reachable
+    - is_latest_backup_running
+    - when_was_last_backup
+    - is_nas_drive_healthy
+    - is_nas_cpu_high
+    - is_nas_memory_high
+  summary_keys:
+    - nas_storage_used_pct
+    - nas_storage_total_gb
+    - nas_storage_free_gb
+    - nas_reachable
+    - nas_smart_status_ok
+    - nas_last_backup_at
+    - nas_backup_running
+    - nas_cpu_pct
+    - nas_memory_pct
+
+# Tier-b: tests are optional (and we have no real NAS on the CI bench
+# to integration-test against). The tests/test_connection_yml.py file
+# below asserts the manifest itself is honest about its tier +
+# requirements; that satisfies the audit without claiming fake
+# integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_nas_for_integration_test
+  - recipe_depends_on_user_running_nas
+  - optional_backup_target_choice
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/synology_dsm/   # Synology DSM HA core integration (Path A)
+    - https://www.home-assistant.io/integrations/qnap/           # QNAP HA core integration (Path B)
+    - https://www.home-assistant.io/common-tasks/os/#network-storage   # HA SMB share (Path C)
+  docs:
+    - https://www.synology.com/dsm                              # Synology DSM (Path A upstream)
+    - https://www.qnap.com/                                      # QNAP (Path B upstream)
