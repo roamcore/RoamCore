@@ -1,0 +1,484 @@
+# Demo mode — vendor-neutral demo values for missing sensors
+# + auto-disable on real sensor reconnect + hard-block from
+# controlling real hardware + tier-b recipe connection.
+#
+# Promoted from docs/catalog/ai/demo-mode.md (legacy tier-a
+# claim stub, 14 lines — "Demo Mode lets RoamCore show
+# example values when critical sensors are missing, so the
+# UI still looks and feels complete during setup or demos.
+# Helps you configure slowly without a broken-looking
+# dashboard. Great for showcasing RoamCore without full
+# hardware installed. None. HA package:
+# homeassistant/packages/roamcore_demo_mode.yaml" with no
+# recipe + no contract + no automations + no install path).
+# The legacy stub's tier-a claim is honest-upstream-truth:
+# RoamCore ships NO native demo-mode engine (no
+# `custom_components/roamcore_demo_mode/` directory in the
+# repo today). The picker promotes the legacy stub into
+# tier-b because the contract layer is the canonical
+# RoamCore contribution (the 11 `rc_demo_mode_*` tiles +
+# the recipe + the §8 MANDATORY automations) while the
+# upstream engines are HA core `input_boolean` +
+# `input_select` + `input_text` helpers (since 2022.x) +
+# the HA core `template:` sensor wrapper (since 2022.x) +
+# the HA core `template:` binary_sensor wrapper (since
+# 2022.x). The legacy doc now carries a SUPERSEDED banner
+# pointing at this connection.
+
+# The recipe walks the operator through the FOUR operator-
+# pickable demo scenarios the legacy spec implies (Off /
+# Battery / Water / Connectivity):
+#   - Off — demo mode is disabled. Real sensor values (or
+#     "unknown" if sensors aren't wired) are shown. Default
+#     for operators with all hardware installed.
+#   - Battery demo — shows example battery / solar /
+#     inverter values as if a Victron GX were installed +
+#     reporting. Useful when the operator is wiring
+#     RoamCore without a real power system.
+#   - Water tank demo — shows example fresh / grey / black
+#     tank levels as if the SeeLevel / Victron / generic
+#     resistive tank sensors were installed. Useful for
+#     showcasing the water UI without a real tank sensor.
+#   - Connectivity demo — shows example Wi-Fi / LTE /
+#     Starlink state as if multiple upstream network
+#     integrations were installed. Useful for showcasing
+#     the network UI without real radios.
+
+# The 11 `rc_demo_mode_*` contract tiles are vendor-
+# neutral — no vendor names leak into the tile ids (no
+# `victron` / `see level` / `seelevel` / `garnet` /
+# `mopeka` / `renogy` / `starlink` / `peplink` /
+# `teltonika` / `unifi` / `ubiquiti` / `mqtt` / `webhook`
+# / `rest` / `api` / `http` / `https` / `input_boolean` /
+# `input_select` / `input_text` / `input_number` /
+# `input_button` / `template` / `gps` / `accelerometer` /
+# `phone` / `companion` / `ha` / `homeassistant` / `hacs`
+# / `zigbee` / `zwave` / `zha` / `deconz` / `tasmota` /
+# `esp32` / `esp8266` / `shelly` / `sonoff` / `wifi` /
+# `wi-fi` / `ble` / `bluetooth` / `iphone` / `ios` /
+# `android` / `samsung` / `pixel` / `xiaomi` / `huawei`
+# vendor / hardware / protocol / integration names leak
+# into the tile ids). The legitimate generic nouns
+# `demo`, `mode`, `enabled`, `scenario`, `active`,
+# `blocking`, `real`, `hardware`, `value`, `battery`,
+# `soc`, `percent`, `water`, `fresh`, `tank`, `connectivity`,
+# `lte`, `up`, `enable`, `disable` are allowed (they
+# describe what the tile is for, not which vendor). The
+# contract surface is:
+#   - `input_boolean.rc_demo_mode_enabled` — master
+#     enable toggle (OFF by default; must be operator-
+#     confirmed ON before demo values surface in the
+#     dashboard).
+#   - `select.rc_demo_mode_scenario` — Off / Battery /
+#     Water / Connectivity (which demo scenario the
+#     dashboard should show).
+#   - `sensor.rc_demo_mode_active_scenario` — the
+#     resolved active scenario, factoring in the enable
+#     toggle (surfaces as "Off" when the toggle is OFF
+#     regardless of the selector).
+#   - `binary_sensor.rc_demo_mode_is_blocking_real_
+#     hardware` — TRUE when demo mode would attempt to
+#     control real hardware (should ALWAYS be FALSE;
+#     surfaces in the dashboard as a green "demo safe"
+#     chip; turns red if a misconfiguration would let
+#     demo values drive a real `switch.*` / `light.*` /
+#     `climate.*` service call).
+#   - `sensor.rc_demo_mode_demo_value_battery_soc_percent`
+#     — demo battery state-of-charge percentage; only
+#     surfaces when scenario=Battery AND enable toggle
+#     is ON; sourced from a `template:` sensor that
+#     returns a realistic cycling value around 80% ± 10%
+#     so the dashboard looks alive.
+#   - `sensor.rc_demo_mode_demo_value_water_fresh_percent`
+#     — demo fresh-water tank percentage; only surfaces
+#     when scenario=Water AND enable toggle is ON; cycles
+#     60% → 90% on a slow timer.
+#   - `binary_sensor.rc_demo_mode_demo_value_connectivity_
+#     lte_up` — demo LTE upstream boolean; only surfaces
+#     when scenario=Connectivity AND enable toggle is ON;
+#     flips TRUE / FALSE on a slow timer to simulate
+#     intermittent LTE.
+#   - `button.rc_demo_mode_enable_battery` — operator-
+#     triggered: enable demo mode + pick the Battery
+#     scenario in one tap.
+#   - `button.rc_demo_mode_enable_water` — operator-
+#     triggered: enable demo mode + pick the Water
+#     scenario in one tap.
+#   - `button.rc_demo_mode_enable_connectivity` —
+#     operator-triggered: enable demo mode + pick the
+#     Connectivity scenario in one tap.
+#   - `button.rc_demo_mode_disable` — operator-
+#     triggered: disable demo mode (clears the enable
+#     toggle + resets the scenario to Off).
+
+# The umbrella publishes the resulting data via the
+# upstream HA core `input_boolean` + `input_select` +
+# `input_text` + `input_number` helper entities + the HA
+# core `template:` sensor wrapper + the HA core
+# `template:` binary_sensor wrapper + a thin RoamCore
+# upstream-entity-aggregation wrapper that maps each
+# upstream signal (real sensor availability + enable
+# toggle + scenario selector) into the 11 `rc_demo_mode_*`
+# contract tiles.
+
+# The recipe §1 + §3 + §4 + §5 + §6 + §7 + §8 + §9 walks
+# through the umbrella + the FOUR operator-pickable demo
+# scenarios + the §8 contract entities + the §9 FIVE
+# MANDATORY automations:
+#   - §9.1 Demo-mode auto-disable on real sensor reconnect.
+#     The automation fires when `input_boolean.rc_demo_
+#     mode_enabled` is ON AND ANY of the upstream real
+#     sensors (battery sensor + tank sensor + LTE-up
+#     sensor — whichever matches the picked scenario)
+#     transitions from `unavailable` / `unknown` to a
+#     real value. The automation clears the enable toggle
+#     + resets the scenario selector to Off + writes an
+#     audit-log entry + fires a notification warning the
+#     operator that demo mode has been auto-disabled.
+#   - §9.2 Demo-mode never controls actual hardware guard.
+#     The automation fires when ANY `script.*` /
+#     `automation.*` action tries to call a `switch.turn_
+#     on` / `switch.turn_off` / `light.turn_on` /
+#     `light.turn_off` / `climate.set_*` service while
+#     `input_boolean.rc_demo_mode_enabled` is ON AND the
+#     target entity is one of the "real hardware" entities
+#     the operator has flagged in their `input_text.rc_
+#     demo_mode_real_hardware_targets`. The automation
+#     BLOCKS the service call + logs a security-style
+#     audit entry + flips
+#     `binary_sensor.rc_demo_mode_is_blocking_real_
+#     hardware` to TRUE + fires a critical notification.
+#   - §9.3 Demo-mode blocks remote access guard. The
+#     automation fires when a remote-access session
+#     attempts to interact with the dashboard while
+#     `input_boolean.rc_demo_mode_enabled` is ON. The
+#     automation surfaces a "demo mode is ON — values are
+#     not real" banner in the remote-access dashboard
+#     + adds the demo-mode-active flag to the remote-
+#     access session metadata + (if the operator's
+#     remote-access setup supports it) refuses write-
+#     capable actions until demo mode is disabled.
+#   - §9.4 Demo-mode audit-log entry. The automation
+#     fires when `input_boolean.rc_demo_mode_enabled`
+#     flips from OFF to ON OR from ON to OFF. The
+#     automation writes an audit-log entry with the
+#     scenario selector value + the operator identity
+#     (if the remote-access session tracks it) + the
+#     timestamp + the reason.
+#   - §9.5 Demo-mode operator-only guard. The automation
+#     fires when a non-operator source (a sensor auto-
+#     change / an automation script / a remote-access
+#     non-operator session) tries to flip
+#     `input_boolean.rc_demo_mode_enabled`. The
+#     automation BLOCKS the change + writes an audit-log
+#     entry + fires a critical notification.
+
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): The UPSTREAM HA core `input_boolean` +
+# `input_select` + `input_text` + `input_number` helpers
+# (since 2022.x — expose a GUI flow for the operator to
+# add the helper entities from the HA UI) + the HA core
+# `template:` sensor wrapper (since 2022.x — expose a GUI
+# flow for the operator to add a derived entity from the
+# upstream sensors) + the HA core `template:` binary_
+# sensor wrapper (since 2022.x — expose a GUI flow for
+# the operator to add a derived binary_sensor from the
+# upstream sensors) ALL expose a GUI flow. That's honest
+# upstream truth, NOT a tier-a marker for RoamCore's
+# tier. The tier-a marker for RoamCore would be a
+# RoamCore-owned operator-wired setup flow + RoamCore-
+# owned integration code + integration tests against a
+# RoamCore-owned demo-mode engine bench (a controlled
+# environment with canned fixture responses for sensor
+# availability events + canned fixture responses for
+# remote-access session events + canned fixture
+# responses for service-call blocking events). None of
+# those are shipped at tier-b. Tier-b honesty: HA core
+# `input_boolean` + `input_select` + `input_text` +
+# `input_number` + HA core `template:` are all upstream
+# / vendor / HACS code; the RoamCore wrapper is a thin
+# upstream-entity-aggregation layer + the contract
+# layer + the §8 MANDATORY automations.
+
+id: demo_mode
+name: "Demo mode — vendor-neutral demo values for missing sensors + auto-disable guard + never-controls-hardware guard — tier-b recipe connection"
+tier: b
+category: ai
+status: beta
+version: 0.1.0
+description: |
+  Demo mode — vendor-neutral demo values for missing
+  sensors + auto-disable on real sensor reconnect +
+  hard-block from controlling real hardware — the
+  umbrella for "Demo Mode lets RoamCore show example
+  values when critical sensors are missing, so the UI
+  still looks and feels complete during setup or demos"
+  — is the ai-category complement to the broader
+  RoamCore "show me what it looks like" affordances.
+  The single "demo enabled" toggle is the operator's
+  master enable; the "scenario" selector picks which
+  demo scenario the dashboard should show (Off /
+  Battery / Water / Connectivity); the "active scenario"
+  tile surfaces the resolved active scenario (factoring
+  in the enable toggle); the "blocking real hardware"
+  tile is the TRUE / FALSE safety chip that should
+  ALWAYS be FALSE (turns red if a misconfiguration
+  would let demo values drive a real `switch.*` /
+  `light.*` / `climate.*` service call); the "demo
+  value battery SoC" tile surfaces a demo battery
+  state-of-charge percentage (around 80% ± 10% on a
+  slow cycle so the dashboard looks alive); the "demo
+  value water fresh %" tile surfaces a demo fresh-
+  water tank percentage (60% → 90% on a slow timer);
+  the "demo value connectivity LTE up" tile surfaces
+  a demo LTE upstream boolean (TRUE / FALSE on a slow
+  timer to simulate intermittent LTE); the "enable
+  battery" button is the operator-triggered one-tap
+  enable + Battery-scenario pick; the "enable water"
+  button is the operator-triggered one-tap enable +
+  Water-scenario pick; the "enable connectivity" button
+  is the operator-triggered one-tap enable +
+  Connectivity-scenario pick; the "disable" button is
+  the operator-triggered one-tap disable.
+
+  RoamCore does NOT ship a native demo-mode engine; we
+  RECIPE the well-understood upstream HA core
+  `input_boolean` + `input_select` + `input_text` +
+  `input_number` helper entities (since 2022.x —
+  expose a GUI flow for the operator to add the helper
+  entities from the HA UI) + the HA core `template:`
+  sensor wrapper (since 2022.x — expose a GUI flow for
+  the operator to add a derived `sensor.*` entity from
+  the upstream sensors) + the HA core `template:`
+  binary_sensor wrapper (since 2022.x — expose a GUI
+  flow for the operator to add a derived
+  `binary_sensor.*` entity from the upstream sensors).
+  The umbrella publishes the 11 `rc_demo_mode_*`
+  contract tiles documented below (vendor-neutral — no
+  Victron / SeeLevel / Garnet / Mopeka / Renogy /
+  Starlink / Peplink / Teltonika / Unifi / Ubiquiti /
+  MQTT / webhook / REST / API / HTTP / HTTPS / Companion
+  / ESPHome / phone / GPS / accelerometer / iPhone /
+  iOS / Android / Samsung / Pixel / OnePlus / Xiaomi /
+  Huawei / input_boolean / input_select / input_text /
+  input_number / input_button / template / Z-Wave /
+  Zigbee / ZHA / Deconz / Tasmota / Shelly / Sonoff /
+  ESP32 / ESP8266 / Wi-Fi / BLE / Bluetooth names leak
+  into the tile ids). RoamCore does NOT fork any of
+  the upstream helpers; the contract layer is a thin
+  upstream-entity-aggregation wrapper + the vendor-
+  neutral tile surface + the §8 MANDATORY automations.
+
+  The recipe covers the FOUR operator-pickable demo
+  scenarios (Off + Battery + Water + Connectivity) +
+  the FIVE §8 MANDATORY automations (auto-disable on
+  real sensor reconnect + never-controls-actual-
+  hardware guard + blocks-remote-access guard +
+  audit-log entry + operator-only guard) + the 11
+  `rc_demo_mode_*` contract tiles + the §10
+  troubleshooting entries (6 entries) + the §11
+  privacy section (no RoamCore-side telemetry; the
+  upstream helper entities' logs are operator-owned via
+  the HA core logbook; demo-mode values are clearly
+  labelled as demo + never reach the operator's
+  automations) + the §12 tier-a promotion outline
+  (real demo-mode engine + canned fixture responses for
+  sensor availability events on CI bench +
+  RoamCore-owned operator-wired setup flow walking the
+  operator through choosing Off / Battery / Water /
+  Connectivity + declaring the upstream real-hardware
+  target entities + the §8 automations + integration
+  tests asserting a real-sensor-reconnect event
+  auto-disables demo mode + a service-call attempt on a
+  flagged real-hardware entity triggers the never-
+  controls-hardware guard + a remote-access session
+  triggers the blocks-remote-access guard) + the §13
+  cross-references (the time-atomic Wave 3 #55
+  connection for the time-of-day primitives used by
+  the §9.4 audit-log entry's timestamp + the remote-
+  access Wave 3 #58 connection for the VPN primitive
+  used by the §9.3 blocks-remote-access guard + the
+  approach lights Wave 3 #52 connection for the §9.3
+  blocks-remote-access guard's dashboard banner pattern
+  + the fans Wave 3 #59 connection for the §9.2 never-
+  controls-hardware guard's fan-protection cross-
+  reference + the leveling Wave 3 #60 connection for
+  the §9.5 operator-only guard's levelling-jack
+  protection cross-reference + the mode Wave 3 #61
+  connection for the §9.4 audit-log entry's mode-
+  change cross-reference).
+
+  The REUSE-FIRST strategy is intentional: HA's core
+  `input_boolean` + `input_select` + `input_text` +
+  `input_number` helper entities (since 2022.x) handle
+  the upstream demo-mode state storage (95%+ of
+  operator-facing demo-mode operations); the HA core
+  `template:` sensor wrapper (since 2022.x) derives
+  the active-scenario + battery-demo + water-demo
+  tiles from the upstream state; the HA core
+  `template:` binary_sensor wrapper (since 2022.x)
+  derives the blocking-real-hardware + connectivity-
+  demo tiles from the upstream state. All upstream
+  helpers + integrations are upstream / vendor / HACS
+  code; the RoamCore wrapper is a thin upstream-
+  entity-aggregation layer + the contract layer + the
+  §8 MANDATORY automations.
+icon: mdi-play-box-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - demo-mode
+  - ai
+  - demo
+  - show-example-values
+  - missing-sensors
+  - setup-flow
+  - showcase
+  - demo-scenarios
+  - off
+  - battery
+  - water
+  - connectivity
+  - auto-disable
+  - never-controls-hardware
+  - blocks-remote-access
+  - audit-log
+  - operator-only
+  - ha-integration
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~20 min"
+  requires_reboot: false
+  setup_notes: |
+    Demo mode requires the operator to (a) install the
+    upstream HA core `input_boolean` + `input_select` +
+    `input_text` + `input_number` helpers (HA core since
+    2022.x — these are auto-installed in every HA install
+    + exposed via the HA UI under Settings → Helpers),
+    (b) wire the upstream sensor availability signals
+    (the operator's chosen battery sensor — Victron /
+    Renogy / generic shunt; the operator's chosen tank
+    sensor — SeeLevel / Garnet / Mopeka / generic
+    resistive; the operator's chosen LTE-up binary
+    sensor — Peplink / Teltonika / Starlink / generic
+    router), (c) configure the operator-facing
+    `input_boolean.rc_demo_mode_enabled` +
+    `select.rc_demo_mode_scenario` +
+    `sensor.rc_demo_mode_active_scenario` +
+    `binary_sensor.rc_demo_mode_is_blocking_real_hardware`
+    + `sensor.rc_demo_mode_demo_value_battery_soc_percent`
+    + `sensor.rc_demo_mode_demo_value_water_fresh_percent`
+    + `binary_sensor.rc_demo_mode_demo_value_connectivity_
+    lte_up` contract tiles to point at the upstream
+    entities + populate `input_text.rc_demo_mode_real_
+    hardware_targets` with the comma-separated list of
+    real-hardware entity ids the §9.2 never-controls-
+    hardware guard should protect, (d) wire the FIVE §8
+    MANDATORY automations (auto-disable on real sensor
+    reconnect + never-controls-actual-hardware guard +
+    blocks-remote-access guard + audit-log entry +
+    operator-only guard), (e) enable demo mode via one
+    of the four `button.rc_demo_mode_enable_*` buttons
+    (or by flipping `input_boolean.rc_demo_mode_enabled`
+    ON manually) + pick a scenario via
+    `select.rc_demo_mode_scenario`. RoamCore does NOT
+    maintain a custom demo-mode engine; the HA core
+    `input_boolean` + `input_select` + `input_text` +
+    `input_number` helpers + the HA core `template:`
+    sensor + `template:` binary_sensor wrappers handle
+    95%+ of operator-facing demo-mode operations.
+
+install:
+  ha_integration_domain: input_boolean
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_demo_mode_enabled_contract_tile
+    - registers_demo_mode_scenario_contract_tile
+    - registers_demo_mode_active_scenario_contract_tile
+    - registers_demo_mode_is_blocking_real_hardware_contract_tile
+    - registers_demo_mode_demo_value_battery_soc_percent_contract_tile
+    - registers_demo_mode_demo_value_water_fresh_percent_contract_tile
+    - registers_demo_mode_demo_value_connectivity_lte_up_contract_tile
+    - registers_demo_mode_enable_battery_contract_tile
+    - registers_demo_mode_enable_water_contract_tile
+    - registers_demo_mode_enable_connectivity_contract_tile
+    - registers_demo_mode_disable_contract_tile
+    - may_register_demo_mode_auto_disable_automation
+    - may_register_demo_mode_never_controls_hardware_automation
+    - may_register_demo_mode_blocks_remote_access_automation
+    - may_register_demo_mode_audit_log_automation
+    - may_register_demo_mode_operator_only_automation
+
+dashboard:
+  title: "Demo mode"
+  tiles:
+    - input_boolean.rc_demo_mode_enabled
+    - select.rc_demo_mode_scenario
+    - sensor.rc_demo_mode_active_scenario
+    - binary_sensor.rc_demo_mode_is_blocking_real_hardware
+    - sensor.rc_demo_mode_demo_value_battery_soc_percent
+    - sensor.rc_demo_mode_demo_value_water_fresh_percent
+    - binary_sensor.rc_demo_mode_demo_value_connectivity_lte_up
+    - button.rc_demo_mode_enable_battery
+    - button.rc_demo_mode_enable_water
+    - button.rc_demo_mode_enable_connectivity
+    - button.rc_demo_mode_disable
+
+openclaw:
+  queries:
+    - "is demo mode enabled?"
+    - "what demo scenario is active?"
+    - "is demo mode blocking real hardware?"
+    - "what is the demo battery SoC?"
+    - "what is the demo fresh-water percentage?"
+    - "is the demo LTE upstream up?"
+    - "enable battery demo"
+    - "enable water demo"
+    - "enable connectivity demo"
+    - "disable demo mode"
+  summary_keys:
+    - demo_mode_enabled
+    - demo_mode_scenario
+    - demo_mode_active_scenario
+    - demo_mode_is_blocking_real_hardware
+    - demo_mode_demo_value_battery_soc_percent
+    - demo_mode_demo_value_water_fresh_percent
+    - demo_mode_demo_value_connectivity_lte_up
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_native_demo_mode_engine_for_integration_test
+  - recipe_depends_on_user_wiring_real_sensor_signals
+  - recipe_depends_on_user_declaring_real_hardware_target_entities
+  - requires_operator_wiring_auto_disable_guard_before_first_use
+  - demo_mode_never_controls_real_hardware_guard_must_be_wired
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/input_boolean/
+    - https://www.home-assistant.io/integrations/input_select/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/template/
+  cross_references:
+    - ../time-atomic/
+    - ../remote-access/
+    - ../approach-lights/
+    - ../fans/
+    - ../leveling/
+    - ../mode/
