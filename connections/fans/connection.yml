@@ -1,0 +1,570 @@
+# Fans (vendor-neutral fan-controller umbrella for HA, covering rooftop
+# vent fans + circulation fans + bathroom exhaust fans — rooftop +
+# circulation fans cover the climate-aware airflow + the rain-sensor
+# safety block; bathroom exhaust fans wire as a separate downstream
+# `fan.*` entity that RoamCore does NOT own) — tier-b recipe
+# connection.
+#
+# Promoted from docs/catalog/fans/index.md (legacy tier-c; ~14 lines —
+# a minimal stub about "Fans are a simple upgrade that massively
+# improves comfort: airflow, condensation control, cooking smells,
+# and keeping the van livable in warm weather. This section covers
+# fan controllers, vent fans, and easy automations like 'run when
+# humidity is high'"). Promoted into tier-b because RoamCore does NOT
+# ship a native fan integration; we RECIPE the well-understood
+# upstream HA core `fan` integration (since 2022.x — has exposed a
+# `set_percentage` service + a `percentage` attribute + a
+# `preset_mode` attribute + the `fan.turn_on` / `fan.turn_off` /
+# `fan.toggle` / `fan.set_percentage` / `fan.set_preset_mode`
+# services + the `fan` domain since 2022.x) + the HA core `template:`
+# fan wrapper (since 2022.x — wraps any relay state or upstream
+# `fan.*` entity into a virtual `fan.*` entity that exposes the
+# standard `percentage` + `preset_mode` + `set_percentage` service
+# contract) + the HA core `zwave_js` integration (since 2022.x —
+# surfaces Z-Wave fan controllers like the Zooz ZEN17 + Aeotec Nano
+# Switch + Inovelli LZW42 as `fan.*` entities) + the HA core `zha`
+# integration (since 2022.x — surfaces Zigbee fan controllers like
+# generic-Zigbee fan controllers + the Tuya Zigbee fan family as
+# `fan.*` entities) + the HACS `bond` integration (HACS — surfaces
+# Bond Home RF-bridge-controlled ceiling fans + Hunter SIMPLEconnect
+# fans as `fan.*` entities) + the HACS `tuya` integration (HACS —
+# surfaces Tuya Wi-Fi smart fans as `fan.*` entities) + the HA core
+# `mqtt` integration (since 2022.x — surfaces MQTT-driven fan
+# controllers + Tasmota-flashed fan controllers as `fan.*` entities).
+# The umbrella publishes the 8 `rc_fan_*` contract tiles documented
+# below (vendor-neutral — no MaxxAir / Fan-Tastic / MAXXAIR Deluxe /
+# Heng's / Vento / generic-Zigbee / generic-Z-Wave / Tuya / Shelly /
+# Zooz / Aeotec / Inovelli / Bond Home / Hunter / Shelly names leak
+# into the tile ids). RoamCore does NOT fork any of the upstream
+# fan integrations; the contract layer is a thin upstream-entity-
+# aggregation wrapper + the vendor-neutral tile surface + the
+# rain-sensor safety block.
+
+# The recipe expands the legacy stub into FOUR operator-pickable
+# fan-controller paths (each path produces a vendor-neutral
+# `fan.*` entity that RoamCore aggregates into the 8
+# `rc_fan_*` contract tiles):
+#   - Path A — Smart fan controllers (Z-Wave / Zigbee fan
+#     controllers wired to 12 V / 24 V fans + the HA core
+#     `zwave_js` integration OR the HA core `zha` integration
+#     GUI flows + the `fan.set_percentage` service). Path A
+#     covers three sub-flavors:
+#     - Path A1 — Z-Wave fan controller (Zooz ZEN17 + Aeotec
+#       Nano Switch + Inovelli LZW42 + the HA core `zwave_js`
+#       integration). The operator wires the Z-Wave fan
+#       controller into the HA server via the `zwave_js`
+#       integration's GUI flow (or the `zwave_js` add-on
+#       flow) + maps the resulting `binary_switch.*` or
+#       `fan.*` entity into the contract layer.
+#     - Path A2 — Zigbee fan controller (generic-Zigbee fan
+#       controllers + the HA core `zha` integration). The
+#       operator wires the Zigbee fan controller into the HA
+#       server via the `zha` integration's GUI flow + maps
+#       the resulting `fan.*` entity into the contract layer.
+#     - Path A3 — Generic-tasmota-flashed fan controller
+#       (any 12 V / 24 V fan + a Tasmota-flashed relay + the
+#       HA core `mqtt` integration). The operator flashes
+#       Tasmota onto the relay + configures the MQTT topic
+#       + maps the resulting `fan.*` entity into the
+#       contract layer.
+#   - Path B — Wi-Fi / BLE smart fan (Bond Home + Hunter
+#     SIMPLEconnect + Tuya + the HACS `bond` integration +
+#     the HACS `tuya` integration + the HACS
+#     `hunterdouglas_simplify` integration). Path B covers
+#     three sub-flavors:
+#     - Path B1 — Bond Home RF-bridge + ceiling fan. The
+#       operator pairs the Bond Home hub to the RF-bridge-
+#       controlled ceiling fan + installs the HACS `bond`
+#       integration + maps the resulting `fan.*` entity
+#       into the contract layer.
+#     - Path B2 — Hunter SIMPLEconnect (HunterDouglas SIMPLIFY)
+#       Wi-Fi/BLE fan. The operator installs the Hunter
+#       SIMPLEconnect app + pairs the fan + installs the
+#       HACS `hunterdouglas_simplify` integration + maps
+#       the resulting `fan.*` entity into the contract
+#       layer.
+#     - Path B3 — Tuya Wi-Fi smart fan. The operator
+#       installs the Tuya Smart / Smart Life app + pairs
+#       the fan + installs the HACS `tuya` integration +
+#       maps the resulting `fan.*` entity into the
+#       contract layer.
+#   - Path C — Generic 12 V / 24 V fan + relay (no smart
+#     fan controller — the operator wires a 12 V / 24 V
+#     ventilation fan + a Shelly 1 / Zooz ZEN17 / Aeotec
+#     Nano Switch relay + the HA core Shelly integration
+#     OR the HA core `zwave_js` integration OR the HA core
+#     `template:` fan wrapping the relay state into a
+#     virtual `fan.ventilation` entity that exposes the
+#     standard `percentage` + `preset_mode` + the
+#     `fan.set_percentage` service contract). Path C
+#     covers two sub-flavors:
+#     - Path C1 — Shelly 1 / Shelly Plus 1 wired to a 12 V
+#       fan + the HA core Shelly integration.
+#     - Path C2 — Zooz ZEN17 / Aeotec Nano Switch wired to
+#       a 24 V fan + the HA core `zwave_js` integration
+#       + the HA core `template:` fan wrapping the relay
+#       state into a virtual `fan.*` entity.
+#   - Path D — All-in-one smart fan (MaxxAir / Fan-Tastic
+#     / MAXXAIR Deluxe rooftop vent fan + the HA core
+#     `fan` integration auto-discovery + the
+#     `fan.turn_on` / `fan.turn_off` / `fan.set_percentage`
+#     service mappings + the rain-sensor safety block +
+#     the upstream cover entity for the rooftop vent cover).
+#     The operator installs the rooftop vent fan per the
+#     manufacturer instructions + wires it into the HA
+#     server via the manufacturer-recommended integration
+#     (MaxxAir iFAN + Fan-Tastic Vent + MAXXAIR Deluxe all
+#     expose a vendor integration that surfaces as a
+#     `fan.*` entity + a `cover.*` entity for the
+#     automatic rain cover) + the recipe's rain-sensor
+#     safety block forces the fan OFF + the cover CLOSED
+#     when the rain sensor trips.
+
+# The 8 `rc_fan_*` contract tiles are vendor-neutral — no
+# vendor names leak into the tile ids:
+#   - `fan.rc_fan_main` — the main fan, mapped via template
+#     light from the upstream `fan.*` entities. The tile is
+#     an `input_select`-backed `fan:` domain entity (since
+#     2022.x) that selects between the operator's chosen
+#     upstream `fan.*` entity (one of `fan.maxxair_roof` /
+#     `fan.bond_fan` / `fan.tuya_fan` / `fan.ventilation`
+#     / `fan.zwave_fan_controller` / `fan.zigbee_fan_`
+#     etc.).
+#   - `sensor.rc_fan_speed_percent` — the current fan
+#     speed as a 0-100 percent. The tile is a `template:`
+#     sensor (since 2022.x) that derives from the upstream
+#     `fan.*` entity's `percentage` attribute (the HA core
+#     `fan` integration has exposed a `percentage`
+#     attribute since 2022.x).
+#   - `select.rc_fan_mode` — the operator's chosen fan
+#     mode (one of `off` / `low` / `med` / `high` / `auto`
+#     / `rain_safe`). The tile is a `select:` domain
+#     entity (since 2022.x) that maps to the upstream
+#     `fan.*` entity's `preset_mode` attribute (the HA
+#     core `fan` integration has exposed a `preset_mode`
+#     attribute since 2022.x — values are vendor-defined,
+#     but `low` / `med` / `high` are the de-facto standard
+#     for 3-speed fans).
+#   - `binary_sensor.rc_fan_active` — the AND gate (TRUE
+#     iff the fan is currently running). The tile is a
+#     `template:` binary_sensor (since 2022.x) that derives
+#     from the upstream `fan.*` entity's `state`
+#     attribute (the HA core `fan` integration has exposed
+#     `state` as `off` / `on` since 2022.x).
+#   - `sensor.rc_fan_runtime_minutes_today` — the fan's
+#     runtime in minutes for today. The tile is a
+#     `template:` sensor (since 2022.x) that derives from
+#     the upstream `fan.*` entity's history (the HA core
+#     `statistics` integration OR the
+#     `history_stats:` platform since 2022.x aggregates
+#     the upstream `fan.*` entity's ON-time into a daily
+#     total).
+#   - `sensor.rc_fan_last_trigger_reason` — the reason
+#     the fan was last turned on (one of `manual` /
+#     `humidity` / `temperature` / `schedule` / `sleep`).
+#     The tile is an `input_text:` domain entity (since
+#     2022.x) that the operator's automations write to
+#     before calling the `fan.turn_on` service.
+#   - `button.rc_fan_run_now_15min` — the manual override
+#     (the operator can force the fan to run for 15
+#     minutes from the dashboard without waiting for the
+#     auto-fan-on-humidity-high or auto-fan-on-temperature-
+#     high automations). The button is an `input_button:`
+#     domain entity (since 2022.x) that fires a 15-minute
+#     `fan.turn_on` + a 15-minute timer to call
+#     `fan.turn_off` after 15 minutes.
+#   - `binary_sensor.rc_fan_rain_sensor_active` — the
+#     rain-sensor trip gate (TRUE iff the rain sensor is
+#     wet — the rooftop fan is forced OFF + the rooftop
+#     vent cover is forced CLOSED when this tile is TRUE).
+#     The tile is a `template:` binary_sensor (since
+#     2022.x) that derives from the operator's physical
+#     rain sensor (a Z-Wave / Zigbee / wired rain sensor
+#     OR a binary_sensor derived from the rooftop vent
+#     fan's built-in rain sensor if the operator has a
+#     MaxxAir / Fan-Tastic / MAXXAIR Deluxe with a built-
+#     in rain sensor).
+
+# The umbrella publishes the resulting data via the upstream
+# HA core `fan` integration + the HA core `template:` fan
+# wrapper + the HA core `zwave_js` integration + the HA core
+# `zha` integration + the HA core `mqtt` integration + the
+# HACS `bond` integration + the HACS `tuya` integration + the
+# HACS `hunterdouglas_simplify` integration (Path B2 only),
+# then publishes the RoamCore fan contract tiles on top.
+
+# The recipe §1 + §3 + §4 + §5 + §6 walks through the
+# umbrella + the FOUR operator-pickable paths + the §7
+# contract entities + the §8 FIVE automations:
+#   - §8.1 Auto-fan on humidity high. The automation fires
+#     when `sensor.rc_hvac_interior_humidity` (from the
+#     HVAC basics Wave 3 #49 connection) rises above 65%
+#     AND the fan is not in `rain_safe` mode. The
+#     automation sets `select.rc_fan_mode` to `auto` +
+#     writes `sensor.rc_fan_last_trigger_reason = humidity`
+#     + calls the upstream `fan.turn_on` service with
+#     `percentage: 50` (med speed).
+#   - §8.2 Auto-fan on temperature high. The automation
+#     fires when `sensor.rc_hvac_interior_temperature`
+#     (from the HVAC basics Wave 3 #49 connection) rises
+#     above 28°C AND the fan is not in `rain_safe` mode.
+#     The automation sets `select.rc_fan_mode` to `auto`
+#     + writes `sensor.rc_fan_last_trigger_reason =
+#     temperature` + calls the upstream `fan.turn_on`
+#     service with `percentage: 75` (high speed).
+#   - §8.3 Manual override via
+#     `button.rc_fan_run_now_15min`. The button fires a
+#     15-minute `fan.turn_on` + a 15-minute timer to call
+#     `fan.turn_off` after 15 minutes + writes
+#     `sensor.rc_fan_last_trigger_reason = manual`.
+#   - §8.4 Rain-sensor hard-block. The automation fires
+#     when `binary_sensor.rc_fan_rain_sensor_active`
+#     flips to TRUE. The automation calls `fan.turn_off`
+#     on the chosen upstream fan entity + calls
+#     `cover.close_cover` on the upstream cover entity
+#     if the operator has a rooftop vent with a cover
+#     (Path D — MaxxAir / Fan-Tastic / MAXXAIR Deluxe all
+#     expose an upstream `cover.*` entity for the
+#     automatic rain cover) + writes
+#     `select.rc_fan_mode = rain_safe` + notifies the
+#     operator's phone (via the HA Companion app) saying
+#     "Rain detected — fan forced OFF + cover forced
+#     CLOSED".
+#   - §8.5 Sleep mode suppression via `select.rc_mode`
+#     from mode/automation-builder. The automation
+#     SUPPRESSES the §8.1 + §8.2 auto-fan automations
+#     when `select.rc_mode` is in `sleep` mode (overnight
+#     camp where the fan noise is unwanted; the operator
+#     can still trigger the manual override via
+#     `button.rc_fan_run_now_15min`). The recipe §12
+#     cross-references the mode/automation-builder recipe
+#     (Wave 2 #23) for the `select.rc_mode` tile.
+
+# Honesty footnote (install.config_flow = true is NOT a tier-a
+# marker): The UPSTREAM HA core `fan` integration (since
+# 2022.x — exposes a GUI flow for the operator to add a
+# `fan.*` entity from a vendor-discovered fan controller +
+# configure the fan's percentage range + the preset_mode
+# options) + the HA core `zwave_js` integration (since
+# 2022.x — exposes a GUI flow for the operator to add a
+# Z-Wave fan controller like the Zooz ZEN17 + Aeotec Nano
+# Switch + Inovelli LZW42) + the HA core `zha` integration
+# (since 2022.x — exposes a GUI flow for the operator to
+# add a Zigbee fan controller) + the HA core `mqtt`
+# integration (since 2022.x — exposes a GUI flow for the
+# operator to configure a Tasmota-flashed relay's MQTT
+# topic) + the HA core Shelly integration (since 2022.x —
+# exposes a GUI flow for the operator to add a Shelly 1 /
+# Shelly Plus 1) + the HACS `bond` integration (HACS —
+# exposes a GUI flow for the operator to add a Bond Home
+# hub + pair RF-bridge-controlled ceiling fans) + the HACS
+# `tuya` integration (HACS — exposes a GUI flow for the
+# operator to add a Tuya Wi-Fi smart fan) + the HACS
+# `hunterdouglas_simplify` integration (HACS — exposes a
+# GUI flow for the operator to add a Hunter SIMPLEconnect
+# fan) ALL expose a GUI flow. That's honest upstream truth,
+# NOT a tier-a marker for RoamCore's tier. The tier-a marker
+# for RoamCore would be a RoamCore-owned operator-wired
+# setup flow + RoamCore-owned integration code + integration
+# tests against a RoamCore-owned fan bench. None of those
+# are shipped at tier-b. Tier-b honesty: MaxxAir / Fan-Tastic
+# / MAXXAIR Deluxe / Bond Home / Hunter SIMPLEconnect / Tuya
+# / Z-Wave / Zigbee / Shelly / Zooz / Aeotec / Inovelli are
+# all upstream / vendor / HACS code; the RoamCore wrapper is
+# a thin upstream-entity-aggregation layer + the contract
+# layer.
+
+id: fans
+name: "Fans (vendor-neutral fan-controller umbrella for HA — rooftop vent fans + circulation fans + bathroom exhaust fans, operator picks ONE path) — tier-b recipe connection"
+tier: b
+category: ventilation
+status: beta
+version: 0.1.0
+description: |
+  Fans (vendor-neutral fan-controller umbrella for HA, covering
+  rooftop vent fans + circulation fans + bathroom exhaust fans —
+  rooftop + circulation fans cover the climate-aware airflow +
+  the rain-sensor safety block; bathroom exhaust fans wire as a
+  separate downstream `fan.*` entity that RoamCore does NOT
+  own) — the umbrella for "Fans are a simple upgrade that
+  massively improves comfort: airflow, condensation control,
+  cooking smells, and keeping the van livable in warm weather" —
+  is the ventilation-category complement to the broader
+  RoamCore climate-aware automation affordances. The single
+  "is the fan currently running?" tile aggregates the upstream
+  fan state into one dashboard indicator; the "current speed"
+  tile surfaces the fan's 0-100 percent; the "fan mode"
+  selector is the operator-facing affordance (one of `off` /
+  `low` / `med` / `high` / `auto` / `rain_safe`); the "fan
+  active" tile is the AND gate (TRUE iff the fan is currently
+  running); the "runtime minutes today" tile is the daily
+  runtime aggregate; the "last trigger reason" tile surfaces
+  the reason the fan was last turned on (one of `manual` /
+  `humidity` / `temperature` / `schedule` / `sleep`); the
+  "run-now 15min" button is the manual override (the operator
+  can force the fan to run for 15 minutes from the dashboard
+  without waiting for the auto-fan-on-humidity-high or auto-
+  fan-on-temperature-high automations); the "rain sensor
+  active" tile is the rooftop safety block (TRUE iff the rain
+  sensor is wet — the rooftop fan is forced OFF + the rooftop
+  vent cover is forced CLOSED when this tile is TRUE).
+
+  RoamCore does NOT ship a native fan integration; we RECIPE
+  the well-understood upstream HA core `fan` integration
+  (since 2022.x — has exposed a `set_percentage` service + a
+  `percentage` attribute + a `preset_mode` attribute + the
+  `fan.turn_on` / `fan.turn_off` / `fan.toggle` /
+  `fan.set_percentage` / `fan.set_preset_mode` services + the
+  `fan` domain since 2022.x) + the HA core `template:` fan
+  wrapper (since 2022.x — wraps any relay state or upstream
+  `fan.*` entity into a virtual `fan.*` entity that exposes
+  the standard `percentage` + `preset_mode` + the
+  `fan.set_percentage` service contract) + the HA core
+  `zwave_js` integration (since 2022.x — surfaces Z-Wave fan
+  controllers like the Zooz ZEN17 + Aeotec Nano Switch +
+  Inovelli LZW42 as `fan.*` entities) + the HA core `zha`
+  integration (since 2022.x — surfaces Zigbee fan controllers
+  like generic-Zigbee fan controllers + the Tuya Zigbee fan
+  family as `fan.*` entities) + the HACS `bond` integration
+  (HACS — surfaces Bond Home RF-bridge-controlled ceiling
+  fans + Hunter SIMPLEconnect fans as `fan.*` entities) + the
+  HACS `tuya` integration (HACS — surfaces Tuya Wi-Fi smart
+  fans as `fan.*` entities) + the HA core `mqtt` integration
+  (since 2022.x — surfaces MQTT-driven fan controllers +
+  Tasmota-flashed fan controllers as `fan.*` entities). The
+  umbrella publishes the 8 `rc_fan_*` contract tiles
+  documented below (vendor-neutral — no MaxxAir / Fan-Tastic /
+  MAXXAIR Deluxe / Heng's / Vento / generic-Zigbee /
+  generic-Z-Wave / Tuya / Shelly / Zooz / Aeotec / Inovelli /
+  Bond Home / Hunter / Shelly names leak into the tile ids).
+  RoamCore does NOT fork any of the upstream fan integrations;
+  the contract layer is a thin upstream-entity-aggregation
+  wrapper + the vendor-neutral tile surface + the rain-sensor
+  safety block.
+
+  The recipe covers the FOUR operator-pickable fan-controller
+  paths (Path A Z-Wave / Zigbee / MQTT fan controllers + Path
+  B Wi-Fi / BLE smart fans via Bond Home + Hunter SIMPLEconnect
+  + Tuya + Path C generic 12 V / 24 V fan + relay + Path D
+  all-in-one smart fan like MaxxAir / Fan-Tastic / MAXXAIR
+  Deluxe rooftop vent fan) + the FIVE §8 automations (auto-
+  fan on humidity high + auto-fan on temperature high +
+  manual override via `button.rc_fan_run_now_15min` + rain-
+  sensor hard-block + Sleep mode suppression via
+  `select.rc_mode`) + the 8 `rc_fan_*` contract tiles + the
+  6 §9 troubleshooting entries + the §10 privacy section (no
+  RoamCore-side telemetry; the upstream fan entity's logs
+  are operator-owned via the HA core logbook; MaxxAir /
+  Fan-Tastic / MAXXAIR Deluxe / Bond Home / Hunter
+  SIMPLEconnect / Tuya require their own cloud auth for
+  first-time setup if the operator selects Path B / Path D
+  but subsequent runs are local; Path A Z-Wave / Zigbee is
+  fully local) + the §11 tier-a promotion outline (real
+  Z-Wave fan controller + 12 V fan + Bond Home + MaxxAir +
+  rain sensor on CI bench + RoamCore-owned operator-wired
+  setup flow walking the operator through choosing Path A /
+  B / C / D + declaring the upstream entities + the rain-
+  sensor safety block + integration tests asserting a
+  humidity-high event triggers the auto-fan + a rain-sensor-
+  trip event forces the fan off + a Sleep mode change
+  suppresses the auto-fan) + the §12 cross-references (the
+  HVAC basics Wave 3 #49 connection for
+  `sensor.rc_hvac_interior_temperature` +
+  `sensor.rc_hvac_interior_humidity` + the time-atomic Wave
+  3 #55 connection for the time-of-day / sunrise-sunset
+  primitives used by the §8 Sleep mode suppression +
+  the cover entities for the §8.4 rain-sensor hard-block +
+  the mode/automation-builder Wave 2 #23 connection for the
+  `select.rc_mode` tile + the RFID-blocker-free rain sensor
+  contract + the climate-aware automation pattern from the
+  HVAC basics Wave 3 #49 connection).
+
+  The REUSE-FIRST strategy is intentional: HA's core `fan`
+  integration (since 2022.x) handles 95%+ of operator-facing
+  fan operators (the `set_percentage` service + the
+  `percentage` attribute + the `preset_mode` attribute); the
+  HA core `template:` fan wrapper (since 2022.x) wraps any
+  relay state into a virtual `fan.*` entity that exposes the
+  standard contract; the HA core `zwave_js` integration
+  (since 2022.x) handles the Z-Wave fan controllers; the HA
+  core `zha` integration (since 2022.x) handles the Zigbee
+  fan controllers; the HACS `bond` integration (HACS)
+  handles the Bond Home + Hunter SIMPLEconnect fans; the
+  HACS `tuya` integration (HACS) handles the Tuya Wi-Fi
+  smart fans; the HA core `mqtt` integration (since 2022.x)
+  handles the Tasmota-flashed relay + the operator's MQTT-
+  driven fan controllers. All upstream integrations are
+  upstream / vendor / HACS code; the RoamCore wrapper is a
+  thin upstream-entity-aggregation layer + the contract
+  layer + the rain-sensor safety block.
+icon: fan
+codeowners:
+  - "@bernardc"
+tags:
+  - fan
+  - ventilation
+  - rooftop-vent
+  - circulation
+  - bathroom-exhaust
+  - climate-aware
+  - rain-sensor
+  - humidity-trigger
+  - temperature-trigger
+  - sleep-suppression
+  - ha-integration
+  - hacs
+  - bond-home
+  - hunter-simpleconnect
+  - tuya
+  - reuse-first
+  - contract-wrapper
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Fans requires the operator to (a) have at least 1
+    controllable fan installed (rooftop vent fan + circulation
+    fan + bathroom exhaust fan), (b) pick ONE of the FOUR
+    fan-controller paths (Path A Z-Wave / Zigbee / MQTT fan
+    controllers + Path B Wi-Fi / BLE smart fans via Bond
+    Home + Hunter SIMPLEconnect + Tuya + Path C generic
+    12 V / 24 V fan + relay + Path D all-in-one smart fan
+    like MaxxAir / Fan-Tastic / MAXXAIR Deluxe), (c) set up
+    the chosen path's upstream integration (Path A — install
+    the HA core `zwave_js` integration OR the HA core `zha`
+    integration OR the HA core `mqtt` integration + wire the
+    fan controller into HA + verify the upstream `fan.*`
+    entity exists; Path B — install the HACS `bond`
+    integration OR the HACS `tuya` integration OR the HACS
+    `hunterdouglas_simplify` integration + wire the smart
+    fan into HA + verify the upstream `fan.*` entity
+    exists; Path C — install the HA core Shelly integration
+    OR the HA core `zwave_js` integration + wire the relay
+    into HA + create a `template:` fan wrapping the relay
+    state into a virtual `fan.ventilation` entity; Path D —
+    install the rooftop vent fan per the manufacturer
+    instructions + wire it into HA via the manufacturer-
+    recommended integration + verify the upstream `fan.*`
+    entity + the upstream `cover.*` entity exist), (d)
+    configure temperature + humidity via the HVAC basics
+    Wave 3 #49 connection's `sensor.rc_hvac_interior_
+    temperature` + `sensor.rc_hvac_interior_humidity`
+    (REQUIRED — the §8.1 + §8.2 auto-fan automations read
+    from these tiles), (e) configure the optional rain
+    sensor for the rooftop rain-safe mode (REQUIRED for
+    Path D rooftop vent fans; OPTIONAL for Path A / Path B
+    / Path C — the §8.4 rain-sensor hard-block automation
+    reads from `binary_sensor.rc_fan_rain_sensor_active`),
+    (f) configure optional time-of-day / sunrise-sunset for
+    the Sleep mode suppression via the time-atomic Wave 3
+    #55 connection, (g) configure the operator-facing
+    `fan.rc_fan_main` contract tile to point at the
+    operator's chosen upstream `fan.*` entity, (h)
+    configure `select.rc_fan_mode` to the operator's chosen
+    starting mode (default `auto`), (i) wire the FIVE §8
+    automations (auto-fan on humidity high + auto-fan on
+    temperature high + manual override via
+    `button.rc_fan_run_now_15min` + rain-sensor hard-block
+    + Sleep mode suppression via `select.rc_mode`). RoamCore
+    does NOT maintain a custom fan integration; the HA core
+    `fan` integration handles 95%+ of operator-facing fan
+    operators (the `set_percentage` service + the
+    `percentage` attribute + the `preset_mode` attribute);
+    the HA core `template:` fan wrapper handles the
+    operator's relay-driven fan; the HACS `bond` integration
+    handles the Bond Home + Hunter SIMPLEconnect fans; the
+    HACS `tuya` integration handles the Tuya Wi-Fi smart
+    fans; the upstream manufacturer integration handles the
+    Path D rooftop vent fans.
+
+install:
+  ha_integration_domain: fan
+  config_flow: true
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_fan_main_contract_tile
+    - registers_fan_speed_percent_contract_tile
+    - registers_fan_mode_contract_tile
+    - registers_fan_active_contract_tile
+    - registers_fan_runtime_minutes_today_contract_tile
+    - registers_fan_last_trigger_reason_contract_tile
+    - registers_fan_run_now_15min_contract_tile
+    - registers_fan_rain_sensor_active_contract_tile
+    - may_register_auto_fan_on_humidity_high_automation
+    - may_register_auto_fan_on_temperature_high_automation
+    - may_register_manual_override_via_button_automation
+    - may_register_rain_sensor_hard_block_automation
+    - may_register_sleep_mode_suppression_automation
+
+dashboard:
+  title: "Fans"
+  tiles:
+    - fan.rc_fan_main
+    - sensor.rc_fan_speed_percent
+    - select.rc_fan_mode
+    - binary_sensor.rc_fan_active
+    - sensor.rc_fan_runtime_minutes_today
+    - sensor.rc_fan_last_trigger_reason
+    - button.rc_fan_run_now_15min
+    - binary_sensor.rc_fan_rain_sensor_active
+
+openclaw:
+  queries:
+    - "is the fan currently running?"
+    - "what speed is the fan at?"
+    - "what mode is the fan in?"
+    - "is the rain sensor blocking the fan?"
+    - "how long has the fan been running today?"
+    - "why was the fan last turned on?"
+    - "run the fan for 15 minutes now"
+    - "force the fan off because of rain"
+  summary_keys:
+    - active
+    - speed_percent
+    - mode
+    - rain_sensor_active
+    - runtime_minutes_today
+    - last_trigger_reason
+    - manual_override_available
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_fan_controller_for_integration_test
+  - recipe_depends_on_user_running_fan_plus_humidity_sensor_plus_rain_sensor
+  - optional_smart_fan_vs_relay_vs_hub_choice
+  - requires_operator_wiring_safety_rain_sensor_before_first_use_if_rooftop
+  - mode_aware_sleep_suppression_required_for_overnight_camp
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/fan/
+    - https://www.home-assistant.io/integrations/zwave_js/
+    - https://www.home-assistant.io/integrations/zha/
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/cover/
+    - https://www.home-assistant.io/integrations/history_stats/
+    - https://www.home-assistant.io/integrations/statistics/
+    - https://hacs.xyz/docs/integrations/active
+    - https://www.home-assistant.io/integrations/shelly/
+  cross_references:
+    - ../hvac-basics/
+    - ../time-atomic/
+    - ../timezone-geolocator/
+    - ../approach-lights/
+    - ../motion-based-lighting/
+    - ../nfc-tags/
+    - ../smart-automations/

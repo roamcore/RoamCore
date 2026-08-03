@@ -66,7 +66,7 @@ Keep this list short. Start with these and extend deliberately:
 - `hvac` — heating / cooling / climate / engine pre-heat (heated floors, AC, Webasto, etc.), only if needed
 - `safety` — smoke / CO / gas / safety sensors + safety automations (smoke alarm, CO monitor, propane leak, etc.), only if needed
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
-- `remote_access` — remote access (Tailscale / Cloudflare Tunnel / Nabu Casa / Wireguard); vendor-neutral `rc_remote_access_*` ids (Wave 3 #58)
+- `ventilation` — fans + climate-aware airflow + ventilation mode overrides + rain-sensor safety blocks; vendor-neutral `rc_fan_*` ids (Wave 3 #59)
 
 ---
 
