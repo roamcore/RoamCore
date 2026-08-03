@@ -21,7 +21,7 @@ A novice-first van/RV telemetry dashboard with mission-critical networking, LTE/
 
 1. **Customer-facing repo** — RoamCore GitHub is what the world sees. Internal engineering logs, sensitive infra details, and unfiltered agent run transcripts stay local (`memory/roamcore/`).
 2. **Documentation-driven** — MkDocs site is the public surface. `docs/` is the source of truth for users. Runbooks/scripts are sanitised.
-3. **Backup + rollback discipline** — anything that touches Proxmox, HA, OpenWrt, or networking requires a snapshot + HA full backup + git commit *before* the change. See `Cron-handoff/roamcore-backup-rollback` skill.
+3. **Backup + rollback discipline** — anything that touches Proxmox, HA, OpenWrt, or networking requires a snapshot + HA full backup + git commit *before* the change.
 4. **Git fast mode** — direct-to-main pushes are fine for RoamCore. No PRs. No force-pushes. Tag known-good states.
 5. **Safety rule: do not touch `vmbr0`** — Bernard's bridge is immutable unless explicitly overridden. Treat as off-limits.
 6. **HACS-friendly layout** — must install as one-line command or HACS custom repo.
@@ -29,7 +29,7 @@ A novice-first van/RV telemetry dashboard with mission-critical networking, LTE/
 
 ## Active mission (as of 2026-06-19)
 
-Phase 3 of the cross-project cron mission — paused until Caste Phase 1 + 2 are done. Cron handoff doc at `Cron-handoff/north-star.md`. Build order: OpenWrt networking (3a) → HA dashboard (3b) → support infra (3c).
+Phase 3 of the cross-project cron mission — paused. Build order: OpenWrt networking (3a) → HA dashboard (3b) → support infra (3c).
 
 ## Architecture invariants
 
@@ -60,5 +60,5 @@ See `memory/roamcore-beta-user-flow.md` for the canonical user journey.
 - ❌ Committing secrets or HA tokens to the repo
 - ❌ Adding "advanced" features before the novice path is solid
 - ❌ Wide PRs that mix networking + UI + infra changes
-- ❌ Pulling Caste/manufacturing context into RoamCore work
+- ❌ Pulling in unrelated project context
 - ❌ Putting internal engineering logs on the public GitHub
