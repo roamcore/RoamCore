@@ -33,26 +33,13 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
-- Starlink (tier-b connection manifest)
-  - tier-b manifest: `connections/starlink/connection.yml` (networking category, beta status)
-  - recipe: `connections/starlink/docs/recipe.md` (~450-line howto: Path A router-only power cycle + Path B full PSU power cycle + smart-plug wiring + REST signal-stats + 3 automations + 6 troubleshooting entries + tier-a promotion outline)
-  - manifest-honesty smoke: `connections/starlink/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
-  - contract entities: `rc_net_starlink_sleep_state`, `rc_net_starlink_allow_sleep`, `rc_net_starlink_wake_30_min`, `rc_net_starlink_reachable`, `rc_net_starlink_signal_pct`, `rc_net_starlink_quiet_start`, `rc_net_starlink_quiet_end` (all `rc_net_starlink_*` per docs/reference/rc-entity-naming.md §net subsystem)
-  - legacy tier-c catalog page (`docs/catalog/networking/starlink-sleep-timer.md`) now carries a supersession banner pointing at the new connection folder
-
-- Pi-hole / AdGuard Home (tier-b connection manifest)
-  - tier-b manifest: `connections/dns-blocker/connection.yml` (networking category, beta status; covers both Pi-hole + AdGuard Home as Path A + Path B in one slice)
-  - recipe: `connections/dns-blocker/docs/recipe.md` (~700-line howto: Path A Pi-hole + Path B AdGuard Home + rc_net_dns_* contract wiring + OpenWrt DHCP-options cross-reference + 3 automations + 6 troubleshooting entries + tier-a promotion outline)
-  - manifest-honesty smoke: `connections/dns-blocker/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
-  - contract entities: `rc_net_dns_blocked_today`, `rc_net_dns_blocked_pct`, `rc_net_dns_blocker_reachable`, `rc_net_dns_queries_total`, `rc_net_dns_blocker_enabled`, `rc_net_dns_resolver_status`, `rc_net_dns_gravity_updated` (all `rc_net_dns_*` per docs/reference/rc-entity-naming.md §net subsystem)
-  - legacy tier-c catalog pages (`docs/catalog/homelab/pi-hole.md` + `docs/catalog/homelab/adguard-home.md`) now carry supersession banners pointing at the new connection folder
-
-- NAS (Network Attached Storage — Synology / QNAP / generic SMB) (tier-b connection manifest)
-  - tier-b manifest: `connections/nas/connection.yml` (homelab category, beta status; covers Synology DSM Path A + QNAP Path B + generic SMB/NFS Path C in one slice)
-  - recipe: `connections/nas/docs/recipe.md` (~770-line howto: Path A Synology DSM install + Path B QNAP install + Path C SMB share + backup target wiring + rc_homelab_nas_* contract wiring + 4 automations + 8 troubleshooting entries + tier-a promotion outline)
-  - manifest-honesty smoke: `connections/nas/tests/test_connection_yml.py` (6/6 PASS via `bash scripts/check.sh --core-only`)
-  - contract entities: `rc_homelab_nas_storage_used_pct`, `rc_homelab_nas_storage_total_gb`, `rc_homelab_nas_storage_free_gb`, `rc_homelab_nas_reachable`, `rc_homelab_nas_smart_status_ok`, `rc_homelab_nas_last_backup_at`, `rc_homelab_nas_backup_running`, `rc_homelab_nas_cpu_pct`, `rc_homelab_nas_memory_pct` (all `rc_homelab_nas_*` per docs/reference/rc-entity-naming.md `homelab` subsystem — being introduced by this slice; canonicalization pass will codify the mapping)
-  - legacy tier-b catalog page (`docs/catalog/homelab/nas.md`) now carries a supersession banner pointing at the new connection folder
+- Peplink (multi-WAN router for van internet) (tier-b connection manifest)
+  - tier-b manifest: `connections/peplink/connection.yml` (networking category, beta status; covers HA core `snmp` Path A for single-router operators + Peplink InControl 2 REST API via the community HACS `hass-incontrol2` integration Path B for fleet operators)
+  - recipe: `connections/peplink/docs/recipe.md` (~870-line howto: Path A SNMP wiring + Path B InControl 2 wiring + force-failover affordance via Path A or Path B + WAN-priority `select` + mode-aware multi-WAN preference (cellular in Travel/Boost, Starlink in Home/Shore) + 4 automations + 8 troubleshooting entries + privacy + tier-a promotion outline)
+  - manifest-honesty smoke: `connections/peplink/tests/test_connection_yml.py` (7/7 PASS via `bash scripts/check.sh --core-only`)
+  - contract entities: `binary_sensor.rc_net_peplink_reachable`, `sensor.rc_net_peplink_wan1_state`, `sensor.rc_net_peplink_wan2_state`, `sensor.rc_net_peplink_active_wan`, `sensor.rc_net_peplink_wan_failover_count_24h`, `sensor.rc_net_peplink_wan_health_score`, `sensor.rc_net_peplink_uptime_hours`, `sensor.rc_net_peplink_public_ip`, `button.rc_net_peplink_refresh_now`, `button.rc_net_peplink_force_failover`, `select.rc_net_peplink_wan_priority` (all `rc_net_peplink_*` per docs/reference/rc-entity-naming.md §net subsystem)
+  - legacy tier-c catalog page (`docs/catalog/networking/peplink.md`) now carries a supersession banner pointing at the new connection folder
+  - PR #N
 
 ## Next steps (needs HAOS setup / UI wiring)
 

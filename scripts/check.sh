@@ -90,6 +90,8 @@ run_if_present "connections/nas/tests/test_connection_yml.py" \
   "Connection: NAS (Synology / QNAP / SMB) (tier-b) — manifest honesty smoke check"
 run_if_present "connections/teltonika/tests/test_connection_yml.py" \
   "Connection: Teltonika (tier-b) — LTE/5G router for vans: manifest honesty smoke check"
+run_if_present "connections/peplink/tests/test_connection_yml.py" \
+  "Connection: Peplink (tier-b) — multi-WAN router for vans: manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
