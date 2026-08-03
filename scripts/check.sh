@@ -108,6 +108,10 @@ run_if_present "connections/mock-location-and-tracks/tests/test_connection_yml.p
   "Connection: Mock location + track replay (tier-a) — manifest honesty smoke check"
 run_if_present "connections/deadbolts/tests/test_connection_yml.py" \
   "Connection: Deadbolts (smart lock control) (tier-b) — manifest honesty smoke check"
+run_if_present "connections/hvac-basics/tests/test_connection_yml.py" \
+  "Connection: HVAC basics (heating/cooling foundations) (tier-b) — manifest honesty smoke check"
+run_if_present "connections/motion-based-lighting/tests/test_connection_yml.py" \
+  "Connection: Motion-based lighting (driving + arrival) (tier-b) — manifest honesty smoke check"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
