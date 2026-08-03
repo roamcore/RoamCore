@@ -1,5 +1,18 @@
 # Smoke / CO / Gas sensors
 
+> **Replaced by:** `connections/smoke-co-gas-sensors/` (Wave 3 #45,
+> tier-b recipe connection, 2026-07-30). This catalog page is the
+> legacy tier-c spec; the connection folder is the source of truth
+> for the install + recipe + vendor-neutral contract tiles.
+> See `connections/smoke-co-gas-sensors/` for the canonical `rc_safety_*`
+> contract tiles (12 vendor-neutral tiles: `binary_sensor.rc_safety_smoke_detected`
+> / `_co_detected` / `_gas_detected` / `_any_alarm_active` / `_siren_active`
+> / `_alarm_in_test_mode` / `_low_battery_warning` / `_sensor_offline`
+> + `sensor.rc_safety_lowest_battery_pct` + `button.rc_safety_silence_alarm`
+> + `button.rc_safety_test_alarm` + `select.rc_safety_alarm_mode`) +
+> the full howto at
+> `connections/smoke-co-gas-sensors/docs/recipe.md`.
+
 **Support tier:** B (Home Assistant supported)
 
 ## What this is

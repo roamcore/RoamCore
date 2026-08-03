@@ -1,0 +1,133 @@
+# Smoke / CO / gas safety sensors (van life safety monitoring) — tier-b
+# recipe connection.
+#
+# Promoted from docs/catalog/safety/smoke-co-gas-sensors.md (legacy
+# tier-c, ~28 lines). Promoted into tier-b because RoamCore does NOT
+# ship a native smoke detector, a CO detector, or a propane/LPG leak
+# sensor — we RECIPE three upstream operator-side paths:
+#   - Path A — Smart detectors (Nest Protect / First Alert Z-Wave /
+#     X-Sense Zigbee / Heiman Z-Wave / Zipato Zigbee). Vendor
+#     integration exposes binary_sensor.* + sensor.* entities; we wrap
+#     into rc_safety_* contract tiles via template: binary_sensor that
+#     aggregates multiple sensors via is_state(...) or is_state(...).
+#   - Path B — Generic smoke/CO alarms (basic Kidde / First Alert
+#     battery-only alarms do NOT have HA integration). Minimum safety
+#     baseline — local audible alarm only, no contract tiles wired.
+#   - Path C — Propane/LPG detectors (Mopeka / Atemox / GasAlert /
+#     MQ-series via ESPHome). Analog 4-20 mA sensors wired via Modbus
+#     bridge or ESPHome ADC; sensor.gas_ppm derived from analog voltage.
+
+id: smoke-co-gas-sensors
+name: "Smoke / CO / gas safety sensors (van life safety monitoring) — tier-b recipe connection"
+tier: b
+category: safety
+status: beta
+version: 0.1.0
+description: |
+  Smoke / CO / gas safety sensors — van life safety monitoring — are
+  the foundation of every "is it safe to sleep in the van?" question.
+  This connection is a recipe: it documents the three upstream paths
+  and layers a vendor-neutral contract via the 13 rc_safety_*
+  dashboard tiles per docs/reference/rc-entity-naming.md §safety
+  subsystem (newly added alongside this slice).
+icon: shield-alert
+codeowners:
+  - "@bernardc"
+tags:
+  - safety
+  - smoke
+  - carbon-monoxide
+  - co
+  - gas
+  - propane
+  - lpg
+  - alarm
+  - life-safety
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Smoke / CO / gas safety sensors require the operator to wire at
+    least one smoke detector (Path A: smart detector; OR Path B:
+    basic Kidde / First Alert battery-only alarm — minimum safety
+    baseline) + at least one CO detector (Path A or Path B) + an
+    optional propane/LPG detector (Path C: analog sensor via ESPHome
+    / Modbus bridge) + to choose the upstream method.
+
+install:
+  ha_integration_domain: binary_sensor
+  config_flow: true
+  hacs: false
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card
+    - may_register_binary_sensor_entities
+    - may_register_sensor_ppm_entities
+    - may_register_alarm_silence_button
+
+dashboard:
+  tiles:
+    - binary_sensor.rc_safety_smoke_detected
+    - binary_sensor.rc_safety_co_detected
+    - binary_sensor.rc_safety_gas_detected
+    - sensor.rc_safety_smoke_max_ppm
+    - sensor.rc_safety_co_max_ppm
+    - sensor.rc_safety_gas_max_ppm
+    - binary_sensor.rc_safety_any_alarm
+    - binary_sensor.rc_safety_alarm_silenced
+    - binary_sensor.rc_safety_battery_low
+    - binary_sensor.rc_safety_sensor_offline
+    - select.rc_safety_alarm_mode
+    - button.rc_safety_alarm_test
+    - button.rc_safety_alarm_silence
+
+openclaw:
+  queries:
+    - is_smoke_detected
+    - is_co_detected
+    - is_gas_detected
+    - co_ppm
+    - smoke_ppm
+    - gas_ppm
+    - is_alarm_silenced
+    - is_safety_sensor_offline
+    - is_safety_battery_low
+    - silence_alarm_10_min
+    - test_all_safety_sensors
+    - set_alarm_mode
+  summary_keys:
+    - smoke_detected
+    - co_detected
+    - gas_detected
+    - smoke_max_ppm
+    - co_max_ppm
+    - gas_max_ppm
+    - any_alarm
+    - alarm_silenced
+    - battery_low
+    - sensor_offline
+    - alarm_mode
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_safety_sensor_for_integration_test
+  - recipe_depends_on_user_running_safety_sensor
+  - requires_operator_placement_per_local_code
+  - roximate_surface_warning_in_recipe_no_replace_for_local_codes
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/binary_sensor/
+    - https://www.home-assistant.io/integrations/sensor/
+    - https://www.home-assistant.io/integrations/template/
