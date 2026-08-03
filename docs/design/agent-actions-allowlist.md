@@ -1,6 +1,6 @@
 # Agent Actions Allowlist (Roadmap)
 
-Status: **Roadmap / design only** (no beta implementation yet)
+Status: **Roadmap + tier-b connection shipped** (Wave 3 #65; PR #69)
 
 Goal: unlock the “talk to your van” wow-moment by allowing an agent to safely perform *some* actions, while keeping the system transparent, auditable, and default-deny.
 
@@ -168,4 +168,20 @@ RoamCore Settings page should show:
 
 3) v3 (community packs)
    - shareable allowlist “packs” with tests and recommended constraints
+
+---
+
+## Tier-b connection shipped (Wave 3 #65)
+
+This design doc was promoted into a tier-b recipe connection on **2026-08-03** (Wave 3 #65, PR #69). The connection is at [`connections/agent-actions-allowlist/`](../../connections/agent-actions-allowlist/) and ships:
+
+- The 11 `rc_agent_actions_*` contract tiles (the canonical RoamCore-side surface for the agent-actions umbrella: the single `input_boolean.rc_agent_actions_enabled` kill switch — already shipped in [`homeassistant/packages/roamcore_agent_actions.yaml`](../../homeassistant/packages/roamcore_agent_actions.yaml) and preserved verbatim — plus the `input_text.rc_agent_actions_policy_path` + `input_boolean.rc_agent_actions_require_confirmation` + `select.rc_agent_actions_default_duration` + `input_datetime.rc_agent_actions_session_expires_at` + `sensor.rc_agent_actions_seconds_until_expiry` + `sensor.rc_agent_actions_last_action_id` + `sensor.rc_agent_actions_last_action_at` + `sensor.rc_agent_actions_last_action_result` + `binary_sensor.rc_agent_actions_is_blocked_by_kill_switch` + `button.rc_agent_actions_disable_now` tiles).
+- The full howto at [`connections/agent-actions-allowlist/docs/recipe.md`](../../connections/agent-actions-allowlist/docs/recipe.md) (1296 lines, 13 §sections — §1 What is Agent actions allowlist in RoamCore? + §2 Prerequisites + §3 The kill switch (already shipped) + §4 The policy file (operator-editable YAML) + §5 The action types (set_helper + run_script) + §6 The audit log (HA core `logbook` integration) + §7 RoamCore contract entities + §8 Automations (the FIVE MANDATORY ones — §8.1 kill-switch blocks everything + §8.2 session-timeout guard + §8.3 audit-log entry + §8.4 require-confirmation guard + §8.5 outside-allowlist deny-by-default) + §9 Troubleshooting (6 entries) + §10 Privacy + §11 Promoting to tier-a + §12 Files + §13 Cross-references).
+- The 7 manifest-honesty tests at [`connections/agent-actions-allowlist/tests/test_connection_yml.py`](../../connections/agent-actions-allowlist/tests/test_connection_yml.py).
+- The EXAMPLE policy file at [`connections/agent-actions-allowlist/docs/policy.example.yaml`](../../connections/agent-actions-allowlist/docs/policy.example.yaml) (operator-side documentation; the slice does NOT ship a custom YAML loader).
+- The legacy catalog doc at [`docs/catalog/ai/agent-actions-allowlist.md`](../catalog/ai/agent-actions-allowlist.md) is now superseded by this connection (the SUPERSEDED banner is appended at the end of the doc).
+
+The tier-b strategy is reuse-first over the upstream HA core `input_boolean` + `input_text` + `input_number` + `input_select` + `input_datetime` + `input_button` + `script` helpers (since 2022.x — auto-installed in every HA install) + the HA core `template:` sensor wrapper (since 2022.x) + the HA core `logbook` integration (since 2022.x — the canonical audit-log destination) + the upstream `script:` integration (since 2022.x — exposes the script-runner operator-wired setup flow for the §8.4 require-confirmation guard's `roamcore.action_confirm` wrapper + the §8.5 outside-allowlist deny-by-default guard's `roamcore.action_execute` wrapper). RoamCore does NOT fork any of these; the contract layer is a thin upstream-entity-aggregation wrapper + the vendor-neutral tile surface + the FIVE §8 MANDATORY automations.
+
+The design philosophy above (default-deny + user owns the policy + transparency + auditability + kill switch + constrained writes first) is preserved verbatim by the connection. The roadmap milestones (v1 safe + boring / v2 expanded / v3 community packs) are also preserved verbatim; the tier-a promotion outline at recipe §11 documents the 8 canned-fixture bench artifacts that would be needed for a future RoamCore-owned agent-actions engine + integration code + integration tests against a real agent-actions engine bench.
 
