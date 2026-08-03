@@ -2,6 +2,8 @@
 
 **Support tier:** B (Home Assistant supported)
 
+> ⚠️ SUPERSEDED: This legacy tier-c spec has been promoted to a tier-b connection at [`connections/dns-blocker/`](../../connections/dns-blocker/). This page is retained for historical context only. The current recipe (Pi-hole Path A + AdGuard Home Path B + DNS contract wiring + automations + troubleshooting + tier-a promotion outline) lives at [`connections/dns-blocker/docs/recipe.md`](../../connections/dns-blocker/docs/recipe.md).
+
 ## What this is
 AdGuard Home is an alternative to Pi-hole: DNS-based ad/tracker blocking with a nice UI.
 
