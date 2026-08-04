@@ -1,26 +1,17 @@
-# NAS (Network Attached Storage)
+# Network Attached Storage
 
-**Support tier:** B (Home Assistant supported)
+A NAS gives RoamCore a reliable local-storage target for media, camera footage, backups, and logs — especially valuable when you don't want to depend on cloud services.
 
-> ⚠️ SUPERSEDED: This legacy tier-b spec has been promoted to a tier-b connection at [`connections/nas/`](../../connections/nas/). This page is retained for historical context only. The current recipe (Synology DSM Path A + QNAP Path B + generic SMB/NFS Path C + NAS contract wiring + 4 automations + 8 troubleshooting entries + tier-a promotion outline) lives at [`connections/nas/docs/recipe.md`](../../connections/nas/docs/recipe.md).
+## What you need
 
-## What this is
-A NAS gives you reliable local storage for media, camera footage, backups, and logs—especially useful when you don’t want to depend on cloud services.
+- Nothing extra — uses what's already in the van.
 
-## Why it’s useful in a van
-- Local backups (even offline)
-- Store CCTV recordings and Trip Wrapped exports
-- Central place for media libraries
+## Install
 
-## Extra hardware required
-- A NAS (or a mini-PC with storage)
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature nas`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
 
-## Install / best next step
-Common HA paths:
-- Use SMB/NFS shares for storage
-- Use Synology/QNAP integrations if you have those devices
+## What it shows on your dashboard
 
-## Links
-- Home Assistant Synology DSM: https://www.home-assistant.io/integrations/synology_dsm/
-- Home Assistant SMB share (storage): https://www.home-assistant.io/common-tasks/os/#network-storage
-- Home Assistant backups overview: https://www.home-assistant.io/common-tasks/general/#backups
+- A Network Attached Storage tile that updates automatically.

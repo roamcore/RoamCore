@@ -1,16 +1,16 @@
 # CCTV
 
-This folder is the **CCTV** tag in the RoamCore catalog.
+Self-hosted NVR for the van. Frigate is the recommended path.
 
-## Overview
-Cameras can help with security, parking checks, and peace of mind—especially when you’re away from the van or sleeping. This section covers camera integrations, viewing options, and simple “check outside” workflows that don’t require building a full security system.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="frigate/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">CCTV with Frigate (spec + setup ideas)</div><div class="rc-feature-sub">A single-page spec for a low-CPU CCTV system using Frigate + go2rtc, designed for predictable storage and practical van use.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="frigate.md">
+    <div class="rc-card__title">📷 Frigate (NVR + motion)</div>
+    <div class="rc-card__body">Self-hosted NVR with on-van motion detection, person/vehicle alerts.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## Camera placement
+
+Frigate works with USB webcams, IP cameras, or the Coral USB
+accelerator for on-device person detection. Pick a recipe that
+matches your hardware.

@@ -2,7 +2,7 @@
 
 **Support tier:** C (custom/manual)
 
-> ⚠️ SUPERSEDED: This legacy tier-c spec has been promoted to a tier-b connection at [`connections/starlink/`](../../connections/starlink/). This page is retained for historical context only. The current recipe (smart-plug wiring, HA helpers, optional signal-stats, sleep + wake + mode-aware automations, troubleshooting, tier-a promotion outline) lives at [`connections/starlink/docs/recipe.md`](../../connections/starlink/docs/recipe.md).
+> ⚠️ SUPERSEDED: This legacy tier-c spec has been promoted to a tier-b connection at [`connections/starlink/`](../../../connections/starlink/). This page is retained for historical context only. The current recipe (smart-plug wiring, HA helpers, optional signal-stats, sleep + wake + mode-aware automations, troubleshooting, tier-a promotion outline) lives at [`connections/starlink/docs/recipe.md`](../../../connections/starlink/docs/recipe.md).
 
 Automatically power down (or “sleep”) Starlink at night or when you don’t need it, to save battery and reduce idle consumption — without losing the ability to bring it back when needed.
 

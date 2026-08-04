@@ -1,23 +1,17 @@
-# RoamCore Map (dashboard + route)
+# Map dashboard
 
-**Support tier:** A (RoamCore native)
+RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…
 
-## What this is
-RoamCore provides a map experience inside Home Assistant, including current location and route/trip context.
+## What you need
 
-## Why it’s useful in a van
-- Quick “where are we / where did we park?” view
-- Nice context for trips and daily travel
+- Teltonika or other GPS tracker (often already in the LTE router)
 
-## Extra hardware required
-- None if you already have a `device_tracker` or location source
+## Install
 
-## Install / best next step
-- Core packages:
-  - `homeassistant/packages/roamcore_map.yaml`
-  - `homeassistant/packages/roamcore_map_route.yaml`
-  - `homeassistant/packages/roamcore_location.yaml`
-- If using Traccar, see the Traccar pages in this catalog
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature map-dashboard`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
 
-## Links
-- (Add map card resources, offline map notes, videos)
+## What it shows on your dashboard
+
+- A Map dashboard tile that updates automatically.

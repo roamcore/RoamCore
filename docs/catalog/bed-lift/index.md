@@ -1,17 +1,20 @@
 # Bed Lift
 
-This folder is the **Bed Lift** tag in the RoamCore catalog.
+Motorized bed lift control — Happijac + DIY actuator recipes.
 
-## Overview
-A bed lift can save space and make daily life smoother—if it’s reliable and easy to control. This section covers sensors and controls for lift systems (buttons, limit switches, position sensors), plus safety-focused recipes like “lock out movement when something is in the way”.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="diy-bedlift/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">DIY bed lift (actuators / motor + strap)</div><div class="rc-feature-sub">A DIY bed lift is usually either linear actuators or a winch/motor + strap system, controlled by a relay/driver and protected with limit switches.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="happijac/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">HappiJac bed lift</div><div class="rc-feature-sub">HappiJac bed lifts are a popular off-the-shelf system. The HA integration is usually custom because the stock controller is not designed as a smart-home device.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="happijac.md">
+    <div class="rc-card__title">🛏 Happijac bed lift</div>
+    <div class="rc-card__body">Wire the Happijac switch + bed-lift position into a single dashboard tile.</div>
+  </a>
+  <a class="rc-card" href="diy-bedlift.md">
+    <div class="rc-card__title">🔧 DIY bed lift</div>
+    <div class="rc-card__body">DIY actuators / motor + strap bed-lift with a vendor-neutral recipe.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## Why bed-lift in a van
+
+A bed-lift tile tells you whether the bed is up (driving) or down
+(camping) — useful when you don't want to guess before opening the
+back doors.

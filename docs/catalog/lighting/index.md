@@ -1,17 +1,20 @@
 # Lighting
 
-This folder is the **Lighting** tag in the RoamCore catalog.
+Approach lights, underbody lights, and motion-based lighting recipes.
 
-## Overview
-Good lighting makes the van feel bigger, calmer, and safer at night. This section covers smart switches, dimmers, RGB strips, and simple scenes like “Cooking”, “Movie”, or “Night” that you can trigger from the dashboard or automations.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="approach-and-underbody-lights/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Approach + underbody lights (welcome home)</div><div class="rc-feature-sub">Turn on exterior/underbody lights automatically when you approach the van after dark, so you can see where you’re stepping and feel like the van is “welcoming y</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="motion-based-lighting/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Motion‑based lighting (driving + arrival)</div><div class="rc-feature-sub">Make lighting feel “automatic”:</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="approach-and-underbody-lights.md">
+    <div class="rc-card__title">💡 Approach + underbody lights</div>
+    <div class="rc-card__body">Welcome-home lighting: porch + underbody lights turn on when you arrive.</div>
+  </a>
+  <a class="rc-card" href="motion-based-lighting.md">
+    <div class="rc-card__title">🏃 Motion-based lighting</div>
+    <div class="rc-card__body">Lights turn on when you walk by, off when you leave. No switch hunting.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## How the recipe works
+
+Both lighting tiles ride on the same `rc_lighting_*` contract layer,
+so swapping from Shelly to Zooz to Hue is a config change, not a
+code change.

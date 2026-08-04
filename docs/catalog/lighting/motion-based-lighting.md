@@ -1,22 +1,26 @@
-> **SUPERSEDED** by `connections/motion-based-lighting/` (Wave 3 #53, shipped 2026-08-02).
-> This page is kept for historical context only. The canonical spec now lives in
-> `connections/motion-based-lighting/connection.yml` + `connections/motion-based-lighting/docs/recipe.md`.
+# Motion-based lighting
 
-# Motion‑based lighting (driving + arrival)
+> **SUPERSEDED — Wave 3 (2026-08-02).** This legacy tier-c placeholder spec has been promoted to a tier-b recipe connection at [`connections/motion-based-lighting/`](../../../connections/motion-based-lighting/). The new connection ships a 12-tile vendor-neutral `rc_lighting_*` contract, a full howto recipe covering motion sensor integration (Aqara / Hue / generic MQTT / ESPHome), five automations (motion-on-arrival + motion-night-mode + motion-mode-aware + motion-battery-aware + motion-safety-interlock), and the privacy + tier-a promotion outline. The legacy tier-c content below is preserved for historical context only — do NOT wire a new install from this doc; use the recipe + contract layer in the connection folder.
 
-**Support tier:** C
+**Replaced by:** [`connections/motion-based-lighting/`](../../../connections/motion-based-lighting/)
 
-Make lighting feel “automatic”:
-- turn off interior house lights when the vehicle starts moving
-- turn on soft interior lights when ignition turns off after dark
-- turn on exterior lights when the first person returns home after sunset
+**Recipe:** [`connections/motion-based-lighting/docs/recipe.md`](../../../connections/motion-based-lighting/docs/recipe.md)
+
+---
+
+Motion-based lighting — RoamCore catalog entry.
 
 ## What you need
-- Ignition / engine running signal (or motion/speed)
-- Controllable lighting circuits
-- Optional: presence detection
 
-## What RoamCore would do
-- Provide clean, mode-aware lighting scenes (Travel / Camp / Stealth)
-- Ensure automations don’t fight manual control
+- Zigbee / Z-Wave exterior light or relay ($20–$60)
+- Shelly 1 / Shelly Plus 1 ($15–$25)
 
+## Install
+
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature motion-based-lighting`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
+
+## What it shows on your dashboard
+
+- A Motion-based lighting tile that updates automatically.

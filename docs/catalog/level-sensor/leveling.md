@@ -1,25 +1,26 @@
-# Levelling sensor (pitch/roll + “are we level?”)
+# Leveling
 
-**Support tier:** A (RoamCore native) — *aspirational claim; the picker is honest: see SUPERSEDED banner at the end of this doc.*
+> **SUPERSEDED — Wave 3 (2026-08-02).** This legacy tier-a claim stub has been promoted to a tier-b recipe connection at [`connections/leveling/`](../../../connections/leveling/). The new connection ships a vendor-neutral pitch/roll + auto-jack + fridge-safe gate recipe over the upstream HA Companion IMU + dedicated MPU-6050 / BNO085 IMU modules + ESPHome IMU nodes + the upstream HA core `template:` sensor wrapper. The legacy tier-a claim stub is preserved for historical context only — the original "RoamCore defines a levelling contract" claim was aspirational and is hereby retracted; the active spec lives in the connection folder.
 
-## What this is
-RoamCore defines a levelling contract (`rc_level_*`) and supports pitch/roll sensors so the dashboard can show an easy levelling status.
+**Replaced by:** [`connections/leveling/`](../../../connections/leveling/)
 
-## Why it’s useful in a van
-- Better sleep and cooking
-- Quick “good enough” check without guessing
-
-## Extra hardware required
-- A pitch/roll sensor (often via ESPHome / accelerometer)
-
-## Install / best next step
-- Guide: `docs/guides/leveling-ha-esphome.md`
-- HA package: `homeassistant/packages/roamcore_level.yaml`
-- System-level helpers: `homeassistant/packages/roamcore_system_level.yaml`
-
-## Links
-- (Add recommended sensors + ESPHome boards)
+**Recipe:** [`connections/leveling/docs/recipe.md`](../../../connections/leveling/docs/recipe.md)
 
 ---
 
-> **SUPERSEDED — 2026-08-03.** The 18-line tier-a claim stub at this path has been promoted into a tier-b recipe connection at [`connections/leveling/`](../../../connections/leveling/). The legacy tier-a "RoamCore native" claim is **honest-upstream-truth**: RoamCore ships **no** native levelling engine today; the contract layer + the recipe + the §8 MANDATORY automations are the canonical RoamCore contribution; the upstream engines are HA core + the HA Companion app's phone IMU + the ESPHome components + the HACS `mopeka` / `bno055` / `esp32_imu` integrations + the well-known pneumatic / hydraulic levelling jacks driven via relay. Replaced by the tier-b recipe connection; see [`connections/leveling/` README](../../../connections/leveling/README.md) + [`connections/leveling/docs/recipe.md`](../../../connections/leveling/docs/recipe.md). Wave 3 #60, PR #64.
+Better sleep and cooking. Quick 'good enough' check without guessing.
+
+## What you need
+
+- Phone IMU (no cost — uses the HA Companion app)
+- Dedicated MPU-6050 / BNO085 IMU module ($10–$40)
+
+## Install
+
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature leveling`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
+
+## What it shows on your dashboard
+
+- A Leveling tile that updates automatically.

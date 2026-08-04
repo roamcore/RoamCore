@@ -1,16 +1,16 @@
 # Audio/Media
 
-This folder is the **Audio/Media** tag in the RoamCore catalog.
+Multi-zone audio for the van — Music Assistant integration recipes
+that show up on the dashboard.
 
-## Overview
-Audio and media integrations help you control speakers, TVs, and streaming devices from one place—useful when you’re in a small space and want quick “play/pause/volume” controls. This section covers common media devices and simple routines like “Movie night”.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="music-assistant/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Music Assistant</div><div class="rc-feature-sub">Music Assistant is a powerful music system that can unify multiple speakers/targets and give you a consistent “play everywhere” experience.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="music-assistant.md">
+    <div class="rc-card__title">🎵 Music Assistant</div>
+    <div class="rc-card__body">Multi-zone audio throughout the van with a single tile on the dashboard.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## What's in this category
+
+Music Assistant is the only connection RoamCore ships in this category
+today. Add more here as you wire them up.

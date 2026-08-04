@@ -198,3 +198,39 @@ a.rc-cta {
 .rc-tier.a { border-color: rgba(124,255,178,0.35); }
 .rc-tier.b { border-color: rgba(91,227,255,0.35); }
 .rc-tier.c { border-color: rgba(255,210,117,0.35); }
+
+/* RoamCore card grid — used on the landing + catalog pages */
+.rc-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.rc-card {
+  display: block;
+  padding: 1.25rem;
+  border: 1px solid var(--md-default-fg-color--lightest, #ddd);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.rc-card:hover,
+.rc-card:focus {
+  transform: translateY(-2px);
+  border-color: var(--md-accent-fg-color, #00bfa5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.rc-card__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.rc-card__body {
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light, #555);
+}

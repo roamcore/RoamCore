@@ -57,28 +57,29 @@ nav:
   - Home: index.md
   - Catalog:
       - Browse all: catalog/index.md
-      - Power: catalog/power/index.md
-      - Water: catalog/water/index.md
-      - Map: catalog/map/index.md
-      - Weather: catalog/weather/index.md
-      - Time: catalog/time/index.md
-      - CCTV: catalog/cctv/index.md
       - AI: catalog/ai/index.md
-      - HVAC: catalog/hvac/index.md
-      - Networking: catalog/networking/index.md
-      - Fans: catalog/fans/index.md
-      - Safety: catalog/safety/index.md
-      - Remote Access: catalog/remote-access/index.md
-      - Vehicle OBD: catalog/vehicle-obd/index.md
-      - Lighting: catalog/lighting/index.md
-      - Bed Lift: catalog/bed-lift/index.md
-      - NFC Tags: catalog/nfc-tags/index.md
       - Audio/Media: catalog/audio-media/index.md
+      - Bed Lift: catalog/bed-lift/index.md
+      - CCTV: catalog/cctv/index.md
+      - Fans: catalog/fans/index.md
       - Homelab: catalog/homelab/index.md
+      - HVAC: catalog/hvac/index.md
       - Level Sensor: catalog/level-sensor/index.md
+      - Lighting: catalog/lighting/index.md
+      - Map: catalog/map/index.md
+      - Networking: catalog/networking/index.md
+      - NFC Tags: catalog/nfc-tags/index.md
+      - Power: catalog/power/index.md
+      - Presence: catalog/presence/index.md
+      - Remote Access: catalog/remote-access/index.md
+      - Safety: catalog/safety/index.md
+      - Time: catalog/time/index.md
+      - Vehicle OBD: catalog/vehicle-obd/index.md
+      - Water: catalog/water/index.md
+      - Weather: catalog/weather/index.md
   - Technical (advanced):
       - Install: howto/homeassistant-installer.md
-      - Troubleshooting: guides/troubleshooting.md
+      - HACS install: howto/hacs-custom-repo-install.md
       - Support bundle: howto/support-bundle.md
-      - Entity naming: reference/rc-entity-naming.md
-      - OpenClaw JSON API: reference/openclaw-json-api.md
+      - OpenClaw skill: howto/openclaw-roamcore-skill.md
+      - Geolocator + Timezone: howto/geolocator-timezone.md

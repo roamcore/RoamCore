@@ -2,7 +2,7 @@
 
 > **SUPERSEDED — Wave 3 #51 (2026-07-30).** This legacy tier-c
 > placeholder spec has been promoted to a tier-b recipe connection at
-> [`connections/electronic-valves/`](../../connections/electronic-valves/)
+> [`connections/electronic-valves/`](../../../connections/electronic-valves/)
 > (PR #54). The new connection ships an 18-tile vendor-neutral
 > `rc_water_valve_*` contract, a full howto recipe covering Path A
 > (ESPHome valve node) + Path B (generic relay + HA template valve),
@@ -17,9 +17,9 @@
 > for historical context only — do NOT wire a new install from this
 > doc; use the recipe + contract layer in the connection folder.
 
-**Replaced by:** [`connections/electronic-valves/`](../../connections/electronic-valves/)
+**Replaced by:** [`connections/electronic-valves/`](../../../connections/electronic-valves/)
 
-**Recipe:** [`connections/electronic-valves/docs/recipe.md`](../../connections/electronic-valves/docs/recipe.md)
+**Recipe:** [`connections/electronic-valves/docs/recipe.md`](../../../connections/electronic-valves/docs/recipe.md)
 
 ---
 
