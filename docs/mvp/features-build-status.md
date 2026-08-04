@@ -66,6 +66,16 @@ This is an internal status page for the remaining MVP feature build-out.
   - Cross-references: time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64.
   - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #69 OPEN against `main`.
 
+- OpenWrt controls (tier-a recipe connection)
+  - Connection: [`connections/openwrt-controls/`](../../connections/openwrt-controls/) (Wave 8 #315, PR #83)
+  - Tier-a recipe connection over the two RoamCore-owned packages ALREADY SHIPPED on main (`homeassistant/packages/roamcore_openwrt_api.yaml` (235 LOC) — the 30+ `rc_openwrt_*` REST sensors + the `rest_command.rc_openwrt_*` invocations + the 4 `script.*` WAN preference drivers — + `homeassistant/packages/roamcore_net.yaml` (238 LOC) — the 25+ `rc_net_*` unique_ids including the 12 `rc_net_openwrt_*` tiles). The slice ONLY references both packages verbatim via `install.packages:` (no modifications to the package contents).
+  - 27 vendor-neutral `rc_openwrt_*` + `rc_net_openwrt_*` contract tiles (15 `rc_openwrt_*` OpenWrt subsystem + 12 `rc_net_openwrt_*` existing `net` subsystem, OpenWrt-derived) + 4 `script.rc_openwrt_*` control scripts (`rc_openwrt_prefer_starlink` + `rc_openwrt_prefer_lte` + `rc_openwrt_prefer_auto` + `rc_openwrt_restart_network`) — no `luci`, `ubus`, `rpcd`, `uci`, `openwrt`, `uhttpd`, `netifd`, `fw4`, `nftables`, `iptables`, `wpad`, `hostapd`, `wpa_supplicant`, `dnsmasq`, `odhcpd`, `qmi`, `mbim`, `modemmanager`, `sstp`, `wireguard`, `pptpd` vendor / hardware / protocol / integration names leak into the tile ids.
+  - 5 safety tiles wired (`select.rc_openwrt_preferred_wan` + `button.rc_openwrt_restart_network` + `input_boolean.rc_openwrt_confirm_restart` + `binary_sensor.rc_openwrt_lte_sim_ready_state` + `binary_sensor.rc_net_openwrt_roamcore_fw_running`).
+  - FOUR §8 MANDATORY automations (prefer-WAN selector drives the correct script + LTE-SIM-missing alert + firewall-state alert + restart-network confirm guard).
+  - Legacy catalog doc [`docs/catalog/networking/openwrt-controls.md`](../catalog/networking/openwrt-controls.md) now superseded (the SUPERSEDED banner is appended at the end of the doc).
+  - Cross-references: dns-blocker Wave 3 #37 + remote-access Wave 3 #58 + openclaw-api Wave 3 #64 + agent-actions-allowlist Wave 3 #65 + advanced-mode Wave 3 #63 + demo-mode Wave 3 #62 + mode Wave 3 #61 + mqtt Wave 3 #34 + network-mode Wave 4 #75.
+  - Verification: `bash scripts/check.sh --core-only` exit 0 + 7/7 pytest PASS + PR #83 OPEN against `main`.
+
 ## Next steps (needs HAOS setup / UI wiring)
 
 1) **Setup Wizard dashboard**
