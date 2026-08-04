@@ -1,0 +1,397 @@
+# Trip Wrapped (local-first route-recap HTML/JSON report) —
+# tier-a recipe connection.
+#
+# Promoted from docs/catalog/map/trip-wrapped.md (legacy tier-a
+# claim stub, 18 lines — "Trip Wrapped generates a shareable,
+# beautiful HTML report of a trip/route… A fun end-of-trip
+# recap… Easy to share with friends/family… Extra hardware
+# required: Typically none beyond your location history source
+# (often Traccar)… See existing notes in
+# `homeassistant/tools/trip_wrapped/`… RoamCore also exposes
+# `/local/roamcore/trip_wrapped/latest.html` when configured…
+# HA package: `homeassistant/packages/roamcore_trip_wrapped.yaml`"
+# — with no connection manifest + no recipe howto + no manifest-
+# honesty smoke + no §9 MANDATORY automation documentation + no
+# contract-tile enumeration + no docs cross-references — just a
+# placeholder with an aspirational tier-a claim that pointed at
+# the existing RoamCore-owned package + tooling without
+# documenting how they compose).
+#
+# This slice wraps the EXISTING RoamCore-owned package at
+# `homeassistant/packages/roamcore_trip_wrapped.yaml` (224 LOC —
+# the `roamcore_traccar_proxy:` custom component + the 5+
+# `input_text.rc_traccar_*` / `input_text.rc_trip_wrapped_*`
+# helpers + the 1 `input_number.rc_traccar_device_id` for the
+# device id + the 2 `binary_sensor.rc_trip_wrapped_latest_ready`
+# + `binary_sensor.rc_traccar_ui_reachable` readiness tiles +
+# the 1 `sensor.rc_trip_wrapped_latest_status` status tile +
+# the 1 `shell_command.rc_trip_wrapped_export` exporter) + the
+# EXISTING report-renderer tooling under
+# `homeassistant/tools/trip_wrapped/` (Python; `export.py` +
+# `build_wrapped.py` + `comparisons.py` + `history.py` +
+# `render_html.py` + `traccar_client.py` + `assets/` + `tests/`)
+# into a tier-a recipe connection, the same way Trip Local did
+# for `homeassistant/tools/trip_local/`. The package + the
+# tooling ARE the tier-a claim: no upstream HA integration
+# generates a "trip wrapped" HTML report (Traccar's web UI
+# shows a trip list, not a Spotify-Wrapped-style recap).
+# RoamCore owns the renderer + the data plumbing + the Traccar
+# reverse-proxy integration.
+#
+# The package is REFERENCED VERBATIM via `install.packages:` in
+# the manifest — the package contents are NOT redefined by this
+# slice. The tooling is REFERENCED VERBATIM from `recipe.md` —
+# the tooling code is NOT modified by this slice. The slice
+# ADDS the manifest + the recipe.md howto + the manifest-honesty
+# smoke + the 3 `rc_trip_wrapped_*` + `rc_traccar_ui_*` contract
+# tiles + the FIVE §9 MANDATORY automations (§9.1
+# `trip_wrapped_dashboard_button` — the dashboard "Generate"
+# button → `script.rc_trip_wrapped_run` →
+# `shell_command.rc_trip_wrapped_export` chain (already in the
+# package) + §9.2 `traccar_credentials_missing_needs_setup_notice`
+# — when Traccar credentials are empty, set the status tile to
+# `needs_setup` (don't fail silent) + §9.3
+# `traccar_reachable_no_trip_data_no_data_notice` — when Traccar
+# is reachable but `/api/.../reports` returns 0 trips in
+# [from, to] for the device id, set the status tile to `no_data`
+# (don't fail silent) + §9.4 `png_export_offline_first_guard` —
+# the in-browser PNG export MUST work fully offline (via
+# in-browser canvas); only the optional map-tile background
+# requires network; if no network, fall back to a no-tile version
+# + §9.5 `html_cache_buster_param` — append `?ts=<rfc3339-nano>`
+# to the dashboard "View report" link so HA Core's static-file
+# cache doesn't serve a stale `latest.html`) + the legacy
+# SUPERSEDED banner on the catalog page + the docs cross-
+# references to trip-local Wave 3 #68 + map-dashboard Wave 3
+# #66 + traccar Wave 3 #12 + mode Wave 3 #61 + remote-access
+# Wave 3 #58 + advanced-mode Wave 3 #63 + openclaw-api Wave 3
+# #64 + leveling Wave 3 #60.
+#
+# The 3 contract tiles documented below are the vendor-neutral
+# local-first route-recap surface (no vendor name — no Spotify /
+# Apple Music / route-engine / cloud-recap names — leaks into
+# the tile ids; Traccar IS the canonical source for the
+# upstream trip-history data, so `rc_traccar_ui_reachable` is
+# the explicit exception per Hard Rule #1: the vendor name IS
+# the canonical product name; the data-source-prefix is
+# allowed):
+#   - binary_sensor.rc_trip_wrapped_latest_ready — `true` when
+#     `sensor.rc_trip_wrapped_latest_status == 'ok'` (the report
+#     is generated + readable at
+#     `/local/roamcore/trip_wrapped/latest.html`).
+#   - sensor.rc_trip_wrapped_latest_status — one of `ok` /
+#     `needs_setup` / `no_data` / `unavailable` / `unknown` (the
+#     status of the latest export; `needs_setup` when Traccar
+#     credentials are missing; `no_data` when Traccar is
+#     reachable but `/api/.../reports` returns 0 trips in the
+#     configured `[rc_trip_wrapped_from, rc_trip_wrapped_to]`
+#     range for `input_number.rc_traccar_device_id`; `ok` when
+#     the report was generated successfully).
+#   - binary_sensor.rc_traccar_ui_reachable — `true` when the
+#     Traccar UI (`/api/roamcore/traccar`) responds within 5 s
+#     (the upstream data-source reachability tile; the
+#     `roamcore_traccar_proxy:` custom component polls the
+#     Traccar `/api/server` endpoint and exposes this).
+#
+# The recipe covers the FIVE-step operator-pickable trip-
+# wrapped flow (Configure Traccar credentials + Set date range
+# + Set device id + Trigger export + View the recap) + the
+# FIVE §9 MANDATORY automations + the 3 contract tiles + the
+# §10 troubleshooting entries + the §11 privacy section (no
+# RoamCore-side telemetry; the Traccar data lives on the
+# operator's Traccar instance; the rendered HTML lives at
+# `/local/roamcore/trip_wrapped/latest.html` on the operator's
+# HA box; the PNG export happens in the operator's browser via
+# in-browser canvas; no cloud round-trip) + the §12 tier-a
+# promotion outline (real Traccar-`/api/.../reports`-reading
+# Python report-renderer + canned fixture responses for
+# `traccar_client.py` + canned fixture responses for the 5
+# status-tile states + canned fixture responses for the
+# PNG-export offline-first guard + RoamCore-owned operator-
+# wired setup flow walking the operator through Traccar
+# credentials + Date range + Device id + Wait + Verify + the
+# §9 automations + integration tests asserting a credentials-
+# missing event sets status to `needs_setup` + a no-trip-data
+# event sets status to `no_data` + a PNG export offline event
+# surfaces the no-tile fallback + an HTML cache-buster event
+# appends the `?ts=<rfc3339-nano>` query param) + the §13 files
+# + the §14 cross-references.
+#
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): the UPSTREAM HA core `command_line:` sensor
+# platform (since 2022.x — exposes a GUI flow for the operator
+# to add a `command_line:` sensor that runs an external command
+# + parses the stdout) + the UPSTREAM HA core `shell_command:`
+# integration (since 2022.x — exposes a GUI flow for the
+# operator to add a `shell_command:` that runs an external
+# command from an automation or script) + the UPSTREAM HA core
+# `input_text:` / `input_number:` helpers (since 2022.x —
+# exposes GUI flows for the operator to add an `input_text:` /
+# `input_number:` helper) + the UPSTREAM HA core `script:`
+# integration (since 2022.x — exposes a GUI flow for the
+# operator to add a `script:` that runs a sequence of actions)
+# + the UPSTREAM HA core `binary_sensor:` template platform
+# (since 2022.x — exposes a GUI flow for the operator to add a
+# `binary_sensor:` template) + the UPSTREAM HA core `sensor:`
+# template platform (since 2022.x — exposes a GUI flow for the
+# operator to add a `sensor:` template) + the UPSTREAM Traccar
+# `/api/.../reports` + `/api/devices/{id}` endpoints (since
+# Traccar 5.x — expose a per-device, date-bounded trip list +
+# the device metadata) ALL expose a GUI flow / API surface.
+# That's honest upstream truth, NOT a tier-a marker for
+# RoamCore's tier. The tier-a marker for RoamCore is (a) the
+# RoamCore-owned package at
+# `homeassistant/packages/roamcore_trip_wrapped.yaml` (224
+# LOC — the `roamcore_traccar_proxy:` custom component + the
+# 5+ input_text + the 1 input_number + the 2 binary_sensor + the
+# 1 sensor + the 1 shell_command) — already shipped + already
+# RoamCore-owned + already loaded via the standard HA `packages:`
+# mechanism — the package IS the tier-a surface, AND (b) the
+# RoamCore-owned report-renderer tooling under
+# `homeassistant/tools/trip_wrapped/` (Python; `export.py` +
+# `build_wrapped.py` + `comparisons.py` + `history.py` +
+# `render_html.py` + `traccar_client.py` + `assets/` + `tests/`)
+# — already shipped + already RoamCore-owned — the tooling IS
+# the tier-a renderer surface, AND (c) the recipe layer + the
+# 3 `rc_trip_wrapped_*` + `rc_traccar_ui_*` contract tiles + the
+# FIVE §9 MANDATORY automations + the cross-references to
+# trip-local Wave 3 #68 + map-dashboard Wave 3 #66 + traccar
+# Wave 3 #12 + mode Wave 3 #61 + remote-access Wave 3 #58 +
+# advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64 + leveling
+# Wave 3 #60. The slice preserves the existing package verbatim
+# + the existing tooling verbatim (the recipes an upstream-
+# entity-aggregation wrapper on top + the contract layer + the
+# §9 automations + the operator-side Traccar-credentials
+# pointer).
+
+id: trip-wrapped
+name: "Trip Wrapped — vendor-neutral local-first route-recap HTML/JSON report (distance / drive time / stops / comparisons / share-ready PNG export) — tier-a recipe connection"
+tier: a
+category: map
+status: beta
+version: 0.1.0
+description: |
+  Trip Wrapped — vendor-neutral local-first route-recap HTML/JSON
+  report — the umbrella for "Trip Wrapped generates a shareable,
+  beautiful HTML report of a trip/route… A fun end-of-trip
+  recap… Easy to share with friends/family… Extra hardware
+  required: Typically none beyond your location history source
+  (often Traccar)… See existing notes in
+  `homeassistant/tools/trip_wrapped/`… RoamCore also exposes
+  `/local/roamcore/trip_wrapped/latest.html` when configured…
+  HA package: `homeassistant/packages/roamcore_trip_wrapped.yaml`"
+  — is the map-category umbrella for RoamCore's local-first
+  route-recap report surface. The RoamCore-owned package at
+  `homeassistant/packages/roamcore_trip_wrapped.yaml` (224 LOC
+  — the `roamcore_traccar_proxy:` custom component + the 5+
+  `input_text.rc_traccar_*` / `input_text.rc_trip_wrapped_*`
+  helpers + the 1 `input_number.rc_traccar_device_id` for the
+  device id + the 2 `binary_sensor.rc_trip_wrapped_latest_ready`
+  + `binary_sensor.rc_traccar_ui_reachable` readiness tiles +
+  the 1 `sensor.rc_trip_wrapped_latest_status` status tile +
+  the 1 `shell_command.rc_trip_wrapped_export` exporter) + the
+  RoamCore-owned report-renderer tooling under
+  `homeassistant/tools/trip_wrapped/` (Python; `export.py` +
+  `build_wrapped.py` + `comparisons.py` + `history.py` +
+  `render_html.py` + `traccar_client.py` + `assets/` + `tests/`)
+  is the RoamCore-owned package + tooling this slice WRAPS
+  (referenced verbatim via `install.packages:` in the manifest —
+  the package contents are NOT redefined by this slice; the
+  tooling code is NOT modified by this slice). The slice
+  publishes the 3 contract tiles documented below (vendor-
+  neutral — no Spotify / Apple Music / route-engine /
+  cloud-recap names leak into the tile ids; Traccar IS the
+  canonical source for the upstream trip-history data, so
+  `rc_traccar_ui_reachable` is the explicit exception per Hard
+  Rule #1: the vendor name IS the canonical product name; the
+  data-source-prefix is allowed) + the FIVE §9 MANDATORY
+  automations (§9.1 `trip_wrapped_dashboard_button` + §9.2
+  `traccar_credentials_missing_needs_setup_notice` + §9.3
+  `traccar_reachable_no_trip_data_no_data_notice` + §9.4
+  `png_export_offline_first_guard` + §9.5
+  `html_cache_buster_param`) + the legacy SUPERSEDED banner
+  on the catalog page + the docs cross-references.
+
+  The recipe covers the FIVE-step operator-pickable trip-
+  wrapped flow (Configure Traccar credentials + Set date
+  range + Set device id + Trigger export + View the recap) +
+  the FIVE §9 MANDATORY automations + the 3 contract tiles +
+  the §10 troubleshooting entries + the §11 privacy section +
+  the §12 tier-a promotion outline + the §13 files + the §14
+  cross-references.
+
+icon: map-clock-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - trip
+  - trip-wrapped
+  - trip-history
+  - wrapped
+  - report
+  - share
+  - local
+  - png-export
+  - html-export
+  - json-export
+  - comparison
+  - offline-first
+
+wizard:
+  connection_kind: package
+  one_tap: false
+  auto_discover: false
+  estimated_time: "<5 min"
+  requires_reboot: false
+  setup_notes: |
+    Trip Wrapped requires the operator to (a) confirm the
+    RoamCore-owned package is loaded via the standard HA
+    `packages:` mechanism (the package at
+    `homeassistant/packages/roamcore_trip_wrapped.yaml` is
+    already shipped + RoamCore-owned + preserved verbatim by
+    this slice — the package contents are NOT redefined), (b)
+    confirm the `roamcore_traccar_proxy:` custom component
+    (shipped by the package) is loaded (the custom component
+    proxies `/api/roamcore/traccar/*` requests to the upstream
+    Traccar instance via the operator-configured
+    `input_text.rc_traccar_base_url` + `input_text.rc_traccar_username`
+    + `input_text.rc_traccar_password` — see the [Traccar
+    (Wave 3 #12)](../traccar/) connection for the upstream
+    setup), (c) configure the upstream Traccar user/email + a
+    Traccar user token via the `roamcore_secrets.yaml` keys
+    (`roamcore_traccar_user_token` +
+    `roamcore_traccar_base_url`) or via the legacy
+    `input_text.rc_traccar_*` inputs, (d) set
+    `input_text.rc_trip_wrapped_from` +
+    `input_text.rc_trip_wrapped_to` to the date range, (e) set
+    `input_number.rc_traccar_device_id` to the Traccar device
+    id (visible at the Traccar UI under Devices), (f)
+    populate the 3 contract tiles
+    (`binary_sensor.rc_trip_wrapped_latest_ready` +
+    `sensor.rc_trip_wrapped_latest_status` +
+    `binary_sensor.rc_traccar_ui_reachable`) to mirror the
+    exporter's status, (g) wire the FIVE §9 MANDATORY
+    automations (§9.1 `trip_wrapped_dashboard_button` (already
+    wired in the package as `script.rc_trip_wrapped_run` →
+    `shell_command.rc_trip_wrapped_export`) + §9.2
+    `traccar_credentials_missing_needs_setup_notice` + §9.3
+    `traccar_reachable_no_trip_data_no_data_notice` + §9.4
+    `png_export_offline_first_guard` + §9.5
+    `html_cache_buster_param`), (h) follow the FIVE-step
+    operator-pickable trip-wrapped flow — Step 1 Configure
+    Traccar credentials (operator sets
+    `input_text.rc_traccar_username` +
+    `input_text.rc_traccar_password` OR configures
+    `roamcore_traccar_user_token` + `roamcore_traccar_base_url`
+    in `secrets.yaml`; the §9.2 credentials-missing guard sets
+    the status tile to `needs_setup` if neither is configured
+    — don't fail silent); Step 2 Set date range (operator sets
+    `input_text.rc_trip_wrapped_from` +
+    `input_text.rc_trip_wrapped_to` to the desired range; the
+    exporter passes these to Traccar's `/api/.../reports`
+    endpoint); Step 3 Set device id (operator sets
+    `input_number.rc_traccar_device_id` to the Traccar device
+    id; the exporter reads the device metadata from
+    `/api/devices/{id}`); Step 4 Trigger export (operator
+    triggers `shell_command.rc_trip_wrapped_export` from
+    Developer Tools → Services or via the dashboard "Generate"
+    button — the §9.1 dashboard-button automation wires the
+    button to `script.rc_trip_wrapped_run` →
+    `shell_command.rc_trip_wrapped_export`); Step 5 View the
+    recap (operator opens
+    `/local/roamcore/trip_wrapped/latest.html` in their
+    browser; the §9.5 html-cache-buster-param appends
+    `?ts=<rfc3339-nano>` so the browser doesn't serve a stale
+    cached version; the in-browser "Download summary" PNG
+    export works fully offline via in-browser canvas — the
+    §9.4 png-export-offline-first guard falls back to a no-
+    tile version if the optional map-tile background is
+    unreachable). RoamCore does NOT maintain a separate
+    trip-wrapped integration; the HA `command_line:` /
+    `shell_command:` / `input_text:` / `input_number:` /
+    `script:` / `binary_sensor:` / `sensor:` integrations +
+    the Python exporter are the actual surface.
+
+install:
+  ha_integration_domain: ""
+  config_flow: false
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  packages:
+    - homeassistant/packages/roamcore_trip_wrapped.yaml
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - registers_roamcore_traccar_proxy_custom_component
+    - registers_rc_traccar_base_url_input_text_helper
+    - registers_rc_traccar_username_input_text_helper
+    - registers_rc_traccar_password_input_text_helper
+    - registers_rc_traccar_ui_url_input_text_helper
+    - registers_rc_traccar_ingress_path_input_text_helper
+    - registers_rc_trip_wrapped_from_input_text_helper
+    - registers_rc_trip_wrapped_to_input_text_helper
+    - registers_rc_traccar_device_id_input_number_helper
+    - registers_rc_traccar_ui_reachable_binary_sensor
+    - registers_rc_trip_wrapped_latest_status_sensor
+    - registers_rc_trip_wrapped_latest_ready_binary_sensor
+    - registers_rc_trip_wrapped_export_shell_command
+    - may_register_trip_wrapped_dashboard_button_automation
+    - may_register_traccar_credentials_missing_needs_setup_notice_automation
+    - may_register_traccar_reachable_no_trip_data_no_data_notice_automation
+    - may_register_png_export_offline_first_guard_automation
+    - may_register_html_cache_buster_param_automation
+
+dashboard:
+  title: "Trip Wrapped"
+  tiles:
+    - binary_sensor.rc_trip_wrapped_latest_ready
+    - sensor.rc_trip_wrapped_latest_status
+    - binary_sensor.rc_traccar_ui_reachable
+
+openclaw:
+  queries:
+    - "what is my latest trip wrapped?"
+    - "show me the latest trip wrapped HTML report"
+    - "is my latest trip wrapped ready?"
+    - "is the Traccar UI reachable?"
+    - "what is the trip-wrapped status?"
+    - "what is the trip-wrapped export status?"
+  summary_keys:
+    - trip_wrapped_latest_ready
+    - trip_wrapped_latest_status
+    - traccar_ui_reachable
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_pytest_bench_fixtures_for_trip_wrapped_package
+  - recipe_depends_on_user_configuring_traccar_credentials
+  - recipe_depends_on_user_configuring_trip_date_range
+  - recipe_depends_on_user_configuring_traccar_device_id
+  - requires_operator_wiring_traccar_input_texts_before_first_export
+  - png_export_requires_cors_enabled_tile_layer
+  - local_html_persists_offline_first_guard
+  - traccar_unreachable_keeps_status_unavailable_guard
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/shell_command/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/input_number/
+    - https://www.home-assistant.io/integrations/command_line/
+    - https://www.home-assistant.io/integrations/script/
+    - https://www.traccar.org/reports/
+  cross_references:
+    - ../trip-local/                  # Wave 3 #68 — sibling trip-metric connection (today's distance/drive_time/stops feed the wrapped comparisons)
+    - ../map-dashboard/              # Wave 3 #66 — map overlay surface; the §9.4 PNG export reuses the map tile layer
+    - ../traccar/                    # Wave 3 #12 — upstream Traccar data-source; the roamcore_traccar_proxy custom component bridges it
+    - ../mode/                       # Wave 3 #61 — mode state (Travel/Camp) gates the §9.4 PNG export offline-first fallback
+    - ../remote-access/              # Wave 3 #58 — remote-access surface exposes the /local/roamcore/trip_wrapped/latest.html URL
+    - ../advanced-mode/              # Wave 3 #63 — advanced-mode confirm-flag pattern for the §9.2 needs-setup guard
+    - ../openclaw-api/               # Wave 3 #64 — the JSON API surfaces the rc_trip_wrapped_* + rc_traccar_ui_* tiles
+    - ../leveling/                   # Wave 3 #60 — leveling-jack state appears in the wrapped report's "Vehicle posture" section
