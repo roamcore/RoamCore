@@ -1,20 +1,33 @@
 # Power
 
-This folder is the **Power** tag in the RoamCore catalog.
+Batteries, solar, alternator charging, inverter idle, and the whole
+Victron stack.
 
-## Overview
-Power is the heart of van life: batteries, solar, shore power, inverter/charger, and how long you can comfortably run everything. This section covers integrations and features that help you monitor state-of-charge, spot problems early, and automate “power-safe” behavior.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="alternator-charge-control-wakespeed/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Alternator charge control (Wakespeed / smart regulator)</div><div class="rc-feature-sub">If your build uses a smart alternator regulator (e.g. Wakespeed), you can automate when alternator charging is allowed and how aggressively it charges — based o</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="inverter-idle-shutdown/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Inverter idle shutdown (automatic power safety)</div><div class="rc-feature-sub">Automatically turn off (or reduce) inverter usage when it’s been idle for a while, or when nobody is home — to prevent silent battery drain.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="victron-auto-addon/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">Victron Auto add-on (backend connector)</div><div class="rc-feature-sub">A Home Assistant add-on used by RoamCore to connect to Victron telemetry automatically and keep power entities up to date.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
-  <a class="rc-feature" href="victron-mock-addon/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">Victron Mock add-on (demo power data)</div><div class="rc-feature-sub">A demo/mock backend that generates Victron-like power telemetry for development and demos.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
-  <a class="rc-feature" href="victron/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">Victron power monitoring (GX + MQTT)</div><div class="rc-feature-sub">RoamCore includes a Victron integration path that turns your Victron GX + battery/solar system into clean Home Assistant entities (SOC, solar watts, etc.) and d</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="victron.md">
+    <div class="rc-card__title">🔋 Victron (GX + MQTT)</div>
+    <div class="rc-card__body">Victron GX device over MQTT — battery, solar, shunt, inverter.</div>
+  </a>
+  <a class="rc-card" href="victron-auto-addon.md">
+    <div class="rc-card__title">🔌 Victron Auto add-on</div>
+    <div class="rc-card__body">Backend connector add-on that bridges Victron GX → Home Assistant.</div>
+  </a>
+  <a class="rc-card" href="victron-mock-addon.md">
+    <div class="rc-card__title">🎭 Victron Mock add-on</div>
+    <div class="rc-card__body">Demo power data so the dashboard works without real Victron hardware.</div>
+  </a>
+  <a class="rc-card" href="alternator-charge-control-wakespeed.md">
+    <div class="rc-card__title">⚡ Alternator charge (Wakespeed)</div>
+    <div class="rc-card__body">Wakespeed / smart regulator control while the engine is running.</div>
+  </a>
+  <a class="rc-card" href="inverter-idle-shutdown.md">
+    <div class="rc-card__title">🔌 Inverter idle shutdown</div>
+    <div class="rc-card__body">Auto-shut the inverter when no load is detected — save battery.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## Pick the path that matches your stack
+
+- **Real Victron hardware?** Install `victron` + `victron-auto-addon`.
+- **Demo-ing the dashboard?** Install `victron-mock-addon` for safe demo values.
+- **Non-Victron (Renogy, Battle Born, etc.)?** Use the MQTT/Modbus recipes in the `connections/power-monitor/` folder.

@@ -1,38 +1,36 @@
 # RoamCore
 
-This site is the **feature catalog** for RoamCore + Home Assistant in a van.
+Plug in your van. Get a working dashboard.
 
-## Pick what you want to add
+RoamCore turns a Home Assistant box into a polished, mission-critical
+companion for your van. It works locally, works remotely, and explains
+itself in plain English.
 
-<div class="rc-grid">
+## How it works
+
+<div class="rc-card-grid">
+  <a class="rc-card" href="https://github.com/roamcore/RoamCore/blob/main/install.sh">
+    <div class="rc-card__title">1. Install</div>
+    <div class="rc-card__body">One-line installer. Or HACS. Either way, 5 minutes.</div>
+  </a>
   <a class="rc-card" href="catalog/">
-    <div class="rc-card-title">Browse the Catalog</div>
-    <div class="rc-card-sub">Power, Map, Networking, Safety, Remote Access and more. See what’s possible.</div>
+    <div class="rc-card__title">2. Connect</div>
+    <div class="rc-card__body">Browse the app-store catalog. Click Connect on what you have.</div>
   </a>
-  <a class="rc-card" href="howto/homeassistant-installer/">
-    <div class="rc-card-title">Install RoamCore</div>
-    <div class="rc-card-sub">One-line installer and rollback guidance.</div>
-  </a>
-  <a class="rc-card" href="guides/troubleshooting/">
-    <div class="rc-card-title">Troubleshooting</div>
-    <div class="rc-card-sub">If something doesn’t work, start here.</div>
+  <a class="rc-card" href="catalog/">
+    <div class="rc-card__title">3. Glance</div>
+    <div class="rc-card__body">A clean dashboard tells you if the van is fine. No scrolling.</div>
   </a>
 </div>
 
-## Support tiers (simple + honest)
+## Next steps
 
-- <span class="rc-tier a">A</span> RoamCore native (we own it; supported)
-- <span class="rc-tier b">B</span> Home Assistant supported (existing integration; setup required)
-- <span class="rc-tier c">C</span> Custom/manual (no support; inspiration/potential)
+- [Browse the catalog](catalog/) — see what RoamCore supports.
+- [Install on Home Assistant](howto/homeassistant-installer.md) — the one-line installer.
+- [Install via HACS](howto/hacs-custom-repo-install.md) — the HACS custom-repo path.
 
-### Show only
+## What RoamCore is
 
-<div class="rc-chips">
-  <a class="rc-chip a" href="catalog/tier-a/">A</a>
-  <a class="rc-chip b" href="catalog/tier-b/">B</a>
-  <a class="rc-chip c" href="catalog/tier-c/">C</a>
-</div>
-
-## Why this site links out
-
-We link to the best upstream docs (Home Assistant, vendors, and community projects) instead of duplicating them. RoamCore pages focus on **what it does**, **what you need**, and **the best next step**.
+RoamCore is software-first and hardware-agnostic. Your van, your
+hardware, your data. The reference hardware (RoamCore Hub) ships with
+the full stack preinstalled and tuned.

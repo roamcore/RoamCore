@@ -1,17 +1,20 @@
 # HVAC
 
-This folder is the **HVAC** tag in the RoamCore catalog.
+Heating, cooling, and engine pre-heat recipes.
 
-## Overview
-Heating and cooling is comfort—and sometimes safety (freezing nights, hot days, pets). This section covers thermostats, diesel heaters, AC units, vents, and automations that help keep the van at a stable temperature with minimal power use.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="heated-floors-and-engine-preheat/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Heated floors + engine pre-heat (cold weather comfort)</div><div class="rc-feature-sub">Bring cold-weather comfort controls into one place: heated floors, engine pre-heat, and other “warm-up” routines that make winter van life less punishing.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="hvac-basics/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">HVAC control (heating/cooling foundations)</div><div class="rc-feature-sub">RoamCore includes scaffolding and patterns for HVAC-related controls/tiles (temperature, comfort, alerts). Specific heater/AC hardware integrations vary.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="hvac-basics.md">
+    <div class="rc-card__title">🔥 HVAC basics</div>
+    <div class="rc-card__body">Heating/cooling foundations — thermostats, switches, and automations.</div>
+  </a>
+  <a class="rc-card" href="heated-floors-and-engine-preheat.md">
+    <div class="rc-card__title">🔥 Heated floors + engine pre-heat</div>
+    <div class="rc-card__body">Schedule floor heat + warm the engine before cold starts.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## What RoamCore does
+
+RoamCore provides the contract layer (`rc_climate_*`) + the recipes for
+common van HVAC topologies (diesel heater + AC inverter + floor heat).
+The actual hardware integrations stay vendor-neutral.

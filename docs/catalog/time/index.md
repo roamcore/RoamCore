@@ -1,17 +1,20 @@
 # Time
 
-This folder is the **Time** tag in the RoamCore catalog.
+Atomic time sync and automatic timezone via GPS.
 
-## Overview
-Time-based helpers let you make the van feel “smart” without overcomplicating things. This section covers schedules, quiet hours, bedtime routines, and time zone handling—useful when you travel across regions or want automations that respect local time.
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="timezone-geolocator/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Time zone auto-detection (GeoLocator)</div><div class="rc-feature-sub">RoamCore includes notes for using GeoLocator to keep time zone correct based on location.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="atomic-time/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Time (atomic) — NTP-synchronized time with offline-resilience</div><div class="rc-feature-sub">RoamCore includes notes for keeping HA's clock accurate even when offline (in a van with intermittent connectivity) via NTP + GPS + RTC fallback paths.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="atomic-time.md">
+    <div class="rc-card__title">🕒 Atomic time</div>
+    <div class="rc-card__body">NTP-disciplined atomic time — your van is never on the wrong minute.</div>
+  </a>
+  <a class="rc-card" href="timezone-geolocator.md">
+    <div class="rc-card__title">🌍 Timezone geolocator</div>
+    <div class="rc-card__body">Auto-detect the local timezone from GPS so schedules fire at the right wall-clock.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## Why this matters in a van
+
+A van crosses time zones regularly. Without timezone geolocation, a
+6 AM "wake-up heat" automation fires at 6 AM UTC, which is wrong 8
+months of the year. The geolocator fixes that automatically.

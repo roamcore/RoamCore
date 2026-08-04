@@ -34,7 +34,7 @@ at `docs/reference/openclaw-json-api.md` (230 lines).
 
 This catalog page is now superseded by the connection
 manifest at
-[`connections/openclaw-api/connection.yml`](../../connections/openclaw-api/connection.yml).
+[`connections/openclaw-api/connection.yml`](../../../connections/openclaw-api/connection.yml).
 
 The connection wraps the existing custom component as
 a tier-a connection (real RoamCore-owned integration
@@ -45,7 +45,7 @@ smoketest is curl-based) so the audit doesn't false-
 positive on tier-a promotion. The 12
 `rc_openclaw_api_*` contract tiles + the FIVE §8
 MANDATORY automations are documented in
-[`connections/openclaw-api/docs/recipe.md`](../../connections/openclaw-api/docs/recipe.md).
+[`connections/openclaw-api/docs/recipe.md`](../../../connections/openclaw-api/docs/recipe.md).
 
 Migration:
 - HACS-installed RoamCore: no action needed — the

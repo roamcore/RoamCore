@@ -1,19 +1,40 @@
 # Networking
 
-This folder is the **Networking** tag in the RoamCore catalog.
+Starlink, mobile routers, DNS blocking, and remote access.
 
-## Overview
-Internet in a van is usually a mix of Wi‑Fi, LTE/5G, and sometimes Starlink. This section covers ways to monitor connectivity, failover between WANs, and basic network health—so you know when things are working (or why they aren’t).
-
-<!-- RC_FEATURE_LIST_START -->
-
-## Features
-
-<div class="rc-feature-list">
-  <a class="rc-feature" href="openwrt-controls/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">OpenWrt router controls (WAN status + sensors)</div><div class="rc-feature-sub">RoamCore includes an OpenWrt API integration path to surface WAN/internet state into HA and enable safe control flows.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
-  <a class="rc-feature" href="peplink/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Peplink (multi-WAN router for van internet)</div><div class="rc-feature-sub">Peplink routers are popular in van life because they handle multi‑WAN setups (LTE/5G + Starlink + campground Wi‑Fi) and can do load‑balancing/failover.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="starlink-sleep-timer/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Starlink sleep timer (night + battery saving)</div><div class="rc-feature-sub">Automatically power down (or “sleep”) Starlink at night or when you don’t need it, to save battery and reduce idle consumption — without losing the ability to b</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
-  <a class="rc-feature" href="teltonika/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">Teltonika (LTE/5G router for vans)</div><div class="rc-feature-sub">Teltonika routers are widely used for mobile internet. They’re rugged, configurable, and often support features like VPN, SMS control, and monitoring.</div></div><div class="rc-feature-right"><span class="rc-tier c">C</span></div></a>
+<div class="rc-card-grid">
+  <a class="rc-card" href="starlink.md">
+    <div class="rc-card__title">🛰 Starlink</div>
+    <div class="rc-card__body">Self-hosted Starlink terminal — status, latency, WAN health tile.</div>
+  </a>
+  <a class="rc-card" href="starlink-sleep-timer.md">
+    <div class="rc-card__title">🌙 Starlink sleep timer</div>
+    <div class="rc-card__body">Put Starlink to sleep at night to save battery.</div>
+  </a>
+  <a class="rc-card" href="peplink.md">
+    <div class="rc-card__title">📡 Peplink</div>
+    <div class="rc-card__body">Multi-WAN Peplink router with cellular + Starlink failover.</div>
+  </a>
+  <a class="rc-card" href="teltonika.md">
+    <div class="rc-card__title">📡 Teltonika</div>
+    <div class="rc-card__body">Teltonika RUT cellular router status + WAN health tile.</div>
+  </a>
+  <a class="rc-card" href="dns-blocker.md">
+    <div class="rc-card__title">🛡 DNS blocker</div>
+    <div class="rc-card__body">Pi-hole or AdGuard Home — vendor-neutral DNS ad-blocking.</div>
+  </a>
+  <a class="rc-card" href="openwrt-controls.md">
+    <div class="rc-card__title">🔧 OpenWrt controls</div>
+    <div class="rc-card__body">WAN status + sensors from your OpenWrt router.</div>
+  </a>
+  <a class="rc-card" href="remote-access.md">
+    <div class="rc-card__title">🔐 Remote access</div>
+    <div class="rc-card__body">Reach your van from anywhere — Tailscale + reverse proxies.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## Multi-WAN recipes
+
+Most vans carry two WANs: cellular (Peplink/Teltonika) + Starlink.
+RoamCore's recipe layer treats both as interchangeable sources so the
+dashboard shows "WAN is up" without caring which one is active.

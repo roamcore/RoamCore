@@ -1,20 +1,25 @@
-# HVAC control (heating/cooling foundations)
+# HVAC basics
 
-**Status:** ⚠️ SUPERSEDED by `connections/hvac-basics/` (Wave 3 #49 tier-b recipe).
+> **SUPERSEDED — Wave 3 #49 (2026-08-02).** This legacy tier-c page has been promoted to a tier-b recipe connection at [`connections/hvac-basics/`](../../../connections/hvac-basics/) (PR #52). The new connection ships a 12-tile vendor-neutral `rc_climate_*` contract, a full howto recipe covering diesel heater Path A + AC inverter Path B + generic thermostat Path C, seven automations (mode-aware scheduling + freeze-risk lockouts + inverter-idle guard + presence-aware temperature + battery-aware pre-heat + source-failover + safety interlocks), and the privacy + tier-a promotion outline. The legacy tier-c content below is preserved for historical context only — do NOT wire a new install from this doc; use the recipe + contract layer in the connection folder.
 
-This legacy tier-c page is kept for historical context only. RoamCore
-does NOT ship a native HVAC appliance — the original "Support tier:
-A (RoamCore native)" claim was aspirational and is hereby retracted.
-The active spec, recipe, and dashboard contract live in
-`connections/hvac-basics/`.
+**Replaced by:** [`connections/hvac-basics/`](../../../connections/hvac-basics/)
 
-## Original positioning (preserved)
-- Comfort and safety in extreme temps
-- Better power management (heat/cool only when needed)
-- Cross-ref: cabin climate surfaces (sensor + thermostat + heater +
-  AC + fan); mode-aware automations.
+**Recipe:** [`connections/hvac-basics/docs/recipe.md`](../../../connections/hvac-basics/docs/recipe.md)
 
-## See also
-- `connections/hvac-basics/` — the active tier-b recipe connection.
-- `connections/heated-floors/` — companion tier-b connection for
-  heated floors + engine pre-heat (Wave 3 #44).
+---
+
+HVAC basics — RoamCore catalog entry.
+
+## What you need
+
+- Nothing extra — uses what's already in the van.
+
+## Install
+
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature hvac-basics`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
+
+## What it shows on your dashboard
+
+- A HVAC basics tile that updates automatically.

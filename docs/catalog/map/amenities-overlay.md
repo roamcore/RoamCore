@@ -1,39 +1,17 @@
-# Amenities overlay (nearby places)
+# Amenities overlay
 
-**Support tier:** C
-
-See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
-
-## What this is
-
-An **optional map overlay** layer that adds “points of interest” (POIs) around your current location.
-
-The goal is practical: when you’re parked somewhere new, you can answer:
-- Where’s the nearest **water fill**?
-- Is there a **laundrette** nearby?
-- Where can I find a **quiet overnight spot** or a **campsite**?
+Amenities overlay (nearby places) — See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
 
 ## What you need
 
-- A working RoamCore Map page (any basemap mode).
-- Internet access (at least when fetching POIs).
+- Nothing extra — uses what's already in the van.
 
-Optional (future): offline/“cached” POI packs for areas you travel often.
+## Install
 
-## How it works (planned)
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature amenities-overlay`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
 
-RoamCore will fetch POIs from one or more data sources (e.g. OpenStreetMap-based APIs) and render them as an overlay layer on the map.
+## What it shows on your dashboard
 
-Design constraints:
-- Must **fail safe** (no blank map if the overlay fails)
-- Must be **rate-limited** and cache results (to avoid hammering APIs)
-- Must be user-configurable (categories on/off)
-
-## Setup
-
-Not shipped yet.
-
-## Troubleshooting
-
-- If the map works but POIs don’t show up, first check if the selected categories are enabled.
-- If you see “rate limit” errors, reduce refresh frequency or use cached results.
+- A Amenities overlay tile that updates automatically.

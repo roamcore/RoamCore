@@ -1,19 +1,24 @@
-<!-- SUPERSEDED: This legacy stub is superseded by the tier-b recipe connection at `connections/remote-access/`. The legacy 16-line stub listed ONLY Tailscale at "Support tier: B" with no recipe + no contract + no broader vendor-neutral coverage — just a placeholder about "check sensor status, view cameras, get alerts, or (optionally) control systems" + "safe ways to reach Home Assistant remotely, with clear notes on security and support level". The tier-b recipe connection promotes the legacy concept into a vendor-neutral remote-access umbrella covering FOUR operator-pickable paths (Path A Tailscale mesh VPN + Path B Cloudflare Tunnel no-inbound-ports + Path C Nabu Casa HA Cloud official cloud relay + Path D Wireguard self-hosted VPN) + lifts the Wave 2 #29 Tailscale contract (`feat/wave2-remote-access-tailscale` @ `0caa9c2`) into the `connections/` pipeline + adds the broader vendor-neutral contract layer. See `connections/remote-access/README.md` for the new connection overview + `connections/remote-access/docs/recipe.md` for the full howto. See `Cron-handoff/2026-08-02-remote-access-connection.md` for the slice handoff. -->
-
 # Remote Access
 
-This folder is the **Remote Access** tag in the RoamCore catalog.
+> **SUPERSEDED — Wave 3 (2026-08-02).** This legacy tier-b placeholder spec has been promoted to a tier-b recipe connection at [`connections/remote-access/`](../../../connections/remote-access/). The new connection ships a vendor-neutral remote-access recipe covering Tailscale Path A + Cloudflare Tunnel Path B + Nabu Casa Path C + Wireguard Path D, six automations (auto-discovery + auth-gateway + kill-switch + audit-log + rate-limit + connection-failover), and the privacy + tier-a promotion outline. The legacy tier-b content below is preserved for historical context only — do NOT wire a new install from this doc; use the recipe in the connection folder.
 
-## Overview
-Remote access lets you check on the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems. This section covers safe ways to reach Home Assistant remotely, with clear notes on security and support level.
+**Replaced by:** [`connections/remote-access/`](../../../connections/remote-access/)
 
-<!-- RC_FEATURE_LIST_START -->
+**Recipe:** [`connections/remote-access/docs/recipe.md`](../../../connections/remote-access/docs/recipe.md)
 
-## Features
+---
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="tailscale/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Tailscale (secure remote access)</div><div class="rc-feature-sub">Tailscale is a simple, secure mesh VPN. It's a great way to access Home Assistant remotely without opening ports or relying on complex networking.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
-  <a class="rc-feature" href="connections/remote-access/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Vendor-neutral remote-access umbrella (Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud + Wireguard)</div><div class="rc-feature-sub">The Wave 3 #58 tier-b recipe connection covers FOUR operator-pickable paths (Path A Tailscale mesh VPN + Path B Cloudflare Tunnel no-inbound-ports + Path C Nabu Casa HA Cloud official cloud relay + Path D Wireguard self-hosted VPN) + the 9 `rc_remote_access_*` contract tiles (operator kill-switch + remote-access URL + active gate + active-path indicator + peer count + freshness gate + hostname-resolvable gate + verify-now button + operator-chosen path selector) + the FIVE §8 automations (kill-switch ON enables remote access + kill-switch OFF disables remote access + auto-verify every 15 minutes + notify on path switch + Stealth-mode suppression via `select.rc_mode`). The umbrella publishes the resulting data via the upstream HA core `tailscale` integration (Path A) + the HACS `cloudflared` add-on (Path B) + the HA Core `cloud` integration (Path C) + the HACS `wireguard` add-on (Path D) + the HA Companion app's `external_url` setting (the canonical OFF-LAN affordance). The umbrella lifts the Wave 2 #29 Tailscale contract (`feat/wave2-remote-access-tailscale` @ `0caa9c2`) into the `connections/` pipeline + adds the broader vendor-neutral contract layer.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
+Reach your van from anywhere — Tailscale is the recommended path.
+
+<div class="rc-card-grid">
+  <a class="rc-card" href="tailscale.md">
+    <div class="rc-card__title">🔐 Tailscale</div>
+    <div class="rc-card__body">Secure mesh VPN — your phone becomes part of the van's LAN.</div>
+  </a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## How it works
+
+Tailscale creates a private overlay network between your devices. Your
+phone, your laptop, and the van all see each other as if they were on
+the same Wi-Fi — no port-forwarding, no public IPs.

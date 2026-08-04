@@ -1,58 +1,25 @@
-> **SUPERSEDED** by `connections/time-atomic/` (Wave 3 #55, shipped 2026-08-02).
-> This page is kept for historical context only. The canonical spec now lives in
-> `connections/time-atomic/connection.yml` + `connections/time-atomic/docs/recipe.md`.
+# Time
 
-# Time (atomic) — NTP-synchronized time with offline-resilience
+> **SUPERSEDED — Wave 3 #55 (2026-08-02).** This legacy tier-c placeholder spec has been promoted to a tier-c recipe connection at [`connections/time-atomic/`](../../../connections/time-atomic/). The new connection ships a vendor-neutral NTP-disciplined atomic-time recipe over the upstream chrony / systemd-timesyncd / HA core `time_date` integration + GPS-disciplined NTP + GPS-from-Traccar + GPS-from-HA Companion + GPS-from-network-location + browser NTP fallback. The legacy tier-c content below is preserved for historical context only — do NOT wire a new install from this doc; use the recipe in the connection folder.
 
-**Support tier:** C (recipe)
+**Replaced by:** [`connections/time-atomic/`](../../../connections/time-atomic/)
 
-## What this is
-RoamCore includes notes for keeping HA's clock accurate even when offline
-(in a van with intermittent connectivity). The recipe recycles the
-upstream HA core `time` integration (since 2022.x — exposes NTP
-servers + `sensor.time` + `sensor.date` + date/time helpers) +
-a thin RoamCore automation wrapper that runs the THREE §7
-automations (NTP cadence refresh on boot + GPS time correction on
-`device_tracker` + timezone change + RTC fallback when NTP
-unreachable for N minutes).
+**Recipe:** [`connections/time-atomic/docs/recipe.md`](../../../connections/time-atomic/docs/recipe.md)
 
-## Why it's useful in a van
-- The van can lose LTE / Starlink for hours — the recipe's Path C
-  RTC fallback (DS3231 / RV-3028 I2C RTC module on the van's NUC /
-  SBC + the SBC's `systemd-timesyncd` fallback config) keeps
-  accurate time even when offline
-- GPS satellites carry atomic-clock-grade time signals — the
-  recipe's Path B GPS time correction (Traccar Wave 3 #36 / HA
-  Companion app / Wican Pro Wave 3 #6 OBD-II's GPS feed) uses GPS
-  time when NTP is unreachable but GPS is
-- NTP is the canonical time-sync mechanism when the WAN is
-  reachable — the recipe's Path A NTP uses HA core's `time`
-  integration with the recommended NTP server list
-  (`time.cloudflare.com` + `time.google.com` + `pool.ntp.org`)
+---
 
-## Extra hardware required
-- Optional: DS3231 / RV-3028 I2C RTC module for Path C RTC
-  fallback (otherwise the recipe relies on Path A NTP + Path B
-  GPS only)
-- Optional: Traccar Wave 3 #36 server OR HA Companion app OR
-  Wican Pro Wave 3 #6 OBD-II reader for Path B GPS time
-  correction (otherwise the recipe relies on Path A NTP + Path C
-  RTC only)
-- No extra hardware required for Path A NTP (just HA core's
-  `time` integration + the WAN backhaul)
+Keep HA's clock accurate even when offline (in a van with intermittent connectivity).
 
-## Install / best next step
-- See: `connections/time-atomic/docs/recipe.md`
-- RoamCore time helpers package: `homeassistant/packages/roamcore_weather_time.yaml`
+## What you need
 
-## Links
-- HA core `time` integration: https://www.home-assistant.io/integrations/time/
-- Cross-reference to Wave 3 #54 timezone-geolocator (the
-  time-category complement — handles "what timezone IS it?"; this
-  slice handles "what time IS it?"):
-  `connections/timezone-geolocator/`
-- Cross-reference to Traccar Wave 3 #36 (the canonical GPS source
-  for Path B GPS time correction): `connections/traccar/`
-- Cross-reference to Wican Pro Wave 3 #6 (the optional OBD-II
-  GPS source for Path B GPS time correction):
-  `connections/wican-pro/`
+- Nothing extra — uses what's already in the van.
+
+## Install
+
+- Click **Add to my van** in the RoamCore dashboard, **or** run `bash <(curl -sL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh) --feature time-atomic`.
+- Restart Home Assistant.
+- Done — the tiles appear under the relevant section in the dashboard.
+
+## What it shows on your dashboard
+
+- A Time tile that updates automatically.
