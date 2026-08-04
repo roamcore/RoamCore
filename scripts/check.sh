@@ -134,6 +134,8 @@ run_if_present "connections/advanced-mode/tests/test_connection_yml.py" \
   "Connection: Advanced mode (tier-b) — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block: manifest honesty smoke check"
 run_if_present "connections/openclaw-api/tests/test_connection_yml.py" \
   "Connection: OpenClaw JSON API (tier-a) — vendor-neutral machine-readable summary + skill + rc_dump + timeseries endpoints for local agents: manifest honesty smoke check"
+run_if_present "connections/trip-wrapped/tests/test_connection_yml.py" \
+  "Connection: Trip Wrapped (tier-a) — vendor-neutral local-first route-recap HTML/JSON report (distance / drive time / stops / comparisons / share-ready PNG export): manifest honesty smoke check"
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 
