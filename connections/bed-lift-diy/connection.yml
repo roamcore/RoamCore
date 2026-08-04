@@ -1,0 +1,450 @@
+# DIY bed lift (actuators / winch + motor + strap) — tier-c recipe connection.
+#
+# Promoted from docs/catalog/bed-lift/diy-bedlift.md (legacy tier-c, 27 lines).
+# Promoted into tier-c because RoamCore does NOT ship a native DIY bed lift
+# controller — we RECIPE the well-understood combination of one of two
+# upstream operator-side paths:
+#   - Path A — ESPHome custom `cover:` component (recommended when the
+#     operator is ESPHome-friendly; ESPHome handles the device-side GPIO +
+#     2× outputs (bed_lift_up, bed_lift_down) + 2× binary_sensor limit
+#     inputs (up_limit, down_limit) + optional CT-clamp current sensor for
+#     obstruction detection; ESPHome exposes a config_flow since 2023.x),
+#   - Path B — Dry-contact relay pair (Shelly 1 / Shelly Plus 1 / Zooz
+#     ZEN17 / Aeotec Nano Switch) + HA core `template:` cover wiring
+#     (recommended when the operator is relay-friendly + wants the
+#     upstream HA core integrations to do the IO). Shelly has a
+#     config_flow since 2019.x,
+# plus a translation layer that maps the device-side up/down/stop
+# semantics into HA core `cover.*` entities, and a translation layer
+# that maps the resulting `cover.bed_lift` + limit binary_sensors into
+# the RoamCore `rc_bed_lift_*` contract tiles (a
+# `cover.rc_bed_lift_position`, 2× `binary_sensor.rc_bed_lift_*_limit`,
+# a `binary_sensor.rc_bed_lift_moving`, a `sensor.rc_bed_lift_position_pct`,
+# a `binary_sensor.rc_bed_lift_safety_ok` (limit-sanity aggregate: false
+# if both limits report `true` simultaneously — a wiring fault), 3×
+# `button.rc_bed_lift_*` (lift / lower / stop), a
+# `binary_sensor.rc_bed_lift_obstruction_detected`, a
+# `binary_sensor.rc_bed_lift_low_voltage_lockout` (TRUE when inverter
+# SOC < 20 % OR shore disconnected AND battery low), and a
+# `select.rc_bed_lift_mode` (auto / manual_only / disabled)).
+#
+# This connection is the **bed-lift control** slice of RoamCore for
+# vans that want vendor-neutral up/down control of a DIY bed lift
+# (linear actuators OR winch + motor + strap OR any 2-relay + 2-limit-
+# switch bed lift built by the operator) with safety-first wiring
+# interlocks:
+#   - the `cover.rc_bed_lift_position` tile (open/close/stop with
+#     position reporting),
+#   - the 2× limit binary_sensors (`rc_bed_lift_up_limit` /
+#     `rc_bed_lift_down_limit`),
+#   - a `binary_sensor.rc_bed_lift_moving` (derived from the cover's
+#     `state` in motion),
+#   - a `sensor.rc_bed_lift_position_pct` (0 / 100 / interpolated when
+#     the cover has implicit position feedback),
+#   - a `binary_sensor.rc_bed_lift_safety_ok` (limit-sanity aggregate;
+#     FALSE if both limits report TRUE simultaneously — wiring fault),
+#   - 3× `button.rc_bed_lift_*` (lift / lower / stop; explicit
+#     affordances for agent-driven requests + automations),
+#   - a `binary_sensor.rc_bed_lift_obstruction_detected` (current-clamp
+#     based for Path A; motor-stall heuristic for Path B),
+#   - a `binary_sensor.rc_bed_lift_low_voltage_lockout` (TRUE when
+#     inverter SOC < 20 % OR shore disconnected AND battery low —
+#     cross-references the Victron `connections/victron/` recipe for
+#     SOC),
+#   - a `select.rc_bed_lift_mode` (auto / manual_only / disabled —
+#     operator-tunable lockout mode for service work),
+#   feeds OpenClaw queries ("lift the bed", "lower the bed", "stop
+#     the bed", "what's the bed position?", "is the bed safe?",
+#     "is the bed moving?", "is the bed obstructed?", "is the bed
+#     low-voltage locked?", "set bed mode"),
+#   - respects RoamCore modes (Stealth silent hours stop any in-progress
+#     motion + suppress any auto-lift scheduling; Sleep mode locks the
+#     bed down overnight; Boost mode disables mode-aware lockouts for
+#     service work),
+#   - and layer the four safety interlocks documented in §6: limit-
+#     switch sanity (both limits cannot be true simultaneously — wiring
+#     fault stops the bed), low-voltage lockout via
+#     `sensor.rc_power_battery_soc` cross-reference to the Victron
+#     connection, obstruction detection via current sensor / motor-
+#     stall heuristic, mode-aware lockouts (Stealth silent hours stop
+#     any in-progress motion + suppress any auto-lift scheduling;
+#     Sleep mode locks the bed down overnight; Boost disables mode-
+#     aware lockouts for service work).
+#
+# Why tier-c, not tier-b (or tier-a):
+#   - The Happijac sibling connection (`connections/happijac/`,
+#     Wave 3 #43) is the canonical tier-b recipe connection for the
+#     LCI Happijac controller flow (stock Happijac + dry-contact
+#     relay pair + limits + optional CT clamp + Path A ESPHome OR
+#     Path B Shelly / Shelly Plus / Zooz ZEN17 / Aeotec Nano
+#     Switch). The DIY sibling differs ONLY in hardware stack
+#     (operator-built linear actuators OR winch + motor + strap vs
+#     the LCI Happijac controller); the operator-side ESPHome or
+#     HA-core `template:` cover wiring is identical. We ship this
+#     as a **sibling** tier-c connection because the operator's
+#     hardware variability is greater (DIY actuators have a wider
+#     current draw range, motor driver choice varies — H-bridge vs
+#     two-relay-pair vs single-relay direction-control — and the
+#     operator owns the assembly rather than buying an off-the-shelf
+#     controller), and tier-c is the honest marker for "recipe-only,
+#     no operator-bench, no canonical RoamCore-owned config_flow".
+#   - no real DIY bed lift + 2× dry-contact relays + 2× limit
+#     switches + optional CT clamp current sensor on the CI bench
+#     to integration-test against (we ship no appliance and no
+#     RoamCore-owned bed lift controller; the operator's exact
+#     actuator / motor / driver / pin choice varies),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses Path A's ESPHome custom cover vs Path B's Shelly /
+#     Shelly Plus / Zooz ZEN17 / Aeotec Nano Switch pair; both paths
+#     recipe over upstream ESPHome or HA core `template:` cover; we
+#     ship no native wrapper for either path),
+#   - the safety interlocks that this kind of bed lift REQUIRES are
+#     documented in the recipe (limit-switch sanity, low-voltage
+#     lockout, obstruction detection, mode-aware lockouts) but are
+#     NOT hard-enforced in RoamCore code (the operator MUST wire the
+#     safety interlocks in their ESPHome YAML or template cover YAML;
+#     tier-a promotion would move these into RoamCore-side asserts).
+#   - so the audit-recommended config_flow can't be canonical here
+#     either. The recipe is sound (it leans on the upstream ESPHome
+#     `cover:` component + the well-understood `cover.template:` HA
+#     core pattern), but we cannot claim one-tap automation. The
+#     `tier-a promotion outline` at the bottom of docs/recipe.md
+#     describes exactly what needs to happen to flip this to tier-a
+#     (a real DIY bed lift + ESPHome + relay bench on CI, a canonical
+#     RoamCore-owned `config_flow.py` that walks the operator through
+#     Path A vs Path B + relay pin / limit pin / current-sensor pin
+#     declaration, integration tests that assert a 0→100% position
+#     change triggers the right tile updates).
+#
+# Two install paths (operator picks based on existing IoT wiring +
+# comfort with ESPHome vs relay-friendly templates + safety interlock
+# preference):
+#
+#   - Path A — ESPHome custom cover (recommended for ESPHome-friendly
+#     installs). ESPHome handles the device-side: 2× outputs (one for
+#     UP relay coil, one for DOWN relay coil; both relay coils must be
+#     isolated from ESPHome GPIO via a 5 V logic-level translator +
+#     flyback diode; a fuse per relay per the recipe §2 prerequisites),
+#     2× binary_sensor inputs (one for UP limit microswitch, one for
+#     DOWN limit microswitch; both with `delayed_off: 100ms` filter
+#     to debounce mechanical bounce), and an optional CT-clamp current
+#     sensor wired into an ADC pin for obstruction detection. ESPHome
+#     exposes a `config_flow` since 2023.x and the resulting device
+#     registers `cover.bed_lift` upstream; we wrap that into the
+#     `cover.rc_bed_lift_*` contract tiles via a `template:` cover.
+#
+#   - Path B — Dry-contact relay + HA core `template` cover (no
+#     ESPHome required). Two Shelly 1 / Shelly Plus 1 / Zooz ZEN17 /
+#     Aeotec Nano Switch units are wired to the DIY actuator / motor
+#     driver's up/down inputs (5 V signal, common, up, down). HA
+#     auto-discovers the Shelly units via mDNS (config_flow since
+#     2019.x). The recipe documents both the Shelly-side wiring
+#     (5 V signal + common + up + down per device) and the upstream
+#     `switch.shelly_*_relay` entities that result. We wrap those +
+#     the upstream limit binary_sensors (either Shelly `dry_contact`
+#     inputs or separate GPIO-to-WiFi sensors) into a `cover.template:`
+#     that synthesizes `cover.bed_lift` with up/down/stop + the
+#     position binary_sensor logic + an optional
+#     `current_based_obstruction_detection` block.
+#
+# Both paths land on the same `rc_bed_lift_*` contract tiles.
+#
+# Sibling connection: `connections/happijac/` (Wave 3 #43) is the
+# tier-b Happijac-specific connection for the LCI Happijac controller
+# flow. The DIY sibling shares the §5 contract tile ids (the
+# `rc_bed_lift_*` namespace is vendor-neutral), shares the §6 safety
+# interlocks (limit-switch sanity / low-voltage lockout / obstruction
+# detection / mode-aware lockouts), shares the §7 automations, and
+# shares the §8 OpenClaw queries — only the hardware stack differs
+# (operator-built DIY actuators / winch + motor + strap vs LCI
+# Happijac controller). The recipe §6 + §7 cross-reference the
+# Happijac sibling for any operator whose bed lift happens to be the
+# stock Happijac controller (or who wants the LCI Happijac flow's
+# deeper controller-specific notes).
+#
+# SAFETY-FIRST WIRING EMPHASIS:
+#   This connection controls a motor-driven mechanical actuator that
+#   can pinch / crush / injure an operator or occupant if wired wrong.
+#   Every install MUST include:
+#     - 2× limit microswitches wired into ESPHome binary_sensor inputs
+#       (Path A) or Shelly dry-contact inputs (Path B). The cover
+#       template MUST use these for up-stop and down-stop logic — not
+#       timing.
+#     - limit-sanity aggregate (`binary_sensor.rc_bed_lift_safety_ok`)
+#       that flags FALSE when both limits report TRUE simultaneously
+#       (wiring fault — operator MUST fix before next use).
+#     - low-voltage lockout that cross-references the Victron
+#       `connections/victron/` recipe's `sensor.rc_power_battery_soc`
+#       + `binary_sensor.rc_power_shore_connected`.
+#     - obstruction detection (current-clamp for Path A; motor-stall
+#       heuristic for Path B).
+#     - mode-aware lockouts (Stealth stops any in-progress motion at
+#       the start of silent hours; Sleep locks the bed down overnight;
+#       Boost disables mode-aware lockouts for service work).
+#   The recipe walks through every interlock in detail (§6) and the
+#   test_connection_yml.py smoke check guards the documentation
+#   (§6 → test_safety_interlocks_are_documented).
+#
+# Note on `install.config_flow: true` AND `install.hacs: false`: the
+# upstream HA core `cover` template integration DOES expose a
+# `config_flow` since 2022.x; ESPHome also exposes a config_flow since
+# 2023.x; we honestly report `install.config_flow: true` because the
+# operator's choice of Path A or Path B goes through a config_flow on
+# the ESPHome or HA side. The honest-but-tier-c part is: ESPHome YAML
+# is required to declare the operator's exact relay pin / limit pin /
+# current-sensor pin choice; we ship NO RoamCore-owned wrapper / no
+# native integration code, no `config_flow.py`, no pin-declaration
+# walk on the bench — we RECIPE the upstream ESPHome + HA core
+# pattern. When this connection promotes to tier-a (a real bench +
+# a RoamCore-owned config_flow that walks the operator through Path A
+# vs Path B + relay pin / limit pin / current-sensor pin declaration
+# + integration tests against the bench), this stays at `tier: c`
+# but the test surface expands.
+#
+# Note on the `bed_lift` subsystem addition: docs/reference/rc-entity-
+# naming.md's allowed subsystems list is
+# `power | net | location | weather | time | media | system`. This
+# slice adds `bed_lift` as a forward-compatible addition that mirrors
+# how `media` was added by the Music Assistant slice + how `presence`
+# was backfilled alongside this slice (Wave 3 #42's manifest header
+# promised the addition but it never landed in the doc). The contract
+# tile ids stay vendor-neutral — NO `diy`, `lc_`, `lci`, `bed`,
+# `lift`, `actuator`, `esphome`, `shelly`, `zooz`, `aeotec`,
+# `relay`, `cover_*`, `dry_contact` appears in any tile id BEYOND the
+# subsystem prefix `rc_bed_lift_*`.
+
+id: bed-lift-diy
+name: "DIY bed lift (actuators / winch + motor + strap) — tier-c recipe connection"
+tier: c
+category: bed_lift
+status: beta
+version: 0.1.0
+description: |
+  Bed lift control — van bed up / down — is the **foundation** of
+  every sleep-cycle automation in a van with a DIY bed lift
+  (operator-built linear actuators OR winch + motor + strap OR any
+  2-relay + 2-limit-switch bed lift assembled by the operator).
+  RoamCore ships no native DIY bed lift controller. This connection
+  is a recipe: it documents the two upstream operator-side paths
+  (ESPHome custom `cover:` for Path A on ESPHome-friendly installs;
+  Shelly 1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch pair +
+  HA core `template` cover for Path B on relay-friendly installs),
+  and layers a vendor-neutral contract on top via the
+  `rc_bed_lift_*` dashboard tiles (open/close/stop + position
+  reporting + 2× limit binary_sensors + movement sensor + safety-
+  sanity aggregate + obstruction detected + low-voltage lockout +
+  operator-tunable mode).
+icon: bed
+codeowners:
+  - "@bernardc"
+tags:
+  - bed-lift
+  - diy
+  - actuator
+  - winch
+  - safety
+  - cover
+  - relay
+  - esphome
+
+wizard:
+  # Recipe = "declare your DIY bed lift + 2× dry-contact relay pair
+  # (with 5 V logic-level compatibility) + 2× limit microswitches
+  # (NC or NO per the actuator driver's wiring) + a fuse per relay +
+  # the chosen upstream method (ESPHome Path A OR HA core template
+  # cover + Shelly / Shelly Plus / Zooz ZEN17 / Aeotec Nano Switch
+  # Path B); the recipe §3 / §4 helper YAML walks through mapping
+  # the device-side outputs + limit inputs + current sensor into
+  # the `cover.rc_bed_lift_*` contract tiles via a `template:`
+  # cover + template binary_sensors + template select". No one-tap
+  # (the operator's exact relay pin / limit pin / current-sensor
+  # pin choice is a wiring decision; we have no real bench to
+  # integration-test against); auto-discover is FALSE because
+  # Shelly has mDNS discovery but the limit microswitches + current
+  # sensor don't (the operator must wire those manually per the
+  # safety interlock prerequisites).
+  connection_kind: recipe
+  one_tap: false              # operator must wire the safety interlocks + declare the exact pin mapping — no automatic discovery is honest at this tier
+  auto_discover: false
+  estimated_time: "~45 min"
+  requires_reboot: false
+  setup_notes: |
+    Bed lift control requires the operator to wire a DIY bed lift
+    (linear actuators OR winch + motor + strap OR any 2-relay + 2-
+    limit-switch bed lift) + 2× dry-contact relays (with 5 V logic-
+    level compatibility + a fuse per relay + a flyback diode per
+    relay coil) + 2× limit microswitches (NC or NO per the
+    actuator driver's wiring) + an optional current sensor for
+    obstruction detection, and to choose the upstream method
+    (ESPHome custom `cover:` for Path A, OR Shelly 1 / Shelly Plus
+    1 / Zooz ZEN17 / Aeotec Nano Switch pair + HA core `template:`
+    cover for Path B). The recipe §3 / §4 helper YAML walks through
+    mapping each device-side pin into the ESPHome YAML (Path A) or
+    the Shelly auto-discovered switch entities (Path B), and then
+    the `cover.template:` block that synthesizes `cover.bed_lift`
+    with up/down/stop + the position binary_sensor logic. The
+    `binary_sensor.rc_bed_lift_safety_ok` tile is computed as the
+    NOR of `up_limit` AND `down_limit` (FALSE if both limits report
+    `true` simultaneously — wiring fault); the recipe documents
+    every interlock in detail (§6) and the
+    `tests/test_connection_yml.py` file asserts the recipe §6
+    coverage is honest (the defensive guard for the future tier-a
+    promotion).
+
+install:
+  # No native RoamCore-owned integration code for DIY bed lift
+  # control. The upstream HA core `cover` template integration DOES
+  # expose a `config_flow` since 2022.x; ESPHome also exposes a
+  # config_flow since 2023.x; we honestly report `install.config_flow:
+  # true` because the operator's choice of Path A or Path B goes
+  # through a config_flow on the ESPHome or HA side. RoamCore adds
+  # no native integration code beyond the contract tiles documented
+  # in the recipe. `ha_integration_domain: cover` is the canonical HA
+  # core domain for bed-lift up/down control + the template cover
+  # pattern. `hacs: false` because the recipe uses existing HA core
+  # integrations + ESPHome (no HACS integration of our own; Path A
+  # uses ESPHome + HA core; Path B uses only HA core). Tier-c is
+  # honest: RoamCore does NOT ship a native DIY bed lift controller;
+  # we RECIPE the upstream ESPHome / HA core `template` cover; no
+  # `custom_components/` directory in this folder; no native
+  # integration code; no HACS package.
+  ha_integration_domain: cover   # canonical HA core domain for bed-lift up/down control
+  config_flow: true              # HA core cover template has config_flow since 2022.x; ESPHome has config_flow since 2023.x (honest upstream truth, NOT a tier-a marker)
+  hacs: false                    # tier-c: no HACS integration of our own (Path A uses ESPHome + HA core; Path B uses only HA core)
+  doc_recipe_only: true          # tier-c: the recipe in docs/recipe.md IS the install; RoamCore does NOT ship native code (only recipe)
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card                          # installs the rc_bed_lift_* contract tiles
+    - may_register_cover_entity                    # the upstream ESPHome / HA core `template:` cover registers cover.bed_lift
+    - may_register_relay_entities_for_path_b       # Path B (Shelly / Shelly Plus / Zooz ZEN17 / Aeotec Nano Switch pair) registers 2× switch entities upstream
+    - registers_limit_binary_sensors               # 2× upstream limit binary_sensor entities (up_limit / down_limit); the template aggregate computes rc_bed_lift_safety_ok
+    - may_register_current_sensor_for_path_a_esphome   # Path A ESPHome registers an ADC current sensor wired into a CT clamp; obstruction-detection heuristic uses this
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral rc_bed_lift_*
+    # ids (the new §bed_lift subsystem — added to the allowed subsystems
+    # list in docs/reference/rc-entity-naming.md alongside this slice,
+    # mirroring how `media` was added by the Music Assistant slice AND
+    # how `presence` was backfilled in the same edit since Wave 3 #42
+    # promised it but didn't deliver). NO `diy`, `lc_`, `lci`, `bed`,
+    # `lift`, `actuator`, `esphome`, `shelly`, `zooz`, `aeotec`,
+    # `relay`, `cover_*`, `dry_contact` in ANY rc_* tile id BEYOND the
+    # subsystem prefix `rc_bed_lift_*` (the subsystem prefix IS
+    # allowed — it's the owning-area marker; what is forbidden is
+    # vendor names appearing AFTER the subsystem marker in a way that
+    # double-stamps the vendor into the id).
+    - cover.rc_bed_lift_position
+    - binary_sensor.rc_bed_lift_up_limit
+    - binary_sensor.rc_bed_lift_down_limit
+    - binary_sensor.rc_bed_lift_moving
+    - sensor.rc_bed_lift_position_pct
+    - binary_sensor.rc_bed_lift_safety_ok
+    - button.rc_bed_lift_lift
+    - button.rc_bed_lift_lower
+    - button.rc_bed_lift_stop
+    - binary_sensor.rc_bed_lift_obstruction_detected
+    - binary_sensor.rc_bed_lift_low_voltage_lockout
+    - select.rc_bed_lift_mode
+
+openclaw:
+  queries:
+    - lift_bed
+    - lower_bed
+    - stop_bed
+    - bed_position
+    - is_bed_safe
+    - is_bed_moving
+    - is_bed_obstructed
+    - is_bed_low_voltage_locked
+    - set_bed_mode
+  summary_keys:
+    - bed_position_pct
+    - bed_moving
+    - bed_safety_ok
+    - bed_obstruction_detected
+    - bed_low_voltage_lockout
+    - bed_mode
+
+# Tier-c: tests are optional (and we have no real DIY bed lift + relays +
+# limits + current sensor on the bench to integration-test against).
+# The tests/test_connection_yml.py file below asserts the manifest
+# itself is honest about its tier + requirements; that satisfies
+# the audit without claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # Tier-c honest hard requirements. The slice is a recipe; we
+  # publish docs/recipe.md below and the manifest is honest about
+  # shipping no native integration code.
+  - docs_recipe_published
+  - no_custom_components_dir
+  - no_native_integration_code
+  - no_hacs_json
+  - no_addons_dir
+
+tier_warnings:
+  # We have no real DIY bed lift + relays + limits + current sensor
+  # on the bench to integration-test against (no operator pin
+  # choice to drive an integration test).
+  - no_real_diy_bed_lift_for_integration_test
+  # The recipe depends on the operator running a DIY bed lift +
+  # 2× relays + 2× limit switches + optional current sensor (Path
+  # A ESPHome OR Path B Shelly / template cover); we cannot
+  # bench-test any of that.
+  - recipe_depends_on_user_running_diy_bed_lift_plus_relays_plus_limits
+  # Path choice honesty — ESPHome Path A vs relay-friendly Path B
+  # (Shelly / Shelly Plus / Zooz ZEN17 / Aeotec Nano Switch)
+  # depends on existing IoT wiring + comfort with ESPHome vs
+  # relay-friendly templates + current-sensor preference.
+  - optional_esphome_vs_template_cover_choice
+  # The four safety interlocks documented in §6 are operator-wired,
+  # not RoamCore-enforced. The recipe walks through every interlock
+  # in detail; tier-a promotion would move the asserts into
+  # RoamCore-side integration code (the test file's
+  # `test_safety_interlocks_are_documented` is the defensive guard
+  # that the recipe coverage is honest at tier-c).
+  - requires_operator_wiring_safety_interlocks_before_first_use
+  # RoamCore does NOT ship a native DIY bed lift controller; the
+  # RoamCore wrapper is a thin vendor-neutral contract layer that
+  # RECIPEs the upstream ESPHome / HA core `template:` cover. The
+  # Happijac sibling (`connections/happijac/`, Wave 3 #43) is the
+  # canonical tier-b pattern for the LCI Happijac controller flow.
+  - recipe_only_no_roamcore_owned_controller
+  - sibling_happijac_connection_is_tier_b_canonical_pattern
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/cover/
+    - https://esphome.io/components/cover/index.html
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/shelly/
+  community:
+    - https://esphome.io/components/binary_sensor/index.html
+    - https://esphome.io/components/sensor/index.html
+    - https://esphome.io/components/output/index.html
+    - https://www.home-assistant.io/integrations/shelly/
+  cross_references:
+    # Wave 3 #43 — Happijac sibling connection (tier-b; canonical
+    # pattern for the LCI Happijac controller flow that this
+    # tier-c DIY connection mirrors with a different hardware stack).
+    - connections/happijac/
+    # Wave 2 #23 — Mode builder (drives the `select.roamcore_mode`
+    # state referenced by §7 automations + §6.4 mode-aware lockouts).
+    - connections/mode-builder/
+    # Wave 3 #48 — Deadbolts (cross-ref for §7 actuator safety
+    # interlock: block lift when door is unlocked).
+    - connections/deadbolts/
+    # Wave 3 #49 — HVAC basics (cross-ref for §7: block lift when
+    # HVAC service mode is engaged).
+    - connections/hvac-basics/
+    # Wave 2 #26 — Deterministic system summary (the bed-lift state
+    # is part of the system summary tile).
+    - connections/system-summary/
+  docs:
+    - https://www.home-assistant.io/integrations/cover/
+    - https://esphome.io/components/cover/index.html
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/shelly/
