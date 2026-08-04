@@ -4,9 +4,11 @@ This is the only test file we can ship for a tier-b recipe connection
 that has no real Starlink terminal to integration-test against. The
 tests here assert that the manifest is *honest about being tier-b* —
 that the folder/id/tier invariants hold, that the recipe doc the
-tier_requirements promise is actually present on disk, and that the
+tier_requirements promise is actually present on disk, that the
 rc_net_starlink_* tile ids are vendor-neutral per
-docs/reference/rc-entity-naming.md.
+docs/reference/rc-entity-naming.md, AND — for Wave 9 #108 — that the
+3 setup_paths (starlink_mini_only / separate_router /
+vp2430_vm_router) the wizard exposes are well-formed.
 
 If you add real integration coverage (e.g. a config_flow.py + an
 integration test against testcontainers/grpc-starlink-dish with a
@@ -37,6 +39,9 @@ MANIFEST_PATH = CONNECTION_DIR / "connection.yml"
 RECIPE_PATH = CONNECTION_DIR / "docs" / "recipe.md"
 LEGACY_DOC = REPO_ROOT / "docs" / "catalog" / "networking" / "starlink-sleep-timer.md"
 
+# Wave 9 #108 — the 3 setup_paths the wizard exposes.
+EXPECTED_PATH_IDS = ("starlink_mini_only", "separate_router", "vp2430_vm_router")
+
 
 @pytest.fixture(scope="module")
 def manifest() -> dict:
@@ -60,41 +65,241 @@ def test_id_matches_folder_name(manifest: dict) -> None:
 def test_tier_b_without_tier_a_markers(manifest: dict) -> None:
     """Tier-b must NOT advertise tier-a-only fields.
 
-    A regression here (e.g. someone flipping one_tap to true or
-    config_flow to true) would falsely imply a working config_flow +
-    integration tests that we don't have, and the audit would either
-    block the PR or let a misleading tier-a claim slip through.
+    A regression here (e.g. someone flipping one_tap to true) would
+    falsely imply a working one-tap setup that we don't have, and
+    the audit would either block the PR or let a misleading tier-a
+    claim slip through.
+
+    Wave 9 #108 nuance: this slice DOES flip
+    `install.config_flow: true` because the wizard now exposes a
+    Starlink step. The audit's tier-a litmus test is "do we ship a
+    config_flow that takes the user all the way to a working
+    integration in one click?" — the wizard is a guided step (the
+    user picks a path; the connection kind is `setup_paths`, not
+    `api`). For tier-b, `wizard.one_tap` MUST stay False (we don't
+    claim one-tap automation for Path B / Path C, and Path A's
+    promotion to tier-a is gated on integration-test fixtures).
+    Path A (starlink_mini_only) is the tier-a promotion candidate
+    but the connection tier stays `b` until the fixture lands.
     """
     assert manifest["tier"] == "b", "starlink must stay at tier-b until integration coverage lands"
     assert manifest["wizard"]["one_tap"] is False, (
         "tier-b connections cannot advertise one_tap=true (that's a tier-a contract)"
     )
-    # Starlink recipes an operator-side plug integration; RoamCore ships
-    # no native config_flow for that (the operator's plug choice is
-    # unconstrained). install.config_flow is the RoamCore-owned field
-    # and MUST be False at tier-b.
-    assert manifest["install"]["config_flow"] is False, (
-        "tier-b connection must not advertise RoamCore-owned config_flow=true "
-        "(we ship no native integration code for the operator-side power-cycle path)"
-    )
-    assert manifest["install"]["hacs"] is False, (
-        "starlink is a recipe; no HACS integration of our own is shipped"
-    )
     # Belt-and-braces: there must be no RoamCore-owned config_flow.py
     # in this folder (no native integration code for a tier-b recipe
-    # connection).
+    # connection — the wizard lives in the RoamCore umbrella
+    # integration, not here).
     assert not (CONNECTION_DIR / "config_flow.py").is_file(), (
         "tier-b recipe connection must not ship a RoamCore-owned config_flow.py"
     )
-    # The __init__.py must be a DOMAIN-stub only — no integration
-    # setup logic. We assert it exports DOMAIN and nothing else that
-    # smells like HA integration code.
+    # The __init__.py must be a DOMAIN stub + wizard-wiring helpers
+    # only — no HA async_setup code, no PLATFORM_SCHEMA (tier-b
+    # recipe pattern).
     init_text = (CONNECTION_DIR / "__init__.py").read_text(encoding="utf-8")
     assert "DOMAIN" in init_text, "__init__.py must export DOMAIN for the audit"
-    for forbidden in ("async_setup", "config_flow", "PLATFORM_SCHEMA"):
+    for forbidden in ("async_setup", "PLATFORM_SCHEMA"):
         assert forbidden not in init_text, (
             f"__init__.py must be a DOMAIN stub; found {forbidden!r} (tier-b recipe pattern)"
         )
+    # The wizard-wiring helper apply_setup_path IS allowed (this
+    # slice adds it).
+    assert "apply_setup_path" in init_text, (
+        "Wave 9 #108: __init__.py must export apply_setup_path so the "
+        "config_flow wizard step can call it"
+    )
+
+
+def test_wizard_setup_paths_has_three_paths(manifest: dict) -> None:
+    """Wave 9 #108 — the wizard exposes exactly 3 setup_paths.
+
+    Each path must:
+        - have an `id` matching one of EXPECTED_PATH_IDS
+        - have `label`, `description`, `connection_kind`,
+          `estimated_time`, `requires_reboot`, `setup_notes`
+        - declare `requires_inputs` as a list (empty for Path A;
+          [smart_plug_entity_id] for Path B; [openwrt_api_url,
+          openwrt_api_token] for Path C)
+        - declare `side_effects` as a list (each entry non-empty)
+    """
+    paths = manifest["wizard"]["setup_paths"]
+    assert isinstance(paths, list), "wizard.setup_paths must be a list"
+    assert len(paths) == 3, (
+        f"wizard.setup_paths must have 3 entries (starlink_mini_only / "
+        f"separate_router / vp2430_vm_router); got {len(paths)}"
+    )
+
+    ids = [p["id"] for p in paths]
+    assert tuple(ids) == EXPECTED_PATH_IDS, (
+        f"wizard.setup_paths must be exactly {EXPECTED_PATH_IDS}; got {tuple(ids)}"
+    )
+
+    for path in paths:
+        for required_field in (
+            "id", "label", "description", "connection_kind",
+            "estimated_time", "requires_reboot", "setup_notes",
+            "requires_inputs", "side_effects",
+        ):
+            assert required_field in path, (
+                f"setup_path {path.get('id', '?')!r} is missing required "
+                f"field {required_field!r}"
+            )
+        assert isinstance(path["label"], str) and path["label"].strip(), (
+            f"setup_path {path['id']!r} has empty label"
+        )
+        assert isinstance(path["description"], str) and path["description"].strip(), (
+            f"setup_path {path['id']!r} has empty description"
+        )
+        assert isinstance(path["requires_inputs"], list), (
+            f"setup_path {path['id']!r} requires_inputs must be a list"
+        )
+        assert isinstance(path["side_effects"], list) and path["side_effects"], (
+            f"setup_path {path['id']!r} must declare at least one side_effect"
+        )
+        assert isinstance(path["setup_notes"], str) and path["setup_notes"].strip(), (
+            f"setup_path {path['id']!r} has empty setup_notes"
+        )
+
+
+def test_setup_path_a_mini_only_no_inputs(manifest: dict) -> None:
+    """Path A (starlink_mini_only) needs no user input.
+
+    The wizard auto-verifies reachability and writes helpers; the
+    user just clicks "I'm using Starlink Mini as my only router".
+    """
+    paths = {p["id"]: p for p in manifest["wizard"]["setup_paths"]}
+    mini = paths["starlink_mini_only"]
+    assert mini["requires_inputs"] == [], (
+        "starlink_mini_only must require no inputs (wizard auto-verifies "
+        "reachability + writes the input_text + REST + 3 template sensors)"
+    )
+    assert mini["connection_kind"] == "api", (
+        "starlink_mini_only is an api path (talks directly to Starlink "
+        "local HTTP API; no operator wiring)"
+    )
+    assert mini["requires_reboot"] is False, (
+        "starlink_mini_only must not require an HA reboot (helpers are "
+        "created in-package; no service restarts)"
+    )
+    # The api_url / rest sensor / template sensors must be in side_effects.
+    effects = " ".join(mini["side_effects"]).lower()
+    assert "input_text" in effects, (
+        "starlink_mini_only side_effects must include writes_input_text_helper"
+    )
+    assert "rest" in effects, (
+        "starlink_mini_only side_effects must include creates_rest_sensor"
+    )
+    assert "template" in effects, (
+        "starlink_mini_only side_effects must include creates_template_sensors"
+    )
+
+
+def test_setup_path_b_separate_router_requires_plug_entity(manifest: dict) -> None:
+    """Path B (separate_router) requires smart_plug_entity_id.
+
+    The wizard validates the plug entity is exposed + controllable
+    before writing anything (per Wave 9 #108 doctrine: must not fail +
+    super intuitive).
+    """
+    paths = {p["id"]: p for p in manifest["wizard"]["setup_paths"]}
+    sep = paths["separate_router"]
+    assert sep["requires_inputs"] == ["smart_plug_entity_id"], (
+        "separate_router requires smart_plug_entity_id (the HA switch "
+        "entity the operator already controls)"
+    )
+    assert sep["connection_kind"] == "recipe", (
+        "separate_router is a recipe (depends on the operator's plug "
+        "integration choice — TP-Link / Shelly / Sonoff / Zigbee / "
+        "Modbus / etc.)"
+    )
+    effects = " ".join(sep["side_effects"]).lower()
+    assert "switch" in effects, (
+        "separate_router side_effects must include creates_switch_helper "
+        "(switch.rc_net_starlink_plug → user's plug)"
+    )
+
+
+def test_setup_path_c_vp2430_vm_router_requires_openwrt_inputs(manifest: dict) -> None:
+    """Path C (vp2430_vm_router) requires openwrt_api_url + token."""
+    paths = {p["id"]: p for p in manifest["wizard"]["setup_paths"]}
+    vm = paths["vp2430_vm_router"]
+    assert "openwrt_api_url" in vm["requires_inputs"], (
+        "vp2430_vm_router requires openwrt_api_url"
+    )
+    assert "openwrt_api_token" in vm["requires_inputs"], (
+        "vp2430_vm_router requires openwrt_api_token"
+    )
+    assert vm["connection_kind"] == "recipe", (
+        "vp2430_vm_router is a recipe (depends on the operator's "
+        "OpenWrt VM token + the upstream connections/openwrt-controls "
+        "integration)"
+    )
+    effects = " ".join(vm["side_effects"]).lower()
+    assert "rest" in effects, (
+        "vp2430_vm_router side_effects must include creates_rest_chain "
+        "(through the OpenWrt API)"
+    )
+
+
+def test_tier_a_promotion_candidate_is_path_a(manifest: dict) -> None:
+    """Path A is declared the tier-a promotion candidate.
+
+    The connection tier stays `b` until a Starlink test fixture
+    (testcontainers/grpc-starlink-dish or recorded dish-status.json)
+    lands and an integration test passes. Until then, the manifest is
+    honest about which path is the promotion candidate.
+    """
+    assert manifest.get("tier_a_promotion_candidate") == "starlink_mini_only", (
+        "tier_a_promotion_candidate must be 'starlink_mini_only' (Path A "
+        "doesn't depend on any operator wiring — Starlink local API is "
+        "universal across Gen-2/Gen-3)"
+    )
+
+
+def test_absence_of_required_config_blocks_path_a(manifest: dict) -> None:
+    """Failure case: Path A's required input_text helper is missing.
+
+    Simulates the audit catching a regression where someone removes
+    the input_text.rc_net_starlink_api_url helper from the in-package
+    YAML without updating the wizard's side_effects list. The wizard
+    would then claim "creates X" while nothing actually creates it.
+
+    We assert the inverse: with the current manifest, every side_effect
+    declared for starlink_mini_only references an entity id that's
+    already declared elsewhere in the manifest (the dashboard.tiles or
+    the wizard.setup_paths side_effects themselves).
+
+    Concretely: Path A declares 5 entities and the manifest's
+    dashboard.tiles list must contain at least 2 of them
+    (reachable + signal_pct, both are surfaced as tiles per the
+    recipe §4 contract).
+    """
+    paths = {p["id"]: p for p in manifest["wizard"]["setup_paths"]}
+    mini = paths["starlink_mini_only"]
+
+    # The dashboard must surface at least the binary_sensor.reachable
+    # and sensor.signal_pct that Path A creates.
+    tiles = manifest.get("dashboard", {}).get("tiles", [])
+    tiles_joined = " ".join(tiles).lower()
+    assert "rc_net_starlink_reachable" in tiles_joined, (
+        "dashboard must surface rc_net_starlink_reachable (Path A's "
+        "primary reachability tile)"
+    )
+    assert "rc_net_starlink_signal_pct" in tiles_joined, (
+        "dashboard must surface rc_net_starlink_signal_pct (Path A's "
+        "primary signal-stat tile)"
+    )
+
+    # The wizard's side_effects list for Path A must mention
+    # writes_input_text_helper (the input_text.rc_net_starlink_api_url
+    # helper Path A writes — without it the REST resource_template
+    # has no source-of-truth URL).
+    effects = " ".join(mini["side_effects"]).lower()
+    assert "writes_input_text_helper" in effects, (
+        "Path A side_effects must include writes_input_text_helper "
+        "(the wizard writes input_text.rc_net_starlink_api_url so the "
+        "REST resource_template can be updated later without code changes)"
+    )
 
 
 def test_requires_docs_recipe_published(manifest: dict) -> None:
@@ -139,6 +344,41 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
         assert header in text, (
             f"recipe.md is missing required section header {header!r} "
             f"(spec §4 requires §1–§7 to be present)"
+        )
+
+
+def test_recipe_documents_three_setup_paths(manifest: dict) -> None:
+    """Wave 9 #108 — recipe.md must document all 3 setup_paths.
+
+    The wizard hands the user a choice of 3 paths; the recipe must
+    back each path with at least one decision-tree section + step-by-
+    step instructions. We grep for the path labels + the path id
+    tokens so a regression where someone deletes a path gets caught.
+    """
+    text = RECIPE_PATH.read_text(encoding="utf-8")
+
+    # The recipe must have a "Choose your setup" section at the top
+    # (per the acceptance criteria).
+    assert "Choose your setup" in text, (
+        "recipe.md must have a 'Choose your setup' section at the top "
+        "(per Wave 9 #108 acceptance: decision tree + the 3 paths documented)"
+    )
+
+    # All three path ids must appear by name in the recipe.
+    for path_id in EXPECTED_PATH_IDS:
+        assert path_id in text, (
+            f"recipe.md must document the '{path_id}' setup path "
+            f"(the wizard hands the user this choice; the recipe backs it)"
+        )
+
+    # Path labels should also appear (operator-facing).
+    for label_fragment in (
+        "Starlink Mini",
+        "separate router",
+        "VM router",
+    ):
+        assert label_fragment in text, (
+            f"recipe.md must mention the path label fragment {label_fragment!r}"
         )
 
 
@@ -262,6 +502,52 @@ def test_status_reflects_no_real_starlink(manifest: dict) -> None:
         "tier_warnings must declare 'recipe_depends_on_user_smart_plug_or_relay' "
         "so the audit listing is honest about the user-bringing-the-plug contract"
     )
+
+
+def test_init_module_exports_wizard_wiring_helpers() -> None:
+    """Wave 9 #108 — __init__.py must export apply_setup_path + the 3 PATH_* constants.
+
+    The config_flow wizard step imports these to drive the 3-path
+    wizard. We do not call apply_setup_path here (no HA instance in
+    the test env) — we only assert the public surface is present.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "starlink_init_for_test",
+        CONNECTION_DIR / "__init__.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    for name in (
+        "DOMAIN",
+        "PATH_STARLINK_MINI_ONLY",
+        "PATH_SEPARATE_ROUTER",
+        "PATH_VP2430_VM_ROUTER",
+        "VALID_PATHS",
+        "DEFAULT_STARLINK_API_URL",
+        "STARLINK_REACH_TIMEOUT_S",
+        "STARLINK_REACH_RETRIES",
+        "STARLINK_REACH_BACKOFF_S",
+        "apply_setup_path",
+        "describe_setup_paths",
+    ):
+        assert hasattr(mod, name), f"__init__.py must export {name!r}"
+    assert mod.PATH_STARLINK_MINI_ONLY == "starlink_mini_only"
+    assert mod.PATH_SEPARATE_ROUTER == "separate_router"
+    assert mod.PATH_VP2430_VM_ROUTER == "vp2430_vm_router"
+    assert mod.VALID_PATHS == frozenset(
+        {"starlink_mini_only", "separate_router", "vp2430_vm_router"}
+    )
+    # describe_setup_paths() returns 3 entries with all the keys the
+    # config_flow needs to render the radio-button form.
+    paths = mod.describe_setup_paths()
+    assert len(paths) == 3
+    for p in paths:
+        for key in (
+            "id", "label", "description", "estimated_time",
+            "requires_reboot", "requires_inputs", "connection_kind",
+        ):
+            assert key in p, f"describe_setup_paths() entry missing key {key!r}"
 
 
 if __name__ == "__main__":

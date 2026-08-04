@@ -51,42 +51,191 @@ tags:
   - recipe
 
 wizard:
-  # Recipe = "put a controllable smart plug behind the Starlink PSU,
-  # expose it to HA, point the connection at it, optionally pull signal
-  # stats from Starlink's local HTTP API". No one-tap, no auto-discover
-  # — Starlink isn't on the LAN by default and the operator's smart-
-  # plug choice is unconstrained.
-  connection_kind: recipe
-  one_tap: false
-  auto_discover: false
-  estimated_time: "~25 min"
-  requires_reboot: false
+  # Wave 9 #108 — Starlink 3-path wizard. The setup wizard now asks
+  # the user which networking topology they want:
+  #
+  #   Path A — Starlink Mini as the sole router
+  #            (just use the built-in Starlink Wi-Fi router; no other
+  #            router, no VP2430 VM in the data path)
+  #   Path B — Separate router (existing legacy path: plug behind PSU
+  #            + Starlink in bypass / router-only mode + a real third-
+  #            party router handles Wi-Fi + LAN)
+  #   Path C — VM router inside the VP2430 (an OpenWrt VM runs the
+  #            LAN, Starlink is the WAN upstream, contract talks to
+  #            the OpenWrt API instead of a smart plug)
+  #
+  # The wizard is exposed via homeassistant/custom_components/roamcore/
+  # config_flow.py:async_step_starlink (radio buttons + path-specific
+  # follow-up form). Re-running the step is safe (re-detects, re-
+  # confirms, idempotent).
+  #
+  # Path A (starlink_mini_only) is the tier-a promotion candidate: we
+  # can ship the contract entities directly from the Starlink local
+  # HTTP API at http://192.168.100.1:80 without depending on a user-
+  # supplied smart plug. Path B and Path C stay tier-b (recipe).
+  connection_kind: setup_paths
+  one_tap: false            # Path A is the closest we get to one-tap;
+                            # Paths B/C require operator wiring.
+  auto_discover: false      # none of the 3 paths auto-discovers; the
+                            # wizard always asks before writing anything
+  estimated_time: "~10 min (Path A) / ~25 min (Path B) / ~30 min (Path C)"
+  requires_reboot: false    # no HA reboot needed; entities are created
+                            # in-package; Path A only writes helpers.
   setup_notes: |
-    Starlink is a self-contained terminal (dish + router + PSU). To
-    recipe sleep + wake without manual intervention we put a controllable
-    smart plug (TP-Link / Shelly / Sonoff / Zigbee / Modbus DC switch /
-    etc.) behind the Starlink PSU and expose it to HA via your preferred
-    integration; HA flips the plug for the sleep timer + wake-for-30-min
-    tile. For signal stats (Gen-2/Gen-3 routers only) the recipe hits
-    Starlink's local HTTP API at `http://192.168.100.1/` — Gen-1 has no
-    local API and the signal tile is grayed out.
+    The wizard asks ONE question first: "How do you want to use
+    Starlink?" Three answers, three different install paths:
+
+      1. "Starlink Mini as my only router"
+         → Path A. RoamCore writes an input_text helper with the
+           Starlink local API URL, a REST sensor pulling
+           dish-status.json once per minute, and 3 template sensors
+           (reachable, signal_pct, sleep_state). Nothing else to wire.
+           Gen-1 is detected and gracefully degrades the signal tile
+           to "unknown". This is the simplest setup and is the
+           tier-a promotion candidate.
+
+      2. "I have a separate router"
+         → Path B. RoamCore walks you through picking the smart plug
+           you already own (TP-Link / Shelly / Sonoff / Zigbee /
+           Modbus) and creates switch.rc_net_starlink_plug mapping
+           to it, plus the sleep + wake + signal contract. Same
+           recipe as before; just now the wizard collects the plug
+           entity id and validates it's exposed + controllable.
+
+      3. "I want to use a VM router inside the VP2430"
+         → Path C. RoamCore walks you through the OpenWrt VM that
+           already lives at VMID 100 (see connections/openwrt-controls).
+           You give the wizard the OpenWrt API URL + bearer token;
+           the contract talks to the OpenWrt API for WAN state
+           instead of a smart plug. Starlink is the WAN upstream.
+
+    All three paths are idempotent — re-running the wizard step is
+    safe (re-detects, re-confirms, no duplicate entities).
+
+  setup_paths:
+    # ---- Path A: Starlink Mini as the only router ----
+    - id: starlink_mini_only
+      label: "Starlink Mini as my only router"
+      description: |
+        Just use the Starlink dish's built-in Wi-Fi router. No other
+        router, no VM in the data path. RoamCore reads signal stats
+        and reachability directly from the Starlink local API at
+        http://192.168.100.1:80. This is the simplest setup — no
+        smart plug needed, no extra router. Works on Gen-2 and
+        Gen-3 Starlink; Gen-1 is detected and the signal tile is
+        grayed out (reachability tile still works).
+      connection_kind: api
+      estimated_time: "~10 min"
+      requires_reboot: false
+      requires_inputs: []       # Path A needs no user input
+      side_effects:
+        - writes_input_text_helper   # rc_net_starlink_api_url = http://192.168.100.1:80
+        - creates_rest_sensor        # pulls dish-status.json every 60s
+        - creates_template_sensors   # reachable, signal_pct, sleep_state
+      setup_notes: |
+        Plug the Starlink ethernet adapter into the dish (if not
+        already), wait for the dish to come online, and the wizard
+        will auto-detect the local API. RoamCore verifies reachability
+        within 10 seconds by hitting http://192.168.100.1/ — if it
+        can't reach the router after 3 retries with backoff, you'll
+        see a plain-English error.
+
+    # ---- Path B: separate router (smart plug behind PSU / router) ----
+    - id: separate_router
+      label: "I have a separate router (smart plug behind the PSU)"
+      description: |
+        You already own a TP-Link / Shelly / Sonoff / Zigbee / Modbus
+        smart plug behind the Starlink PSU (or behind the router
+        only) and a separate router running your van LAN. RoamCore
+        creates switch.rc_net_starlink_plug mapping to your plug
+        entity, plus the sleep + wake + quiet-hours + signal
+        contract. Same recipe as the legacy Path A / Path B — just
+        now the wizard collects the plug entity id and validates it.
+      connection_kind: recipe
+      estimated_time: "~25 min"
+      requires_reboot: false
+      requires_inputs:
+        - smart_plug_entity_id       # the HA switch entity for the user's plug
+      side_effects:
+        - creates_switch_helper      # switch.rc_net_starlink_plug → user's plug
+        - creates_dashboard_tiles    # sleep_state, allow_sleep, wake_30_min, reachable, signal_pct
+        - creates_input_datetime_helpers  # quiet_start / quiet_end
+        - installs_automations       # sleep-during-quiet, wake-on-demand, mode-aware break-sleep
+      setup_notes: |
+        Pick the HA switch entity that controls your smart plug
+        (the wizard validates it's exposed + controllable before
+        writing anything). RoamCore then writes the contract
+        entities + 3 automations (recipe §5.1–§5.3).
+
+    # ---- Path C: VM router inside the VP2430 (OpenWrt API path) ----
+    - id: vp2430_vm_router
+      label: "VM router inside the VP2430 (OpenWrt)"
+      description: |
+        You're running an OpenWrt VM (VMID 100 on the VP2430
+        Proxmox host) as the LAN router, with Starlink as the WAN
+        upstream. RoamCore reads WAN state + signal from the OpenWrt
+        API (not a smart plug) — see connections/openwrt-controls
+        for the upstream contract. This is the path for users who
+        want a real router inside the Proxmox box instead of the
+        Starlink Wi-Fi or a third-party consumer router.
+      connection_kind: recipe
+      estimated_time: "~30 min"
+      requires_reboot: false
+      requires_inputs:
+        - openwrt_api_url            # e.g. http://192.168.1.250/cgi-bin/luci
+        - openwrt_api_token          # bearer token from the OpenWrt VM
+      side_effects:
+        - creates_rest_chain         # REST sensor chain through the OpenWrt API
+        - creates_dashboard_tiles    # sleep_state, reachable, signal_pct (sourced from OpenWrt)
+        - creates_input_datetime_helpers  # quiet_start / quiet_end
+        - installs_automations       # sleep / wake tied to OpenWrt WAN state
+      setup_notes: |
+        Generate a bearer token on the OpenWrt VM (see
+        connections/openwrt-controls docs) and paste the API URL +
+        token into the wizard. RoamCore verifies it can hit the
+        OpenWrt API within 10 seconds. The Starlink local API
+        (192.168.100.1) is still queried for signal pct; OpenWrt
+        is the source of truth for WAN reachable / WAN IP.
+
+# Tier discipline note (per Wave 9 #108):
+#   - Path A (starlink_mini_only) is the tier-a promotion CANDIDATE.
+#     We do NOT flip the connection tier to 'a' in this slice because
+#     Path A is implemented end-to-end via the in-package wizard
+#     (input_text + REST + 3 template sensors) but still relies on
+#     the recipe doc + Starlink's local HTTP API rather than a real
+#     config_flow.py + integration test. When a Starlink test fixture
+#     (testcontainers/grpc-starlink-dish or recorded dish-status.json)
+#     lands, this slice flips tier to 'a' alongside an integration
+#     test.
+#   - Paths B and C stay tier-b (recipe) — they still depend on a
+#     user-supplied smart plug (Path B) or a user-supplied OpenWrt
+#     token (Path C), which is operator wiring the audit considers
+#     unconstrained.
+tier_a_promotion_candidate: starlink_mini_only
 
 install:
-  # No native HA integration for the operator-side power-cycle path that
-  # this connection recipes. The smart-plug integration the operator
-  # already uses (TP-Link / Shelly / Sonoff / Zigbee / Modbus / ...) is
-  # the UPSTREAM truth; RoamCore adds no native integration code beyond
-  # the contract tiles documented in the recipe.
+  # The wizard entry is added in Wave 9 #108 (this slice): the
+  # config_flow exposes a Starlink step that walks the user through
+  # the 3 setup_paths above. Re-running the step is safe (idempotent).
+  #
+  # No native HA integration is still shipped for the operator-side
+  # power-cycle path (Path B) or the OpenWrt chain (Path C) — those
+  # are recipes over upstream integrations the operator already runs.
+  # Path A doesn't depend on any operator wiring (Starlink local API
+  # is universal across Gen-2/Gen-3), so it IS the tier-a promotion
+  # candidate.
   ha_integration_domain: null
-  config_flow: false           # RoamCore ships no native config_flow for this connection
+  config_flow: true            # Wave 9 #108: wizard exposes a Starlink step
   hacs: false                  # tier-b: no HACS integration of our own
-  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  doc_recipe_only: false       # wizard + recipe together cover the install
   python_requirements: []
   min_ha_version: "2024.8"
   side_effects:
     - adds_dashboard_card               # installs the rc_net_starlink_* contract tiles
     - adds_input_datetime_helpers       # rc_net_starlink_quiet_start / quiet_end
+    - adds_input_text_helper            # rc_net_starlink_api_url (Path A)
     - adds_wake_button                  # rc_net_starlink_wake_30_min button + the automation that powers the plug back on
+    - adds_wizard_step                  # config_flow.async_step_starlink (this slice)
 
 dashboard:
   tiles:
