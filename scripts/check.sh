@@ -106,6 +106,8 @@ run_if_present "connections/smart-automations/tests/test_connection_yml.py" \
   "Connection: Smart automations (tier-b) — manifest honesty smoke check"
 run_if_present "connections/mock-location-and-tracks/tests/test_connection_yml.py" \
   "Connection: Mock location + track replay (tier-a) — manifest honesty smoke check"
+run_if_present "connections/map-dashboard/tests/test_connection_yml.py" \
+  "Connection: Map dashboard (tier-a) — OSM-default basemap + Stadia swap + HTTP probe: manifest honesty smoke check"
 run_if_present "connections/deadbolts/tests/test_connection_yml.py" \
   "Connection: Deadbolts (smart lock control) (tier-b) — manifest honesty smoke check"
 run_if_present "connections/hvac-basics/tests/test_connection_yml.py" \

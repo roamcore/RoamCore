@@ -374,6 +374,53 @@ wizard:
     integration handles the FIVE §9 MANDATORY
     automations.
 
+basemap_default_and_swap:
+  # Wave 9 #110: default basemap is OpenStreetMap (free, no API key
+  # required, attribution rendered automatically by the Lovelace map
+  # card per https://operations.osmfoundation.org/policies/tiles/).
+  # Operator can swap to Stadia or another provider with a single paste
+  # into Settings → Helpers → "RC Map Tile URL". Additive — does not
+  # touch the offline-tile-cache contract surface or the FIVE §9
+  # MANDATORY automations documented in setup_notes.
+  default_tile_url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  default_attribution: "© OpenStreetMap contributors"
+  default_provider: "openstreetmap"
+  default_license: "ODbL — https://www.openstreetmap.org/copyright"
+  swap_examples:
+    - label: "Stadia Maps (free for non-commercial; API key required)"
+      url_template: "https://tiles.stadia.com/{z}/{x}/{y}@2x?api_key=YOUR_KEY"
+      signup_url: "https://docs.stadiamaps.com/"
+      notes: |
+        Free tier covers non-commercial / personal use. Sign up at
+        https://docs.stadiamaps.com/ to get an API key, then paste
+        `https://tiles.stadia.com/{z}/{x}/{y}@2x?api_key=YOUR_KEY`
+        into Settings → Helpers → "RC Map Tile URL". Keep the key
+        out of the repo — store it in your user secrets.
+    - label: "Carto Positron (no key, light theme)"
+      url_template: "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+      signup_url: ""
+      notes: |
+        No API key required. Free for general use. Attribution
+        "© OpenStreetMap contributors © CARTO" is rendered by the
+        Lovelace map card.
+    - label: "Self-hosted tileserver-gl"
+      url_template: "https://tiles.example.com/styles/positron/{z}/{x}/{y}.png"
+      signup_url: ""
+      notes: |
+        Replace `tiles.example.com` with your own tile-server
+        hostname. See https://github.com/maptiler/tileserver-gl
+        for a self-hosting walkthrough.
+  fallback_behavior:
+    # Bernard's doctrine: 'must not fail + super intuitive + critical
+    # infrastructure'. When the OSM tile fetch fails, the map view
+    # should fall back to a plain gray basemap with a "basemap
+    # unavailable" banner + the last-known location pin still
+    # visible. Plain-English error:
+    #   "Map tiles unavailable — you can still see your
+    #    last-known location. Check your internet connection."
+    on_tile_fetch_failure: "render_gray_basemap_with_last_known_pin_and_banner"
+    error_banner_text: "Map tiles unavailable — you can still see your last-known location. Check your internet connection."
+
 install:
   ha_integration_domain: map
   config_flow: true
