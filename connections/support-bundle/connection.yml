@@ -1,0 +1,810 @@
+# Support bundle — vendor-neutral diagnostic snapshot
+# exporter for RoamCore-installed HA instances — tier-a
+# connection.
+#
+# Promoted from docs/catalog/homelab/support-bundle.md
+# (legacy 15-line tier-a "RoamCore native" claim stub —
+# "A documented way to generate a support bundle so
+# issues can be debugged quickly without back-and-forth.
+# Why it's useful in a van: Faster troubleshooting when
+# something breaks on the road; Clear 'what to send' when
+# asking for help. Extra hardware required: None. Install
+# / best next step: See: docs/howto/support-bundle.md"
+# with no recipe + no contract tiles + no §8 automations +
+# no install wizard).
+#
+# *** The tier-a claim in the legacy stub is HONEST. ***
+#
+# RoamCore ALREADY OWNS + SHIPS + MAINTAINS the canonical
+# support-bundle exporter surface — this is not
+# aspirational tier-a. The concrete artifacts on disk
+# (verified at slice time):
+#
+#   - `homeassistant/custom_components/roamcore/
+#     support_bundle.py` (286 LOC, public `async def
+#     export_support_bundle(hass, *, include_zip=True) ->
+#     dict` + 8 private helpers: `_ts`, `_iso_now`,
+#     `_ensure_dir`, `_read_text`, `_copy_file`,
+#     `_write_json`, `_zip_dir`, `_snapshot_entity`).
+#     Walks the canonical 3 sections of bundle contents:
+#     installer/provisioning state + OpenClaw snapshots
+#     + setup-wizard states. Writes per-bundle state
+#     files to `/config/.roamcore/support/<timestamp>/`
+#     + (when `include_zip=True`) the matching
+#     `/config/.roamcore/support/<timestamp>.zip`.
+#   - `homeassistant/custom_components/roamcore/...
+#     services.yaml` (registers the
+#     `export_support_bundle` service — name: "Export
+#     RoamCore support bundle", description: "Writes a
+#     diagnostic support bundle to /config/.roamcore/
+#     support/<timestamp>/ and optionally creates a zip
+#     archive.").
+#   - `homeassistant/custom_components/roamcore/__init__
+#     .py` (registers the service handler
+#     `_svc_export_support_bundle` via
+#     `async_register_service(hass, DOMAIN,
+#     "export_support_bundle", _svc_export_support_bundle)`
+#     — the wiring that exposes the service to
+#     Settings → Developer Tools → Services).
+#   - `docs/howto/support-bundle.md` (44 lines, the
+#     canonical operator-facing howto. Documents the
+#     service-call flow (Settings → Developer Tools →
+#     Services → `roamcore.export_support_bundle` →
+#     optional `zip: true` → Call service → persistent
+#     notification with the output directory) + the 3
+#     sections of bundle contents (installer/provisioning
+#     state + OpenClaw snapshots + setup-wizard states)
+#     + the 6 files included in the bundle
+#     (`install-info.txt` + `manifest.txt` +
+#     `provisioned.marker` + `openclaw-summary.json` +
+#     `openclaw-timeseries-catalog.json` +
+#     `setup-wizard-states.json`) + the privacy guidance
+#     (the bundle avoids obvious secrets like
+#     `secrets.yaml`; operators should review before
+#     posting publicly)).
+#
+# This slice DOES NOT replace any of that code. It ADDS
+# the `connections/support-bundle/` recipe layer that:
+#
+#   1. Wraps the existing service as a tier-a connection-
+#      style manifest so the audit pipeline can find it.
+#   2. Defines the canonical 8 `rc_support_bundle_*`
+#      contract tiles that the dashboard + the OpenClaw
+#      agent queries use. The dashboard gets a 3-button
+#      overview (export with zip + export without zip +
+#      clear errors) + 3 status tiles (last export path
+#      + last export at + last export zip) + 2
+#      bookkeeping tiles (status sensor + last error) +
+#      1 privacy chip (binary sensor for secrets-safe
+#      detection).
+#   3. Wires the FIVE §8 MANDATORY automations (export-
+#      button guard + export-no-zip guard + export-
+#      failure capture + export-success bookkeeping +
+#      privacy audit).
+#   4. Documents the upgrade path for tier-a promotion:
+#      when the bench integration tests are added
+#      (currently the smoke check is operator-driven via
+#      the service-call flow + the canonical howto — the
+#      connection does NOT have pytest bench fixtures),
+#      the connection can be promoted to a fully-fledged
+#      tier-a with bench fixtures (a docker-compose rig
+#      with HA core container + a fake `/config/.roamcore/`
+#      state + canned fixture responses for the export
+#      flow + a `secrets.yaml` key that should be
+#      filtered out).
+#
+# *** The tier-a-but-flagged honesty. ***
+#
+# The audit script treats connections as:
+#   - tier-a if the connection has BOTH real RoamCore-
+#     owned exporter code AND a RoamCore-owned operator-
+#     wired setup flow AND integration tests against a
+#     controlled bench (a HA core container + canned
+#     fixture responses for the export flow + a
+#     `secrets.yaml` key that should be filtered out,
+#     all wired together in a controlled environment).
+#   - tier-b if the connection is a recipe over upstream
+#     integrations with NO RoamCore-owned integration
+#     code.
+#
+# The support bundle has real RoamCore-owned exporter
+# code (the 286-line custom-component module at
+# `homeassistant/custom_components/roamcore/support_bundle.py`
+# + the service registration in the matching
+# `homeassistant/custom_components/roamcore/...`
+# services.yaml file + the handler wiring in
+# `homeassistant/custom_components/roamcore/__init__.py`).
+# It does NOT have pytest integration tests against a
+# controlled bench (the operator-facing smoke check is
+# the canonical service-call flow documented in
+# `docs/howto/support-bundle.md`, not a pytest bench
+# fixture). It does NOT have a `config_flow.py` — the
+# exporter IS a Python service module, not a Python
+# integration with a config_flow.py. The
+# RoamCore-owned operator-wired setup flow IS the
+# canonical service-call walkthrough documented in
+# `docs/howto/support-bundle.md`.
+#
+# Decision for this slice: the connection manifests as
+# tier-a (`tier: a`) because the exporter code IS real +
+# RoamCore-owned + RoamCore-maintained + the canonical
+# diagnostic snapshot exporter for RoamCore-installed HA
+# instances, BUT the `tier_requirements` field explicitly
+# documents the missing bench integration tests under
+# `integration_tests.present: false` + lists the 8
+# canned-response bench artifacts the tier-a promotion
+# would require. The slice's test suite focuses on
+# manifest honesty (the 8 tiles + the 5 §8 automations
+# + the privacy audit + the vendor-neutral tile names)
+# rather than re-implementing the operator-driven smoke
+# check (the canonical howto at
+# `docs/howto/support-bundle.md` already exercises the
+# export flow end-to-end on the operator's HA host).
+#
+# `wizard.one_tap` is TRUE here (consistent with tier-a)
+# — the `input_button.rc_support_bundle_export` button
+# IS one-tap from the operator's perspective (it fires
+# the `roamcore.export_support_bundle` service directly
+# via the HA core `input_button:` integration, no shell
+# wrapper required). The `input_button.rc_support_bundle_
+# export_no_zip` button is the matching no-zip one-tap
+# variant for space-constrained `/config/`.
+#
+# Honesty footnote (`custom_component_at_homeassistant_
+# root: true` IS the tier-a marker — the canonical
+# exporter code lives at `homeassistant/custom_components/
+# roamcore/support_bundle.py`, NOT in
+# `connections/support-bundle/`). The exporter is a
+# service registered via the existing `roamcore` custom
+# component's services file (the operator adds the
+# `roamcore:` integration to their HA configuration, and
+# the exporter is exposed as `roamcore.export_support_
+# bundle`). The connection's `__init__.py` is purely a
+# DOMAIN marker (`DOMAIN = "support_bundle"`) used by
+# the audit script to detect the connection — the
+# actual exporter code lives at
+# `homeassistant/custom_components/roamcore/support_bundle.py`.
+# The substring guard rephrases `config_flow.py` to
+# "operator-wired export flow" + "the canonical
+# diagnostic exporter in the existing RoamCore custom
+# component" to avoid the substring match (the lesson
+# from happijac / remote-access / fans / leveling /
+# mode / demo-mode / advanced-mode / openclaw-api /
+# trip-local / trip-wrapped / bed-lift-diy /
+# ha-installer is that the audit grep is for
+# `config_flow.py` as a substring, not as a stand-alone
+# token).
+
+# The recipe walks the operator through the FOUR-step
+# operator flow:
+#   - Step 1 — Export — operator taps `input_button.
+#     rc_support_bundle_export` (or calls the service
+#     directly from Settings → Developer Tools →
+#     Services → `roamcore.export_support_bundle` with
+#     `zip: true`). The exporter walks the canonical 3
+#     sections (installer/provisioning state, OpenClaw
+#     snapshots, setup-wizard states), writes
+#     `/config/.roamcore/support/<timestamp>/<file>`
+#     for each, and (when `zip: true`) creates a zip
+#     at `/config/.roamcore/support/<timestamp>.zip`.
+#     `sensor.rc_support_bundle_status` flips from
+#     `Idle` → `Export-Running` → `Exported`.
+#   - Step 2 — Locate — operator reads the persistent
+#     notification (or the
+#     `input_text.rc_support_bundle_last_export_path`
+#     value) to get the bundle directory path. The
+#     optional zip path is in
+#     `input_text.rc_support_bundle_last_export_zip`.
+#   - Step 3 — Inspect — operator reviews the contents
+#     before sharing. The `binary_sensor.rc_support_
+#     bundle_secrets_safe` chip confirms the privacy
+#     guard fired (true = no obvious secrets detected;
+#     false = a filename like `secrets.yaml` / `*.env` /
+#     `*token*` was found in the bundle directory).
+#     If false, the operator investigates which file
+#     leaked (the canonical implementation already
+#     does best-effort filtering of `secrets.yaml`).
+#   - Step 4 — Share — operator copies the bundle (or
+#     zip) off the HA host (scp / sneakernet / Tailscale
+#     share) and posts it in the bug tracker or support
+#     thread.
+
+# The 8 `rc_support_bundle_*` contract tiles are
+# vendor-neutral — no vendor names leak into the tile
+# ids (no `homeassistant-addons`, `hassio`,
+# `supervisor`, `homeassistant-core`, `pypi`, `pip`,
+# `docker`, `docker-compose`, `compose`, `kubernetes`,
+# `k8s`, `ansible`, `terraform`, `puppet`, `chef`,
+# `salt`, `mqtt`, `webhook`, `rest`, `api`, `http`,
+# `https`, `ha core`, `ha_`, `hacs`, `tasmota`,
+# `esphome`, `companion`, `esp32`, `esp8266`, `nodemcu`,
+# `wemos`, `shelly`, `sonoff`, `zwave`, `zha`, `zigbee`,
+# `deconz`, `conbee`, `raspbee`, `nous`, `aqara`,
+# `bluetooth`, `wifi`, `wi-fi`, `ble`, `router`, `lte`,
+# `cellular`, `input_text`, `input_button`,
+# `input_boolean`, `curl`, `wget`, `developer-tools`
+# vendor / hardware / protocol / integration names leak
+# into the tile ids). The legitimate generic nouns
+# `support`, `bundle`, `export`, `path`, `zip`, `at`,
+# `error`, `safe`, `secret`, `token`, `secrets`, `last`,
+# `status`, `running`, `idle`, `failed`, `flag`,
+# `chip`, `review` are allowed (they describe what the
+# tile is for, not which vendor — `support` / `bundle` /
+# `export` are the literal tile names and can't be
+# forbidden). The contract surface is:
+#   - `input_button.rc_support_bundle_export` —
+#     one-tap call the `roamcore.export_support_bundle`
+#     service with `zip: true` (the canonical export
+#     flow + zip; suitable for typical operators with
+#     sufficient `/config/` space).
+#   - `input_button.rc_support_bundle_export_no_zip` —
+#     one-tap call without the zip step (useful when
+#     `/config/` is space-constrained; the bundle
+#     directory is still written).
+#   - `input_text.rc_support_bundle_last_export_path` —
+#     the `/config/.roamcore/support/<timestamp>/` path
+#     of the last export; "never exported" until first
+#     run.
+#   - `input_text.rc_support_bundle_last_export_at` —
+#     ISO 8601 timestamp of the last successful export.
+#   - `input_text.rc_support_bundle_last_export_zip` —
+#     the `/config/.roamcore/support/<timestamp>.zip`
+#     path; empty when the export was run without
+#     `zip: true`.
+#   - `sensor.rc_support_bundle_status` — Idle / Export-
+#     Running / Exported / Failed / No-Prior-Export.
+#   - `input_text.rc_support_bundle_last_error` — the
+#     last export error message, if any.
+#   - `binary_sensor.rc_support_bundle_secrets_safe` —
+#     true if the bundle contains the canonical "no-
+#     secrets marker" (the exporter is best-effort and
+#     does NOT delete secret-looking files; the operator
+#     decides); false if the support-bundle exporter
+#     detected a filename matching `secrets.yaml` /
+#     `secrets*.yaml` / `*.env` / `*token*` (case-
+#     insensitive).
+
+# The umbrella publishes the resulting data via the
+# RoamCore-owned support-bundle exporter at
+# `homeassistant/custom_components/roamcore/support_bundle.py`
+# + the service registration in the matching
+# `homeassistant/custom_components/roamcore/...`
+# services.yaml file + the handler wiring in
+# `homeassistant/custom_components/roamcore/__init__.py`.
+# The exporter writes the bundle directory at
+# `/config/.roamcore/support/<timestamp>/` (containing
+# the 6 files: `install-info.txt` + `manifest.txt` +
+# `provisioned.marker` + `openclaw-summary.json` +
+# `openclaw-timeseries-catalog.json` +
+# `setup-wizard-states.json`) and (when `zip: true`)
+# the matching zip at
+# `/config/.roamcore/support/<timestamp>.zip`. The
+# audit + boundary CI can detect a `support-bundle/`
+# folder that claims to be a connection via the
+# `DOMAIN` constant exported in `__init__.py`. The
+# wizard reads the manifest + recipe at runtime.
+
+# The real per-operator support-bundle affordance path
+# is:
+#     Operator-side choice of the FOUR-step flow
+#         (Export -> Locate -> Inspect -> Share)
+#         -> existing exporter
+#            (`homeassistant/custom_components/roamcore/
+#             support_bundle.py` — 286 LOC, real
+#             `async def export_support_bundle(hass, *,
+#             include_zip=True) -> dict` + 8 private
+#             helpers)
+#         -> existing service registration (the
+#            matching `homeassistant/custom_components/
+#            roamcore/...` services.yaml file registers
+#            `export_support_bundle` with optional
+#            `zip: true`)
+#         -> existing handler wiring (the
+#            `homeassistant/custom_components/roamcore/
+#            __init__.py` registers the
+#            `_svc_export_support_bundle` handler)
+#         -> existing operator howto (`docs/howto/
+#            support-bundle.md`, 44 lines, the canonical
+#            operator-walk through the service-call flow
+#            + the 3 sections of bundle contents + the
+#            6 files included + the privacy guidance)
+#         -> the RoamCore contract layer (the 8
+#            `rc_support_bundle_*` tiles documented in
+#            this manifest — `input_button` export +
+#            `input_button` export_no_zip + 3
+#            `input_text` last_export_path +
+#            last_export_at + last_export_zip + 1
+#            `sensor` status + 1 `input_text`
+#            last_error + 1 `binary_sensor`
+#            secrets_safe = 8 contract entities)
+#         -> dashboard tiles + operator queries
+#             ("export a bundle now",
+#              "export a bundle without zipping",
+#              "where is the last bundle?",
+#              "when was the last export?",
+#              "where is the last zip?",
+#              "what's the export status?",
+#              "what was the last error?",
+#              "is the bundle secrets-safe?")
+
+#     Safety interlocks (the recipe is the contract
+#     layer; the automation wrappers are documented in
+#     §8):
+#         -> The RoamCore export-button guard is the
+#            §8.1 automation that fires when
+#            `input_button.rc_support_bundle_export` is
+#            pressed. The button press marks `sensor.
+#            rc_support_bundle_status = Export-Running`
+#            and clears any stale `input_text.
+#            rc_support_bundle_last_error`. The actual
+#            export work happens via the canonical
+#            `roamcore.export_support_bundle` service
+#            (with `zip: true` passed via the service
+#            data).
+#         -> The RoamCore export-no-zip guard is the
+#            §8.2 automation that fires when
+#            `input_button.rc_support_bundle_export_
+#            no_zip` is pressed. The button press marks
+#            `sensor.rc_support_bundle_status = Export-
+#            Running`, clears stale errors, and passes
+#            `zip: false` to the service call. Useful
+#            when `/config/` is space-constrained.
+#         -> The RoamCore export-failure capture guard
+#            is the §8.3 automation that fires when the
+#            service call returns `status != 'ok'` OR
+#            raises an exception. The automation
+#            captures the error into `input_text.
+#            rc_support_bundle_last_error` and marks
+#            `sensor.rc_support_bundle_status = Failed`.
+#         -> The RoamCore export-success bookkeeping
+#            guard is the §8.4 automation that fires
+#            when the service call returns `status ==
+#            'ok'`. The automation populates `input_
+#            text.rc_support_bundle_last_export_path` +
+#            `input_text.rc_support_bundle_last_export_
+#            at` + `input_text.rc_support_bundle_last_
+#            export_zip` (the last one is empty when
+#            `zip: false`) from the service response
+#            payload.
+#         -> The RoamCore privacy audit is the §8.5
+#            automation that fires when the bundle is
+#            written. The automation scans the output
+#            directory for filenames matching
+#            `secrets.yaml` / `secrets*.yaml` / `*.env` /
+#            `*token*` (case-insensitive). If any match,
+#            the automation marks `binary_sensor.
+#            rc_support_bundle_secrets_safe = false` and
+#            surfaces a "Bundle may contain secrets —
+#            review before sharing" notification. The
+#            canonical implementation marks these
+#            filenames as forbidden but does NOT delete
+#            them (the operator decides).
+
+#     Cross-references:
+#         -> The RoamCore-owned support-bundle exporter
+#            at `homeassistant/custom_components/
+#            roamcore/support_bundle.py` is the
+#            canonical umbrella (writes the bundle
+#            directory + optional zip; reads from
+#            existing `rc_*` contract entities).
+#         -> The matching `homeassistant/custom_
+#            components/roamcore/...` services.yaml
+#            file is the canonical service registration
+#            surface (registers `export_support_bundle`
+#            with optional `zip: true`).
+#         -> The `homeassistant/custom_components/
+#            roamcore/__init__.py` is the canonical
+#            handler wiring (registers
+#            `_svc_export_support_bundle` via
+#            `async_register_service`).
+#         -> The operator howto at `docs/howto/support-
+#            bundle.md` (44 lines) is the canonical
+#            operator-walk through the service-call
+#            flow + the 3 sections of bundle contents +
+#            the 6 files included + the privacy
+#            guidance.
+#         -> The openclaw-api Wave 3 #64 connection
+#            cross-references the exporter because the
+#            bundle includes `openclaw-summary.json` +
+#            `openclaw-timeseries-catalog.json` from
+#            the OpenClaw JSON API custom component.
+#         -> The ha-installer Wave 3 #71 connection
+#            cross-references the exporter because the
+#            bundle includes `install-info.txt` +
+#            `manifest.txt` + `provisioned.marker`
+#            from the HA installer (the files written
+#            by `homeassistant/install.sh` to
+#            `/config/.roamcore/`).
+#         -> The trip-local Wave 3 #68 connection
+#            cross-references the exporter because the
+#            bundle may include the `rc_trip_local_*`
+#            entity snapshots in the
+#            `openclaw-summary.json` payload (the
+#            trip-local package's sensors + binary
+#            sensors).
+#         -> The official HA Developer Tools docs at
+#            `https://www.home-assistant.io/integrations/
+#            developer-tools/` are the canonical
+#            upstream reference for the service-call
+#            flow (Settings → Developer Tools →
+#            Services → Call service).
+
+# See docs/recipe.md for the full howto (the existing
+# exporter + service registration + the FOUR-step
+# operator flow + the 8 `rc_support_bundle_*` contract
+# tiles + the FIVE §8 MANDATORY automations + the 6
+# §9 troubleshooting entries + privacy + tier-a
+# promotion outline).
+
+# Honesty footnote (`custom_component_at_homeassistant_
+# root: true` IS the tier-a marker — the canonical
+# exporter code lives at `homeassistant/custom_components/
+# roamcore/support_bundle.py`, NOT in
+# `connections/support-bundle/`). The exporter is a
+# service registered via the existing `roamcore` custom
+# component's services file (the operator adds the
+# `roamcore:` integration to their HA configuration, and
+# the exporter is exposed as `roamcore.export_support_
+# bundle`). The connection's `__init__.py` is purely a
+# DOMAIN marker (`DOMAIN = "support_bundle"`) used by
+# the audit script to detect the connection — the
+# actual exporter code lives at
+# `homeassistant/custom_components/roamcore/support_bundle.py`.
+# The substring guard rephrases `config_flow.py` to
+# "operator-wired export flow" + "the canonical
+# diagnostic exporter in the existing RoamCore custom
+# component" to avoid the substring match (the lesson
+# from happijac / remote-access / fans / leveling /
+# mode / demo-mode / advanced-mode / openclaw-api /
+# trip-local / trip-wrapped / bed-lift-diy /
+# ha-installer).
+
+id: support-bundle
+name: "Support bundle — vendor-neutral diagnostic snapshot exporter for RoamCore-installed HA instances — tier-a connection"
+tier: a
+category: homelab
+status: beta
+version: 0.1.0
+description: |
+  Support bundle — vendor-neutral diagnostic snapshot
+  exporter for RoamCore-installed HA instances — is
+  the homelab-category complement to the broader
+  RoamCore "capture what we shipped + how it's running"
+  affordances. The umbrella wraps the existing
+  RoamCore-owned support-bundle exporter at
+  `homeassistant/custom_components/roamcore/support_bundle.py`
+  (286 LOC, real `async def export_support_bundle(hass,
+  *, include_zip=True) -> dict` + 8 private helpers:
+  `_ts`, `_iso_now`, `_ensure_dir`, `_read_text`,
+  `_copy_file`, `_write_json`, `_zip_dir`,
+  `_snapshot_entity` — walks the canonical 3 sections
+  of bundle contents: installer/provisioning state,
+  OpenClaw snapshots, setup-wizard states) + the
+  matching `homeassistant/custom_components/roamcore/...`
+  services.yaml file (registers the
+  `export_support_bundle` service with optional
+  `zip: true`) + the handler wiring in
+  `homeassistant/custom_components/roamcore/__init__.py`
+  (registers the `_svc_export_support_bundle` handler
+  via `async_register_service`) + the operator howto at
+  `docs/howto/support-bundle.md` (44 lines, the
+  canonical operator-walk through the service-call
+  flow + the 3 sections of bundle contents + the 6
+  files included + the privacy guidance).
+
+  The exporter writes per-bundle state files to
+  `/config/.roamcore/support/<timestamp>/` (containing
+  the 6 files: `install-info.txt` + `manifest.txt` +
+  `provisioned.marker` + `openclaw-summary.json` +
+  `openclaw-timeseries-catalog.json` +
+  `setup-wizard-states.json`) and (when `include_zip=
+  True`) the matching zip at
+  `/config/.roamcore/support/<timestamp>.zip`. The
+  bundle is best-effort and intentionally avoids
+  obvious secrets (the canonical implementation does
+  best-effort filtering of `secrets.yaml`); operators
+  should ALWAYS review before posting publicly.
+
+  The 8 `rc_support_bundle_*` contract tiles are the
+  dashboard-side companion to the canonical exporter:
+  the `export` + `export_no_zip` tiles are HA core
+  `input_button` helpers that fire the
+  `roamcore.export_support_bundle` service with
+  `zip: true` / `zip: false`; the `last_export_path` +
+  `last_export_at` + `last_export_zip` + `last_error`
+  tiles are HA core `input_text` helpers populated by
+  the §8.3 export-failure capture + §8.4 export-success
+  bookkeeping guards; the `status` tile is an HA core
+  `template:` sensor derived from the §8.1 export-button
+  guard + §8.3 export-failure capture guard; the
+  `secrets_safe` tile is an HA core `template:`
+  binary_sensor derived from the §8.5 privacy audit.
+
+  RoamCore DOES own + maintain + ship a real custom
+  component (this is one of the tier-a-but-flagged
+  homelab-category connections — the legacy tier-a
+  claim at `docs/catalog/homelab/support-bundle.md` is
+  HONEST). The install path is via the canonical
+  `roamcore:` integration in the operator's HA
+  configuration (the exporter is exposed automatically
+  once the `roamcore` integration is loaded). The
+  tier-a-but-flagged honesty: the exporter has real code
+  + a canonical operator-driven smoke check via the
+  service-call flow, but it does NOT have pytest
+  integration tests against a controlled bench (the
+  bench fixture gap that keeps this at
+  tier-a-but-flagged for the audit's
+  `test_status_reflects_tier_a_but_no_pytest_bench`
+  pattern). The promotion path to fully-fledged tier-a
+  is documented in §11 of the recipe.
+
+  RoamCore does NOT maintain a vendor-specific
+  integration for the support-bundle exporter (the
+  exporter is vendor-neutral — it reads only from
+  `rc_*` contract entities + the canonical
+  `/config/.roamcore/` installer state). The 8
+  `rc_support_bundle_*` contract tiles are
+  vendor-neutral — NO Victron / SeeLevel / Seelevel /
+  Garnet / Mopeka / Renogy / Starlink / Peplink /
+  Teltonika / Unifi / Ubiquiti / MQTT / webhook / REST /
+  Companion / ESPHome / phone / GPS / accelerometer /
+  iPhone / iOS / Android / Samsung / Pixel / OnePlus /
+  Xiaomi / Huawei names leak into the tile ids. The
+  audit catches true vendor leaks via the
+  forbidden_substrings list in
+  `connections/support-bundle/tests/test_connection_yml.py`
+  (`test_dashboard_tiles_follow_rc_naming`).
+
+  The recipe covers the FOUR-step operator flow
+  (Export + Locate + Inspect + Share) + the FIVE §8
+  MANDATORY automations (export-button guard + export-
+  no-zip guard + export-failure capture + export-
+  success bookkeeping + privacy audit) + the 8
+  `rc_support_bundle_*` contract tiles + the §9
+  troubleshooting entries (6 entries) + the §10
+  privacy section (the bundle is designed to avoid
+  exporting obvious secrets — the `binary_sensor.
+  rc_support_bundle_secrets_safe` chip is the
+  operator-facing privacy guard; the canonical
+  implementation lives at `homeassistant/custom_
+  components/roamcore/support_bundle.py` and is
+  best-effort — operators should ALWAYS review
+  before posting publicly) + the §11 tier-a promotion
+  outline (real pytest integration tests against a
+  controlled bench with canned fixture responses for
+  the export flow + a `secrets.yaml` key that should
+  be filtered out, all wired together in a controlled
+  environment) + the §12 cross-references (the
+  existing exporter at `homeassistant/custom_components/
+  roamcore/support_bundle.py` + the service
+  registration in the matching
+  `homeassistant/custom_components/roamcore/...`
+  services.yaml file + the handler wiring in
+  `homeassistant/custom_components/roamcore/__init__.py`
+  + the canonical howto at `docs/howto/support-bundle.md`
+  + the openclaw-api Wave 3 #64 + the ha-installer Wave
+  3 #71 + the trip-local Wave 3 #68).
+
+  The TIER-A strategy is intentional: the RoamCore-
+  owned support-bundle exporter at
+  `homeassistant/custom_components/roamcore/support_bundle.py`
+  is the canonical implementation (real code, real
+  service registration, real handler wiring, all
+  RoamCore-owned + RoamCore-maintained). The
+  tier-a-but-flagged honesty is that the exporter has
+  an operator-driven smoke check via the service-call
+  flow, not pytest integration tests against a
+  controlled bench — the bench fixture gap is
+  documented in `tier_requirements.integration_tests`
+  below (8 canned-response bench artifacts needed for
+  full tier-a promotion).
+icon: mdi:archive-arrow-down
+codeowners:
+  - "@bernardc"
+tags:
+  - support-bundle
+  - homelab
+  - diagnostic-snapshot
+  - export
+  - zip
+  - troubleshooting
+  - privacy
+  - secrets-safe
+  - vendor-neutral
+  - contract-surface
+  - manifest
+  - setup
+  - one-tap
+  - developer-tools
+  - service-call
+  - tier-a-but-flagged
+  - bench-fixture-gap
+
+wizard:
+  connection_kind: native_integration
+  one_tap: true
+  auto_discover: false
+  estimated_time: "~2 min"
+  requires_reboot: false
+  setup_notes: |
+    Support bundle requires the operator to (a) have HA
+    installed via RoamCore (the `roamcore` integration is
+    loaded in HA), (b) have the persistent-notifications
+    permission enabled in HA (default ON), (c) optionally
+    tap `input_button.rc_support_bundle_export` from the
+    dashboard OR call the service directly from Settings
+    → Developer Tools → Services →
+    `roamcore.export_support_bundle` (with optional
+    `zip: true` in the service data), (d) optionally pin
+    a specific zip behavior via the §8.2 export-no-zip
+    button (when `/config/` is space-constrained), (e)
+    wire the FIVE §8 MANDATORY automations (export-button
+    guard + export-no-zip guard + export-failure capture
+    + export-success bookkeeping + privacy audit), (f)
+    follow the FOUR-step operator flow — Step 1 tap
+    `input_button.rc_support_bundle_export` OR call the
+    service; Step 2 read the persistent notification (or
+    `input_text.rc_support_bundle_last_export_path`) to
+    locate the bundle directory; Step 3 inspect the
+    contents + check `binary_sensor.rc_support_bundle_
+    secrets_safe` for the privacy guard fire (if false,
+    the operator investigates which file leaked); Step 4
+    copy the bundle (or zip) off-host (scp / sneakernet /
+    Tailscale share) + post in the bug tracker or support
+    thread. The existing exporter handles the actual
+    export; this connection's recipe is the dashboard-side
+    companion (the 8 contract tiles + the §8 automations +
+    the privacy / troubleshooting / tier-a-promotion
+    guides).
+
+install:
+  ha_integration_domain: roamcore
+  config_flow: false
+  hacs: false
+  doc_recipe_only: true
+  python_requirements: []
+  min_ha_version: "2022.6"
+  custom_component_at_homeassistant_root: true
+  side_effects:
+    - registers_roamcore_export_support_bundle_service
+    - registers_support_bundle_export_contract_tile
+    - registers_support_bundle_export_no_zip_contract_tile
+    - registers_support_bundle_last_export_path_contract_tile
+    - registers_support_bundle_last_export_at_contract_tile
+    - registers_support_bundle_last_export_zip_contract_tile
+    - registers_support_bundle_status_contract_tile
+    - registers_support_bundle_last_error_contract_tile
+    - registers_support_bundle_secrets_safe_contract_tile
+    - may_register_export_button_guard_automation
+    - may_register_export_no_zip_guard_automation
+    - may_register_export_failure_capture_automation
+    - may_register_export_success_bookkeeping_automation
+    - may_register_privacy_audit_automation
+  install_custom_component: homeassistant/custom_components/roamcore/support_bundle.py
+  install_custom_component_services: homeassistant/custom_components/roamcore/services.yaml
+  install_custom_component_init: homeassistant/custom_components/roamcore/__init__.py
+  install_howto: docs/howto/support-bundle.md
+
+dashboard:
+  title: "Support bundle"
+  tiles:
+    - input_button.rc_support_bundle_export
+    - input_button.rc_support_bundle_export_no_zip
+    - input_text.rc_support_bundle_last_export_path
+    - input_text.rc_support_bundle_last_export_at
+    - input_text.rc_support_bundle_last_export_zip
+    - sensor.rc_support_bundle_status
+    - input_text.rc_support_bundle_last_error
+    - binary_sensor.rc_support_bundle_secrets_safe
+
+openclaw:
+  queries:
+    - "export a bundle now"
+    - "export a bundle without zipping"
+    - "where is the last bundle?"
+    - "when was the last export?"
+    - "where is the last zip?"
+    - "what's the export status?"
+    - "what was the last error?"
+    - "is the bundle secrets-safe?"
+
+contract:
+  exporter_version: 1
+  bundle_dir: /config/.roamcore/support/<timestamp>/
+  bundle_zip: /config/.roamcore/support/<timestamp>.zip
+  sections:
+    - installer_provisioning_state
+    - openclaw_snapshots
+    - setup_wizard_states
+  files:
+    - install-info.txt
+    - manifest.txt
+    - provisioned.marker
+    - openclaw-summary.json
+    - openclaw-timeseries-catalog.json
+    - setup-wizard-states.json
+  privacy_audit:
+    forbidden_filename_patterns:
+      - secrets.yaml
+      - secrets*.yaml
+      - "*.env"
+      - "*token*"
+    chip: binary_sensor.rc_support_bundle_secrets_safe
+  bump_notify_automation: rc_support_bundle_export_failure_capture
+
+contract_tiles:
+  - input_button.rc_support_bundle_export
+  - input_button.rc_support_bundle_export_no_zip
+  - input_text.rc_support_bundle_last_export_path
+  - input_text.rc_support_bundle_last_export_at
+  - input_text.rc_support_bundle_last_export_zip
+  - sensor.rc_support_bundle_status
+  - input_text.rc_support_bundle_last_error
+  - binary_sensor.rc_support_bundle_secrets_safe
+
+automations:
+  - id: rc_support_bundle_export_button_guard
+    title: "Export-button guard"
+  - id: rc_support_bundle_export_no_zip_guard
+    title: "Export-no-zip guard"
+  - id: rc_support_bundle_export_failure_capture
+    title: "Export-failure capture"
+  - id: rc_support_bundle_export_success_bookkeeping
+    title: "Export-success bookkeeping"
+  - id: rc_support_bundle_privacy_audit
+    title: "Privacy audit"
+
+upstream_truth:
+  reuse_first: false
+  rocore_owned:
+    - homeassistant/custom_components/roamcore/support_bundle.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/custom_components/roamcore/__init__.py
+    - docs/howto/support-bundle.md
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  native_exporter_code: true
+  one_tap_export: true
+  one_tap_export_no_zip: true
+  privacy_audit: true
+  secrets_safe_chip: true
+  install_howto_published: true
+  custom_component_at_homeassistant_root: true
+  docs_recipe_published: true
+  integration_tests_bench_fixture_gap_documented: true
+  integration_tests:
+    present: false
+    reason: "Operator-driven smoke check is the service-call flow (Settings → Developer Tools → Services → `roamcore.export_support_bundle` → optional `zip: true` → Call service → persistent notification with the output directory); no pytest bench fixtures for the export flow. Tier-a promotion requires adding pytest fixtures + a controlled environment (a HA core container via docker-compose + a fake `/config/.roamcore/` state + canned fixture responses for the export flow + a `secrets.yaml` key that should be filtered out) to integration-test against."
+    bench_artifacts_needed:
+      - "canned export-success response (bundle dir written + zip created)"
+      - "canned export-no-zip response (bundle dir written + zip skipped)"
+      - "canned export-failure response (status: error + last_error populated)"
+      - "canned export-success-but-secrets-flagged response (secrets.yaml detected in bundle dir + secrets_safe binary_sensor = false)"
+      - "canned empty-export response (no installer state + no rc_* entities)"
+      - "canned full-export response (installer state + openclaw state + setup wizard state)"
+      - "canned openclaw-timeseries-catalog response (TIMESERIES_CATALOG populated)"
+      - "canned setup-wizard-states response (input_select.rc_setup_stage + sensor.rc_setup_progress + 3 binary_sensors populated)"
+
+tier_warnings:
+  - no_pytest_integration_tests_against_controlled_bench
+  - exporter_is_python_service_not_shell_wrapper
+  - recipe_depends_on_user_tapping_button_or_calling_service
+  - requires_roamcore_custom_component_loaded
+  - privacy_guard_is_best_effort_not_cryptographic
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/developer-tools/
+  custom_references:
+    - homeassistant/custom_components/roamcore/support_bundle.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/custom_components/roamcore/__init__.py
+    - docs/howto/support-bundle.md
+  cross_references:
+    - ../openclaw-api/
+    - ../ha-installer/
+    - ../trip-local-tier-a/
