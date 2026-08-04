@@ -19,6 +19,8 @@ from .const import (
     CONF_PROVISION_REF,
 )
 
+from .contract_header import apply_contract_header
+
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -243,4 +245,4 @@ class RoamcoreDiagnosticsView(HomeAssistantView):
                 "entities": out,
             }
 
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))

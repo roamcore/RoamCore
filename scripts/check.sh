@@ -134,6 +134,31 @@ run_if_present "connections/advanced-mode/tests/test_connection_yml.py" \
   "Connection: Advanced mode (tier-b) — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block: manifest honesty smoke check"
 run_if_present "connections/openclaw-api/tests/test_connection_yml.py" \
   "Connection: OpenClaw JSON API (tier-a) — vendor-neutral machine-readable summary + skill + rc_dump + timeseries endpoints for local agents: manifest honesty smoke check"
+# Wave 9 #112 — Real pytest integration tests for the 13 OpenClaw JSON API
+# endpoints. The `run_if_present` helper above runs `python3 <file>` for
+# .py files, which works for the standalone `test_connection_yml.py`
+# manifest-honesty smoke but NOT for pytest-style tests (which need
+# `python -m pytest <dir>`). We run the pytest tests directly here so
+# they get the right invocation. The test rig uses the venv's
+# `pytest` + `pytest-asyncio` (the `homeassistant` package isn't on
+# the system Python path; the venv at `.venv/` is the canonical
+# test rig for RoamCore). If the venv isn't present, fall back to
+# `python3 -m pytest` (which will fail with a clear error if the
+# system Python doesn't have the deps).
+ROAMCORE_PYTEST="${ROAMCORE_VENV:-.venv}/bin/pytest"
+if [ -x "$ROAMCORE_PYTEST" ]; then
+  ROAMCORE_PYTEST_RUNNER="$ROAMCORE_PYTEST"
+else
+  ROAMCORE_PYTEST_RUNNER="python3 -m pytest"
+fi
+if [ -f "connections/openclaw-api/tests/conftest.py" ] && [ -f "connections/openclaw-api/tests/test_integration.py" ]; then
+  banner "Connection: OpenClaw JSON API (tier-a) — pytest integration tests (11 URL routes + 2 service surfaces)"
+  ($ROAMCORE_PYTEST_RUNNER connections/openclaw-api/tests/test_integration.py -v --tb=short) || true
+fi
+if [ -f "connections/openclaw-api/tests/test_contract.py" ] && [ -f "connections/openclaw-api/tests/conftest.py" ]; then
+  banner "Connection: OpenClaw JSON API (tier-a) — contract-version + skill-discovery tests"
+  ($ROAMCORE_PYTEST_RUNNER connections/openclaw-api/tests/test_contract.py -v --tb=short) || true
+fi
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 

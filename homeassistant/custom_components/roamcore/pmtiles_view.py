@@ -23,9 +23,9 @@ class RoamcorePmtilesView(HomeAssistantView):
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 
-    async def get(self, request: web.Request):
+    async def get(self, request: web.Request, filename: str) -> web.Response:
         # Defensive: only allow .pmtiles under the expected directory.
-        fn = str(request.match_info.get("filename") or "").strip()
+        fn = str(filename or "").strip()
         if not fn.endswith(".pmtiles"):
             raise web.HTTPNotFound()
         if "/" in fn or "\\" in fn or ".." in fn:

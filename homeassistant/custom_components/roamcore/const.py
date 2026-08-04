@@ -3,6 +3,15 @@ DOMAIN = "roamcore"
 CONF_CONTRACT_VERSION = "contract_version"
 DEFAULT_CONTRACT_VERSION = 1
 
+# The HTTP header that every RoamCore API response emits, so the
+# agent can detect a contract bump BEFORE parsing the body (the
+# body shape can change between versions; the header is the canary).
+# The agent sees this header on EVERY endpoint — /summary, /skill,
+# /rc_dump, /timeseries/*, /automation/*, /diagnostics,
+# /system/summary, /update, /pmtiles/* — and the value is the
+# integer contract version (currently 1).
+ROAMCORE_CONTRACT_HEADER = "X-RoamCore-Contract"
+
 # Options
 CONF_OPENCLAW_API_ENABLED = "openclaw_api_enabled"
 CONF_OPENCLAW_API_REQUIRES_AUTH = "openclaw_api_requires_auth"

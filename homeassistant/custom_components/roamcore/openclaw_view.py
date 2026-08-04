@@ -21,6 +21,7 @@ from .const import (
 from aiohttp import web
 
 from .automation_intents import INTENT_CONTRACT, SUPPORTED_INTENTS, validate_intent
+from .contract_header import apply_contract_header
 
 
 def _openclaw_enabled(hass: HomeAssistant, entry_id: str) -> bool:
@@ -214,7 +215,7 @@ class OpenClawSummaryView(HomeAssistantView):
 
         payload["debug"] = {"entities": debug_entities}
 
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
 
 
 class OpenClawSkillView(HomeAssistantView):
@@ -253,7 +254,7 @@ class OpenClawSkillView(HomeAssistantView):
                 "If requires_auth=true, configure your agent to send a Home Assistant Long-Lived Access Token as a Bearer token.",
             ],
         }
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
 
 
 class OpenClawRcDumpView(HomeAssistantView):
@@ -316,7 +317,7 @@ class OpenClawRcDumpView(HomeAssistantView):
             "count": len(out),
             "entities": out,
         }
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
 
 
 # A curated set of time-series keys for agent-friendly analysis.
@@ -385,7 +386,7 @@ class OpenClawTimeSeriesCatalogView(HomeAssistantView):
             "count": len(items),
             "keys": items,
         }
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
 
 
 class OpenClawTimeSeriesView(HomeAssistantView):
@@ -439,13 +440,13 @@ class OpenClawTimeSeriesView(HomeAssistantView):
         resolution_sec = max(15, min(resolution_sec, 900))
 
         if not keys:
-            return self.json(
+            return apply_contract_header(self.json(
                 {
                     "ok": False,
                     "error": "no_keys",
                     "hint": "Pass ?keys=power.battery_soc_pct,power.load_power_w ... See /api/roamcore/openclaw/timeseries/catalog",
                 }
-            )
+            ))
 
         # Resolve to entity_ids and partition by kind
         resolved: list[tuple[str, str, str]] = []  # (key, eid, kind)
@@ -545,7 +546,7 @@ class OpenClawTimeSeriesView(HomeAssistantView):
             "series": series,
             "events": events,
         }
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
 
 
 class OpenClawAutomationIntentsView(HomeAssistantView):
@@ -573,7 +574,7 @@ class OpenClawAutomationIntentsView(HomeAssistantView):
             return web.Response(status=404)
 
         _mark_openclaw_last_seen(self._hass, self._entry_id, "automation_intents")
-        return self.json(
+        return apply_contract_header(self.json(
             {
                 "contract": INTENT_CONTRACT,
                 "generated_at": _iso_now(),
@@ -584,7 +585,7 @@ class OpenClawAutomationIntentsView(HomeAssistantView):
                     "payload_shape": {"type": "<intent_type>", "params": {}},
                 },
             }
-        )
+        ))
 
     async def post(self, request):
         """Validate a JSON payload.
@@ -602,14 +603,14 @@ class OpenClawAutomationIntentsView(HomeAssistantView):
         try:
             data = await request.json()
         except Exception:
-            return self.json({"ok": False, "error": "invalid_json"})
+            return apply_contract_header(self.json({"ok": False, "error": "invalid_json"}))
 
         intent = data.get("intent") if isinstance(data, dict) else None
         if intent is None:
             intent = data
 
         res = validate_intent(intent)
-        return self.json({"contract": INTENT_CONTRACT, "generated_at": _iso_now(), **res.to_dict()})
+        return apply_contract_header(self.json({"contract": INTENT_CONTRACT, "generated_at": _iso_now(), **res.to_dict()}))
 
 
 class OpenClawAutomationValidateView(OpenClawAutomationIntentsView):
@@ -620,10 +621,10 @@ class OpenClawAutomationValidateView(OpenClawAutomationIntentsView):
 
     async def get(self, request):
         # Redirect-ish hint (we don't want to deal with actual redirects in some clients)
-        return self.json(
+        return apply_contract_header(self.json(
             {
                 "ok": False,
                 "error": "use_post",
                 "hint": "POST JSON to this endpoint, or GET /api/roamcore/openclaw/automation/intents for schema.",
             }
-        )
+        ))

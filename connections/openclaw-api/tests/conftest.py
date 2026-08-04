@@ -194,13 +194,22 @@ async def hass(
     fresh `TestClient` for each test so aiohttp server state is
     isolated between tests without re-spinning HA itself.
     """
-    # Make the shim discoverable as a Python package
+    # Make the shim discoverable as a Python package. We add BOTH
+    # the parent directory (so `import custom_components` works for
+    # HA's loader) AND the shim directory itself (so `import roamcore`
+    # works as a top-level package for the integration's internal
+    # relative imports — the `support_bundle` module does
+    # `from .openclaw_view import TIMESERIES_CATALOG` which requires
+    # the parent package, but Python won't synthesize the parent
+    # package if roamcore is loaded as a top-level module).
     sys.path.insert(0, str(hass_custom_components_dir.parent))
+    sys.path.insert(0, str(hass_custom_components_dir))
 
     # Import custom_components so the loader's `import custom_components`
     # succeeds (the loader does this lazily inside
     # `_get_custom_components`).
     import custom_components  # noqa: F401
+    import roamcore  # noqa: F401
 
     # Lazy imports — keep them inside the fixture so the test module
     # imports don't trigger HA bootstrap at collection time.

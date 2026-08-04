@@ -971,190 +971,100 @@ def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
     )
 
 
-def test_status_reflects_tier_a_but_bench_fixtures_missing(
+def test_status_reflects_tier_a_is_honest_wave9(
     manifest: dict,
 ) -> None:
-    """Status must be honest about tier-a-but-flagged
-    (no pytest integration tests against a controlled
-    bench).
+    """Status must reflect the tier-a-is-honest claim (Wave 9 #112).
 
-    If we ever flip this to 'shipped' or 'stable', the
-    audit will demand an actual integration test (and
-    rightly so). 'beta' is the only honest tier-a status
-    for a connection that wraps real RoamCore-owned
-    integration code + a curl-based smoketest but lacks
-    pytest bench fixtures (canned fixture responses for
-    /summary + /skill + /rc_dump + /timeseries endpoints,
-    all wired together in a controlled environment).
+    Before this slice, the connection was tagged tier-a-but-flagged
+    because the only integration test was a curl-based smoketest at
+    `homeassistant/tools/openclaw_api_smoketest.sh` — which only
+    checks that the endpoint returns 200 + JSON, not that the view
+    code actually works against a real HA instance.
 
-    The five honesty warnings that tier_warnings must
-    contain cover:
-      - no_pytest_integration_tests_against_controlled_bench
-        (no bench fixture — canned /summary response
-        with all rc_* fields populated + canned /summary
-        response with all rc_* fields null/unknown +
-        canned /skill response with auth required + auth
-        not required + canned /rc_dump response with mix
-        of rc_* + non-rc_* entities + canned
-        /timeseries/catalog response + canned /timeseries
-        response with numeric + boolean series + 404
-        response when
-        input_boolean.rc_openclaw_api_enabled is OFF +
-        401 response when auth is required but LLAT is
-        missing, all wired together in a controlled
-        environment)
-      - bench_fixture_gap_curls_smoketest_only
-        (the integration has a curl-based smoketest at
-        `homeassistant/tools/openclaw_api_smoketest.sh`,
-        not pytest integration tests against a
-        controlled bench)
+    Wave 9 #112 added real pytest integration tests at
+    `connections/openclaw-api/tests/test_integration.py` +
+    `connections/openclaw-api/tests/test_contract.py` that:
+      - spin up a real `HomeAssistant` instance
+      - load the RoamCore custom component (`homeassistant/custom_components/roamcore/`)
+      - send real HTTP requests through the registered `HomeAssistantView`s
+      - assert the contract version (`X-RoamCore-Contract: 1` header)
+      - assert the agent-skill discovery payload
+      - assert the 11 URL route endpoints + the 2 service surfaces
+        (action_execute + support_bundle) all have the contract promised
+
+    The two retired honesty warnings (`no_pytest_integration_tests_against_controlled_bench`
+    + `bench_fixture_gap_curls_smoketest_only`) are gone because:
+      - the pytest tests ARE the integration tests
+      - the integration tests fire against a real HA + real RoamCore
+        custom component (no canned fixtures — the test rig loads the
+        real integration code)
+      - the curl smoketest is still there as a deeper sanity check
+        (it catches deployment-time regressions the pytest rig can't,
+        like a firewall blocking the RoamCore port or a missing
+        integration in HA's integration registry)
+
+    The three remaining honesty warnings are STILL true (and SHOULD
+    stay — these are operator-action-required caveats, not test-rig
+    gaps):
       - helper_package_ships_with_requires_auth_off_default
-        (the helper package at
-        `homeassistant/packages/roamcore_openclaw_api_`
-        `controls.yaml` ships with
-        `input_boolean.rc_openclaw_api_requires_auth:
-        initial: false` — operator must flip ON
-        manually for the recommended auth mode)
       - requires_llat_creation_for_recommended_auth_mode
-        (the operator must create a Home Assistant Long-
-        Lived Access Token (LLAT) under Home Assistant
-        → Profile → Long-Lived Access Tokens → Create
-        Token for the recommended auth mode; the LLAT
-        is NOT stored in RoamCore — the operator owns
-        the token)
       - contract_version_bump_requires_dashboard_side_auto_bump
-        (when the integration's `CONTRACT_VERSION`
-        constant in `homeassistant/custom_components/`
-        `roamcore_openclaw_api/const.py` is bumped, the
-        §8.5 contract-version-bump-notify guard must
-        auto-bump
-        `sensor.rc_openclaw_api_contract_version` to
-        match)
     """
-    assert manifest["status"] == "beta", (
-        f"openclaw-api status={manifest['status']!r} "
-        f"implies shipped coverage we don't have; use "
-        f"'beta' until full tier-a promotion lands "
-        f"(canned /summary response with all rc_* fields "
-        f"populated + canned /summary response with all "
-        f"rc_* fields null/unknown + canned /skill "
-        f"response with auth required + auth not required "
-        f"+ canned /rc_dump response with mix of rc_* + "
-        f"non-rc_* entities + canned /timeseries/catalog "
-        f"response + canned /timeseries response with "
-        f"numeric + boolean series + 404 response when "
-        f"input_boolean.rc_openclaw_api_enabled is OFF + "
-        f"401 response when auth is required but LLAT is "
-        f"missing — all wired together in a controlled "
-        f"environment)"
+    tier_requirements = manifest.get("tier_requirements", {})
+    integration_tests = tier_requirements.get("integration_tests", {})
+    assert integration_tests.get("present") is True, (
+        "tier_requirements.integration_tests.present must be True now "
+        "that the pytest integration tests ship. The Wave 9 #112 "
+        "slice proves tier-a is honest: real pytest rig against a "
+        "real HA + real RoamCore custom component, not a curl smoketest."
     )
+    # The pytest_path must point at the NEW test file (the one
+    # delivered by this slice).
+    assert integration_tests.get("pytest_path"), (
+        "tier_requirements.integration_tests.pytest_path must be set "
+        "to the path of the pytest integration tests file "
+        "(`connections/openclaw-api/tests/test_integration.py`)"
+    )
+    # The 2 retired honesty warnings MUST be gone.
     tier_warnings = manifest.get("tier_warnings", [])
-    # Tier-warnings must include the honest-about-no-
-    # pytest-integration-tests marker.
-    assert "no_pytest_integration_tests_against_controlled_bench" in tier_warnings, (
-        "tier_warnings must declare "
-        "'no_pytest_integration_tests_against_controlled_"
-        "bench' for honesty in the audit listing"
+    assert "no_pytest_integration_tests_against_controlled_bench" not in tier_warnings, (
+        "tier_warnings no longer needs 'no_pytest_integration_tests_"
+        "against_controlled_bench' — the pytest tests exist now "
+        "(Wave 9 #112). Removing the warning is the signal that the "
+        "tier-a-but-flagged honesty note is retired."
     )
-    # And the bench-fixture-gap / curl-smoketest-only
-    # honesty warning.
-    assert "bench_fixture_gap_curls_smoketest_only" in tier_warnings, (
-        "tier_warnings must declare "
-        "'bench_fixture_gap_curls_smoketest_only' so the "
-        "audit listing is honest about the curl-based "
-        "smoketest vs the missing pytest bench fixtures"
+    assert "bench_fixture_gap_curls_smoketest_only" not in tier_warnings, (
+        "tier_warnings no longer needs 'bench_fixture_gap_curls_"
+        "smoketest_only' — the pytest integration tests run against "
+        "a real HA + real RoamCore custom component (no canned "
+        "fixtures; the test rig loads the real integration code)."
     )
-    # Helper-package-ships-with-requires_auth-off-default
-    # honesty — the helper package ships with
-    # `input_boolean.rc_openclaw_api_requires_auth:
-    # initial: false` for safety; the operator must flip
-    # ON manually for the recommended auth mode.
+    # The 3 operator-action-required honesty warnings MUST still be
+    # present (these are not test-rig gaps; they're real operator
+    # concerns).
     assert "helper_package_ships_with_requires_auth_off_default" in tier_warnings, (
-        "tier_warnings must declare "
-        "'helper_package_ships_with_requires_auth_off_"
-        "default' so the audit listing is honest that "
-        "the helper package ships with the recommended-"
-        "auth-mode toggle OFF for safety"
+        "tier_warnings must still declare "
+        "'helper_package_ships_with_requires_auth_off_default' so "
+        "the audit listing is honest that the helper package ships "
+        "with the recommended-auth-mode toggle OFF for safety"
     )
-    # Requires-LLAT-creation-for-recommended-auth-mode
-    # honesty — the operator must create a Home
-    # Assistant Long-Lived Access Token (LLAT) under
-    # Home Assistant → Profile → Long-Lived Access
-    # Tokens → Create Token for the recommended auth
-    # mode.
     assert "requires_llat_creation_for_recommended_auth_mode" in tier_warnings, (
-        "tier_warnings must declare "
-        "'requires_llat_creation_for_recommended_auth_"
-        "mode' so the audit listing is honest that the "
-        "operator must create an LLAT for the "
-        "recommended auth mode"
+        "tier_warnings must still declare "
+        "'requires_llat_creation_for_recommended_auth_mode' so the "
+        "audit listing is honest that the operator must create an "
+        "LLAT for the recommended auth mode"
     )
-    # Contract-version-bump-requires-dashboard-side-
-    # auto-bump honesty — when the integration's
-    # `CONTRACT_VERSION` constant in
-    # `homeassistant/custom_components/roamcore_`
-    # `openclaw_api/const.py` is bumped, the §8.5
-    # contract-version-bump-notify guard must auto-
-    # bump `sensor.rc_openclaw_api_contract_version`
-    # to match.
     assert "contract_version_bump_requires_dashboard_side_auto_bump" in tier_warnings, (
-        "tier_warnings must declare "
-        "'contract_version_bump_requires_dashboard_side_"
-        "auto_bump' so the audit listing is honest that "
-        "the §8.5 contract-version-bump-notify guard "
-        "must auto-bump the dashboard-side "
-        "`sensor.rc_openclaw_api_contract_version` "
-        "tile when the integration's `CONTRACT_VERSION` "
-        "constant is bumped"
+        "tier_warnings must still declare "
+        "'contract_version_bump_requires_dashboard_side_auto_bump' "
+        "so the audit listing is honest that the §8.5 contract-"
+        "version-bump-notify guard must auto-bump the dashboard-"
+        "side `sensor.rc_openclaw_api_contract_version` tile when "
+        "the integration's `CONTRACT_VERSION` constant is bumped"
     )
-    # The tier_requirements.integration_tests section
-    # must explicitly document the bench-fixture gap
-    # (the 8 canned-response bench artifacts needed for
-    # full tier-a promotion).
-    integration_tests = (
-        manifest.get("tier_requirements", {})
-        .get("integration_tests", {})
-    )
-    assert integration_tests.get("present") is False, (
-        "tier_requirements.integration_tests.present "
-        "must be False — the smoketest is curl-based, "
-        "not pytest integration tests against a "
-        "controlled bench; the connection is tier-a-"
-        "but-flagged"
-    )
-    assert integration_tests.get("reason"), (
-        "tier_requirements.integration_tests.reason must "
-        "be a non-empty string documenting the curl-"
-        "based smoketest + the missing pytest bench "
-        "fixtures"
-    )
-    bench_artifacts_needed = integration_tests.get(
-        "bench_artifacts_needed", []
-    )
-    assert len(bench_artifacts_needed) == 8, (
-        f"tier_requirements.integration_tests.bench_"
-        f"artifacts_needed must list all 8 canned-"
-        f"response bench artifacts per spec; got "
-        f"{len(bench_artifacts_needed)} entries: "
-        f"{bench_artifacts_needed!r}"
-    )
-    required_bench_artifacts = (
-        "canned /summary response (all rc_* fields populated)",
-        "canned /summary response (all rc_* fields null/unknown)",
-        "canned /skill response (auth required + auth not required)",
-        "canned /rc_dump response (mix of rc_* + non-rc_* entities)",
-        "canned /timeseries/catalog response",
-        "canned /timeseries response (numeric + boolean series)",
-        "404 response when input_boolean.rc_openclaw_api_enabled is OFF",
-        "401 response when auth is required but LLAT is missing",
-    )
-    for required_artifact in required_bench_artifacts:
-        assert required_artifact in bench_artifacts_needed, (
-            f"tier_requirements.integration_tests.bench_"
-            f"artifacts_needed must include "
-            f"{required_artifact!r}; got "
-            f"{bench_artifacts_needed!r}"
-        )
+
+
 
 
 def test_automations_are_documented(manifest: dict) -> None:

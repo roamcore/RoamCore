@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import CONF_PROVISION_REF, DEFAULT_PROVISION_REF
+from .contract_header import apply_contract_header
 
 
 def _iso_now() -> str:
@@ -148,7 +149,7 @@ class RoamcoreUpdateView(HomeAssistantView):
         now = datetime.now(timezone.utc).timestamp()
 
         if self._cache and (now - (self._cache_ts or 0)) < 60:
-            return self.json(self._cache)
+            return apply_contract_header(self.json(self._cache))
 
         entry: Optional[ConfigEntry] = hass.config_entries.async_get_entry(self._entry_id)
         options = dict(entry.options) if entry else {}
@@ -187,4 +188,4 @@ class RoamcoreUpdateView(HomeAssistantView):
 
         self._cache = payload
         self._cache_ts = now
-        return self.json(payload)
+        return apply_contract_header(self.json(payload))
