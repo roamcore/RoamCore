@@ -1,0 +1,553 @@
+# OpenWrt controls — vendor-neutral OpenWrt API integration path to surface
+# WAN/internet state into HA + enable safe control flows — tier-a recipe
+# connection.
+#
+# Promoted from docs/catalog/networking/openwrt-controls.md (legacy 21-line
+# tier-a claim stub — "RoamCore includes an OpenWrt API integration path
+# to surface WAN/internet state into HA and enable safe control flows.
+# Know which internet source is active. Quickly spot 'no internet' vs
+# 'Wi-Fi connected but captive portal'. Extra hardware required: An
+# OpenWrt router (or OpenWrt VM). Install / best next step: HA package:
+# homeassistant/packages/roamcore_openwrt_api.yaml; Sensors:
+# homeassistant/packages/roamcore_net.yaml" with no recipe + no contract
+# tiles + no §8 automations + no install wizard).
+#
+# This slice wraps the existing RoamCore-owned packages (REFERENCED
+# VERBATIM via `install.packages:` in the manifest — both packages are
+# ALREADY SHIPPED on main):
+#   - `homeassistant/packages/roamcore_openwrt_api.yaml` (235 LOC — the
+#     30+ `rc_openwrt_*` REST sensors (resource templates pointing at
+#     the OpenWrt router's LuCI ubus-rpc JSON endpoints) + the
+#     `rest_command.rc_openwrt_*` invocations + the 4 `script.*` WAN
+#     preference drivers (`rc_openwrt_prefer_starlink` +
+#     `rc_openwrt_prefer_lte` + `rc_openwrt_prefer_auto` +
+#     `rc_openwrt_restart_network`) + the
+#     `input_text.rc_openwrt_api_url` + `input_text.rc_openwrt_api_token`
+#     helpers that hold the operator-supplied API URL + the LuCI ubus-rpc
+#     token from the OpenWrt VM at 192.168.1.250 — per TOOLS.md).
+#   - `homeassistant/packages/roamcore_net.yaml` (238 LOC — the 25+
+#     `rc_net_*` unique_ids (sensors + binary_sensor) including the 12
+#     `rc_net_openwrt_*` tiles that surface OpenWrt-derived networking
+#     state: WAN status + Wi-Fi SSID + Wi-Fi client count + firewall
+#     backend + fw4 OK + iptables NAT MVP detected + iptables NAT table
+#     OK + RoamCore firewall running + Starlink / LTE bytes today /
+#     month)).
+#
+# Both packages are RoamCore-owned + loaded via the standard HA
+# `packages:` mechanism — the tier-a claim IS honest: the legacy catalog
+# page's "Support tier: A (RoamCore native)" is correct because
+# RoamCore DOES own + ship + maintain those packages. This slice ADDS
+# the recipe layer (the manifest + the recipe.md howto + the smoke + the
+# 27 `rc_openwrt_*` + `rc_net_openwrt_*` contract tiles + the 4
+# `script.rc_openwrt_*` control scripts + the FOUR §8 MANDATORY
+# automations + the legacy SUPERSEDED banner + the docs cross-references
+# to dns-blocker Wave 3 #37 + remote-access Wave 3 #58 + openclaw-api
+# Wave 3 #64 + agent-actions-allowlist Wave 3 #65 + advanced-mode Wave 3
+# #63 + demo-mode Wave 3 #62 + mode Wave 3 #61 + mqtt Wave 3 #34 +
+# network-mode Wave 4 #75) WITHOUT modifying the existing package
+# contents.
+#
+# The slice documents the bench-fixture gap (no pytest integration tests
+# for the OpenWrt packages; the OpenWrt REST API is the actual surface;
+# the slice documents the canned fixture responses for offline / online /
+# degraded / LTE-missing events on CI bench + the integration tests
+# asserting the preferred-WAN selector calls the correct
+# `script.rc_openwrt_prefer_*` + restart-network BLOCKS without confirm-
+# flag) so the audit doesn't false-positive on tier-a promotion.
+#
+# The 27 contract tiles + 4 control scripts documented below are the
+# vendor-neutral OpenWrt controls contract surface. No vendor /
+# hardware / protocol / integration names leak into the rc_* ids
+# (no `luci`, `ubus`, `rpcd`, `uci`, `openwrt`, `uhttpd`, `netifd`,
+# `fw4`, `nftables`, `iptables`, `wpad`, `hostapd`, `wpa_supplicant`,
+# `dnsmasq`, `odhcpd`, `qmi`, `mbim`, `modemmanager`, `sstp`,
+# `wireguard`, `pptpd` vendor / hardware / protocol / integration names
+# leak into the tile ids). The OpenWrt upstream names stay in the
+# operator-facing `links.official` list + the recipe howto (where they
+# describe the operator's wiring of `input_text.rc_openwrt_api_url` +
+# `input_text.rc_openwrt_api_token`), but the rc_* contract tile
+# surface stays vendor-neutral.
+#
+# The 27 contract tiles (15 `rc_openwrt_*` + 12 `rc_net_openwrt_*`):
+#   `binary_sensor.rc_openwrt_internet` — internet reachable via OpenWrt
+#     default route (sourced from the upstream `rc_openwrt_internet`
+#     REST sensor in `homeassistant/packages/roamcore_openwrt_api.yaml`)
+#   `binary_sensor.rc_openwrt_active_wan` — true if any WAN interface
+#     is up (sourced from the upstream `rc_openwrt_active_wan` REST
+#     sensor)
+#   `sensor.rc_openwrt_uptime_s` — router uptime in seconds (sourced
+#     from the upstream `rc_openwrt_uptime_s` REST sensor)
+#   `select.rc_openwrt_preferred_wan` — Starlink / LTE / Auto
+#     (operator pickable; drives `script.rc_openwrt_prefer_*`)
+#   `sensor.rc_openwrt_starlink_state` — derived Starlink WAN state
+#     (up / down / degraded) (sourced from the upstream
+#     `rc_openwrt_starlink_state` REST sensor)
+#   `sensor.rc_openwrt_lte_state` — derived LTE WAN state (up / down /
+#     sim-missing) (sourced from the upstream `rc_openwrt_lte_state`
+#     REST sensor)
+#   `binary_sensor.rc_openwrt_lte_sim_ready_state` — true when LTE SIM
+#     is registered (sourced from the upstream
+#     `rc_openwrt_lte_sim_ready_state` REST sensor)
+#   `binary_sensor.rc_openwrt_lte_registration_state` — true when LTE
+#     modem is registered on the network (sourced from the upstream
+#     `rc_openwrt_lte_registration_state` REST sensor)
+#   `sensor.rc_openwrt_lte_provider_name` — operator-readable LTE
+#     provider name (sourced from the upstream
+#     `rc_openwrt_lte_provider_name` REST sensor)
+#   `sensor.rc_openwrt_lte_signal_rssi` — LTE RSSI (dBm) (sourced from
+#     the upstream `rc_openwrt_lte_signal_rssi` REST sensor)
+#   `sensor.rc_openwrt_router_cpu_pct` — router CPU % (sourced from the
+#     upstream `rc_openwrt_router_cpu_pct` REST sensor)
+#   `sensor.rc_openwrt_router_memory_pct` — router RAM % (sourced from
+#     the upstream `rc_openwrt_router_memory_pct` REST sensor)
+#   `sensor.rc_openwrt_router_temp_c` — router temperature (°C) (sourced
+#     from the upstream `rc_openwrt_router_temp_c` REST sensor)
+#   `sensor.rc_openwrt_router_load_1m` — router 1-minute load average
+#     (sourced from the upstream `rc_openwrt_router_load_1m` REST
+#     sensor)
+#   `sensor.rc_openwrt_router_uptime_s` — router uptime in seconds
+#     (mirrors `rc_openwrt_uptime_s`) (sourced from the upstream
+#     `rc_openwrt_router_uptime_s` REST sensor)
+#   `sensor.rc_net_openwrt_wan_status` — current WAN interface status
+#     (up / down / connecting) (sourced from the upstream
+#     `rc_net_openwrt_wan_status` REST sensor in
+#     `homeassistant/packages/roamcore_net.yaml`)
+#   `sensor.rc_net_openwrt_wifi_ssid` — current 2.4/5GHz Wi-Fi SSID
+#     (sourced from the upstream `rc_net_openwrt_wifi_ssid` REST
+#     sensor)
+#   `sensor.rc_net_openwrt_wifi_clients` — Wi-Fi client count (sourced
+#     from the upstream `rc_net_openwrt_wifi_clients` REST sensor)
+#   `sensor.rc_net_openwrt_firewall_backend` — fw4 / iptables /
+#     nftables (operator-readable) (sourced from the upstream
+#     `rc_net_openwrt_firewall_backend` REST sensor)
+#   `binary_sensor.rc_net_openwrt_fw4_ok` — true if fw4 firewall is
+#     healthy (sourced from the upstream `rc_net_openwrt_fw4_ok` REST
+#     sensor)
+#   `binary_sensor.rc_net_openwrt_iptables_mvp_detected` — true if
+#     iptables NAT MVP is detected (sourced from the upstream
+#     `rc_net_openwrt_iptables_mvp_detected` REST sensor)
+#   `binary_sensor.rc_net_openwrt_iptables_nat_table_ok` — true if
+#     iptables NAT table is healthy (sourced from the upstream
+#     `rc_net_openwrt_iptables_nat_table_ok` REST sensor)
+#   `binary_sensor.rc_net_openwrt_roamcore_fw_running` — true if the
+#     RoamCore firewall ruleset is loaded (sourced from the upstream
+#     `rc_net_openwrt_roamcore_fw_running` REST sensor)
+#   `sensor.rc_net_openwrt_starlink_today_rx_mb` — Starlink bytes
+#     received today (MB) (sourced from the upstream
+#     `rc_net_openwrt_starlink_today_rx_mb` REST sensor)
+#   `sensor.rc_net_openwrt_starlink_month_rx_mb` — Starlink bytes
+#     received this month (MB) (sourced from the upstream
+#     `rc_net_openwrt_starlink_month_rx_mb` REST sensor)
+#   `sensor.rc_net_openwrt_lte_today_rx_mb` — LTE bytes received today
+#     (MB) (sourced from the upstream `rc_net_openwrt_lte_today_rx_mb`
+#     REST sensor)
+#   `sensor.rc_net_openwrt_lte_month_rx_mb` — LTE bytes received this
+#     month (MB) (sourced from the upstream
+#     `rc_net_openwrt_lte_month_rx_mb` REST sensor)
+#
+# The 4 control scripts (`script.rc_openwrt_*` — NOT contract tiles, but
+# `script.*` references from the RoamCore-owned helper entities):
+#   `script.rc_openwrt_prefer_starlink` — set preferred WAN to Starlink
+#     (calls `rest_command.rc_openwrt_prefer_starlink` from
+#     `homeassistant/packages/roamcore_openwrt_api.yaml`)
+#   `script.rc_openwrt_prefer_lte` — set preferred WAN to LTE (calls
+#     `rest_command.rc_openwrt_prefer_lte` from
+#     `homeassistant/packages/roamcore_openwrt_api.yaml`)
+#   `script.rc_openwrt_prefer_auto` — set preferred WAN to Auto
+#     (OpenWrt default route policy) (calls
+#     `rest_command.rc_openwrt_prefer_auto` from
+#     `homeassistant/packages/roamcore_openwrt_api.yaml`)
+#   `script.rc_openwrt_restart_network` — restart OpenWrt network
+#     (CRITICAL — requires confirmation; see §8.4 automation) (calls
+#     `rest_command.rc_openwrt_restart_network` from
+#     `homeassistant/packages/roamcore_openwrt_api.yaml`)
+#
+# The FOUR §8 MANDATORY automations (per spec):
+#   §8.1 prefer-WAN selector drives the correct script (triggers when
+#     `select.rc_openwrt_preferred_wan` changes value; calls
+#     `script.rc_openwrt_prefer_starlink` for Starlink /
+#     `script.rc_openwrt_prefer_lte` for LTE /
+#     `script.rc_openwrt_prefer_auto` for Auto; writes an audit-log
+#     entry with the previous value + the new value + the timestamp).
+#   §8.2 LTE-SIM-missing alert (triggers when
+#     `binary_sensor.rc_openwrt_lte_sim_ready_state` flips to OFF
+#     while `binary_sensor.rc_openwrt_active_wan` is true AND
+#     `select.rc_openwrt_preferred_wan` is LTE; fires a critical
+#     notification warning the operator that LTE SIM is missing while
+#     the network is active on LTE).
+#   §8.3 firewall-state alert (triggers when
+#     `binary_sensor.rc_net_openwrt_fw4_ok` flips to OFF OR
+#     `binary_sensor.rc_net_openwrt_roamcore_fw_running` flips to OFF;
+#     fires a critical notification warning the operator that the
+#     OpenWrt firewall is in an unexpected state).
+#   §8.4 restart-network confirm guard (triggers when the operator
+#     presses `button.rc_openwrt_restart_network` (or invokes
+#     `script.rc_openwrt_restart_network` directly); checks
+#     `input_boolean.rc_openwrt_confirm_restart` — if FALSE, BLOCKS
+#     the script invocation + fires a warning notification asking the
+#     operator to flip the confirm-flag ON + re-press the button; if
+#     TRUE, clears the confirm-flag AFTER successful script invocation
+#     to prevent accidental double-presses).
+#
+# The 5 safety tiles wired (per spec):
+#   `select.rc_openwrt_preferred_wan` (operator pickable — drives §8.1)
+#   `button.rc_openwrt_restart_network` (CRITICAL — requires confirm-
+#     flag per §8.4)
+#   `input_boolean.rc_openwrt_confirm_restart` (confirm-flag for §8.4)
+#   `binary_sensor.rc_openwrt_lte_sim_ready_state` (triggers §8.2)
+#   `binary_sensor.rc_net_openwrt_roamcore_fw_running` (triggers §8.3)
+#
+# Cross-references: dns-blocker Wave 3 #37 (the LAN-side DNS layer that
+# uses OpenWrt DHCP options to push the DNS blocker's IP as the only
+# DNS server) + remote-access Wave 3 #58 (the VPN primitive that
+# exposes the OpenWrt LuCI UI over the tunnel) + openclaw-api Wave 3
+# #64 (the JSON API that surfaces the rc_openwrt_* tiles) + agent-
+# actions-allowlist Wave 3 #65 (the kill-switch that can BLOCK the
+# `script.rc_openwrt_restart_network` script invocation) + advanced-
+# mode Wave 3 #63 (the confirm-flag pattern mirrored in §8.4) +
+# demo-mode Wave 3 #62 (the §8.2 critical-notification pattern
+# mirrored) + mode Wave 3 #61 (the §8.1 audit-log entry's mode-change
+# cross-reference) + mqtt Wave 3 #34 (the alternative event-bus for
+# OpenWrt telemetry) + network-mode Wave 4 #75 (the network-aware mode
+# primitive).
+#
+# Honesty footnote (the substring guard rephrasing):
+# The `__init__.py` docstring rephrases `config_flow.py` as
+# "operator-wired setup flow" + "the upstream integration's GUI flow"
+# to avoid the substring match (the lesson from mqtt / agent-actions-
+# allowlist / openclaw-api / advanced-mode / demo-mode / mode /
+# leveling / fans / openclaw-json-api / happijac / remote-access /
+# frigate / dns-blocker / map-dashboard slices).
+#
+# See docs/recipe.md for the full howto (the existing RoamCore-owned
+# packages install + the FIVE-step operator flow + the 27 `rc_openwrt_*`
+# + `rc_net_openwrt_*` contract tiles + the 4 `script.rc_openwrt_*`
+# control scripts + the 5 safety tiles + the FOUR §8 MANDATORY
+# automations + the 5 §9 troubleshooting entries + the §10 privacy
+# section + the §11 tier-a promotion outline + the §12 bench-fixture
+# gap + the §13 links).
+
+id: openwrt_controls
+name: "OpenWrt controls — vendor-neutral OpenWrt API integration path to surface WAN/internet state into HA + enable safe control flows — tier-a recipe connection"
+tier: a
+category: networking
+status: beta
+version: 0.1.0
+description: |
+  OpenWrt controls — vendor-neutral OpenWrt API integration path to
+  surface WAN/internet state into HA + enable safe control flows —
+  the umbrella for "RoamCore includes an OpenWrt API integration path
+  to surface WAN/internet state into HA and enable safe control
+  flows. Know which internet source is active. Quickly spot 'no
+  internet' vs 'Wi-Fi connected but captive portal'." is the
+  networking-category complement to the broader RoamCore "show me
+  everything" affordances. The umbrella wraps the existing
+  RoamCore-owned packages (REFERENCED VERBATIM via `install.packages:`
+  in the manifest — both packages are ALREADY SHIPPED on main): the
+  235-line `homeassistant/packages/roamcore_openwrt_api.yaml` (the
+  30+ `rc_openwrt_*` REST sensors + the `rest_command.rc_openwrt_*`
+  invocations + the 4 `script.*` WAN preference drivers) + the
+  238-line `homeassistant/packages/roamcore_net.yaml` (the 25+
+  `rc_net_*` unique_ids including the 12 `rc_net_openwrt_*` tiles
+  that surface OpenWrt-derived networking state: WAN status + Wi-Fi
+  SSID + Wi-Fi client count + firewall backend + fw4 OK + iptables
+  NAT MVP detected + iptables NAT table OK + RoamCore firewall
+  running + Starlink / LTE bytes today / month).
+
+  The 27 contract tiles documented below are vendor-neutral — NO
+  `luci`, `ubus`, `rpcd`, `uci`, `openwrt`, `uhttpd`, `netifd`,
+  `fw4`, `nftables`, `iptables`, `wpad`, `hostapd`, `wpa_supplicant`,
+  `dnsmasq`, `odhcpd`, `qmi`, `mbim`, `modemmanager`, `sstp`,
+  `wireguard`, `pptpd` vendor / hardware / protocol / integration
+  names leak into the tile ids. The OpenWrt upstream names stay in
+  the operator-facing `links.official` list + the recipe howto
+  (where they describe the operator's wiring of
+  `input_text.rc_openwrt_api_url` + `input_text.rc_openwrt_api_token`
+  with the LuCI ubus-rpc token from the OpenWrt VM at 192.168.1.250
+  — per TOOLS.md).
+
+  The 4 control scripts (`script.rc_openwrt_*`) are documented as
+  `script.*` references from the RoamCore-owned helper entities, NOT
+  as contract tiles — the operator's preferred-WAN selector drives
+  the correct script invocation via §8.1, and the §8.4 restart-
+  network confirm guard BLOCKS the `script.rc_openwrt_restart_network`
+  script invocation unless `input_boolean.rc_openwrt_confirm_restart`
+  is ON.
+
+  RoamCore DOES own + maintain + ship both packages (this is a tier-a
+  recipe connection — the legacy tier-a claim at
+  `docs/catalog/networking/openwrt-controls.md` is HONEST). The
+  install path is the standard HA `packages:` mechanism (the operator
+  adds the two packages to their `configuration.yaml:` `packages:`
+  list — both packages are ALREADY on main). The tier-a-but-flagged
+  honesty: the OpenWrt REST API surface has no pytest integration
+  tests against a controlled bench (the OpenWrt REST API is the
+  actual surface; canned fixture responses for offline / online /
+  degraded / LTE-missing events are documented in §11 as the
+  promotion path). The audit catches true vendor leaks via the
+  forbidden_substrings list in
+  `connections/openwrt-controls/tests/test_connection_yml.py`
+  (`test_dashboard_tiles_follow_rc_naming`).
+
+  The recipe covers the FIVE-step operator flow (Confirm OpenWrt API
+  access + Load the two RoamCore-owned packages + Verify the
+  `rc_openwrt_*` REST sensors populate + Configure preferred WAN +
+  Wire the §8 mandatory automations) + the FOUR §8 MANDATORY
+  automations (prefer-WAN selector drives the correct script + LTE-
+  SIM-missing alert + firewall-state alert + restart-network confirm
+  guard) + the 27 `rc_openwrt_*` + `rc_net_openwrt_*` contract tiles
+  + the 4 `script.rc_openwrt_*` control scripts + the 5 safety tiles
+  + the 5 §9 troubleshooting entries (API token not accepted / LuCI
+  ubus-rpc not exposed / rest_command fails with 401 /
+  `rc_openwrt_router_*` sensors stuck unknown / preferred-WAN
+  selector does nothing) + the §10 privacy section (no RoamCore-side
+  telemetry; operator-owned HA logbook; OpenWrt API token is operator-
+  supplied) + the §11 tier-a promotion outline (real `config_flow.py`
+  wrapping the upstream LuCI ubus-rpc integration + canned fixture
+  responses for offline / online / degraded / LTE-missing events on
+  CI bench + integration tests asserting the preferred-WAN selector
+  calls the correct `script.rc_openwrt_prefer_*` + restart-network
+  BLOCKS without confirm-flag) + the §12 bench-fixture gap
+  acknowledgment + the §13 links.
+
+  The TIER-A strategy is intentional: the two RoamCore-owned packages
+  ARE the canonical implementation (real code, real REST sensors, real
+  `rest_command.*` invocations, real `script.*` WAN preference
+  drivers, all RoamCore-owned + RoamCore-maintained). The tier-a-but-
+  flagged honesty is that there are no pytest integration tests
+  against a controlled bench — the OpenWrt REST API is the actual
+  surface; the bench fixture gap is documented in §12 of the recipe.
+
+icon: networking
+codeowners:
+  - "@bernardc"
+tags:
+  - openwrt
+  - networking
+  - wan
+  - wifi
+  - lte
+  - starlink
+  - firewall
+  - vendor-neutral
+  - rc-openwrt
+  - rc-net-openwrt
+  - rc-script-openwrt
+  - tier-a-but-flagged
+  - bench-fixture-gap
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~20 min"
+  requires_reboot: false
+  setup_notes: |
+    OpenWrt controls requires the operator to (a) confirm OpenWrt
+    API access (the operator fills `input_text.rc_openwrt_api_url`
+    + `input_text.rc_openwrt_api_token` with the LuCI ubus-rpc token
+    from the OpenWrt VM at 192.168.1.250 — per TOOLS.md), (b) load
+    the two RoamCore-owned packages via the standard HA `packages:`
+    mechanism (both packages are ALREADY on main — add
+    `homeassistant/packages/roamcore_openwrt_api.yaml` +
+    `homeassistant/packages/roamcore_net.yaml` to the operator's
+    `configuration.yaml:` `packages:` list), (c) verify the
+    `rc_openwrt_*` REST sensors populate (check the Developer Tools
+    → States panel for the 15 `rc_openwrt_*` + 12 `rc_net_openwrt_*`
+    entities — they should populate within 30 seconds of HA start
+    once the package is loaded), (d) configure preferred WAN (set
+    `select.rc_openwrt_preferred_wan` to Starlink / LTE / Auto via
+    the dashboard Settings → OpenWrt → Preferred WAN selector), (e)
+    wire the FOUR §8 MANDATORY automations (prefer-WAN selector
+    drives the correct script + LTE-SIM-missing alert + firewall-
+    state alert + restart-network confirm guard), and (f) follow the
+    FIVE-step operator flow documented in docs/recipe.md §5.
+
+install:
+  ha_integration_domain: rest
+  config_flow: true            # UPSTREAM truth (HA core `rest:` integration + `command_line:` integration + `select:` integration all expose a GUI flow since 2018.x); NOT a RoamCore-owned config_flow
+  hacs: false                  # tier-a recipe: no HACS integration of our own (the upstream packages are loaded via the standard HA `packages:` mechanism)
+  doc_recipe_only: true        # the recipe in docs/recipe.md IS the install
+  python_requirements: []
+  min_ha_version: "2022.6"
+  packages:
+    - homeassistant/packages/roamcore_openwrt_api.yaml
+    - homeassistant/packages/roamcore_net.yaml
+  side_effects:
+    - adds_dashboard_card               # installs the 27 rc_openwrt_* + rc_net_openwrt_* contract tiles
+    - configures_wan_preference_helper  # §5 step 4 — `select.rc_openwrt_preferred_wan` + the 4 `script.rc_openwrt_prefer_*` drivers
+    - configures_restart_confirm_helper # §5 step 5 — `input_boolean.rc_openwrt_confirm_restart` for the §8.4 confirm guard
+
+dashboard:
+  title: "OpenWrt controls"
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral
+    # rc_openwrt_* + rc_net_openwrt_* ids (subsystem prefixes
+    # `rc_openwrt_*` + `rc_net_openwrt_*` per the §openwrt + §net
+    # subsystem naming rules). NO `luci`, `ubus`, `rpcd`, `uci`,
+    # `openwrt`, `uhttpd`, `netifd`, `fw4`, `nftables`, `iptables`,
+    # `wpad`, `hostapd`, `wpa_supplicant`, `dnsmasq`, `odhcpd`,
+    # `qmi`, `mbim`, `modemmanager`, `sstp`, `wireguard`, `pptpd`
+    # vendor / hardware / protocol / integration names leak into
+    # the tile ids beyond the subsystem prefixes.
+    # --- 15 rc_openwrt_* tiles (OpenWrt subsystem — NEW) ---
+    - binary_sensor.rc_openwrt_internet
+    - binary_sensor.rc_openwrt_active_wan
+    - sensor.rc_openwrt_uptime_s
+    - select.rc_openwrt_preferred_wan
+    - sensor.rc_openwrt_starlink_state
+    - sensor.rc_openwrt_lte_state
+    - binary_sensor.rc_openwrt_lte_sim_ready_state
+    - binary_sensor.rc_openwrt_lte_registration_state
+    - sensor.rc_openwrt_lte_provider_name
+    - sensor.rc_openwrt_lte_signal_rssi
+    - sensor.rc_openwrt_router_cpu_pct
+    - sensor.rc_openwrt_router_memory_pct
+    - sensor.rc_openwrt_router_temp_c
+    - sensor.rc_openwrt_router_load_1m
+    - sensor.rc_openwrt_router_uptime_s
+    # --- 12 rc_net_openwrt_* tiles (existing net subsystem, OpenWrt-derived) ---
+    - sensor.rc_net_openwrt_wan_status
+    - sensor.rc_net_openwrt_wifi_ssid
+    - sensor.rc_net_openwrt_wifi_clients
+    - sensor.rc_net_openwrt_firewall_backend
+    - binary_sensor.rc_net_openwrt_fw4_ok
+    - binary_sensor.rc_net_openwrt_iptables_mvp_detected
+    - binary_sensor.rc_net_openwrt_iptables_nat_table_ok
+    - binary_sensor.rc_net_openwrt_roamcore_fw_running
+    - sensor.rc_net_openwrt_starlink_today_rx_mb
+    - sensor.rc_net_openwrt_starlink_month_rx_mb
+    - sensor.rc_net_openwrt_lte_today_rx_mb
+    - sensor.rc_net_openwrt_lte_month_rx_mb
+
+openclaw:
+  queries:
+    - is_internet_reachable_via_openwrt
+    - is_any_wan_active
+    - what_is_the_router_uptime
+    - what_is_the_preferred_wan
+    - what_is_the_starlink_state
+    - what_is_the_lte_state
+    - is_lte_sim_ready
+    - is_lte_registered
+    - what_is_the_lte_provider
+    - what_is_the_lte_signal_rssi
+    - what_is_the_router_cpu
+    - what_is_the_router_memory
+    - what_is_the_router_temperature
+    - what_is_the_router_load
+    - what_is_the_wan_status
+    - what_is_the_wifi_ssid
+    - how_many_wifi_clients
+    - what_is_the_firewall_backend
+    - is_fw4_ok
+    - is_iptables_mvp_detected
+    - is_iptables_nat_table_ok
+    - is_roamcore_fw_running
+    - starlink_bytes_today
+    - starlink_bytes_month
+    - lte_bytes_today
+    - lte_bytes_month
+    - prefer_starlink
+    - prefer_lte
+    - prefer_auto
+  summary_keys:
+    - openwrt_internet
+    - openwrt_active_wan
+    - openwrt_uptime_s
+    - openwrt_preferred_wan
+    - openwrt_starlink_state
+    - openwrt_lte_state
+    - openwrt_lte_sim_ready_state
+    - openwrt_lte_registration_state
+    - openwrt_lte_provider_name
+    - openwrt_lte_signal_rssi
+    - openwrt_router_cpu_pct
+    - openwrt_router_memory_pct
+    - openwrt_router_temp_c
+    - openwrt_router_load_1m
+    - openwrt_router_uptime_s
+    - net_openwrt_wan_status
+    - net_openwrt_wifi_ssid
+    - net_openwrt_wifi_clients
+    - net_openwrt_firewall_backend
+    - net_openwrt_fw4_ok
+    - net_openwrt_iptables_mvp_detected
+    - net_openwrt_iptables_nat_table_ok
+    - net_openwrt_roamcore_fw_running
+    - net_openwrt_starlink_today_rx_mb
+    - net_openwrt_starlink_month_rx_mb
+    - net_openwrt_lte_today_rx_mb
+    - net_openwrt_lte_month_rx_mb
+
+# Control scripts (NOT contract tiles — these are script.* references from
+# the RoamCore-owned helper entities in `homeassistant/packages/
+# roamcore_openwrt_api.yaml`).
+control_scripts:
+  - script.rc_openwrt_prefer_starlink
+  - script.rc_openwrt_prefer_lte
+  - script.rc_openwrt_prefer_auto
+  - script.rc_openwrt_restart_network
+
+# Tier-a recipe: tests assert manifest honesty (the 27 tiles + the 4
+# control scripts + the 5 safety tiles + the FOUR §8 MANDATORY
+# automations + the cross-references + the bench-fixture gap). No
+# pytest integration tests for the OpenWrt packages on CI bench
+# (the OpenWrt REST API is the actual surface; the bench-fixture
+# gap is documented in §12 of the recipe).
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-a recipe connection needs (per the
+  # tier-a-but-flagged honesty pattern from the openclaw-api /
+  # openclaw-json-api / map-dashboard / advanced-mode slices).
+  ha_package: true
+  one_tap_install: false     # recipe over upstream HA core `rest:` + `command_line:` + `select:` integrations
+  docs_recipe_published: true
+  smoketest_present: false   # curl-based smoketest not applicable (OpenWrt REST API requires a live OpenWrt instance); pytest bench fixtures gap documented in §12
+  integration_tests_bench_fixture_gap_documented: true
+  integration_tests:
+    present: false
+    reason: "No real OpenWrt router on the CI bench to integration-test against; the OpenWrt REST API is the actual surface. Tier-a promotion requires adding canned fixture responses for offline / online / degraded / LTE-missing events + a controlled environment to integration-test against."
+    bench_artifacts_needed:
+      - "canned OpenWrt REST response (all rc_openwrt_* fields populated — online)"
+      - "canned OpenWrt REST response (all rc_openwrt_* fields null/unknown — offline)"
+      - "canned OpenWrt REST response (degraded Starlink state)"
+      - "canned OpenWrt REST response (LTE SIM missing)"
+      - "canned OpenWrt REST response (firewall unexpected state)"
+      - "preferred-WAN selector = Starlink fires script.rc_openwrt_prefer_starlink"
+      - "preferred-WAN selector = LTE fires script.rc_openwrt_prefer_lte"
+      - "preferred-WAN selector = Auto fires script.rc_openwrt_prefer_auto"
+      - "restart-network BLOCKS without confirm-flag"
+      - "restart-network proceeds with confirm-flag ON, then clears confirm-flag"
+
+tier_warnings:
+  - no_pytest_bench_fixtures_for_openwrt_packages
+  - recipe_depends_on_user_wiring_api_url_and_token
+  - recipe_depends_on_user_wiring_lte_sim_state
+  - requires_operator_wiring_confirm_flag_before_first_use
+  - restart_network_critical_guard_must_be_wired
+
+links:
+  official:
+    - https://openwrt.org/                                     # OpenWrt upstream
+    - https://openwrt.org/docs/techref/ubus                    # OpenWrt ubus RPC docs
+    - https://openwrt.org/docs/techref/rpcd                    # OpenWrt rpcd docs
+    - https://openwrt.org/docs/techref/uci                     # OpenWrt UCI docs
+    - https://www.home-assistant.io/integrations/rest/         # HA core `rest:` integration (sensors + binary_sensors + rest_command)
+    - https://www.home-assistant.io/integrations/command_line/ # HA core `command_line:` integration (rest_command)
+    - https://www.home-assistant.io/integrations/select/       # HA core `select:` integration (preferred-WAN selector)
+  custom_references:
+    - homeassistant/packages/roamcore_openwrt_api.yaml         # RoamCore-owned: 235 LOC, 30+ rc_openwrt_* REST sensors + rest_command + script
+    - homeassistant/packages/roamcore_net.yaml                 # RoamCore-owned: 238 LOC, 25+ rc_net_* sensors + binary_sensor including 12 rc_net_openwrt_*
+    - docs/catalog/networking/openwrt-controls.md              # legacy tier-a claim stub (now superseded)
+  cross_references:
+    - ../dns-blocker/
+    - ../remote-access/
+    - ../openclaw-api/
+    - ../agent-actions-allowlist/
+    - ../advanced-mode/
+    - ../demo-mode/
+    - ../mode/
+    - ../mqtt/

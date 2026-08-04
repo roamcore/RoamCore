@@ -1,4 +1,4 @@
-# Map dashboard recipe — vendor-neutral map tile + device_tracker aggregation + trip overlay + offline-tile cache
+# Map dashboard recipe — vendor-neutral map tile + device_tracker aggregation + trip overlay
 
 This recipe walks the operator through installing + configuring the **Map dashboard** connection — the map-category umbrella for "RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step: Core packages: homeassistant/packages/roamcore_map.yaml + homeassistant/packages/roamcore_map_route.yaml + homeassistant/packages/roamcore_location.yaml".
 
@@ -31,7 +31,7 @@ This is a **tier-a recipe connection**. There is no native RoamCore-owned map-da
 
 - A working RoamCore install on a Home Assistant OS box (HAOS 2022.6 or later).
 - A `device_tracker.*` entity (typically `device_tracker.traccar_van` if you're running Traccar, or a phone-derived device_tracker if you're using the HA Companion app).
-- A choice of upstream tile server (the default in `homeassistant/packages/roamcore_map.yaml` is `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` — a vendor-neutral default; the operator can change to their chosen upstream tile server via `input_text.rc_map_tile_url`).
+- A choice of upstream tile server. **OSM is the default (free, no key).** The default URL in `homeassistant/packages/roamcore_map.yaml` is `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Attribution "© OpenStreetMap contributors" is rendered automatically by the Lovelace map card per the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/). To swap basemaps (Stadia, Carto, self-hosted, …) paste a new URL into Settings → Helpers → "RC Map Tile URL".
 - Optional: a populated tile archive (for the Cached mode; RoamCore ships a default-empty archive path; the operator populates it via `input_text.rc_map_style_url` or a separate tile-fetch helper).
 - Optional: trip data (for the Active / Recent-7d / All-Time trip overlays; the trip data comes from the operator's trip-wrapped + trip-local databases).
 
@@ -75,7 +75,16 @@ The operator configures `input_text.rc_location_tracker_entity` to point at thei
 
 ### §2.3 Upstream tile server
 
-The default upstream tile URL in `homeassistant/packages/roamcore_map.yaml` is `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` — a vendor-neutral default that does not depend on any specific upstream vendor. The operator can change to their chosen upstream tile server via `input_text.rc_map_tile_url` (e.g. a self-hosted tile server, a paid tile-provider URL, or the upstream OSM tile servers if the operator accepts the OSM volunteer-tile terms).
+The default upstream tile URL in `homeassistant/packages/roamcore_map.yaml` is `https://tile.openstreetmap.org/{z}/{x}/{y}.png` — the OpenStreetMap standard tile server. Free, no API key required. Attribution "© OpenStreetMap contributors" is rendered automatically by the Lovelace map card per the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+
+**To swap basemaps:** paste a new URL into Settings → Helpers → "RC Map Tile URL". Common one-line swaps:
+
+- **Stadia Maps** (free for non-commercial; API key required):
+  `https://tiles.stadia.com/{z}/{x}/{y}@2x?api_key=YOUR_KEY` — sign up at https://docs.stadiamaps.com/
+- **Carto Positron** (no key, light theme):
+  `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png`
+- **Self-hosted tileserver-gl**:
+  `https://tiles.example.com/styles/positron/{z}/{x}/{y}.png`
 
 ### §2.4 (Optional) Tile cache
 
@@ -650,7 +659,7 @@ The FIVE §10 troubleshooting entries cover the most common operator-facing issu
 
 **Fix:**
 
-1. Confirm the operator-configured `input_text.rc_map_tile_url` is a vendor-neutral upstream (not the OSM volunteer tile server — the existing default in `homeassistant/packages/roamcore_map.yaml` is `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` to avoid this issue).
+1. Confirm the operator-configured `input_text.rc_map_tile_url` is reachable. The default in `homeassistant/packages/roamcore_map.yaml` is the OpenStreetMap standard tile server (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) — which renders the required "© OpenStreetMap contributors" attribution automatically per the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/). If the operator has swapped to a custom upstream, check that provider's docs.
 2. Confirm the operator-configured `input_text.rc_map_tile_url_online` (the online-fallback) is populated + reachable.
 3. Toggle `select.rc_map_basemap_mode_user_pick` to `Offline` as a temporary workaround.
 
@@ -728,7 +737,7 @@ RoamCore does NOT collect telemetry on the operator's map usage. There is no ana
 
 ### §11.2 The operator owns the tile URL
 
-The operator-configured `input_text.rc_map_tile_url` + `rc_map_tile_url_online` + `rc_map_style_url` are the operator's choice. RoamCore does NOT inject a default upstream URL that leaks to a RoamCore-controlled tile server. The default in `homeassistant/packages/roamcore_map.yaml` is `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png` — a vendor-neutral CartoDB-hosted tile server (Carto is a third-party vendor that RoamCore does NOT control). The operator can change to their chosen upstream at any time.
+The operator-configured `input_text.rc_map_tile_url` + `rc_map_tile_url_online` + `rc_map_style_url` are the operator's choice. RoamCore does NOT inject a default upstream URL that leaks to a RoamCore-controlled tile server. The default in `homeassistant/packages/roamcore_map.yaml` is `https://tile.openstreetmap.org/{z}/{x}/{y}.png` — the OpenStreetMap standard tile server (a third-party vendor / volunteer community that RoamCore does NOT control). The operator can change to their chosen upstream at any time via Settings → Helpers → "RC Map Tile URL".
 
 ### §11.3 The operator owns the tile cache
 

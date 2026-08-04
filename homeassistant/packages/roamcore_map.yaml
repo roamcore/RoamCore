@@ -1,16 +1,38 @@
 # RoamCore map configuration
+#
+# Default basemap is OpenStreetMap (tile.openstreetmap.org) — free, no API key
+# required. OSM tile usage policy: https://operations.osmfoundation.org/policies/tiles/
+#   * Attribution REQUIRED: "© OpenStreetMap contributors" (rendered by the
+#     Lovelace map card on top of the tile surface)
+#   * No bulk download / no heavy use — fine for a single dashboard map view
+#   * Set a meaningful HTTP User-Agent if you wrap the tile fetch (the HA core
+#     `map:` card uses the upstream browser User-Agent)
+#
+# To swap basemaps (Stadia, Carto, self-hosted, …) the operator pastes the new
+# tile URL into Settings → Helpers → "RC Map Tile URL". Examples:
+#   * Stadia Maps (free for non-commercial use; requires API key):
+#       https://tiles.stadia.com/{z}/{x}/{y}@2x?api_key=YOUR_KEY
+#       docs: https://docs.stadiamaps.com/
+#   * Carto Positron (no key, light theme):
+#       https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png
+#   * Self-hosted tileserver-gl:
+#       https://tiles.example.com/styles/positron/{z}/{x}/{y}.png
+# One-line swap. No code change required.
 
 input_text:
   rc_map_tile_url:
     name: "RC Map Tile URL"
-    # Default (beta): online tiles.
-    # NOTE: we intentionally avoid tile.openstreetmap.org (OSM volunteer tiles)
-    # to prevent 403 / referer-block issues.
-    initial: "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+    # Default: OpenStreetMap standard tiles (free, no API key required).
+    # Attribution "© OpenStreetMap contributors" is rendered automatically
+    # by the Lovelace map card per the OSM tile usage policy.
+    initial: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
     max: 255
 
   rc_map_tile_url_online:
     name: "RC Map Tile URL (Online Fallback)"
+    # Optional. If blank, the map falls back to the primary URL.
+    # Paste a Stadia / Carto URL here if you want a different upstream
+    # when the primary is unreachable.
     initial: ""
     max: 255
 
