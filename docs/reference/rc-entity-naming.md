@@ -72,6 +72,10 @@ Keep this list short. Start with these and extend deliberately:
 - `demo_mode` — vendor-neutral demo values for missing sensors + auto-disable on real sensor reconnect + never-controls-hardware guard (vendor-neutral `rc_demo_mode_*` ids; Wave 3 #62)
 - `advanced_mode` — vendor-neutral power-user toggle + session-timeout guard + destructive-calls block (vendor-neutral `rc_advanced_mode_*` ids; Wave 3 #63)
 - `openclaw_api` — local-agent contract surface (summary + skill + rc_dump + timeseries endpoints + enable / auth / reachability / latency tiles); vendor-neutral `rc_openclaw_api_*` ids (Wave 3 #64)
+- `map` — vendor-neutral map dashboard contract (tile sources, marker overlays, zoom controls, current-trip pin), only if needed
+- `trip` — vendor-neutral trip-recap contract (local-first distance / drive time / stops / comparisons / share-ready PNG export), only if needed
+- `ha_installer` — vendor-neutral one-line installer + uninstaller + idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant installs (vendor-neutral `rc_ha_installer_*` ids; Wave 3 #71)
+- `support_bundle` — vendor-neutral diagnostic snapshot exporter for RoamCore-installed HA instances (last_export_path + last_export_at + last_export_zip + last_error + status + secrets_safe + export + export_no_zip tiles); vendor-neutral `rc_support_bundle_*` ids (Wave 3 #72)
 
 Extended subsystems added by the Wave 3 connection pipeline (each subsystem is OWNED by the slice that added it):
 
@@ -82,6 +86,11 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
 - `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
 - `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
+- `bed_lift` — DIY bed-lift (actuators / winch + motor + strap) recipe. OWNED by `connections/bed-lift-diy/` (Wave 3 #70).
+- `map` — vendor-neutral map dashboard contract (tile sources, marker overlays, zoom controls, current-trip pin). OWNED by `connections/map-dashboard/` (Wave 3 #66).
+- `trip` — vendor-neutral trip-recap contract (local-first distance / drive time / stops / comparisons / share-ready PNG export). OWNED by `connections/trip-local/` (Wave 3 #68) + `connections/trip-wrapped/` (Wave 3 #69).
+- `ha_installer` — vendor-neutral one-line installer + uninstaller + idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant installs. OWNED by `connections/ha-installer/` (Wave 3 #71).
+- `support_bundle` — vendor-neutral diagnostic snapshot exporter for RoamCore-installed HA instances (3 buttons + 3 status tiles + 1 status sensor + 1 last_error + 1 secrets_safe privacy chip = 8 contract entities). OWNED by `connections/support-bundle/` (Wave 3 #72).
 
 ---
 
