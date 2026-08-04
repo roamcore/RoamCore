@@ -98,6 +98,8 @@ run_if_present "connections/bluetooth-wifi-presence/tests/test_connection_yml.py
   "Connection: Bluetooth/Wi-Fi presence (tier-b) — manifest honesty smoke check"
 run_if_present "connections/happijac/tests/test_connection_yml.py" \
   "Connection: Happijac bed lift (tier-b) — manifest honesty smoke check"
+run_if_present "connections/bed-lift-diy/tests/test_connection_yml.py" \
+  "Connection: DIY bed lift (actuators / winch + motor + strap) (tier-c) — manifest honesty smoke check"
 run_if_present "connections/heated-floors/tests/test_connection_yml.py" \
   "Connection: Heated floors + engine pre-heat (tier-b) — manifest honesty smoke check"
 run_if_present "connections/smoke-co-gas-sensors/tests/test_connection_yml.py" \

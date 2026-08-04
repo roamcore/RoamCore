@@ -2,6 +2,8 @@
 
 **Support tier:** C (custom/manual)
 
+> **Superseded by the tier-c connection:** this catalog page is retained for context. For the install + recipe + contract tiles, see [connections/bed-lift-diy/](../../../connections/bed-lift-diy/) and [docs/recipe.md](../../../connections/bed-lift-diy/docs/recipe.md).
+
 ## What this is
 A DIY bed lift is usually either linear actuators or a winch/motor + strap system, controlled by a relay/driver and protected with limit switches.
 
