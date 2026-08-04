@@ -1,0 +1,331 @@
+# Trip Local (local-first trip metrics from the HA recorder) —
+# tier-a recipe connection.
+#
+# Promoted from docs/catalog/map/trip-local.md (legacy tier-a
+# claim stub, 28 lines — "RoamCore includes a 'Trip Local'
+# path for working with local trip data/tools inside Home
+# Assistant… Useful when you don't want to depend on a cloud
+# service… Helps keep trip history and exports under your
+# control… Extra hardware required: None… Install / best next
+# step: HA package: homeassistant/packages/roamcore_trip_local.yaml.
+# Tooling lives under: homeassistant/tools/trip_local/" — with
+# no connection manifest + no recipe howto + no manifest-honesty
+# smoke + no §9 MANDATORY automation documentation + no contract-
+# tile enumeration + no docs cross-references — just a
+# placeholder with an aspirational tier-a claim that pointed at
+# the existing RoamCore-owned package without documenting how
+# the surface composes).
+#
+# This slice wraps the EXISTING RoamCore-owned package at
+# `homeassistant/packages/roamcore_trip_local.yaml` (73 LOC —
+# the 1 `shell_command.rc_trip_local_today_export` that runs
+# the recorder-DB Python script + the 1 15-minute
+# `automation.rc_trip_local_today_exporter` that triggers the
+# shell command + the 3 `command_line:` sensors that read the
+# resulting JSON: `sensor.rc_trip_local_today_distance_mi` +
+# `sensor.rc_trip_local_today_drive_time` +
+# `sensor.rc_trip_local_today_stops`). The package is
+# REFERENCED VERBATIM via `install.packages:` in the manifest
+# — the package contents are NOT redefined by this slice. The
+# slice ADDS the manifest + the recipe.md howto + the
+# manifest-honesty smoke + the 3 `rc_trip_local_today_*`
+# contract tiles + the FIVE §9 MANDATORY automations
+# (§9.1 `local_trip_metrics_export` — the 15-minute trigger
+# that's already wired in the package + §9.2
+# `device_tracker_unconfigured_keeps_tiles_unknown` — when
+# `input_text.rc_location_tracker_entity` is `unknown` /
+# `unavailable` / empty, all 3 tiles stay `unknown` rather
+# than silently emitting 0 + §9.3 `recorder_purge_resets_local_
+# trip_metrics` — when the recorder purges history older than
+# N days, the trip-today tiles reset to 0 (don't carry over
+# stale values) + §9.4 `drive_time_format_human_readable_
+# guard` — the `rc_trip_local_today_drive_time` tile is a
+# `H:MM` string (not raw seconds); the human-readable format
+# is enforced + §9.5 `no_traccar_required_offline_first_
+# guard` — explicitly documents that no Traccar / no cloud is
+# required for this connection to work; works fully offline
+# from the recorder DB alone) + the legacy SUPERSEDED banner
+# on the catalog page + the docs cross-references to map-
+# dashboard Wave 3 #66 + mode Wave 3 #61 + remote-access
+# Wave 3 #58 + advanced-mode Wave 3 #63 + openclaw-api
+# Wave 3 #64 + leveling Wave 3 #60 (trip-wrapped Wave 3 #69
+# is a future slice — documented as a forward reference but
+# not yet present on origin/main).
+#
+# The 3 `rc_trip_local_today_*` contract tiles documented
+# below are the vendor-neutral local-first trip metric
+# surface (no vendor name — no Traccar / OwnTracks / GPX /
+# cloud-route-engine names — leaks into the tile ids; the
+# upstream device_tracker stays the operator's choice via the
+# existing `input_text.rc_location_tracker_entity` helper
+# wired by the RoamCore location package):
+#   - sensor.rc_trip_local_today_distance_mi — today's
+#     distance in miles (the recorder-DB-derived distance;
+#     no Traccar required; the recorder's `states` table is
+#     the canonical source for the operator's
+#     `device_tracker.*` history; the
+#     `python3 /config/tools/trip_local/trip_today.py` script
+#     reads the recorder DB + emits a JSON to
+#     `/config/www/roamcore/trip_local/today.json`).
+#   - sensor.rc_trip_local_today_drive_time — today's
+#     drive time in `H:MM` format (the recorder-DB-derived
+#     total moving-time; the §9.4 drive-time-format-human-
+#     readable-guard enforces the `H:MM` format and
+#     prevents the tile from leaking raw seconds into the
+#     dashboard).
+#   - sensor.rc_trip_local_today_stops — today's stop
+#     count (the recorder-DB-derived count of distinct
+#     stationary clusters; stops are computed from the
+#     operator's `device_tracker.*` history; no cloud
+#     involvement).
+#
+# The recipe covers the FIVE §9 MANDATORY automations + the
+# 3 `rc_trip_local_today_*` contract tiles + the §10
+# troubleshooting entries + the §11 privacy section (no
+# RoamCore-side telemetry; the recorder DB lives on the
+# operator's HA box; the JSON export lives at
+# `/config/www/roamcore/trip_local/today.json` on the
+# operator's HA box; the operator owns the recorder DB +
+# the device_tracker + the trip-today JSON; no cloud
+# round-trip) + the §12 tier-a promotion outline (real
+# recorder-DB-reading Python script + canned fixture
+# responses for `trip_today.py` + canned fixture responses
+# for recorder-purge events + canned fixture responses for
+# drive-time-format events + RoamCore-owned operator-wired
+# setup flow walking the operator through Device-tracker
+# + Recorder + Wait-15-min + Verify + the §9 automations
+# + integration tests asserting a device_tracker
+# unconfigured event keeps tiles unknown + a recorder
+# purge event resets tiles to 0 + a drive-time format
+# event surfaces the `H:MM` format) + the §13 files + the
+# §14 cross-references.
+#
+# Honesty footnote (install.config_flow = true is NOT a
+# tier-a marker): the UPSTREAM HA core `command_line:`
+# sensor platform (since 2022.x — exposes a GUI flow for
+# the operator to add a `command_line:` sensor that runs
+# an external command + parses the stdout) + the UPSTREAM
+# HA core `shell_command:` integration (since 2022.x —
+# exposes a GUI flow for the operator to add a
+# `shell_command:` that runs an external command from an
+# automation or script) + the UPSTREAM HA core `recorder:`
+# integration (since 2022.x — exposes the canonical
+# recorder DB that records `device_tracker.*` history) +
+# the UPSTREAM HA core `automation:` integration (since
+# 2022.x — exposes the canonical automation runner) ALL
+# expose a GUI flow. That's honest upstream truth, NOT a
+# tier-a marker for RoamCore's tier. The tier-a marker
+# for RoamCore is (a) the RoamCore-owned package at
+# `homeassistant/packages/roamcore_trip_local.yaml` (73
+# LOC — the `shell_command.rc_trip_local_today_export` +
+# the `automation.rc_trip_local_today_exporter` + the 3
+# `command_line:` sensors) — already shipped + already
+# RoamCore-owned + already loaded via the standard HA
+# `packages:` mechanism — the package IS the tier-a
+# surface, AND (b) the recipe layer + the 3
+# `rc_trip_local_today_*` contract tiles + the FIVE §9
+# MANDATORY automations + the cross-references to map-
+# dashboard Wave 3 #66 + mode Wave 3 #61 + remote-access
+# Wave 3 #58 + advanced-mode Wave 3 #63 + openclaw-api
+# Wave 3 #64 + leveling Wave 3 #60. The slice preserves
+# the existing package verbatim (the recipes an upstream-
+# entity-aggregation wrapper on top + the contract layer +
+# the §9 automations + the operator-side device_tracker
+# pointer).
+
+id: trip-local
+name: "Trip Local — vendor-neutral local-first trip metrics from the HA recorder — tier-a recipe connection"
+tier: a
+category: map
+status: beta
+version: 0.1.0
+description: |
+  Trip Local — vendor-neutral local-first trip metrics from
+  the HA recorder — the umbrella for "RoamCore includes a
+  'Trip Local' path for working with local trip data/tools
+  inside Home Assistant… Useful when you don't want to depend
+  on a cloud service… Helps keep trip history and exports
+  under your control… Extra hardware required: None…
+  Install / best next step: HA package:
+  homeassistant/packages/roamcore_trip_local.yaml" — is the
+  map-category umbrella for RoamCore's local-first trip
+  metric surface. The RoamCore-owned package at
+  `homeassistant/packages/roamcore_trip_local.yaml` (73
+  LOC — the `shell_command.rc_trip_local_today_export` +
+  the `automation.rc_trip_local_today_exporter` + the 3
+  `command_line:` sensors that read the resulting JSON:
+  `sensor.rc_trip_local_today_distance_mi` +
+  `sensor.rc_trip_local_today_drive_time` +
+  `sensor.rc_trip_local_today_stops`) is the RoamCore-owned
+  package this slice WRAPS (referenced verbatim via
+  `install.packages:` in the manifest — the package contents
+  are NOT redefined by this slice). The slice publishes the
+  3 `rc_trip_local_today_*` contract tiles documented below
+  (vendor-neutral — no Traccar / OwnTracks / GPX / cloud-
+  route-engine names leak into the tile ids; the upstream
+  device_tracker stays the operator's choice via the
+  existing `input_text.rc_location_tracker_entity` helper
+  wired by the RoamCore location package) + the FIVE §9
+  MANDATORY automations (§9.1 local-trip-metrics-export +
+  §9.2 device_tracker-unconfigured-keeps-tiles-unknown +
+  §9.3 recorder-purge-resets-local-trip-metrics + §9.4
+  drive-time-format-human-readable-guard + §9.5 no-traccar-
+  required-offline-first-guard) + the legacy SUPERSEDED
+  banner on the catalog page + the docs cross-references.
+
+  The recipe covers the FOUR-step operator-pickable trip-
+  local flow (Configure the device_tracker + Wait 15
+  minutes for the first export + Verify the 3 contract
+  tiles populate + Optional — install the Map dashboard to
+  overlay today's route) + the FIVE §9 MANDATORY
+  automations + the 3 `rc_trip_local_today_*` contract
+  tiles + the §10 troubleshooting entries + the §11
+  privacy section + the §12 tier-a promotion outline +
+  the §13 files + the §14 cross-references.
+
+icon: mdi-map-marker-distance
+codeowners:
+  - "@bernardc"
+tags:
+  - trip
+  - trip-local
+  - location
+  - local-first
+  - recorder
+  - device-tracker
+  - offline-first
+  - metrics
+  - daily-summary
+  - contract-wrapper
+  - reuse-first
+
+wizard:
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "<5 min"
+  requires_reboot: false
+  setup_notes: |
+    Trip Local requires the operator to (a) confirm the
+    RoamCore-owned package is loaded via the standard HA
+    `packages:` mechanism (the package at
+    `homeassistant/packages/roamcore_trip_local.yaml` is
+    already shipped + RoamCore-owned + preserved verbatim
+    by this slice — the package contents are NOT
+    redefined), (b) confirm the upstream
+    `device_tracker.*` entity is configured via
+    `input_text.rc_location_tracker_entity` (the RoamCore
+    location subsystem already wires this for Traccar /
+    OwnTracks / HA companion app / etc.; see the map-
+    dashboard Wave 3 #66 connection for the device_tracker
+    picker), (c) confirm the HA recorder is enabled
+    (default ON in every HA install; the recorder DB is
+    the canonical source of `device_tracker.*` history),
+    (d) populate the 3 `rc_trip_local_today_*` contract
+    tiles (`sensor.rc_trip_local_today_distance_mi` +
+    `sensor.rc_trip_local_today_drive_time` +
+    `sensor.rc_trip_local_today_stops`) to mirror the
+    recorder-DB-derived values via the existing
+    `command_line:` sensors in the package, (e) wire the
+    FIVE §9 MANDATORY automations (§9.1
+    `local_trip_metrics_export` — the 15-min trigger
+    already wired in the package as
+    `automation.rc_trip_local_today_exporter` + §9.2
+    `device_tracker_unconfigured_keeps_tiles_unknown` +
+    §9.3 `recorder_purge_resets_local_trip_metrics` +
+    §9.4 `drive_time_format_human_readable_guard` + §9.5
+    `no_traccar_required_offline_first_guard`), (f)
+    follow the FOUR-step operator-pickable trip-local flow
+    — Step 1 Configure the device_tracker (operator sets
+    `input_text.rc_location_tracker_entity` to their
+    chosen `device_tracker.*`; the §9.2
+    device-tracker-unconfigured guard ensures the tiles
+    stay `unknown` rather than silently emitting 0);
+    Step 2 Wait 15 minutes for the first
+    `rc_trip_local_today_export` shell command to fire (or
+    trigger it manually via Developer Tools → Services →
+    `shell_command.rc_trip_local_today_export`); Step 3
+    Verify the 3 contract tiles populate
+    (`sensor.rc_trip_local_today_distance_mi` +
+    `sensor.rc_trip_local_today_drive_time` +
+    `sensor.rc_trip_local_today_stops`); Step 4 Optional
+    — install the Map dashboard (Wave 3 #66) to overlay
+    today's route. RoamCore does NOT maintain a custom
+    trip-local integration; the HA core `command_line:`
+    sensor + `shell_command:` integrations + the HA
+    `recorder:` integration are the actual surface; the
+    RoamCore-owned
+    `homeassistant/packages/roamcore_trip_local.yaml`
+    package handles the contract-tile storage + the
+    recorder-reading Python script.
+
+install:
+  ha_integration_domain: ""
+  config_flow: false
+  hacs: false
+  hacs_url: ""
+  doc_recipe_only: false
+  packages:
+    - homeassistant/packages/roamcore_trip_local.yaml
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - registers_trip_local_today_distance_contract_tile_via_existing_command_line_sensor
+    - registers_trip_local_today_drive_time_contract_tile_via_existing_command_line_sensor
+    - registers_trip_local_today_stops_contract_tile_via_existing_command_line_sensor
+    - registers_trip_local_today_exporter_shell_command
+    - may_register_local_trip_metrics_export_automation
+    - may_register_device_tracker_unconfigured_keeps_tiles_unknown_automation
+    - may_register_recorder_purge_resets_local_trip_metrics_automation
+    - may_register_drive_time_format_human_readable_guard_automation
+    - may_register_no_traccar_required_offline_first_guard_automation
+
+dashboard:
+  title: "Trip Local"
+  tiles:
+    - sensor.rc_trip_local_today_distance_mi
+    - sensor.rc_trip_local_today_drive_time
+    - sensor.rc_trip_local_today_stops
+
+openclaw:
+  queries:
+    - "what is today's distance?"
+    - "how far have I driven today?"
+    - "what is today's drive time?"
+    - "how long have I been driving today?"
+    - "how many stops have I made today?"
+    - "what is the local-first trip summary?"
+  summary_keys:
+    - trip_local_today_distance_mi
+    - trip_local_today_drive_time
+    - trip_local_today_stops
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  - docs_recipe_published
+
+tier_warnings:
+  - no_pytest_bench_fixtures_for_trip_local_package
+  - recipe_depends_on_user_configuring_device_tracker
+  - recipe_depends_on_recorder_db_having_enough_history
+  - requires_operator_wiring_device_tracker_entity_before_first_use
+  - recorder_unavailable_keeps_tiles_unknown_guard
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/recorder/
+    - https://www.home-assistant.io/integrations/command_line/
+    - https://www.home-assistant.io/integrations/shell_command/
+    - https://www.home-assistant.io/integrations/input_text/
+    - https://www.home-assistant.io/integrations/automation/
+  cross_references:
+    - ../map-dashboard/        # Wave 3 #66 — map-dashboard trip-overlay uses today's rc_trip_local_today_* tiles
+    - ../mode/                 # Wave 3 #61 — mode state (Travel/Camp) feeds the §9.5 offline-first guard
+    - ../remote-access/        # Wave 3 #58 — the §9.5 no-traccar-required guard's offline-first cross-reference
+    - ../advanced-mode/        # Wave 3 #63 — the §9.4 drive-time-format guard's confirm-flag pattern
+    - ../openclaw-api/         # Wave 3 #64 — the JSON API surfaces the rc_trip_local_today_* tiles
+    - ../leveling/             # Wave 3 #60 — the §9.5 offline-first guard's leveling-jack cross-reference
+    # Forward references (will land in follow-up slices):
+    # - ../trip-wrapped/       # Wave 3 #69 — trip-wrapped reads today's rc_trip_local_today_* tiles for the weekly summary
