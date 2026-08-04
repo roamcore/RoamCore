@@ -60,6 +60,7 @@ Keep this list short. Start with these and extend deliberately:
 - `location` — GPS / positioning
 - `weather` — weather inputs used by UI
 - `time` — time/date inputs used by UI
+- `amenities_overlay` — vendor-neutral iOverlander-style POI overlay on the RoamCore Map page + offline cache fallback + 8 POI categories (water + laundry + gym + dump_point + campsite + wild_camping + supermarket + fuel) + 5 §8 MANDATORY automations (fail-safe + rate-limited + user-configurable + offline-cache-or-internet + auto-disable-when-moving) (Wave 3 #67)
 - `presence` — who's-home detection (Bluetooth / Wi-Fi / router-side device_tracker; people + count + arrivals + departures)
 - `media` — multi-room audio / music orchestration (Music Assistant etc.), only if needed
 - `bed_lift` — van bed up/down control (Happijac / DIY / linear actuators / winch + strap), only if needed

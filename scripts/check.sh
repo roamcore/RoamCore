@@ -100,6 +100,8 @@ run_if_present "connections/happijac/tests/test_connection_yml.py" \
   "Connection: Happijac bed lift (tier-b) — manifest honesty smoke check"
 run_if_present "connections/heated-floors/tests/test_connection_yml.py" \
   "Connection: Heated floors + engine pre-heat (tier-b) — manifest honesty smoke check"
+run_if_present "connections/amenities-overlay/tests/test_connection_yml.py" \
+  "Connection: Amenities overlay (tier-b) — vendor-neutral iOverlander-style POI overlay on the RoamCore Map page + offline cache fallback + 8 POI categories + 5 §8 MANDATORY automations — manifest honesty smoke check"
 run_if_present "connections/smoke-co-gas-sensors/tests/test_connection_yml.py" \
   "Connection: Smoke / CO / gas sensors (tier-b) — manifest honesty smoke check"
 run_if_present "connections/smart-automations/tests/test_connection_yml.py" \
