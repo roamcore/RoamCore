@@ -1,0 +1,63 @@
+# RoamCore bake-in — x86_64-generic (VP2430 VM form factor)
+#
+# This is the manifest used by build.sh to populate the OpenWrt Image
+# Builder PACKAGES variable for the x86_64-generic target (used by the
+# VP2430 Proxmox VM and any other generic x86_64 hardware).
+#
+# One package per line, '#' starts a comment, blank lines ignored.
+# Order does not matter. The build.sh helper strips comments and joins
+# the remainder with whitespace.
+
+# --- Core / networking ---------------------------------------------------
+-uci-defaults
+-ppp
+-pppoe
+-pppoe-discovery
+-ip6tables
+-nftables
+-iptables
+-iptables-mod-conntrack-extra
+-iptables-mod-nat-extra
+-kmod-nf-nat
+-kmod-nf-conntrack
+-kmod-nf-flow
+-kmod-ppp
+-kmod-pppoe
+-kmod-pppox
+-kmod-slip
+
+# --- Wi-Fi (x86_64 hostapd for VM use) -----------------------------------
+-wpad-basic-wolfssl
+-hostapd-utils
+# Note: x86_64-generic has no on-board Wi-Fi; users add USB NICs as needed.
+
+# --- LuCI (web UI) -------------------------------------------------------
+-luci
+-luci-base
+-luci-mod-admin-full
+-luci-theme-bootstrap
+-luci-app-firewall
+-luci-app-network
+-luci-app-system
+
+# --- Runtime / interpreters ---------------------------------------------
+-python3
+-python3-base
+-python3-light
+-python3-logging
+-python3-openssl
+-busybox
+# Standard tools we expect on every RoamCore device.
+-coreutils
+-base64
+-nano
+
+# --- RoamCore-injected packages (copied by FILES=) ----------------------
+# These are NOT opkg packages — they are file overlays installed by
+# build.sh's FILES directory. Listed here only as a reminder:
+#   /opt/roamcore/api.py
+#   /opt/roamcore/iptables_mvp.sh
+#   /etc/init.d/roamcore-api
+#   /etc/init.d/roamcore-fw
+#   /etc/uci-defaults/99-roamcore-firstboot
+#   /www/luci-static/resources/view/roamcore_status.js

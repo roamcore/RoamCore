@@ -35,3 +35,6 @@ artifacts/**/*.zip
 
 # MkDocs output (site_dir)
 public/
+
+# OpenWrt image builder artifacts
+openwrt/flash/

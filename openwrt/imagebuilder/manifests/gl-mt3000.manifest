@@ -1,0 +1,54 @@
+# RoamCore bake-in — GL.iNet GL-MT3000 (Beryl AX, MT7981B)
+#
+# GL-MT3000 = MediaTek MT7981B (Filogic 820) + MT7976C. The official
+# OpenWrt target profile is gl-mt3000. Built on OpenWrt 24.10.x with
+# the mt7981/mt76 driver stack.
+#
+# Notes for users flashing this:
+#   - Stock GL.iNet firmware is NOT compatible. You must be on a
+#     recent OpenWrt snapshot OR use this RoamCore image directly.
+#   - LuCI is included; first boot will ask for the Home Assistant IP.
+
+# --- Core / networking ---------------------------------------------------
+-uci-defaults
+-ppp
+-pppoe
+-pppoe-discovery
+-iptables
+-iptables-mod-conntrack-extra
+-iptables-mod-nat-extra
+-kmod-nf-nat
+-kmod-nf-conntrack
+-kmod-mppe
+
+# --- Wi-Fi (MT7981 + MT7976C) --------------------------------------------
+-wpad-wolfssl
+-hostapd-utils
+-kmod-mt76-core
+-kmod-mt76-mt7981-firmware
+-kmod-mt76-connac
+-kmod-mt76x02-common
+-kmod-mt7915e
+-kmod-mt7981-firmware
+-mt7981-wo-firmware
+
+# --- LuCI ----------------------------------------------------------------
+-luci
+-luci-base
+-luci-mod-admin-full
+-luci-theme-bootstrap
+-luci-app-firewall
+-luci-app-network
+-luci-app-system
+
+# --- Runtime -------------------------------------------------------------
+-python3
+-python3-light
+-python3-logging
+-busybox
+-coreutils
+-base64
+-nano
+
+# --- RoamCore overlays (NOT opkg packages) -------------------------------
+# See x86_64-generic.manifest for the FILES-list summary.

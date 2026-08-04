@@ -1,0 +1,56 @@
+# RoamCore bake-in — Banana Pi BPI-R3 (MediaTek MT7986 + MT7531)
+#
+# BPI-R3 has MediaTek MT7986A (Filogic 830) + MT7975N Wi-Fi + 2x GbE
+# + 1x 2.5GbE. OpenWrt target profile: bananapi-bpi-r3.
+#
+# Caveats:
+#   - The BPI-R3 ships with a U-Boot bootloader that expects either
+#     an OpenWrt UBI image or an OpenWrt SD-card image. We emit a
+#     sysupgrade.itb (U-Boot FIT). To flash, see openwrt/README.md.
+#   - NAND variant; expect first boot to take ~30s for UBI attach.
+
+# --- Core / networking ---------------------------------------------------
+-uci-defaults
+-ppp
+-pppoe
+-pppoe-discovery
+-iptables
+-iptables-mod-conntrack-extra
+-iptables-mod-nat-extra
+-kmod-nf-nat
+-kmod-nf-conntrack
+-kmod-mppe
+
+# --- Wi-Fi (MT7986 + MT7975) --------------------------------------------
+-wpad-wolfssl
+-hostapd-utils
+-kmod-mt76-core
+-kmod-mt76-mt7915e
+-kmod-mt76-connac
+-kmod-mt7915-firmware
+-mt7986-firmware
+-mt7986-wo-firmware
+
+# --- Switch driver (MT7531 built-in 5-port GbE) -------------------------
+-kmod-mt7531
+
+# --- LuCI ----------------------------------------------------------------
+-luci
+-luci-base
+-luci-mod-admin-full
+-luci-theme-bootstrap
+-luci-app-firewall
+-luci-app-network
+-luci-app-system
+
+# --- Runtime -------------------------------------------------------------
+-python3
+-python3-light
+-python3-logging
+-busybox
+-coreutils
+-base64
+-nano
+
+# --- RoamCore overlays (NOT opkg packages) -------------------------------
+# See x86_64-generic.manifest for the FILES-list summary.
