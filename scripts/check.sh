@@ -65,6 +65,7 @@ bash scripts/checks/ha-beta-smoke.sh
 # the well-known names so the chain stays portable; once those PRs land
 # on main, they will chain automatically here.
 run_if_present "scripts/checks/openwrt-controls-smoke.sh"      "Networking controls (OpenWrt API): smoke check"
+run_if_present "scripts/checks/openwrt-imagebuilder-smoke.sh"  "Networking — OpenWrt image builder (Wave 9 #106): manifest + bake-in + first-boot wizard smoke check"
 run_if_present "scripts/checks/remote-access-tailscale-smoke.sh" "Remote access (Tailscale contract): smoke check"
 run_if_present "scripts/checks/ota-smoke.sh"                   "OTA updates: smoke check"
 run_if_present "scripts/checks/labs-smoke.sh"                  "RoamCore Labs: smoke check"
@@ -106,6 +107,8 @@ run_if_present "connections/smart-automations/tests/test_connection_yml.py" \
   "Connection: Smart automations (tier-b) — manifest honesty smoke check"
 run_if_present "connections/mock-location-and-tracks/tests/test_connection_yml.py" \
   "Connection: Mock location + track replay (tier-a) — manifest honesty smoke check"
+run_if_present "connections/map-dashboard/tests/test_connection_yml.py" \
+  "Connection: Map dashboard (tier-a) — OSM-default basemap + Stadia swap + HTTP probe: manifest honesty smoke check"
 run_if_present "connections/deadbolts/tests/test_connection_yml.py" \
   "Connection: Deadbolts (smart lock control) (tier-b) — manifest honesty smoke check"
 run_if_present "connections/hvac-basics/tests/test_connection_yml.py" \

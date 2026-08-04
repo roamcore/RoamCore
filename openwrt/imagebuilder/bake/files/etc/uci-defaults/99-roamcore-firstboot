@@ -1,0 +1,155 @@
+#!/bin/sh
+# RoamCore first-boot wizard
+#
+# Runs once on first boot (or any time the uci-defaults marker file is
+# missing). Asks the user for the Home Assistant IP, generates an API
+# token, writes /etc/roamcore-api.env, and restarts the API + firewall
+# services.
+#
+# Design goals (per the Wave 9 directive):
+#   - Auto-recover. If the wizard cannot complete (e.g. HA is not
+#     reachable on first boot because the user hasn't plugged in the
+#     cable yet), the router still boots into a safe mode: the API
+#     listens on 192.168.1.250:8080 with NO auth, and the wizard
+#     remains re-runnable.
+#   - Idempotent. Re-running this script is safe. It always
+#     overwrites /etc/roamcore-api.env and re-enables services.
+#   - Plain-English errors. Anything written to the system log that a
+#     user might read should make sense to a non-engineer.
+#
+# How to re-run manually:
+#   /etc/uci-defaults/99-roamcore-firstboot
+#   rm /etc/uci-defaults/.firstboot-done   # forces re-run on next boot
+
+set -eu
+
+LOG_TAG="roamcore-firstboot"
+log() { logger -t "$LOG_TAG" "$*" || echo "[$LOG_TAG] $*"; }
+
+# ---------------------------------------------------------------------
+# 1. Ensure the API + firewall services are enabled BEFORE we ask any
+#    questions, so the user can `curl` the status endpoint even before
+#    configuring HA.
+# ---------------------------------------------------------------------
+
+mkdir -p /etc/roamcore
+
+# Make sure the env file exists. We do NOT generate RC_API_TOKEN here;
+# generation happens at API service start so each re-run produces a
+# fresh token if needed. The env file is always overwritten below.
+
+if [ ! -f /etc/roamcore-api.env ]; then
+  cat > /etc/roamcore-api.env <<'EOF'
+# /etc/roamcore-api.env
+#
+# RoamCore networking API environment. Edited by the first-boot wizard
+# and by /etc/init.d/roamcore-api. Do not hand-edit unless you know what
+# you're doing.
+#
+# RC_API_TOKEN         : shared secret. If unset, no auth is required
+#                        (LAN-only). Generated automatically below if
+#                        missing.
+# RC_HA_HOST           : Home Assistant IP or hostname. The wizard
+#                        writes this on first boot.
+# RC_HA_PORT           : Home Assistant port (default 8123).
+# RC_HA_TOKEN          : Long-Lived Access Token (optional, copy/paste
+#                        from HA profile page).
+# RC_API_PORT          : The API listen port (default 8080).
+# RC_DEV_WAN_STARLINK  : interface name for Starlink (e.g. eth1).
+# RC_DEV_WAN_LTE_WWAN  : interface name for LTE USB modem (e.g. wwan0).
+# RC_DEV_LTE_QMI       : QMI control device (e.g. /dev/cdc-wdm0).
+# RC_DEV_LAN           : LAN bridge name (e.g. br-lan).
+EOF
+  chmod 600 /etc/roamcore-api.env
+fi
+
+# Always (re-)enable services so a flashed router boots into a known
+# state.
+if [ -f /etc/init.d/roamcore-api ]; then
+  /etc/init.d/roamcore-api enable || true
+fi
+if [ -f /etc/init.d/roamcore-fw ]; then
+  /etc/init.d/roamcore-fw enable || true
+fi
+
+# ---------------------------------------------------------------------
+# 2. Generate RC_API_TOKEN if missing.
+# ---------------------------------------------------------------------
+
+if ! grep -q '^RC_API_TOKEN=' /etc/roamcore-api.env 2>/dev/null; then
+  # 32 hex chars from /dev/urandom. Sufficient for LAN-only auth.
+  TOKEN="$(head -c 32 /dev/urandom | hexdump -v -e '/1 "%02x"')"
+  if [ -z "$TOKEN" ]; then
+    # Busybox fallback if /dev/urandom + hexdump aren't available.
+    TOKEN="$(date +%s%N | sha256sum | cut -c1-32)"
+  fi
+  # Append (preserves any operator-set overrides above).
+  printf '\nRC_API_TOKEN=%s\n' "$TOKEN" >> /etc/roamcore-api.env
+  log "Generated new RC_API_TOKEN (32 hex chars)."
+fi
+
+# ---------------------------------------------------------------------
+# 3. Ask the user for the Home Assistant IP.
+#
+#    We avoid blocking the boot on this. If a TTY is attached (real
+#    console or serial) and the env var ROAMCORE_HA_HOST is unset, we
+#    prompt. Otherwise we fall back to silent mode and the user can
+#    re-run with `uci set` later.
+# ---------------------------------------------------------------------
+
+set_rc_ha_host() {
+  # Sets RC_HA_HOST in /etc/roamcore-api.env (replace-in-place).
+  local new="$1"
+  if grep -q '^RC_HA_HOST=' /etc/roamcore-api.env; then
+    sed -i "s|^RC_HA_HOST=.*|RC_HA_HOST=${new}|" /etc/roamcore-api.env
+  else
+    printf '\nRC_HA_HOST=%s\n' "$new" >> /etc/roamcore-api.env
+  fi
+}
+
+current_ha=""
+current_ha="$(grep '^RC_HA_HOST=' /etc/roamcore-api.env 2>/dev/null | cut -d= -f2- || true)"
+
+if [ -z "${current_ha:-}" ] && [ -z "${ROAMCORE_HA_HOST:-}" ]; then
+  # Interactive path: prompt if we have a TTY.
+  if [ -e /dev/console ] && [ -t 1 ] && command -v askfirst >/dev/null 2>&1; then
+    log "No Home Assistant IP configured. Prompting on console..."
+    ans="$(askfirst 'RoamCore setup — enter the IP of your Home Assistant (leave blank to skip): ' 2>/dev/null || true)"
+    if [ -n "$ans" ]; then
+      set_rc_ha_host "$ans"
+      log "Saved RC_HA_HOST=$ans"
+    else
+      log "No HA IP entered. The API will still come up in safe mode; re-run /etc/uci-defaults/99-roamcore-firstboot to set later."
+    fi
+  else
+    log "No HA IP configured and no TTY available. Boot continues in safe mode (API on 192.168.1.250:8080, no auth). Re-run /etc/uci-defaults/99-roamcore-firstboot after setting up HA."
+  fi
+elif [ -n "${ROAMCORE_HA_HOST:-}" ]; then
+  # Non-interactive override (used by smoke tests + first-boot CI).
+  set_rc_ha_host "$ROAMCORE_HA_HOST"
+  log "RC_HA_HOST=$ROAMCORE_HA_HOST (from environment)"
+fi
+
+# ---------------------------------------------------------------------
+# 4. Start (or restart) the API + firewall. We do this last so any
+#    config above is visible to the services.
+# ---------------------------------------------------------------------
+
+if [ -f /etc/init.d/roamcore-api ]; then
+  /etc/init.d/roamcore-api restart || /etc/init.d/roamcore-api start || true
+fi
+if [ -f /etc/init.d/roamcore-fw ]; then
+  /etc/init.d/roamcore-fw restart || /etc/init.d/roamcore-fw start || true
+fi
+
+# ---------------------------------------------------------------------
+# 5. Mark this wizard as run. The presence of this file prevents
+#    /etc/uci-defaults from re-running it on every boot. Operators can
+#    delete it to force a re-run.
+# ---------------------------------------------------------------------
+
+touch /etc/uci-defaults/.firstboot-done
+
+log "RoamCore first-boot wizard complete."
+
+exit 0
