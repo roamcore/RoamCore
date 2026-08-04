@@ -9,6 +9,56 @@ Generates a shareable “Trip Wrapped” report from Traccar trip data.
 
 The Story template also includes an in-browser **PNG exporter** (“Download summary”) optimized for social sharing.
 
+## 2. Real Traccar vs demo mode (Wave 4 #73)
+
+Trip Wrapped has **two execution paths**:
+
+1. **Real Traccar path** (default). The exporter calls the configured Traccar
+   server (via Basic Auth, user token, or the HA supervisor proxy) and
+   reflects the operator's actual trip data. This is the path that runs in
+   normal use.
+2. **Demo path** (explicit opt-in via `--demo`). The exporter skips Traccar
+   entirely and returns a synthetic California road-trip payload. Use this
+   for UI previews before you have Traccar configured.
+
+**There is no silent fallback from the real path to the demo path.** If Traccar
+is not configured (the configured base URL or device ID is empty / unknown /
+unavailable) and `--demo` is not set, the exporter exits with code 2 and an
+actionable error message instructing the operator to either configure Traccar
+or pass `--demo` explicitly:
+
+```
+ERROR: Traccar not configured. Either set rc_traccar_base_url +
+rc_traccar_device_id in your RoamCore config OR pass --demo to
+generate a demo Trip Wrapped for UI preview.
+```
+
+The HA wiring in `homeassistant/packages/roamcore_trip_wrapped.yaml` exposes a
+`binary_sensor.rc_traccar_configured` derived entity that flips TRUE when
+`input_text.rc_traccar_base_url` + `input_text.rc_traccar_device_id` + (the
+Traccar token or password) are all configured. The Trip Wrapped dashboard page
+reads this sensor to show the “Traccar not configured — click to set up”
+empty-state CTA when it is FALSE.
+
+**How to set up real Traccar:**
+
+1. Install Traccar (the HA Community add-on or your own server).
+2. Pair your phone or GPS tracker with Traccar so it reports a position.
+3. In Home Assistant, set:
+   - `input_text.rc_traccar_base_url` (e.g. `http://localhost:8082`)
+   - `input_number.rc_traccar_device_id` (the numeric device ID from Traccar)
+   - Either:
+     - `roamcore_traccar_user_token` in `/config/secrets.yaml` (recommended), OR
+     - `input_text.rc_traccar_username` + `input_text.rc_traccar_password`
+4. Confirm `binary_sensor.rc_traccar_configured` is ON.
+5. Trigger Trip Wrapped from the dashboard.
+
+**To preview the UI without setting up Traccar:**
+
+- Click the Demo tile on the dashboard (which toggles `input_boolean.rc_demo_mode`).
+- The shell command in `homeassistant/packages/roamcore_trip_wrapped.yaml`
+  automatically appends `--demo` when `input_boolean.rc_demo_mode` is ON.
+
 ## Runtime assumptions (HAOS)
 
 - This code lives under `/config/tools/trip_wrapped/` in Home Assistant.
@@ -35,8 +85,14 @@ roamcore_traccar_admin_password: "..."
 
 ## Data/UX behavior
 
-- If Traccar credentials are missing, the exporter still generates HTML/JSON and shows a clear setup notice (`meta.dataStatus = needs_setup`).
-- If Traccar is reachable but no trips/routes exist for the chosen range/device, the exporter shows a helpful no-data notice (`meta.dataStatus = no_data`) instead of a blank report.
+- If Traccar credentials are missing AND `--demo` is not set, the exporter
+  exits with an actionable error (see §2 above). There is no silent fallback
+  to demo data.
+- If Traccar is reachable but no trips/routes exist for the chosen range/device,
+  the exporter shows a helpful no-data notice (`meta.dataStatus = no_data`)
+  instead of a blank report.
+- When `--demo` is set, the exporter generates the demo payload and tags the
+  output with `meta.dataStatus = demo`.
 
 ## PNG exporter notes
 
@@ -74,6 +130,14 @@ To disable the Supervisor proxy fallback (useful for local dev):
 ```bash
 python3 export.py --no-ha-proxy ...
 ```
+
+To preview the UI without Traccar configured:
+
+```bash
+python3 export.py --demo \
+  --base-url "" --device-id 1 \
+  --from "2026-03-01T00:00:00Z" --to "2026-03-08T00:00:00Z" \
+  --out-json /tmp/tw.json --out-html /tmp/tw.html
 ```
 
 ## Notes
