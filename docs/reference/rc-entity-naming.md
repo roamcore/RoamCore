@@ -63,6 +63,9 @@ Keep this list short. Start with these and extend deliberately:
 - `presence` — who's-home detection (Bluetooth / Wi-Fi / router-side device_tracker; people + count + arrivals + departures)
 - `media` — multi-room audio / music orchestration (Music Assistant etc.), only if needed
 - `bed_lift` — van bed up/down control (Happijac / DIY / linear actuators / winch + strap), only if needed
+- `ha_installer` — vendor-neutral one-line installer + uninstaller + idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant installs (vendor-neutral `rc_ha_installer_*` ids; Wave 3 #71)
+- `map` — vendor-neutral map dashboard contract (tile sources, marker overlays, zoom controls, current-trip pin), only if needed
+- `trip` — vendor-neutral trip-recap contract (local-first distance / drive time / stops / comparisons / share-ready PNG export), only if needed
 - `hvac` — heating / cooling / climate / engine pre-heat (heated floors, AC, Webasto, etc.), only if needed
 - `safety` — smoke / CO / gas / safety sensors + safety automations (smoke alarm, CO monitor, propane leak, etc.), only if needed
 - `system` — RoamCore system health (CPU, disk, updates), only if needed
@@ -82,6 +85,10 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
 - `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
 - `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
+- `bed_lift` — DIY bed-lift (actuators / winch + motor + strap) recipe. OWNED by `connections/bed-lift-diy/` (Wave 3 #70).
+- `map` — vendor-neutral map dashboard contract (tile sources, marker overlays, zoom controls, current-trip pin). OWNED by `connections/map-dashboard/` (Wave 3 #66).
+- `trip` — vendor-neutral trip-recap contract (local-first distance / drive time / stops / comparisons / share-ready PNG export). OWNED by `connections/trip-local/` (Wave 3 #68) + `connections/trip-wrapped/` (Wave 3 #69).
+- `ha_installer` — vendor-neutral one-line installer + uninstaller + idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant installs. OWNED by `connections/ha-installer/` (Wave 3 #71).
 
 ---
 
