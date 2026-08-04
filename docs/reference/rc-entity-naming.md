@@ -52,6 +52,7 @@ Where:
 - `sensor.rc_net_wan_ip`
 - `binary_sensor.rc_net_internet_reachable`
 - `sensor.rc_location_lat`
+- `sensor.rc_trip_local_today_distance_mi`
 
 ### Allowed subsystems (recommended set)
 Keep this list short. Start with these and extend deliberately:
@@ -82,6 +83,7 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
 - `openclaw_api` — vendor-neutral machine-readable summary + skill + rc-dump + timeseries endpoints for local agents. OWNED by `connections/openclaw-api/` (Wave 3 #64).
 - `agent_actions` — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions. OWNED by `connections/agent-actions-allowlist/` (Wave 3 #65).
+- `trip` — local trip metrics + trip summary surfaces (vendor-neutral `rc_trip_local_today_*` ids; Wave 3 #68). Only if needed.
 
 ---
 
