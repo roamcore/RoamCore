@@ -25,5 +25,9 @@ If route lines or Trip Wrapped stop updating, use:
 
 This gives you a deterministic reconnect checklist (base URL, device id, token refresh, and a test export).
 
+## Trip Wrapped + Trip Local + Location behavior
+
+Trip Wrapped + Trip Local + Location always reflect the operator's real Traccar data when Traccar is configured; the `--demo` flag is an explicit opt-in for UI preview only. When Traccar is NOT configured and the operator runs a non-demo Trip Wrapped export, the exporter exits with an actionable error message instead of silently substituting demo data. The Trip Wrapped dashboard page reads `binary_sensor.rc_traccar_configured` to surface the "Traccar not configured — click to set up" empty-state CTA.
+
 ## Links
 - Traccar: https://www.traccar.org/

@@ -57,6 +57,8 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Real Traccar integration (replace mocks): export.py exits with actionable error when Traccar is not configured; binary_sensor `rc_traccar_configured` surfaces config state to the Trip Wrapped page; see `homeassistant/tools/trip_wrapped/` + `homeassistant/packages/roamcore_trip_wrapped.yaml`.
+
 - Agent actions allowlist (safety gateway for agent-driven RoamCore actions)
   - Connection: [`connections/agent-actions-allowlist/`](../../connections/agent-actions-allowlist/) (Wave 3 #65, PR #69)
   - Tier-b recipe connection over upstream HA core `input_boolean` + `input_text` + `input_number` + `input_select` + `input_datetime` + `input_button` + `script` helpers (since 2022.x) + HA core `template:` sensor wrapper (since 2022.x) + HA core `logbook` integration (since 2022.x) + the upstream `script:` integration (since 2022.x). The single `input_boolean.rc_agent_actions_enabled` kill switch is already shipped in `homeassistant/packages/roamcore_agent_actions.yaml` and is preserved verbatim by this slice.
@@ -72,15 +74,10 @@ This is an internal status page for the remaining MVP feature build-out.
    - Add a Lovelace dashboard YAML for setup flow.
    - Wire stubs to OpenWrt API + Victron connect UI.
 
-2) **Traccar install + integration in HAOS**
-   - Install Traccar add-on (or point to external).
-   - Configure HA Traccar integration so `device_tracker.*` exists.
-   - Set `input_text.rc_location_tracker_entity` to the correct entity.
-
-3) **Trip stats (rc_trip_*) from real Traccar data**
+2) **Trip stats (rc_trip_*) from real Traccar data**
    - MVP still uses mocks for distance/time/stops.
    - Implement: odometer-based + utility_meter or periodic report pulls.
 
-4) **HACS packaging (planned)**
+3) **HACS packaging (planned)**
    - Publish a HACS integration to install RoamCore from the HA UI.
    - Auto-create dashboard + resources.

@@ -167,8 +167,21 @@ def _norm(v: str | None) -> str | None:
     return s
 
 
+def main_with_args(a):
+    """Main entrypoint that accepts a pre-built argparse Namespace.
+
+    Exposed so tests can drive the export pipeline with a fully-configured
+    Namespace without re-parsing argv. Production callers should use `main()`.
+    """
+    _run(a)
+
+
 def main():
     a = parse_args()
+    _run(a)
+
+
+def _run(a):
 
     def _demo_payload(from_ts: str, to_ts: str):
         """Return (trips, journey_route, stops, top_trip_route) demo payload in Traccar-like shape."""
@@ -290,6 +303,28 @@ def main():
     # email/password login endpoint is unavailable) so we don't need to store creds.
     trips = None
     pref_err = None
+
+    # Real-Traccar-first guard (Wave 4 #73): in non-demo invocations, when
+    # Traccar is not configured (base URL or device ID is empty/unknown/unavailable),
+    # exit with a clear actionable error. This avoids the silent fallback to demo
+    # data when an operator forgets to set up Traccar. The `--demo` flag remains
+    # the explicit opt-in for UI preview.
+    if not a.demo:
+        base_url_ok = _norm(a.base_url) is not None
+        device_id_ok = a.device_id is not None and str(a.device_id).strip() not in (
+            "",
+            "0",
+            "unknown",
+            "unavailable",
+            "None",
+        )
+        if not base_url_ok or not device_id_ok:
+            sys.stderr.write(
+                "ERROR: Traccar not configured. Either set rc_traccar_base_url + "
+                "rc_traccar_device_id in your RoamCore config OR pass --demo to "
+                "generate a demo Trip Wrapped for UI preview.\n"
+            )
+            raise SystemExit(2)
 
     # Demo mode: skip Traccar entirely.
     if a.demo:

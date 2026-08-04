@@ -52,6 +52,20 @@ binary_sensor:
     payload_on: "ON"
     payload_off: "OFF"
 
+  # Wave 4 #73: probe /config/secrets.yaml for a non-empty Traccar user-token
+  # (key: `roamcore_traccar_user_token`). The Trip Wrapped page uses this
+  # binary_sensor (combined with base_url + device_id + password) to gate the
+  # "Traccar not configured" empty-state CTA. Uses python3 -c with grep-style
+  # regex so the shell command stays a single line (no heredoc folding issues).
+  - platform: command_line
+    name: "RC Traccar User Token Set"
+    unique_id: rc_traccar_user_token_set
+    command: >-
+      python3 -c 'import re,sys; p="/config/secrets.yaml"; t=open(p,encoding="utf-8").read() if __import__("os").path.exists(p) else ""; m=re.search(r"^roamcore_traccar_user_token:\s*\"?([^\"\n]+)\"?\s*$", t, re.M); print("ON" if (m and (m.group(1) or "").strip()) else "OFF")'
+    scan_interval: 30
+    payload_on: "ON"
+    payload_off: "OFF"
+
 template:
   - binary_sensor:
       - name: "RC Trip Wrapped Latest Ready"
@@ -61,6 +75,36 @@ template:
           {{ states('sensor.rc_trip_wrapped_latest_status') == 'ok' }}
         availability: >-
           {{ states('sensor.rc_trip_wrapped_latest_status') not in ['unknown','unavailable'] }}
+
+      # Wave 4 #73: derived sensor that surfaces Traccar config state to the
+      # Trip Wrapped dashboard. Flips TRUE when ALL three of base_url + device_id
+      # + (token OR password) are configured (not unknown/unavailable/empty).
+      # The Trip Wrapped page reads this entity to show the
+      # "Traccar not configured — click to set up" empty-state CTA when FALSE.
+      # Note: the Traccar user token lives in /config/secrets.yaml (key
+      # `roamcore_traccar_user_token`), not in an input_text. We expose a
+      # command_line binary_sensor for the token-presence probe (see below) and
+      # then combine that probe with base_url + device_id + password here.
+      - name: "RC Traccar Configured"
+        unique_id: rc_traccar_configured
+        icon: mdi:radar
+        device_class: connectivity
+        state: >-
+          {% set base_url = states('input_text.rc_traccar_base_url') %}
+          {% set device_id = states('input_number.rc_traccar_device_id') %}
+          {% set pwd = states('input_text.rc_traccar_password') %}
+          {% set has_user_token = is_state('binary_sensor.rc_traccar_user_token_set', 'on') %}
+          {% set has_basic_auth = (
+            states('input_text.rc_traccar_username') not in ['unknown','unavailable','']
+            and pwd not in ['unknown','unavailable','']
+          ) %}
+          {{ (
+            base_url not in ['unknown','unavailable','']
+            and device_id not in ['unknown','unavailable','']
+            and (has_user_token or has_basic_auth)
+          ) }}
+        availability: >-
+          {{ states('input_text.rc_traccar_base_url') not in ['unknown','unavailable'] }}
 
 input_number:
   rc_traccar_device_id:
