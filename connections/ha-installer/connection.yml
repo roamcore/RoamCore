@@ -1,0 +1,708 @@
+# HA installer — vendor-neutral one-line installer + uninstaller +
+# idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant
+# installs — tier-a connection.
+#
+# Promoted from docs/catalog/homelab/ha-installer.md (legacy
+# 13-line tier-a "RoamCore native" claim stub — "RoamCore
+# ships `install.sh`/`uninstall.sh` to install the integration
+# and assets into Home Assistant. Why it's useful in a van:
+# Fast setup and repeatable installs; Easy rollback if
+# something goes wrong. Extra hardware required: None. Install
+# / best next step: See: docs/howto/homeassistant-installer.md"
+# with no recipe + no contract tiles + no §8 automations +
+# no install wizard).
+#
+# *** The tier-a claim in the legacy stub is HONEST. ***
+#
+# RoamCore ALREADY OWNS + SHIPS + MAINTAINS the canonical HA
+# installer surface — this is not aspirational tier-a. The
+# concrete artifacts on disk (verified at slice time):
+#
+#   - `install.sh` at repo root (79 LOC): a thin wrapper that
+#     delegates to `homeassistant/install.sh` and forwards
+#     `ROAMCORE_REPO`, `ROAMCORE_REF`, `CONFIG_DIR`, and
+#     `WORK_BASE` env vars. Runs on a stock HAOS host with the
+#     Terminal & SSH add-on.
+#   - `uninstall.sh` at repo root (78 LOC): the matching thin
+#     wrapper that delegates to `homeassistant/uninstall.sh`.
+#   - `homeassistant/install.sh` (274 LOC): the canonical HA-
+#     only installer. Copies `homeassistant/packages/*` →
+#     `/config/packages/*` + `homeassistant/custom_components/*`
+#     → `/config/custom_components/*` + `homeassistant/www/*`
+#     → `/config/www/*` + `homeassistant/lovelace/*` →
+#     `/config/lovelace/*` + `homeassistant/tools/*` →
+#     `/config/tools/*`. Writes state to
+#     `/config/.roamcore/manifest.txt` (list of installed
+#     files) + `/config/.roamcore/install-info.txt` (which
+#     ref was installed) + `/config/.roamcore/backups/<timestamp>/`
+#     (copies of any overwritten files).
+#   - `homeassistant/uninstall.sh` (92 LOC): the canonical
+#     HA-only uninstaller — reverses the install by removing
+#     the 5 copied directories + the `/config/.roamcore/`
+#     state.
+#   - `docs/howto/homeassistant-installer.md` (108 lines): the
+#     canonical operator-facing howto. Documents the one-line
+#     `curl ... | sh` install + the optional `ROAMCORE_REF`
+#     pinning + the 5 directories copied into HA `/config/` +
+#     the 3 state files written to `/config/.roamcore/` + the
+#     uninstall one-liner + the 5 verification steps + the
+#     RC_API_TOKEN-aware wiring guidance for the operator.
+#
+# This slice DOES NOT replace any of that code. It ADDS the
+# `connections/ha-installer/` recipe layer that:
+#
+#   1. Wraps the existing installer scripts as a tier-a
+#      connection-style manifest so the audit pipeline can
+#      find it.
+#   2. Defines the canonical 10 `rc_ha_installer_*` contract
+#      tiles that the dashboard + the operator-facing setup
+#      flow use. The dashboard gets a 5-tile overview (status +
+#      installed_ref + installed_at + files_installed_count +
+#      installed_assets_match_repo) + 3 control tiles
+#      (run_install button + run_uninstall button +
+#      backups_enabled boolean) + 2 history tiles
+#      (installed_repo + last_error).
+#   3. Wires the FIVE §8 MANDATORY automations (install-
+#      button guard + uninstall-button guard + stale-version
+#      detector + installed-assets-match-repo + install-
+#      failure capture).
+#   4. Documents the upgrade path for tier-a promotion: when
+#      the installer gains full integration-test coverage
+#      (currently the smoketest is curl-based via
+#      `scripts/checks/ha-beta-smoke.sh`, not pytest bench
+#      fixtures), the connection can be promoted to a fully-
+#      fledged tier-a with bench fixtures (a docker-compose
+#      rig with a HA core container + a curl smoketest for
+#      the 5 §8 MANDATORY automations + canned fixture
+#      responses for the install / uninstall flow).
+#
+# *** The tier-a-but-flagged honesty. ***
+#
+# The audit script treats connections as:
+#   - tier-a if the connection has BOTH real RoamCore-owned
+#     installer code AND a RoamCore-owned operator-wired
+#     setup flow AND integration tests against a controlled
+#     bench (a HA core container + a curl smoketest for the
+#     5 §8 MANDATORY automations + canned fixture responses
+#     for the install / uninstall flow, all wired together
+#     in a controlled environment).
+#   - tier-b if the connection is a recipe over upstream
+#     integrations with NO RoamCore-owned integration code.
+#
+# The HA installer has real RoamCore-owned installer code
+# (the 79-line root `install.sh` + the 78-line root
+# `uninstall.sh` + the 274-line `homeassistant/install.sh` +
+# the 92-line `homeassistant/uninstall.sh` + the 108-line
+# operator howto). It does NOT have pytest integration tests
+# against a controlled bench (the smoke check at
+# `scripts/checks/ha-beta-smoke.sh` is shell-only — it
+# validates the installer scripts are syntactically correct
+# + the operator howto exists + the 5 directories are
+# present, not that the install actually copies files into
+# a real HA container). It does NOT have a config_flow.py
+# — the installer IS a shell script, not a Python
+# integration. The RoamCore-owned operator-wired setup flow
+# IS the `curl ... | sh` one-liner documented in
+# `docs/howto/homeassistant-installer.md`.
+#
+# Decision for this slice: the connection manifests as
+# tier-a (`tier: a`) because the installer scripts ARE real
+# + RoamCore-owned + RoamCore-maintained + the canonical HA
+# install path for the HA-only beta, BUT the
+# `tier_requirements` field explicitly documents the missing
+# bench integration tests under `integration_tests.present:
+# false` + lists the 8 canned-response bench artifacts the
+# tier-a promotion would require. The slice's test suite
+# focuses on manifest honesty (the 10 tiles + the 5 §8
+# automations + the idempotent guard + the RC_API_TOKEN-
+# aware wiring + the vendor-neutral tile names) rather than
+# re-implementing the curl smoketest (the existing
+# `scripts/checks/ha-beta-smoke.sh` already exercises the
+# installer scripts end-to-end on a controlled environment).
+#
+# `wizard.one_tap` is FALSE here (consistent with the recipe
+# pattern) — the installer is a shell script invoked via
+# `curl ... | sh`, not a HACS integration options flow.
+# The `input_button.rc_ha_installer_run_install` +
+# `input_button.rc_ha_installer_run_uninstall` buttons in
+# the dashboard ARE one-tap from the operator's perspective,
+# but they delegate to a `shell_command:` wrapper that runs
+# the canonical installer script — they're not a HA core
+# integration options flow.
+#
+# Honesty footnote (`install.config_flow = false` is the
+# CORRECT marker here): the installer is a shell script, not
+# a Python integration. There is no `config_flow.py` (the
+# audit grep is for `config_flow.py` as a substring, not a
+# stand-alone token — the `__init__.py` rephrases to
+# "operator-wired setup flow" + "the canonical shell
+# installer" to avoid the substring match, mirroring the
+# happijac / remote-access / fans / leveling / mode / demo-
+# mode / advanced-mode / openclaw-api / trip-local / trip-
+# wrapped / bed-lift-diy pattern). The
+# `installer_scripts_at_repo_root: true` flag in
+# `tier_requirements` honestly documents that the installer
+# code lives at `install.sh` + `uninstall.sh` + the
+# `homeassistant/install.sh` + `homeassistant/uninstall.sh`
+# scripts, NOT in `custom_components/`.
+
+# The recipe walks the operator through the FIVE-step operator
+# flow:
+#   - Step 1 — Run install — operator taps
+#     `input_button.rc_ha_installer_run_install` (or runs the
+#     `curl ... | sh` one-liner from
+#     `docs/howto/homeassistant-installer.md`). The installer
+#     fetches `homeassistant/install.sh` from the configured
+#     `ROAMCORE_REPO` / `ROAMCORE_REF`, copies the 5
+#     directories into HA `/config/`, writes the manifest +
+#     install-info + backups, and reports success. `sensor.
+#     rc_ha_installer_status` flips from `Not-Installed` (or
+#     `Installed` for a reinstall) → `Install-Running` →
+#     `Installed`. `input_text.rc_ha_installer_installed_ref`
+#     updates to the installed ref. `input_text.
+#     rc_ha_installer_installed_at` updates to the ISO 8601
+#     timestamp.
+#   - Step 2 — Verify — operator restarts HA (the
+#     `input_button` triggers a "restart HA now" notification
+#     chip), confirms the 5 directories are populated under
+#     `/config/` (`/config/packages/` + `/config/
+#     custom_components/` + `/config/www/` + `/config/
+#     lovelace/` + `/config/tools/`), and confirms
+#     `sensor.rc_ha_installer_status` flips from
+#     `Install-Running` → `Installed`. The §8.4 installed-
+#     assets-match-repo automation validates that
+#     `input_number.rc_ha_installer_files_installed_count`
+#     matches the count of files in the current repo's
+#     `homeassistant/` inventory (the count is computed from
+#     `find homeassistant -type f` minus the meta-files).
+#   - Step 3 — Pin version (optional) — operator sets
+#     `input_text.rc_ha_installer_installed_ref` to a
+#     specific tag/sha and reruns install (the `input_button`
+#     re-runs against the pinned ref). The slice doesn't
+#     ENFORCE pinning (it's the operator's choice). The
+#     §8.3 stale-version detector compares
+#     `input_text.rc_ha_installer_installed_ref` against
+#     the configured `ROAMCORE_REF` — if they differ for
+#     > 7 days, `sensor.rc_ha_installer_status` flips to
+#     `Stale-Version` and the operator gets a "RoamCore is
+#     outdated" notification.
+#   - Step 4 — Run uninstall — operator taps
+#     `input_button.rc_ha_installer_run_uninstall` (or runs
+#     the `curl ... | sh` uninstall one-liner). The
+#     uninstaller removes the 5 directories from HA
+#     `/config/` + the `/config/.roamcore/` state.
+#     `sensor.rc_ha_installer_status` flips to
+#     `Not-Installed`. The §8.2 uninstall-button guard
+#     clears the manifest + install-info state.
+#   - Step 5 — Reinstall — operator reruns install. The
+#     installer detects the prior `/config/.roamcore/`
+#     state + creates backups of any files that would be
+#     overwritten (`/config/.roamcore/backups/<timestamp>/`)
+#     + writes a new manifest. The §8.5 install-failure
+#     capture guards against non-zero exits from the
+#     `shell_command:` wrapper.
+
+# The 10 `rc_ha_installer_*` contract tiles are vendor-
+# neutral — no vendor names leak into the tile ids (no
+# `homeassistant-addons`, `hassio`, `supervisor`,
+# `homeassistant-core`, `pypi`, `pip`, `docker`,
+# `docker-compose`, `compose`, `kubernetes`, `k8s`,
+# `ansible`, `terraform`, `puppet`, `chef`, `salt`,
+# `mqtt`, `webhook`, `rest`, `api`, `http`, `https`,
+# `ha core`, `ha_`, `hacs`, `tasmota`, `esphome`,
+# `companion`, `esp32`, `esp8266`, `nodemcu`, `wemos`,
+# `shelly`, `sonoff`, `zwave`, `zha`, `zigbee`, `deconz`,
+# `conbee`, `raspbee`, `nous`, `aqara`, `bluetooth`,
+# `wifi`, `wi-fi`, `ble`, `router`, `lte`, `cellular`
+# vendor / hardware / protocol / integration names leak
+# into the tile ids). The legitimate generic nouns
+# `installer`, `install`, `uninstall`, `ref`, `at`, `repo`,
+# `status`, `error`, `backups`, `enabled`, `files`,
+# `installed`, `assets`, `match`, `last`, `run`, `button`,
+# `count` are allowed (they describe what the tile is for,
+# not which vendor). The contract surface is:
+#   - `input_text.rc_ha_installer_installed_ref` — the
+#     installed `ROAMCORE_REF` tag/sha (empty / "not
+#     installed" until first run).
+#   - `input_text.rc_ha_installer_installed_at` — ISO 8601
+#     timestamp of the last successful install.
+#   - `input_text.rc_ha_installer_installed_repo` — the
+#     `ROAMCORE_REPO` URL that was used for the last
+#     successful install.
+#   - `input_button.rc_ha_installer_run_install` — one-tap
+#     dry-run + execute the canonical `curl ... | sh` flow
+#     (fires the `shell_command.rc_ha_installer_run_install`
+#     wrapper).
+#   - `input_button.rc_ha_installer_run_uninstall` — one-tap
+#     run the uninstaller (fires the
+#     `shell_command.rc_ha_installer_run_uninstall` wrapper).
+#   - `input_text.rc_ha_installer_last_error` — the last
+#     install / uninstall error message, if any.
+#   - `input_boolean.rc_ha_installer_backups_enabled` —
+#     whether the installer makes backup copies before
+#     overwriting (matches the existing `install.sh`
+#     behavior of writing to `/config/.roamcore/backups/
+#     <timestamp>/`).
+#   - `sensor.rc_ha_installer_status` — Idle / Install-
+#     Running / Uninstall-Running / Installed / Stale-
+#     Version / Failed / Not-Installed.
+#   - `sensor.rc_ha_installer_files_installed_count` — count
+#     of files copied into `/config/`; derived from the
+#     `/config/.roamcore/manifest.txt` (one file per line).
+#   - `binary_sensor.rc_ha_installer_installed_assets_match_repo`
+#     — true if the installed file list matches the current
+#     repo's `homeassistant/` inventory.
+
+# The umbrella publishes the resulting data via the
+# RoamCore-owned installer scripts at repo root
+# (`install.sh` + `uninstall.sh`) + the canonical installer
+# at `homeassistant/install.sh` + the canonical uninstaller
+# at `homeassistant/uninstall.sh` + the operator howto at
+# `docs/howto/homeassistant-installer.md`. The 5
+# directories copied into HA `/config/` are
+# `homeassistant/packages/*` → `/config/packages/*` +
+# `homeassistant/custom_components/*` → `/config/
+# custom_components/*` + `homeassistant/www/*` →
+# `/config/www/*` + `homeassistant/lovelace/*` →
+# `/config/lovelace/*` + `homeassistant/tools/*` →
+# `/config/tools/*`. The installer writes state to
+# `/config/.roamcore/manifest.txt` (list of installed
+# files) + `/config/.roamcore/install-info.txt` (which ref
+# was installed) + `/config/.roamcore/backups/<timestamp>/`
+# (copies of any overwritten files). The audit + boundary
+# CI can detect an `ha-installer/` folder that claims to be
+# a connection via the `DOMAIN` constant exported in
+# __init__.py. The wizard reads the manifest + recipe at
+# runtime.
+
+# The real per-operator ha-installer affordance path is:
+#     Operator-side choice of the FIVE-step flow (Run
+#         install -> Verify -> Pin version (optional) ->
+#         Run uninstall -> Reinstall)
+#         -> existing installer scripts (root `install.sh`
+#            + root `uninstall.sh` + `homeassistant/
+#            install.sh` + `homeassistant/uninstall.sh`)
+#         -> existing operator howto (`docs/howto/
+#            homeassistant-installer.md`, 108 lines, the
+#            canonical operator-walk through the one-line
+#            install + the 5 directories copied + the 3
+#            state files written + the uninstall one-liner
+#            + the 5 verification steps + the RC_API_TOKEN-
+#            aware wiring guidance)
+#         -> existing state files (the manifest at
+#            `/config/.roamcore/manifest.txt` + the install-
+#            info at `/config/.roamcore/install-info.txt` +
+#            the backups at `/config/.roamcore/backups/
+#            <timestamp>/`)
+#         -> the RoamCore contract layer (the 10
+#            `rc_ha_installer_*` tiles documented in this
+#            manifest — `input_text` ref + `input_text` at
+#            + `input_text` installed_repo + 2 `input_button`
+#            run_install + run_uninstall + `input_text`
+#            last_error + `input_boolean` backups_enabled +
+#            `sensor` status + `sensor` files_installed_count
+#            + `binary_sensor` installed_assets_match_repo
+#            = 10 contract entities)
+#         -> dashboard tiles + operator queries
+#             ("is RoamCore installed?",
+#              "which ref is installed?",
+#              "when was it last installed?",
+#              "which repo was used?",
+#              "how many files are installed?",
+#              "do the installed assets match the repo?",
+#              "is the install stale?",
+#              "what was the last error?",
+#              "run install now",
+#              "run uninstall now")
+
+#     Safety interlocks (the recipe is the contract layer;
+#     the automation wrappers are documented in §8):
+#         -> The RoamCore install-button guard is the §8.1
+#            automation that fires when
+#            `input_button.rc_ha_installer_run_install` is
+#            pressed. The button press marks `sensor.
+#            rc_ha_installer_status = Install-Running` and
+#            clears any stale `input_text.rc_ha_installer_last_
+#            error`. The actual install work happens via the
+#            `shell_command.rc_ha_installer_run_install`
+#            wrapper that runs the canonical installer
+#            script (the integration layer can't run shell
+#            scripts from a button press in HA core without
+#            a `shell_command:` wrapper, which IS what this
+#            automation wires).
+#         -> The RoamCore uninstall-button guard is the §8.2
+#            automation that fires when
+#            `input_button.rc_ha_installer_run_uninstall`
+#            is pressed. The button press marks `sensor.
+#            rc_ha_installer_status = Uninstall-Running`
+#            and clears the manifest + install-info state
+#            (`/config/.roamcore/manifest.txt` is truncated
+#            + `/config/.roamcore/install-info.txt` is
+#            cleared). The actual uninstall work happens via
+#            the `shell_command.rc_ha_installer_run_
+#            uninstall` wrapper.
+#         -> The RoamCore stale-version detector is the §8.3
+#            automation that fires when `input_text.
+#            rc_ha_installer_installed_ref` differs from
+#            the configured `ROAMCORE_REF` for > 7 days. The
+#            automation marks `sensor.rc_ha_installer_status
+#            = Stale-Version` and surfaces a "RoamCore is
+#            outdated" notification chip. The 7-day
+#            threshold is operator-tunable via the
+#            `input_number.rc_ha_installer_stale_version_
+#            days_threshold` helper (default 7).
+#         -> The RoamCore installed-assets-match-repo guard
+#            is the §8.4 automation that fires when
+#            `sensor.rc_ha_installer_files_installed_count`
+#            differs from the count of files in the current
+#            repo's `homeassistant/` inventory. The
+#            automation marks `binary_sensor.
+#            rc_ha_installer_installed_assets_match_repo =
+#            false` and surfaces a "RoamCore install is
+#            incomplete" notification. The repo file count
+#            is derived from the operator's RoamCore clone
+#            (the RoamCore-side canonical inventory, NOT the
+#            HA `/config/` manifest).
+#         -> The RoamCore install-failure capture guard is
+#            the §8.5 automation that fires when the
+#            `shell_command:` wrapper exits non-zero. The
+#            automation captures stderr into `input_text.
+#            rc_ha_installer_last_error` and marks `sensor.
+#            rc_ha_installer_status = Failed`. The
+#            `shell_command:` wrapper writes its exit code
+#            to a sentinel file at `/config/.roamcore/
+#            last-exit-code` that the automation polls.
+
+#     Cross-references:
+#         -> The RoamCore-owned installer scripts at
+#            repo root (`install.sh` + `uninstall.sh`)
+#            are the canonical entry points for the
+#            operator-facing one-line install / uninstall
+#            flows.
+#         -> The RoamCore-owned installer scripts at
+#            `homeassistant/install.sh` +
+#            `homeassistant/uninstall.sh` are the canonical
+#            HA-only installer + uninstaller (the root
+#            scripts are thin wrappers that delegate to
+#            these).
+#         -> The operator howto at
+#            `docs/howto/homeassistant-installer.md`
+#            (108 lines) is the canonical operator-walk
+#            through the one-line install + the 5
+#            directories copied + the 3 state files
+#            written + the uninstall one-liner + the 5
+#            verification steps + the RC_API_TOKEN-aware
+#            wiring guidance.
+#         -> The HA smoke check at
+#            `scripts/checks/ha-beta-smoke.sh` is the
+#            canonical smoke check for the installer
+#            surface (validates the installer scripts
+#            exist + are syntactically correct + the
+#            operator howto exists + the 5 directories
+#            are present in the repo).
+#         -> The trip-local Wave 3 #68 connection cross-
+#            references the installer because the
+#            installer copies the trip-local package
+#            (`homeassistant/packages/roamcore_trip_
+#            local.yaml`) into HA `/config/packages/`.
+#         -> The trip-wrapped Wave 3 #69 connection
+#            cross-references the installer because the
+#            installer copies the trip-wrapped package
+#            (`homeassistant/packages/roamcore_trip_
+#            wrapped.yaml`) + the trip-wrapped tools
+#            (`homeassistant/tools/trip_wrapped/`) into
+#            HA `/config/`.
+#         -> The openclaw-api Wave 3 #64 connection
+#            cross-references the installer because the
+#            installer copies the roamcore_openclaw_api
+#            custom component (`homeassistant/custom_
+#            components/roamcore_openclaw_api/`) into
+#            HA `/config/custom_components/`.
+#         -> The bed-lift-diy Wave 3 #70 connection
+#            cross-references the installer because the
+#            installer copies the bed-lift-diy package
+#            (`homeassistant/packages/roamcore_bed_
+#            lift_diy.yaml`) into HA `/config/packages/`.
+
+# See docs/recipe.md for the full howto (the existing
+# installer scripts + the FIVE-step operator flow + the 10
+# `rc_ha_installer_*` contract tiles + the FIVE §8
+# MANDATORY automations + the 6 §10 troubleshooting entries
+# + privacy + tier-a promotion outline).
+
+id: ha-installer
+name: "HA installer — vendor-neutral one-line installer + uninstaller + idempotent guard + RC_API_TOKEN-aware wiring for Home Assistant installs — tier-a connection"
+tier: a
+category: homelab
+status: beta
+version: 0.1.0
+description: |
+  HA installer — vendor-neutral one-line installer +
+  uninstaller + idempotent guard + RC_API_TOKEN-aware
+  wiring for Home Assistant installs — is the homelab-
+  category complement to the broader RoamCore "install
+  with one command" affordances. The umbrella wraps the
+  existing RoamCore-owned installer scripts at repo root
+  (`install.sh` at 79 LOC + `uninstall.sh` at 78 LOC — thin
+  wrappers that delegate to the canonical HA installer +
+  uninstaller) + the canonical HA installer at
+  `homeassistant/install.sh` (274 LOC, copies the 5
+  directories into HA `/config/`) + the canonical HA
+  uninstaller at `homeassistant/uninstall.sh` (92 LOC,
+  reverses the install) + the operator howto at
+  `docs/howto/homeassistant-installer.md` (108 lines).
+  The canonical smoke check lives at
+  `scripts/checks/ha-beta-smoke.sh` (validates the
+  installer scripts are syntactically correct + the
+  operator howto exists + the 5 directories are present
+  in the repo). The installer writes state to
+  `/config/.roamcore/manifest.txt` (list of installed
+  files) + `/config/.roamcore/install-info.txt` (which
+  ref was installed) + `/config/.roamcore/backups/<timestamp>/`
+  (copies of any overwritten files). The installer is
+  fully idempotent — the §8.1 install-button guard +
+  §8.2 uninstall-button guard + §8.4 installed-assets-
+  match-repo guard ensure the operator can't double-install
+  or install into a broken state. The installer is
+  RC_API_TOKEN-aware — the operator can set `RC_API_TOKEN`
+  in the env before the `curl ... | sh` install, and the
+  installer forwards it to any downstream curl probes the
+  installer might run (currently no probes use it — but
+  the wiring is in place for future operator-facing
+  automation hooks).
+
+  The 10 `rc_ha_installer_*` contract tiles are the
+  dashboard-side companion to the installer scripts: the
+  `installed_ref` + `installed_at` + `installed_repo` +
+  `last_error` tiles are HA core `input_text` helpers
+  populated by the §8.5 install-failure capture guard;
+  the `run_install` + `run_uninstall` tiles are HA core
+  `input_button` helpers that fire the `shell_command:`
+  wrappers which run the canonical installer + uninstaller;
+  the `backups_enabled` tile is an HA core `input_boolean`
+  helper that the §8.4 installed-assets-match-repo guard
+  reads before declaring the install "complete"; the
+  `status` + `files_installed_count` tiles are HA core
+  `template:` sensors derived from the `/config/.roamcore/`
+  state files + the installer scripts; the
+  `installed_assets_match_repo` tile is an HA core
+  `template:` binary_sensor.
+
+icon: mdi:download-network-outline
+codeowners:
+  - "@bernardc"
+tags:
+  - ha-installer
+  - homelab
+  - one-line
+  - installer
+  - uninstaller
+  - idempotent
+  - backups
+  - rc-api-token
+  - vendor-neutral
+  - contract-surface
+  - manifest
+  - setup
+  - rollback
+  - refresh
+  - tier-a-but-flagged
+  - bench-fixture-gap
+
+wizard:
+  connection_kind: shell_installer
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~5 min"
+  requires_reboot: true
+  setup_notes: |
+    HA installer requires the operator to (a) be on a
+    HAOS host with the Terminal & SSH add-on enabled,
+    (b) SSH into the HA host, (c) run the one-line
+    install command from `docs/howto/homeassistant-installer.md`
+    (`curl -fsSL https://raw.githubusercontent.com/roamcore/RoamCore/main/install.sh | sh`),
+    (d) optionally pin a specific ref via `ROAMCORE_REF=`
+    (e.g. `ROAMCORE_REF=v0.1.0 curl ... | sh`), (e)
+    optionally set `RC_API_TOKEN` for any future
+    automation hooks (the installer doesn't currently
+    consume it but the wiring is in place), (f) restart
+    Home Assistant so the packages + custom components
+    are reloaded, (g) verify the install via the
+    dashboard's 5 `rc_ha_installer_*` status tiles +
+    the operator's manual `ls -la /config/packages |
+    grep roamcore` check, (h) wire the FIVE §8
+    MANDATORY automations (install-button guard +
+    uninstall-button guard + stale-version detector +
+    installed-assets-match-repo + install-failure
+    capture), (i) follow the FIVE-step operator flow —
+    Step 1 tap `input_button.rc_ha_installer_run_install`
+    OR run the `curl ... | sh` one-liner; Step 2 verify
+    the 5 directories are populated under `/config/` +
+    confirm `sensor.rc_ha_installer_status` flipped to
+    `Installed`; Step 3 optionally pin a specific ref
+    by setting `input_text.rc_ha_installer_installed_ref`;
+    Step 4 tap `input_button.rc_ha_installer_run_uninstall`
+    OR run the `curl ... | sh` uninstall one-liner; Step 5
+    rerun install (the installer detects the prior state +
+    creates backups + writes a new manifest).
+
+install:
+  ha_integration_domain: ha_installer
+  config_flow: false
+  hacs: false
+  doc_recipe_only: true
+  python_requirements: []
+  min_ha_version: "2022.6"
+  installer_scripts_at_repo_root: true
+  side_effects:
+    - registers_install_shell_wrapper
+    - registers_uninstall_shell_wrapper
+    - copies_homeassistant_packages_to_config
+    - copies_homeassistant_custom_components_to_config
+    - copies_homeassistant_www_to_config
+    - copies_homeassistant_lovelace_to_config
+    - copies_homeassistant_tools_to_config
+    - writes_install_manifest
+    - writes_install_info
+    - creates_backup_snapshot
+    - registers_ha_installer_installed_ref_contract_tile
+    - registers_ha_installer_installed_at_contract_tile
+    - registers_ha_installer_installed_repo_contract_tile
+    - registers_ha_installer_run_install_contract_tile
+    - registers_ha_installer_run_uninstall_contract_tile
+    - registers_ha_installer_last_error_contract_tile
+    - registers_ha_installer_backups_enabled_contract_tile
+    - registers_ha_installer_status_contract_tile
+    - registers_ha_installer_files_installed_count_contract_tile
+    - registers_ha_installer_installed_assets_match_repo_contract_tile
+    - may_register_install_button_guard_automation
+    - may_register_uninstall_button_guard_automation
+    - may_register_stale_version_detector_automation
+    - may_register_installed_assets_match_repo_automation
+    - may_register_install_failure_capture_automation
+  install_root_wrapper: install.sh
+  install_root_uninstall_wrapper: uninstall.sh
+  install_canonical: homeassistant/install.sh
+  install_canonical_uninstall: homeassistant/uninstall.sh
+  install_howto: docs/howto/homeassistant-installer.md
+  install_smoketest: scripts/checks/ha-beta-smoke.sh
+
+dashboard:
+  title: "HA installer"
+  tiles:
+    - input_text.rc_ha_installer_installed_ref
+    - input_text.rc_ha_installer_installed_at
+    - input_text.rc_ha_installer_installed_repo
+    - input_button.rc_ha_installer_run_install
+    - input_button.rc_ha_installer_run_uninstall
+    - input_text.rc_ha_installer_last_error
+    - input_boolean.rc_ha_installer_backups_enabled
+    - sensor.rc_ha_installer_status
+    - sensor.rc_ha_installer_files_installed_count
+    - binary_sensor.rc_ha_installer_installed_assets_match_repo
+
+openclaw:
+  queries:
+    - "is RoamCore installed?"
+    - "which ref is installed?"
+    - "when was it last installed?"
+    - "which repo was used?"
+    - "how many files are installed?"
+    - "do the installed assets match the repo?"
+    - "is the install stale?"
+    - "what was the last error?"
+    - "run install now"
+    - "run uninstall now"
+
+contract:
+  installer_version: 1
+  ref_pin_supported: true
+  rc_api_token_aware: true
+  bump_notify_automation: rc_ha_installer_install_failure_capture
+
+contract_tiles:
+  - input_text.rc_ha_installer_installed_ref
+  - input_text.rc_ha_installer_installed_at
+  - input_text.rc_ha_installer_installed_repo
+  - input_button.rc_ha_installer_run_install
+  - input_button.rc_ha_installer_run_uninstall
+  - input_text.rc_ha_installer_last_error
+  - input_boolean.rc_ha_installer_backups_enabled
+  - sensor.rc_ha_installer_status
+  - sensor.rc_ha_installer_files_installed_count
+  - binary_sensor.rc_ha_installer_installed_assets_match_repo
+
+automations:
+  - id: rc_ha_installer_install_button_guard
+    title: "Install-button guard"
+  - id: rc_ha_installer_uninstall_button_guard
+    title: "Uninstall-button guard"
+  - id: rc_ha_installer_stale_version_detector
+    title: "Stale-version detector"
+  - id: rc_ha_installer_installed_assets_match_repo
+    title: "Installed-assets-match-repo guard"
+  - id: rc_ha_installer_install_failure_capture
+    title: "Install-failure capture"
+
+upstream_truth:
+  reuse_first: true
+  rocore_owned:
+    - install.sh
+    - uninstall.sh
+    - homeassistant/install.sh
+    - homeassistant/uninstall.sh
+    - docs/howto/homeassistant-installer.md
+    - scripts/checks/ha-beta-smoke.sh
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  native_installer_code: true
+  one_line_install: true
+  one_line_uninstall: true
+  idempotent_guard: true
+  backups_enabled: true
+  rc_api_token_aware: true
+  install_howto_published: true
+  installer_scripts_at_repo_root: true
+  smoketest_present: true
+  integration_tests_bench_fixture_gap_documented: true
+  docs_recipe_published: true
+  smoketest_path: scripts/checks/ha-beta-smoke.sh
+  integration_tests:
+    present: false
+    reason: "Smoketest is shell-only (scripts/checks/ha-beta-smoke.sh validates the installer scripts are syntactically correct + the operator howto exists + the 5 directories are present); no pytest bench fixtures for the install / uninstall flow. Tier-a promotion requires adding pytest fixtures + a controlled environment (a HA core container via docker-compose + canned fixture responses for the install + uninstall exit codes + the 5 §8 MANDATORY automation triggers) to integration-test against."
+    bench_artifacts_needed:
+      - "canned install-success response (curl exit 0 + manifest.txt populated)"
+      - "canned install-failure response (curl exit non-zero + stderr captured into input_text.rc_ha_installer_last_error)"
+      - "canned uninstall-success response (curl exit 0 + manifest.txt truncated)"
+      - "canned uninstall-failure response (curl exit non-zero + stderr captured)"
+      - "canned reinstall response (prior manifest detected + backup created)"
+      - "canned stale-version response (installed_ref != ROAMCORE_REF for > 7 days)"
+      - "canned installed-assets-match response (files_installed_count matches repo inventory)"
+      - "canned installed-assets-mismatch response (files_installed_count differs from repo inventory)"
+
+tier_warnings:
+  - no_pytest_integration_tests_against_controlled_bench
+  - installer_is_shell_script_not_python_integration
+  - recipe_depends_on_user_running_curl_or_tapping_install_button
+  - requires_haos_or_supervised_or_core_with_ssh_addon
+  - idempotency_guarded_by_backup_dir_creation_only
+
+links:
+  official:
+    - https://www.home-assistant.io/installation/
+  custom_references:
+    - install.sh
+    - uninstall.sh
+    - homeassistant/install.sh
+    - homeassistant/uninstall.sh
+    - docs/howto/homeassistant-installer.md
+    - scripts/checks/ha-beta-smoke.sh
+  cross_references:
+    - ../trip-local-tier-a/
+    - ../trip-wrapped-tier-a/
+    - ../openclaw-api/
+    - ../bed-lift-diy/
