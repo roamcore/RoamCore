@@ -139,6 +139,13 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
 
+# Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
+# Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
+# + spawns a real port-bind regression to prove every Hub service comes
+# back after a reboot. Repo-local only; no live HA / Proxmox calls.
+run_if_present "scripts/checks/hub-restart-stability-smoke.sh" \
+  "Hub restart-stability: Phase 3 Hub smoke test rig (5 addons + manifest + real port-bind reboot check)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

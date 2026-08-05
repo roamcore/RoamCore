@@ -1,0 +1,122 @@
+# RoamCore Hub — canonical service manifest
+#
+# Wave 9 #120b — "Phase 3 Hub — restart-stability smoke test rig".
+# Source of truth for the runtime services that run on a RoamCore Hub.
+# Consumed by:
+#   - homeassistant/addons/tests/test_hub_restart_stability.py
+#       (validates every addon config.yaml against this manifest;
+#        asserts port uniqueness + dependency order)
+#   - scripts/checks/hub-restart-stability-smoke.sh
+#       (parses this YAML before invoking pytest so a malformed manifest
+#        fails fast with a clear error)
+#   - docs/runbooks/hub-restart-stability.md
+#       (the §3 "What each addon does" table renders the
+#        user_facing_intro field verbatim)
+#
+# Schema:
+#   services: list of one entry per RoamCore Hub runtime service. Each
+#   entry carries the addon slug, the role it plays on the Hub, the
+#   restart policy (always / on-failure / no), any other services it
+#   must be ready before it can start, the health check we use to
+#   decide when the service has reached ready state, the expected time
+#   to ready in seconds, and one short sentence in plain English that
+#   a van owner would understand.
+#
+#   The plain-English sentence (user_facing_intro) is the ONLY string
+#   in this file that ships to user-facing surfaces. Everything else
+#   is dev/ops-only. If you change it, change it once here and the
+#   runbook + pytest assertions stay in lockstep.
+#
+#   `expected_ready_seconds` is a soft contract used by the restart
+#   rig to decide when to give up on a service. Bumping it is fine;
+#   the rig treats it as a ceiling, not a target.
+
+---
+schema_version: 1
+hub: roamcore-hub
+notes: |
+  Manifest of the 5 runtime addons that ship on a RoamCore Hub.
+  Restart policies follow Home Assistant Supervisor conventions
+  (always / on-failure / no). The pytest rig
+  (homeassistant/addons/tests/test_hub_restart_stability.py)
+  asserts every addon in this list has a matching config.yaml on
+  disk, that the ports are unique across the Hub, and that any
+  declared depends_on slug resolves to another service in this file.
+
+services:
+
+  - slug: roamcore_victron_auto_dev
+    addon_dir: homeassistant/addons/roamcore-victron-auto
+    role: power-telemetry
+    restart_policy: always
+    depends_on:
+      - roamcore_victron_mock_dev
+    health_check:
+      kind: mqtt-discovery
+      topic_pattern: "homeassistant/binary_sensor/roamcore-victron/+"
+      timeout_seconds: 30
+    expected_ready_seconds: 45
+    user_facing_intro: >
+      Reads your Victron battery, solar and shore power and shows
+      them on your dashboard.
+
+  - slug: roamcore_victron_mock_dev
+    addon_dir: homeassistant/addons/roamcore-victron-mock
+    role: power-mock-source
+    restart_policy: on-failure
+    depends_on: []
+    health_check:
+      kind: mqtt-publish
+      topic: "N/mock-portal/full_publish_completed"
+      timeout_seconds: 20
+    expected_ready_seconds: 30
+    user_facing_intro: >
+      Publishes pretend Victron readings so you can try the app
+      before plugging in real hardware.
+
+  - slug: roamcore_traccar_init
+    addon_dir: homeassistant/addons/roamcore-traccar-init
+    role: one-shot-secret-bootstrap
+    restart_policy: no
+    depends_on: []
+    health_check:
+      kind: secrets-present
+      keys:
+        - roamcore_traccar_admin_email
+        - roamcore_traccar_admin_password
+      timeout_seconds: 15
+    expected_ready_seconds: 20
+    user_facing_intro: >
+      Creates the Traccar admin account the first time your Hub
+      powers on, then steps out of the way.
+
+  - slug: roamcore_traccar_proxy
+    addon_dir: homeassistant/addons/roamcore-traccar-proxy
+    role: map-iframe-proxy
+    restart_policy: always
+    depends_on:
+      - roamcore_traccar_init
+    health_check:
+      kind: http
+      path: /
+      port: 8099
+      timeout_seconds: 10
+    expected_ready_seconds: 25
+    user_facing_intro: >
+      Lets the live map embed in your dashboard without breaking
+      on phones that block cross-network pages.
+
+  - slug: roamcore_tileserver
+    addon_dir: homeassistant/addons/roamcore-tileserver
+    role: offline-tile-server
+    restart_policy: always
+    depends_on: []
+    health_check:
+      kind: http
+      path: /
+      port: 8000
+      timeout_seconds: 10
+    expected_ready_seconds: 15
+    user_facing_intro: >
+      Serves the offline map tiles so the live map still works
+      when you are out of phone signal.
