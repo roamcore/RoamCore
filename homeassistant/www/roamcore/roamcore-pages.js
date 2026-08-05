@@ -1819,10 +1819,75 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
       ${this._row('Firmware', (rFw && rFw !== 'unknown' && rFw !== 'unavailable') ? rFw : '—')}
     `;
 
+    // --- Controls tile (Wave 2 #28) ---------------------------------------
+    // Three preference buttons (Starlink / LTE / Auto) wired to the matching
+    // scripts defined in homeassistant/packages/roamcore_openwrt_api.yaml.
+    // The button matching sensor.rc_openwrt_active_wan is disabled and
+    // styled as the *current* preference.
+    //
+    // A Restart Network button is rendered disabled unless
+    // binary_sensor.rc_setup_networking_safe is "on". When clicked (and
+    // enabled) it opens a native <dialog> for one-tap confirmation before
+    // firing script.rc_openwrt_restart_network.
+    const activeWanRaw = (this._getState('sensor.rc_openwrt_active_wan') || '').toLowerCase();
+    const safeStateRaw = this._getState('binary_sensor.rc_setup_networking_safe');
+    // Default-on fallback only if the entity is genuinely missing (unknown).
+    // If the entity exists and reports 'off' the button MUST be disabled.
+    const safeExists = !!(this._hass?.states && this._hass.states['binary_sensor.rc_setup_networking_safe']);
+    const safeOn = safeExists ? (String(safeStateRaw || '').toLowerCase() === 'on') : false;
+    const restartDisabled = !safeOn;
+    const prefBtn = (key, label, icon, entId) => {
+      const isCurrent = activeWanRaw === key;
+      const disabled = isCurrent ? ' disabled' : '';
+      const currentStyle = isCurrent
+        ? 'background: rgba(255,255,255,0.10); border-color: var(--rc-good); color: var(--rc-good); font-weight:700;'
+        : '';
+      const title = isCurrent ? `${label} (current)` : `Prefer ${label}`;
+      return `
+        <button
+          type="button"
+          class="rc-btn"
+          data-rc-pref="${key}"
+          data-rc-entity="${entId}"
+          title="${title}"
+          style="flex:1; min-width:0; ${currentStyle}"
+          ${disabled}>${icon || ''} ${label}${isCurrent ? ' ✓' : ''}</button>
+      `;
+    };
+    const controls = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 12px;">
+        ${prefBtn('starlink', 'Starlink', '🛰', 'script.rc_openwrt_prefer_starlink')}
+        ${prefBtn('lte', 'LTE', '⋮', 'script.rc_openwrt_prefer_lte')}
+        ${prefBtn('auto', 'Auto', '⟳', 'script.rc_openwrt_prefer_auto')}
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div class="rc-label" style="flex:1; min-width:0;">
+          Restart Network${safeOn ? '' : ' (locked — toggle rc_confirm_offline to unlock)'}
+        </div>
+        <button
+          type="button"
+          class="rc-btn"
+          id="rc-net-restart"
+          data-rc-entity="script.rc_openwrt_restart_network"
+          title="Restart the OpenWrt network stack (clients drop ~30 s)"
+          ${restartDisabled ? 'disabled' : ''}
+          style="${restartDisabled ? 'opacity:0.55; cursor:not-allowed;' : ''}">⟲ Restart Network</button>
+      </div>
+      <dialog id="rc-net-restart-dialog" style="border:1px solid rgba(255,255,255,0.18); border-radius:12px; background:var(--rc-card, rgba(32,32,32,0.92)); color:inherit; padding:18px; max-width:320px;">
+        <div style="font-weight:800; font-size:16px; margin-bottom:8px;">Restart the network?</div>
+        <div style="margin-bottom:14px; opacity:0.85;">Connected clients will drop for ~30 s.</div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" class="rc-btn" data-rc-cancel="1" style="opacity:0.7;">Cancel</button>
+          <button type="button" class="rc-btn" id="rc-net-restart-confirm" data-rc-entity="script.rc_openwrt_restart_network" style="font-weight:700;">Restart</button>
+        </div>
+      </dialog>
+    `;
+
     this._root.innerHTML = `
       <div class="rc-page">
         ${this._header('Network')}
         <div class="rc-grid">
+          ${this._tile({title:'Controls', icon:'◎', content: controls, className:'span-2'})}
           ${this._tile({title:'Connection Status', icon:'⌁', content: connection, className:'span-2'})}
           ${this._tile({title:'Performance', icon:'⟲', content: perf})}
           ${this._tile({title:'Data Usage', icon:'⛁', content: dataUsage})}
@@ -1833,6 +1898,51 @@ class RoamcoreNetworkPage extends RoamcoreBasePage {
         </div>
       </div>
     `;
+
+    // Wire up the preference buttons + restart confirmation AFTER innerHTML
+    // is set. We bind with addEventListener to keep the inline HTML clean
+    // and avoid inline onclick handlers (CSP-friendly).
+    try {
+      const prefButtons = this._root.querySelectorAll('button[data-rc-pref]');
+      prefButtons.forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const ent = btn.getAttribute('data-rc-entity');
+          if (!ent || !this._hass || typeof this._hass.callService !== 'function') return;
+          if (btn.hasAttribute('disabled')) return;
+          this._hass.callService('script', 'turn_on', { entity_id: ent });
+        });
+      });
+
+      const restartBtn = this._root.querySelector('#rc-net-restart');
+      const dlg = this._root.querySelector('#rc-net-restart-dialog');
+      const cancelBtn = this._root.querySelector('button[data-rc-cancel]');
+      const confirmBtn = this._root.querySelector('#rc-net-restart-confirm');
+      if (restartBtn && dlg && typeof dlg.showModal === 'function') {
+        restartBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          if (restartBtn.hasAttribute('disabled')) return;
+          try { dlg.showModal(); } catch (e) { /* ignore */ }
+        });
+      }
+      if (cancelBtn && dlg) {
+        cancelBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          try { dlg.close('cancel'); } catch (e) { /* ignore */ }
+        });
+      }
+      if (confirmBtn && dlg) {
+        confirmBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const ent = confirmBtn.getAttribute('data-rc-entity');
+          if (!ent || !this._hass || typeof this._hass.callService !== 'function') return;
+          this._hass.callService('script', 'turn_on', { entity_id: ent });
+          try { dlg.close('confirm'); } catch (e) { /* ignore */ }
+        });
+      }
+    } catch (e) {
+      console.warn('Network controls wiring failed', e);
+    }
 
   }
 }

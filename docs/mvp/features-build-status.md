@@ -57,6 +57,14 @@ This is an internal status page for the remaining MVP feature build-out.
   - RoamCore Map page embeds Traccar add-on **web UI** via iframe (configurable).
   - Helper: `input_text.rc_traccar_ui_url`
 
+- Networking controls (OpenWrt API) — Wave 2 #28 (slice shipped, cherry-picked onto main)
+  - HA package: `homeassistant/packages/roamcore_openwrt_api.yaml`
+  - Scripts: `script.rc_openwrt_prefer_starlink` / `_lte` / `_auto`, `script.rc_openwrt_restart_network`
+  - Safety guard: `binary_sensor.rc_setup_networking_safe` (= OpenWrt online AND `input_boolean.rc_confirm_offline=on`)
+  - UI: Controls tile on Network page (preference radios + Restart Network button with `<dialog>` confirmation)
+  - Smoke: `scripts/checks/openwrt-controls-smoke.sh` (wired into `scripts/check.sh --core-only`)
+  - Branch: `feat/wave2-networking-controls-openwrt`
+  - Verification: `bash scripts/check.sh --core-only` exit 0 + smoke PASS (cherry-pick onto `main` keeps main's check.sh since main already references the smoke via `run_if_present`).
 - Agent actions allowlist (safety gateway for agent-driven RoamCore actions)
   - Connection: [`connections/agent-actions-allowlist/`](../../connections/agent-actions-allowlist/) (Wave 3 #65, PR #69)
   - Tier-b recipe connection over upstream HA core `input_boolean` + `input_text` + `input_number` + `input_select` + `input_datetime` + `input_button` + `script` helpers (since 2022.x) + HA core `template:` sensor wrapper (since 2022.x) + HA core `logbook` integration (since 2022.x) + the upstream `script:` integration (since 2022.x). The single `input_boolean.rc_agent_actions_enabled` kill switch is already shipped in `homeassistant/packages/roamcore_agent_actions.yaml` and is preserved verbatim by this slice.

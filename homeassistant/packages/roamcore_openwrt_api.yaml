@@ -233,3 +233,53 @@ script:
     alias: "RC OpenWrt: Restart Network"
     sequence:
       - service: rest_command.rc_openwrt_restart_network
+
+
+# ---
+# Safety guards for the Controls tab on the Network page.
+#
+# The UI's Restart Network button MUST be disabled unless:
+#   1. The OpenWrt API reports the internet is "online"
+#      (sensor.rc_openwrt_internet), AND
+#   2. The user has explicitly opted in to the offline-aware confirmation
+#      via input_boolean.rc_confirm_offline.
+#
+# rc_confirm_offline defaults to OFF so the Restart Network button is
+# locked by default; the operator must toggle the opt-in to unlock it.
+
+input_boolean:
+  rc_confirm_offline:
+    name: "RC Confirm Offline"
+    icon: mdi:shield-alert
+    initial: off
+
+
+# ---
+# Composite "safe to restart network" guard.
+#
+# Drives the Restart Network button in the Controls tab:
+#   state = "on" only when OpenWrt reports the internet online AND the
+#           operator has explicitly opted in via rc_confirm_offline.
+#   state = "off" otherwise (button disabled).
+#
+# Availability is constrained to the two upstream entities being present;
+# if either is unknown/unavailable the guard reports unknown too.
+
+template:
+  - binary_sensor:
+      - name: "RC Setup Networking Safe"
+        unique_id: rc_setup_networking_safe
+        icon: mdi:shield-check
+        device_class: safety
+        state: >-
+          {{
+            'on'
+            if is_state('sensor.rc_openwrt_internet', 'online')
+               and is_state('input_boolean.rc_confirm_offline', 'on')
+            else 'off'
+          }}
+        availability: >-
+          {{
+            states('sensor.rc_openwrt_internet') not in ['unknown', 'unavailable']
+            and states('input_boolean.rc_confirm_offline') not in ['unknown', 'unavailable']
+          }}
