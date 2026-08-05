@@ -29,3 +29,63 @@ input_number:
     step: 1
     mode: box
     initial: 19
+
+# ---------------------------------------------------------------------------
+# Dashboard tile (Wave 9 #111 — Map graceful offline degradation)
+#
+# The Lovelace `conditional` card below switches the map view between the
+# live (tiles + tracking dot) and the offline (gray basemap + last-known
+# pin + plain-English banner) state based on
+# `binary_sensor.rc_map_offline` from the companion package at
+# `homeassistant/packages/roamcore_map_offline.yaml`.
+#
+# Paste this into `homeassistant/lovelace/roamcore-dashboard-native.yaml`
+# under the `path: map` view's `cards:` list (replace the existing
+# iframe card). The package itself is HA config and cannot hold a
+# Lovelace card directly; this comment block documents the operator-side
+# wiring so the recipe layer stays copy-pasteable.
+#
+#   - type: conditional
+#     conditions:
+#       - entity: binary_sensor.rc_map_offline
+#         state: "off"
+#     card:
+#       type: map
+#       default_zoom: 11
+#       hours_to_show: 6
+#       entities:
+#         - device_tracker.rc_map_device_tracker
+#       tile_url: "{{ states('input_text.rc_map_tile_url') }}"
+#       attribution: "© OpenStreetMap contributors"
+#   - type: conditional
+#     conditions:
+#       - entity: binary_sensor.rc_map_offline
+#         state: "on"
+#     card:
+#       type: vertical-stack
+#       cards:
+#         - type: markdown
+#           content: >-
+#             {{ states('input_text.rc_map_offline_banner') or
+#                "Showing your last known location. We'll switch back when
+#                the map reconnects." }}
+#         - type: map
+#           default_zoom: 11
+#           hours_to_show: 0
+#           dark_mode: true
+#           entities:
+#             - entity: sensor.rc_map_offline_last_location_lat
+#             - entity: sensor.rc_map_offline_last_location_lon
+#             - type: device_tracker
+#               entity_id: device_tracker.rc_map_device_tracker
+#               show_as: pin
+#           tile_url: ""   # gray basemap when no tile URL is provided
+#           attribution: ""
+#
+# NOTE: the snippet above is YAML, not Lovelace Jinja — the
+# `{{ states(...) }}` calls inside `tile_url:` / `entities:` are kept
+# literal in this comment block (paste without the leading `- type:` and
+# `card:` wrappers if your dashboard already has its own map card). The
+# README in `homeassistant/packages/roamcore_map_offline.README.md`
+# documents the full operator-side wiring.
+# ---------------------------------------------------------------------------
