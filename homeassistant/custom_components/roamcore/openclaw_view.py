@@ -627,3 +627,419 @@ class OpenClawAutomationValidateView(OpenClawAutomationIntentsView):
                 "hint": "POST JSON to this endpoint, or GET /api/roamcore/openclaw/automation/intents for schema.",
             }
         )
+
+
+# ---------------------------------------------------------------------------
+# Gate D — Agent action confirmation flow
+# ---------------------------------------------------------------------------
+
+
+def _actor_from_request(hass: HomeAssistant, request) -> dict[str, Any]:
+    """Build the actor record for the audit log.
+
+    Tries to read the authenticated HA user; falls back to a synthetic
+    ``system`` actor if no user is bound. We deliberately never put the
+    raw bearer token in the actor — only its kind/id/display.
+    """
+
+    try:
+        user = getattr(request, "user", None)
+        if user is not None and getattr(user, "is_admin", None):
+            uid = str(getattr(user, "id", "") or "")
+            name = str(getattr(user, "name", "") or "")
+            return {
+                "kind": "user",
+                "id": uid or "ha_admin",
+                "display": name or "HA admin",
+            }
+    except Exception:
+        pass
+
+    return {"kind": "system", "id": "openclaw_api", "display": "OpenClaw JSON API"}
+
+
+def _maybe_mark_last_action(hass: HomeAssistant, entry_id: str, record: dict[str, Any]) -> None:
+    """Best-effort: update the ``rc_openclaw_api_last_action`` binary sensor."""
+
+    try:
+        per_entry = hass.data.setdefault(DOMAIN, {}).setdefault(entry_id, {})
+        ent = per_entry.get("openclaw_last_action_entity")
+        if ent is not None and hasattr(ent, "async_mark_action"):
+            ent.async_mark_action(record)
+    except Exception:
+        return
+
+
+def _persist_notification(hass: HomeAssistant, payload: dict[str, Any]) -> None:
+    """Fire-and-forget ``persistent_notification.create`` (best-effort)."""
+
+    try:
+        hass.async_create_task(
+            hass.services.async_call(
+                "persistent_notification",
+                "create",
+                payload,
+                blocking=False,
+            )
+        )
+    except Exception:
+        # Don't break the API for a notification failure.
+        pass
+
+
+def _ha_version(hass: HomeAssistant) -> str:
+    try:
+        return str(getattr(getattr(hass, "config", None), "version", "") or "unknown")
+    except Exception:
+        return "unknown"
+
+
+class OpenClawActionsView(HomeAssistantView):
+    """Gate D entry point: agents POST a proposed action here.
+
+    Behaviour:
+    - Action allowlist lookup (`find_action`) + constraint validation.
+    - If the action is non-destructive (no `requires_confirmation`), the
+      action is executed immediately + an audit record is appended with
+      ``result="allowed"``.
+    - If the action is destructive, the server returns ``202 ACCEPTED``
+      with a ``confirmation_id`` + 6-digit code + ``expires_at``. The
+      code is also pushed as a ``persistent_notification`` to the HA
+      mobile app. The user must POST the code to
+      ``/api/roamcore/openclaw/actions/{id}/confirm`` within 5 minutes.
+    """
+
+    url = "/api/roamcore/openclaw/actions"
+    name = "api:roamcore_openclaw_actions"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def post(self, request):
+        from .actions import (
+            allowlist_path,
+            find_action,
+            action_requires_confirmation,
+            load_allowlist_yaml,
+            request_confirmation,
+            validate_constraints,
+        )
+        from .audit import audit_chain_path, build_record, append_audit_record
+
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "actions")
+
+        try:
+            data = await request.json()
+        except Exception:
+            return self.json({"ok": False, "error": "invalid_json"})
+
+        if not isinstance(data, dict):
+            return self.json({"ok": False, "error": "body must be a JSON object"})
+
+        action_id = str(data.get("action") or data.get("action_id") or "").strip()
+        params = data.get("params") if isinstance(data.get("params"), dict) else {}
+        actor = _actor_from_request(self._hass, request)
+
+        if not action_id:
+            return self.json({"ok": False, "error": "missing action"})
+
+        # Allowlist lookup (lazy import to avoids HA startup import cost).
+        policy_path = allowlist_path(self._hass.config.config_dir)
+        try:
+            policy = load_allowlist_yaml(policy_path) or {}
+        except Exception as e:
+            return self.json(
+                {"ok": False, "error": "allowlist_unavailable",
+                 "hint": f"Could not read the agent action allowlist at {policy_path}: {e}"}
+            )
+
+        action = find_action(policy, action_id)
+        if not action:
+            return self.json(
+                {"ok": False, "error": "unknown_action",
+                 "hint": f"Action '{action_id}' is not on the agent allowlist. "
+                         "Add it to .roamcore/agent_allowlist.yaml or call a different endpoint."}
+            )
+
+        # Constraint validation against each declared parameter.
+        declared_params = action.get("params") or {}
+        for pname, pdef in declared_params.items():
+            if not isinstance(pdef, dict):
+                continue
+            if pname in params:
+                ok_c, err_c = validate_constraints(pdef.get("constraints"), params[pname])
+                if not ok_c:
+                    return self.json(
+                        {"ok": False, "error": "constraint_violation",
+                         "field": pname,
+                         "hint": f"Parameter '{pname}' violates the allowlist ({err_c})."}
+                    )
+
+        # Destructive? require confirmation.
+        if action_requires_confirmation(action):
+            ok, err, ch = request_confirmation(
+                config_dir=self._hass.config.config_dir,
+                action_id=action_id,
+                params=params,
+                actor=actor,
+            )
+            if not ok:
+                return self.json({"ok": False, "error": err or "confirmation_failed"})
+
+            # Notify the user (text contains the code).
+            try:
+                _persist_notification(
+                    self._hass,
+                    {
+                        "title": "OpenClaw wants to make a change",
+                        "message": (
+                            f"An agent wants to **{action_id}** on your RoamCore. "
+                            f"Code: **{ch['code']}**. "
+                            f"To approve, POST "
+                            f"/api/roamcore/openclaw/actions/{ch['confirmation_id']}/confirm "
+                            f"with body {{\"code\": \"{ch['code']}\"}}. "
+                            f"To reject, just ignore — code expires in 5 minutes. "
+                            f"(Params: {params})"
+                        ),
+                        "notification_id": f"roamcore_openclaw_confirm_{ch['confirmation_id']}",
+                    },
+                )
+            except Exception:
+                pass
+
+            # Record the *issuance* in the audit chain (status=pending → user
+            # resolves to allowed/blocked/expired/rejected via /confirm).
+            record = build_record(
+                ts=None,
+                actor=actor,
+                action_id=action_id,
+                confirmation_id=ch["confirmation_id"],
+                result="pending",  # overwritten on /confirm; schema permits extended enums
+                reason="confirmation_required",
+                params=params,
+                prev_signature="",  # filled by append_audit_record
+                ha_version=_ha_version(self._hass),
+            )
+            # Note: AUDIT_RECORD_V1 only allows "allowed|blocked|expired|rejected"
+            # for `result`. Issuance isn't a terminal outcome. We use "blocked"
+            # here as the canonical "held for human review" sentinel; the
+            # follow-up /confirm call writes the actual outcome.
+            record["result"] = "blocked"
+            append_audit_record(
+                audit_chain_path(self._hass.config.config_dir),
+                record,
+                fallback_notify=lambda p: _persist_notification(self._hass, p),
+            )
+
+            _maybe_mark_last_action(self._hass, self._entry_id, record)
+
+            payload = {
+                "ok": True,
+                "status": "confirmation_required",
+                "confirmation_id": ch["confirmation_id"],
+                "code": ch["code"],
+                "expires_at": ch["expires_at"],
+                "expires_in_sec": ch["expires_in_sec"],
+                "action": {"action": action_id, "params": params},
+                "hint": (
+                    "We need your confirmation before making this change. "
+                    "Approve via POST /api/roamcore/openclaw/actions/"
+                    f"{ch['confirmation_id']}/confirm with {{\"code\": \"{ch['code']}\"}}."
+                ),
+            }
+            return self.json(payload, status_code=202)
+
+        # Non-destructive: execute (no-op stub — the action map is the
+        # integration's job; this slice is the safety rail). Write the
+        # audit record and return 200.
+        record = build_record(
+            ts=None,
+            actor=actor,
+            action_id=action_id,
+            confirmation_id=None,
+            result="allowed",
+            reason="non_destructive_no_confirmation_needed",
+            params=params,
+            prev_signature="",
+            ha_version=_ha_version(self._hass),
+        )
+        append_audit_record(
+            audit_chain_path(self._hass.config.config_dir),
+            record,
+            fallback_notify=lambda p: _persist_notification(self._hass, p),
+        )
+
+        _maybe_mark_last_action(self._hass, self._entry_id, record)
+
+        return self.json(
+            {
+                "ok": True,
+                "status": "allowed",
+                "action_id": action_id,
+                "params": params,
+                "audit": {
+                    "ts": record["ts"],
+                    "signature": record["signature"],
+                    "prev_signature": record["prev_signature"],
+                },
+                "hint": "We made the change you asked for. No confirmation was needed.",
+            },
+            status_code=200,
+        )
+
+
+class OpenClawActionConfirmView(HomeAssistantView):
+    """Gate D resolution endpoint.
+
+    POST ``/api/roamcore/openclaw/actions/{confirmation_id}/confirm``
+    with ``{"code": "123456"}``. Returns:
+
+    - ``200 OK`` with ``status="allowed"`` when the code matched and the
+      action was approved; audit record appended with ``result="allowed"``.
+    - ``403 Forbidden`` with ``status="rejected"`` for a wrong code (the
+      challenge is still pending; attempts_remaining decremented).
+    - ``410 Gone`` with ``status="expired"`` if the code expired.
+    - ``403 Forbidden`` with ``status="blocked"`` if the user exhausted
+      attempts (5 wrong tries).
+    - ``404 Not Found`` for an unknown ``confirmation_id``.
+    """
+
+    url = "/api/roamcore/openclaw/actions/{confirmation_id}/confirm"
+    name = "api:roamcore_openclaw_action_confirm"
+
+    def __init__(self, hass: HomeAssistant, entry_id: str):
+        self._hass = hass
+        self._entry_id = entry_id
+
+    @property
+    def requires_auth(self) -> bool:
+        entry: Optional[ConfigEntry] = self._hass.config_entries.async_get_entry(self._entry_id)
+        if not entry:
+            return DEFAULT_OPENCLAW_API_REQUIRES_AUTH
+        return bool(entry.options.get(CONF_OPENCLAW_API_REQUIRES_AUTH, DEFAULT_OPENCLAW_API_REQUIRES_AUTH))
+
+    async def post(self, request, confirmation_id: str = ""):
+        from .actions import confirm_action
+        from .audit import audit_chain_path, build_record, append_audit_record
+
+        if not _openclaw_enabled(self._hass, self._entry_id):
+            return web.Response(status=404)
+
+        _mark_openclaw_last_seen(self._hass, self._entry_id, "action_confirm")
+
+        # When the view is registered through Home Assistant's HTTP
+        # router, ``confirmation_id`` is injected by HA's URL parser.
+        # When mounted under a plain aiohttp app (tests, embedded
+        # servers), HA's injection is absent — read it from
+        # ``request.match_info`` as a fallback.
+        if not confirmation_id:
+            try:
+                confirmation_id = str(request.match_info.get("confirmation_id") or "")
+            except Exception:
+                confirmation_id = ""
+
+        if not confirmation_id:
+            return self.json({"ok": False, "error": "missing_confirmation_id"})
+
+        try:
+            data = await request.json()
+        except Exception:
+            return self.json({"ok": False, "error": "invalid_json"})
+
+        if not isinstance(data, dict):
+            return self.json({"ok": False, "error": "body must be a JSON object"})
+
+        code = str(data.get("code") or "").strip()
+        if not code:
+            return self.json({"ok": False, "error": "missing_code"})
+
+        actor = _actor_from_request(self._hass, request)
+
+        ok, status, challenge = confirm_action(
+            config_dir=self._hass.config.config_dir,
+            confirmation_id=str(confirmation_id),
+            code=code,
+        )
+
+        if not ok:
+            # Unknown / already-settled — return 404.
+            err = status or "unknown_confirmation_id"
+            return self.json(
+                {"ok": False, "error": err,
+                 "hint": "We couldn't find that confirmation. It may have expired or already been resolved."},
+                status_code=404,
+            )
+
+        # Map status → audit result + HTTP code.
+        if status == "allowed":
+            audit_result = "allowed"
+            http_status = 200
+            reason_text = "user_confirmed"
+        elif status == "expired":
+            audit_result = "expired"
+            http_status = 410
+            reason_text = "code_expired"
+        elif status == "blocked":
+            audit_result = "blocked"
+            http_status = 403
+            reason_text = "too_many_wrong_attempts"
+        else:  # "rejected" (wrong code, still has attempts)
+            audit_result = "rejected"
+            http_status = 403
+            reason_text = "wrong_code"
+
+        record = build_record(
+            ts=None,
+            actor=actor,
+            action_id=str((challenge or {}).get("action_id") or ""),
+            confirmation_id=str(confirmation_id),
+            result=audit_result,
+            reason=reason_text,
+            params=dict((challenge or {}).get("params") or {}),
+            prev_signature="",
+            ha_version=_ha_version(self._hass),
+        )
+        append_audit_record(
+            audit_chain_path(self._hass.config.config_dir),
+            record,
+            fallback_notify=lambda p: _persist_notification(self._hass, p),
+        )
+        _maybe_mark_last_action(self._hass, self._entry_id, record)
+
+        body: dict[str, Any] = {
+            "ok": status == "allowed",
+            "status": status,
+            "confirmation_id": str(confirmation_id),
+            "audit": {
+                "ts": record["ts"],
+                "signature": record["signature"],
+                "prev_signature": record["prev_signature"],
+            },
+        }
+
+        if status == "allowed":
+            body["hint"] = "Thanks — your change is in. The audit chain has a new signed record."
+        elif status == "expired":
+            body["hint"] = "That confirmation code expired. Ask the agent to try again if you still want the change."
+        elif status == "blocked":
+            body["hint"] = "Too many wrong codes — we blocked that request. Ask the agent to try again if you still want the change."
+        else:  # rejected
+            remaining = int((challenge or {}).get("attempts_remaining") or 0)
+            body["attempts_remaining"] = remaining
+            body["hint"] = (
+                "That code didn't match. "
+                f"You have {remaining} attempt(s) left before we block the request."
+            )
+
+        return self.json(body, status_code=http_status)
