@@ -1,0 +1,220 @@
+# RoamCore Hub — Canonical Bill of Materials
+#
+# Reference hardware spec for the RoamCore Hub (the VP2430 single-box
+# appliance described in hardware/MainHub/Overview.md). This manifest
+# is the source of truth for every part that ships in or with the Hub.
+#
+# Tier discipline:
+#   - The manifest itself is reference data, not tier-classified.
+#   - The validator (scripts/build/hub-bom-validate.py) and smoke
+#     check (scripts/checks/hub-bom-smoke.sh) are RoamCore-owned
+#     tooling (tier-a discipline applies to the tooling).
+#
+# Per-component rule:
+#   - name              human-readable label for the vanlifer
+#   - role              vendor-neutral id (lowercase, snake_case;
+#                       MUST NOT contain a vendor brand name; see
+#                       docs/reference/rc-entity-naming.md)
+#   - qty               integer > 0
+#   - supplier          vendor/retailer name (free-form, human label)
+#   - supplier_part_no  part number / SKU the supplier uses
+#   - unit_cost_usd     integer cents to avoid float drift;
+#                       schema validator expects an int >= 0
+#   - link              URL to the supplier page (informational)
+#   - required          true if the Hub does not boot without this
+#                       part; false if it's an optional upgrade
+#   - notes             plain-English note for the user (optional)
+#
+# All components live under `components:` as a list. `role` MUST be
+# unique across the list (the validator enforces this).
+
+manifest:
+  name: RoamCore Hub
+  version: "1.0"
+  platform: Protectli VP2430
+  overview_doc: hardware/MainHub/Overview.md
+  notes: |
+    The single-box appliance that runs the router VM, Home Assistant,
+    Wi-Fi, and the internal sensor node. Field-swappable cellular
+    module (4G now, 5G upgrade later) without rewiring the van.
+
+components:
+
+  # ----- Base chassis --------------------------------------------------
+  - name: Protectli VP2430 four-port mini PC
+    role: mini_pc_chassis
+    qty: 1
+    supplier: Protectli
+    supplier_part_no: VP2430
+    unit_cost_usd: 44900
+    link: https://protectli.com/products/vp2430
+    required: true
+    notes: The four-port VP2430 (2.5 GbE on every port) is the Hub's
+      main board. Carries the M.2 slots, the SIM socket, and the six
+      SMA upshot knockouts on the back panel.
+
+  # ----- Core compute --------------------------------------------------
+  - name: 16 GB DDR5 SO-DIMM RAM
+    role: system_ram
+    qty: 1
+    supplier: Crucial
+    supplier_part_no: CT16G48C40S5
+    unit_cost_usd: 6500
+    link: https://www.crucial.com/memory/ddr5/ct16g48c40s5
+    required: true
+    notes: One DDR5-4800 SO-DIMM. Match the exact VP2430 spec.
+
+  - name: 500 GB NVMe SSD (M.2 2280 M-key)
+    role: system_storage
+    qty: 1
+    supplier: Samsung
+    supplier_part_no: MZ-V8V500B/AM
+    unit_cost_usd: 4900
+    link: https://www.samsung.com/us/computing/memory-storage/solid-state-drives/980-500gb-nvme-m2-ssd-mz-v8v500b-am/
+    required: true
+    notes: Holds the router VM, the Home Assistant VM, and the
+      user data. Larger sizes are fine.
+
+  # ----- Networking & radios -------------------------------------------
+  - name: M.2 E-key Wi-Fi 6 card
+    role: wifi_radio
+    qty: 1
+    supplier: Intel
+    supplier_part_no: AX200NGW
+    unit_cost_usd: 2200
+    link: https://www.intel.com/content/www/us/en/products/sku/130293/intel-wifi-6-ax200/specifications.html
+    required: true
+    notes: Single SSID for the van (hostapd / WPA3).
+
+  - name: RP-SMA pigtail for Wi-Fi (150 mm)
+    role: wifi_pigtail
+    qty: 2
+    supplier: Taoglas
+    supplier_part_no: CAB.711
+    unit_cost_usd: 400
+    link: https://www.taoglas.com/product/cab-711/
+    required: true
+    notes: One per Wi-Fi chain. Keep short and strain-relieved.
+
+  - name: Wi-Fi external antenna (dual-band, RP-SMA)
+    role: wifi_antenna
+    qty: 2
+    supplier: Taoglas
+    supplier_part_no: MA241.W.A.001
+    unit_cost_usd: 1400
+    link: https://www.taoglas.com/product/wi-fi-24-58ghz-3dbi-rp-sma-male-connector/
+    required: true
+    notes: Mount on the back-panel WIFI 1 / WIFI 2 knockouts.
+
+  - name: M.2 B-key 4G LTE modem (Cat-6)
+    role: cell_modem_4g
+    qty: 1
+    supplier: Sierra Wireless
+    supplier_part_no: EM06-E
+    unit_cost_usd: 13900
+    link: https://www.sierrawireless.com/products/embedded-solutions/4g-lte-modules/em06-series/
+    required: true
+    notes: Default cellular modem. Field-swappable for a 5G module
+      later — see the user doc 4G to 5G upgrade steps.
+
+  - name: MHF4 to SMA pigtail (150 mm)
+    role: cell_pigtail
+    qty: 2
+    supplier: Taoglas
+    supplier_part_no: CAB.894
+    unit_cost_usd: 600
+    link: https://www.taoglas.com/product/cab-894/
+    required: true
+    notes: MHF4 plug on the modem side, SMA bulkhead on the chassis
+      side. Spare pigtails belong in the upgrade kit.
+
+  - name: 4G LTE external antenna (SMA)
+    role: cell_antenna_4g
+    qty: 2
+    supplier: Parsec Technologies
+    supplier_part_no: DOG2W
+    unit_cost_usd: 2900
+    link: https://www.parsec-tech.com/products/dog2w/
+    required: true
+    notes: 2x2 MIMO for 4G. Mount on CELL 1 / CELL 2 knockouts;
+      CELL 3 and CELL 4 stay capped until the 5G upgrade.
+
+  - name: Nano-SIM card (data-only, customer-supplied)
+    role: data_sim
+    qty: 1
+    supplier: Customer-supplied
+    supplier_part_no: varies
+    unit_cost_usd: 0
+    link: https://www.your-carrier.example/
+    required: true
+    notes: Buy a data-only plan from any carrier that serves your
+      travel area. RoamCore does not resell SIMs.
+
+  # ----- Sensors (internal) --------------------------------------------
+  - name: USB sensor node (IMU + environment)
+    role: sensor_node
+    qty: 1
+    supplier: RoamCore
+    supplier_part_no: RC-USB-SENSOR-V1
+    unit_cost_usd: 4500
+    link: https://shop.roamcore.example/usb-sensor-node
+    required: true
+    notes: ESP32 board with a 9-axis IMU (van level) and a BME680
+      (temperature, humidity, pressure, air quality). Publishes
+      over MQTT to Home Assistant.
+
+  # ----- Power (automotive-grade) --------------------------------------
+  - name: 12 V automotive screw-terminal power lead
+    role: power_lead
+    qty: 1
+    supplier: RoamCore
+    supplier_part_no: RC-PWR-12V-2M
+    unit_cost_usd: 1800
+    link: https://shop.roamcore.example/power-lead
+    required: true
+    notes: 2 m fused lead with ring terminals. Plugs into the
+      Electrical Box or any clean 12 V source.
+
+  - name: Anti-vibration mount kit
+    role: anti_vibration_kit
+    qty: 1
+    supplier: RoamCore
+    supplier_part_no: RC-AVM-KIT
+    unit_cost_usd: 1200
+    link: https://shop.roamcore.example/anti-vibration-kit
+    required: true
+    notes: Four silicone isolators + steel backing plates. Use under
+      every chassis mount point.
+
+  # ----- Thermal --------------------------------------------------------
+  - name: Thermal pad (modem to chassis lid)
+    role: thermal_pad
+    qty: 1
+    supplier: Thermalright
+    supplier_part_no: ODYSSEY-1.5MM
+    unit_cost_usd: 800
+    link: https://thermalright.com/product/odyssey-thermal-pad/
+    required: true
+    notes: 1.5 mm silicone pad bridges the modem M.2 to the chassis
+      lid. Required for sustained cellular load.
+
+  # ----- Labelling & quick-start ---------------------------------------
+  - name: Silkscreen label set (WAN, LAN1-3, CELL1-4, WIFI1-2, 12V PWR)
+    role: chassis_labels
+    qty: 1
+    supplier: RoamCore
+    supplier_part_no: RC-LABEL-V1
+    unit_cost_usd: 600
+    link: https://shop.roamcore.example/labels
+    required: true
+    notes: One peel-and-stick set per Hub.
+
+  - name: Laminated quick-start card
+    role: quick_start_card
+    qty: 1
+    supplier: RoamCore
+    supplier_part_no: RC-QS-CARD-V1
+    unit_cost_usd: 200
+    link: https://shop.roamcore.example/quickstart
+    required: true
+    notes: Default SSID / password, HA URL, support QR.

@@ -67,6 +67,7 @@ bash scripts/checks/ha-beta-smoke.sh
 run_if_present "scripts/checks/openwrt-controls-smoke.sh"      "Networking controls (OpenWrt API): smoke check"
 run_if_present "scripts/checks/remote-access-tailscale-smoke.sh" "Remote access (Tailscale contract): smoke check"
 run_if_present "scripts/checks/ota-smoke.sh"                   "OTA updates: smoke check"
+run_if_present "scripts/checks/hub-bom-smoke.sh"               "RoamCore Hub BOM: manifest + validator smoke check"
 run_if_present "scripts/checks/labs-smoke.sh"                  "RoamCore Labs: smoke check"
 run_if_present "scripts/checks/hardware-auto-discovery-smoke.sh" "Hardware auto-discovery + setup flows: smoke check"
 run_if_present "scripts/checks/ai-chat-smoke.sh"               "AI chat: smoke check"
