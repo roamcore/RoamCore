@@ -27,6 +27,8 @@ from .openclaw_view import (
     OpenClawTimeSeriesView,
     OpenClawAutomationIntentsView,
     OpenClawAutomationValidateView,
+    OpenClawActionsView,
+    OpenClawActionConfirmView,
 )
 from .diagnostics_view import RoamcoreDiagnosticsView
 from .system_summary_view import RoamcoreSystemSummaryView
@@ -281,6 +283,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.http.register_view(OpenClawTimeSeriesView(hass, entry.entry_id))
     hass.http.register_view(OpenClawAutomationIntentsView(hass, entry.entry_id))
     hass.http.register_view(OpenClawAutomationValidateView(hass, entry.entry_id))
+    # Gate D — agent action confirmation flow
+    hass.http.register_view(OpenClawActionsView(hass, entry.entry_id))
+    hass.http.register_view(OpenClawActionConfirmView(hass, entry.entry_id))
 
     # Always-on, authenticated diagnostics endpoint for the UI/support.
     hass.http.register_view(RoamcoreDiagnosticsView(hass, entry.entry_id))

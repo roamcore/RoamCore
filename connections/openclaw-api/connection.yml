@@ -698,6 +698,7 @@ dashboard:
     - sensor.rc_openclaw_api_average_latency_ms
     - binary_sensor.rc_openclaw_api_is_reachable
     - binary_sensor.rc_openclaw_api_requires_auth_active
+    - binary_sensor.rc_openclaw_api_last_action
     - sensor.rc_openclaw_api_openclaw_summary_url
     - sensor.rc_openclaw_api_skill_version
     - button.rc_openclaw_api_test_now

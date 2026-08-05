@@ -918,9 +918,10 @@ def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
                 f"conforming segment {segment!r}"
             )
 
-    # Spec calls for exactly 12 vendor-neutral tiles
+    # Spec calls for exactly 13 vendor-neutral tiles
     # (the 12 contract entities documented in the recipe
-    # §7 contract layer):
+    # §7 contract layer + 1 Gate D audit indicator added
+    # by Wave 9 #113):
     #   input_boolean.rc_openclaw_api_enabled
     #     (the §7 master enable toggle — 404 when OFF,
     #      default OFF for safety)
@@ -943,6 +944,11 @@ def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
     #   binary_sensor.rc_openclaw_api_requires_auth_active
     #     (the §7 safety chip — true when auth is
     #      required AND no LLAT is configured)
+    #   binary_sensor.rc_openclaw_api_last_action
+    #     (Wave 9 #113 Gate D: flips ON for 60s after
+    #      any agent action is confirmed or blocked;
+    #      surfaces under Connectivity → OpenClaw in
+    #      the dashboard + on the Safety panel)
     #   sensor.rc_openclaw_api_openclaw_summary_url
     #     (the §7 absolute URL of the summary endpoint
     #      — mirrors /skill payload)
@@ -956,18 +962,18 @@ def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
     #     (the §7 operator-triggered one-tap cache
     #      invalidation — for agents with stale
     #      snapshots)
-    assert len(tiles) == 12, (
-        f"openclaw-api must contribute exactly 12 "
+    assert len(tiles) == 13, (
+        f"openclaw-api must contribute exactly 13 "
         f"contract tiles per spec (2 input_boolean "
         f"helpers (enabled + requires_auth) + 6 sensors "
         f"(contract_version + last_request_at + "
         f"request_count_24h + average_latency_ms + "
-        f"openclaw_summary_url + skill_version) + 2 "
+        f"openclaw_summary_url + skill_version) + 3 "
         f"binary_sensors (is_reachable + "
-        f"requires_auth_active) + 2 buttons (test_now + "
-        f"bust_cache) = 12 contract entities documented "
-        f"in the recipe §7 contract layer); got "
-        f"{len(tiles)}"
+        f"requires_auth_active + last_action [Wave 9 #113]) "
+        f"+ 2 buttons (test_now + bust_cache) = 13 "
+        f"contract entities documented in the recipe §7 "
+        f"contract layer); got {len(tiles)}"
     )
 
 
