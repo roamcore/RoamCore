@@ -216,18 +216,21 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from legacy tier-A doc — category must match."""
+    """Category must match the (now optional) legacy doc or the recipe.md.
+
+    Per the 2026-08-05 docs/ux-first-pass repo-hygiene alignment, the
+    legacy `docs/catalog/.../mock-location-and-tracks.md` is OPTIONAL
+    (recipe.md is canonical). The legacy doc, when present, is the
+    IKEA-style overview — it does NOT carry a 'Replaced by' banner
+    anymore. We just verify the category matches and skip the
+    supersession-banner check if the legacy doc isn't present.
+    """
     assert manifest["category"] == "map"
-    assert LEGACY_DOC.is_file(), (
-        "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "still exist (carrying the supersession banner)"
-    )
-    legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "Replaced by" in legacy_text, (
-        "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "carry a supersession banner pointing at the new connection "
-        "folder"
-    )
+    if not LEGACY_DOC.is_file():
+        pytest.skip(
+            f"legacy doc {LEGACY_DOC} not present; "
+            f"new pattern: recipe.md is canonical per directive repo-hygiene rule"
+        )
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

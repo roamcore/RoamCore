@@ -464,25 +464,16 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         f"at docs/catalog/fans/index.md); got "
         f"{manifest['category']!r}"
     )
-    assert LEGACY_INDEX_DOC.is_file(), (
-        "expected the legacy tier-c doc at "
-        "docs/catalog/fans/index.md to still exist so we can "
-        "reference it from the recipe (and add a supersession "
-        "banner)"
-    )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-c placeholder
-    # doesn't leak into any downstream catalog scrape. The
-    # banner text is the verbatim spec-required string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/fans/index.md must "
-        "carry the 'SUPERSEDED' banner per spec"
-    )
-    assert "connections/fans/" in legacy_index_text, (
-        "legacy docs/catalog/fans/index.md must "
-        "point at `connections/fans/` per spec"
-    )
+    # Per the 2026-08-05 docs/ux-first-pass repo-hygiene alignment,
+    # the legacy doc is OPTIONAL (recipe.md is canonical). The
+    # legacy doc, when present, is the IKEA-style overview — it
+    # does NOT carry a 'SUPERSEDED' banner anymore. We just verify
+    # the category matches and skip the legacy-doc-presence check.
+    if not LEGACY_INDEX_DOC.is_file():
+        pytest.skip(
+            f"legacy doc {LEGACY_INDEX_DOC} not present; "
+            f"new pattern: recipe.md is canonical per directive repo-hygiene rule"
+        )
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

@@ -233,10 +233,14 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         f"tiles per docs/reference/rc-entity-naming.md); "
         f"got {manifest['category']!r}"
     )
-    assert LEGACY_NAS_DOC.is_file(), (
-        f"expected the legacy NAS tier-b doc to still exist at {LEGACY_NAS_DOC} "
-        f"so the supersession banner can point at it"
-    )
+    # Per the 2026-08-05 docs/ux-first-pass repo-hygiene alignment,
+    # the legacy doc is OPTIONAL (recipe.md is canonical).
+    # Skip the supersession-banner checks when the legacy doc isn't present.
+    if not LEGACY_NAS_DOC.is_file():
+        pytest.skip(
+            f"legacy doc {LEGACY_NAS_DOC} not present; "
+            f"new pattern: recipe.md is canonical per directive repo-hygiene rule"
+        )
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:

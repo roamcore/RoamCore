@@ -99,9 +99,20 @@ def test_requires_docs_recipe_published(manifest: dict) -> None:
 
 
 def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
-    """Promoted from tier-c legacy doc — category must match."""
+    """Promoted from tier-c legacy doc — category must match.
+
+    Per the 2026-08-05 docs/ux-first-pass repo-hygiene alignment,
+    the legacy `docs/catalog/safety/smoke-co-gas-sensors.md` is
+    OPTIONAL (recipe.md is canonical). We just verify the category
+    matches and skip the legacy-doc-presence check if it isn't
+    present.
+    """
     assert manifest["category"] == "safety"
-    assert LEGACY_DOC.is_file()
+    if not LEGACY_DOC.is_file():
+        pytest.skip(
+            f"legacy doc {LEGACY_DOC} not present; "
+            f"new pattern: recipe.md is canonical per directive repo-hygiene rule"
+        )
 
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
