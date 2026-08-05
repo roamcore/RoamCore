@@ -13,7 +13,7 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
-    page: catalog/automation/mode.md
+    page: catalog/automations/mode.md
     summary: Quickly switch the van between common states (driving, parked, quiet night). A clean way to group automations later without building everything at once.
     needs_curation_review: true
     tags:

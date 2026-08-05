@@ -59,8 +59,9 @@ nav:
       - Connectivity:
           - catalog/connectivity/index.md
           - catalog/networking/index.md
-          - catalog/homelab/index.md
           - catalog/remote-access/index.md
+      - Homelab:
+          - catalog/homelab/index.md
       - Location:
           - catalog/location/index.md
           - catalog/presence/index.md
@@ -72,8 +73,8 @@ nav:
           - catalog/security/index.md
           - catalog/cctv/index.md
           - catalog/nfc-tags/index.md
-      - Automation:
-          - catalog/automation/index.md
+      - Automations:
+          - catalog/automations/index.md
           - catalog/ai/index.md
           - catalog/time/index.md
       - Maintenance:
