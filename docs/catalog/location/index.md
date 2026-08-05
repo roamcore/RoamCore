@@ -1,5 +1,16 @@
 # Location
 
-- **[Amenities overlay](amenities-overlay.md)** — Amenities overlay (nearby places) — See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
-- **[Bluetooth / Wi-Fi presence](bluetooth-wifi-presence.md)** — Presence detection — who is currently home in the van — is the foundation of every occupied/away automation in RoamCore: shut down inverter + pump when nobody is home, turn on approach lighting when the first person returns after dark, suppress Stealth-silent-hours actions when only the driver is present, alert…
-- **[Map dashboard](map-dashboard.md)** — RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…
+Map, GPS tracking, presence detection, and trip history. "Where are we,
+where did we park, who's home?"
+
+<!-- RC_FEATURE_LIST_START -->
+
+## Features
+
+<div class="rc-feature-list">
+  <a class="rc-feature" href="map-dashboard/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">Map dashboard</div><div class="rc-feature-sub">A map of where the van is right now, plus recent trips and parked locations — directly inside Home Assistant.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+  <a class="rc-feature" href="bluetooth-wifi-presence/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">Bluetooth / Wi-Fi presence detection</div><div class="rc-feature-sub">Know who's currently in the van so lights and heating react to real occupancy, not schedules.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+  <a class="rc-feature" href="amenities-overlay/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Amenities overlay (nearby places)</div><div class="rc-feature-sub">See nearby water taps, laundrettes, dump points, campsites, and supermarkets directly on the RoamCore map.</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
+</div>
+
+<!-- RC_FEATURE_LIST_END -->
