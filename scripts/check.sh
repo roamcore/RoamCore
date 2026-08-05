@@ -138,6 +138,8 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
+run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
+  "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"

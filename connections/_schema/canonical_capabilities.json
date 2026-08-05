@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoamCore Canonical Vehicle Model",
+  "description": "The vendor-neutral capability schema that every connected device in a van maps into. Every tile on the RoamCore dashboard, every OpenClaw summary, every Trip Wrapped metric reads from this canonical layer — never from a vendor-specific entity ID. Naming follows docs/reference/rc-entity-naming.md: <domain>.rc_<subsystem>_<object>_<metric>, with the rc_ prefix reserved for the contract layer. This file is the single source of truth for which capabilities exist; the Python validator in homeassistant/custom_components/roamcore/vehicle_model.py enforces the schema rules.",
+  "capability_categories": [
+    "power",
+    "lighting",
+    "climate",
+    "water",
+    "position",
+    "network"
+  ],
+  "capabilities": [
+    {
+      "id": "rc_power_battery_soc",
+      "category": "power",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "battery",
+      "unit": "%",
+      "description": "State of charge of the leisure/house battery (0-100%).",
+      "example_sources": [
+        "sensor.vt_battery_soc_percent",
+        "sensor.battery_state"
+      ]
+    },
+    {
+      "id": "rc_power_battery_voltage",
+      "category": "power",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "voltage",
+      "unit": "V",
+      "description": "Battery terminal voltage.",
+      "example_sources": [
+        "sensor.vt_battery_voltage_v"
+      ]
+    },
+    {
+      "id": "rc_power_battery_current",
+      "category": "power",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "current",
+      "unit": "A",
+      "description": "Battery current (positive = charging, negative = discharging).",
+      "example_sources": [
+        "sensor.vt_battery_current_a"
+      ]
+    },
+    {
+      "id": "rc_power_solar_power",
+      "category": "power",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "power",
+      "unit": "W",
+      "description": "Instantaneous solar charging power.",
+      "example_sources": [
+        "sensor.vt_solar_power_w"
+      ]
+    },
+    {
+      "id": "rc_power_shore_connected",
+      "category": "power",
+      "kind": "telemetry",
+      "type": "binary_sensor",
+      "device_class": "plug",
+      "description": "Whether the van is plugged into shore power.",
+      "example_sources": [
+        "binary_sensor.vt_shore_connected"
+      ]
+    },
+    {
+      "id": "rc_lighting_interior_state",
+      "category": "lighting",
+      "kind": "control",
+      "type": "switch",
+      "description": "On/off control for the interior cabin lights.",
+      "example_sources": [
+        "switch.cabin_main"
+      ]
+    },
+    {
+      "id": "rc_lighting_approach_state",
+      "category": "lighting",
+      "kind": "control",
+      "type": "switch",
+      "description": "On/off control for the approach / awning / porch lights.",
+      "example_sources": [
+        "switch.porch_light",
+        "switch.awning_light"
+      ]
+    },
+    {
+      "id": "rc_climate_indoor_temperature",
+      "category": "climate",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "temperature",
+      "unit": "\u00b0C",
+      "description": "Indoor cabin temperature.",
+      "example_sources": [
+        "sensor.indoor_temp"
+      ]
+    },
+    {
+      "id": "rc_climate_hvac_state",
+      "category": "climate",
+      "kind": "control",
+      "type": "switch",
+      "description": "On/off control for the primary HVAC system (heater / AC / Webasto).",
+      "example_sources": [
+        "switch.hvac_main"
+      ]
+    },
+    {
+      "id": "rc_water_fresh_level",
+      "category": "water",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "battery",
+      "unit": "%",
+      "description": "Fresh water tank level (0-100%).",
+      "example_sources": [
+        "sensor.fresh_water_tank_level"
+      ]
+    },
+    {
+      "id": "rc_water_pump_state",
+      "category": "water",
+      "kind": "control",
+      "type": "switch",
+      "description": "On/off control for the 12V water pump.",
+      "example_sources": [
+        "switch.water_pump"
+      ]
+    },
+    {
+      "id": "rc_position_lat",
+      "category": "position",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "latitude",
+      "unit": "\u00b0",
+      "description": "Vehicle GPS latitude.",
+      "example_sources": [
+        "device_tracker.vt_vehicle"
+      ]
+    },
+    {
+      "id": "rc_position_lon",
+      "category": "position",
+      "kind": "telemetry",
+      "type": "sensor",
+      "device_class": "longitude",
+      "unit": "\u00b0",
+      "description": "Vehicle GPS longitude.",
+      "example_sources": [
+        "device_tracker.vt_vehicle"
+      ]
+    },
+    {
+      "id": "rc_network_internet_reachable",
+      "category": "network",
+      "kind": "telemetry",
+      "type": "binary_sensor",
+      "device_class": "connectivity",
+      "description": "Whether the van has any working internet path (LTE, Starlink, Wi-Fi).",
+      "example_sources": [
+        "binary_sensor.rc_net_internet_reachable"
+      ]
+    },
+    {
+      "id": "rc_network_wan_ip",
+      "category": "network",
+      "kind": "telemetry",
+      "type": "sensor",
+      "description": "The current public / WAN IP address of the active internet link.",
+      "example_sources": [
+        "sensor.rc_net_wan_ip"
+      ]
+    }
+  ]
+}
