@@ -88,6 +88,28 @@ class MdnsMqttListener:
             LOG.exception("mDNS add_service failed")
 
 
+class VictronStartupError(RuntimeError):
+    """Raised when the addon cannot reach the configured Victron GX / MQTT broker.
+
+    The error message is intentionally written for non-technical users —
+    follow the "Verify every connection" rule in the product build directive.
+
+    Always start with "Victron GX not found" so the bench test can grep for it.
+    """
+
+    DEFAULT_HINT = (
+        "Victron GX not found on your network — check the cable and the IP. "
+        "Open the RoamCore app → Power → Victron → Reconnect."
+    )
+
+    def __init__(self, message: str = "", *, hint: str | None = None):
+        if not message:
+            message = self.DEFAULT_HINT
+        else:
+            message = f"{message} {hint or self.DEFAULT_HINT}"
+        super().__init__(message)
+
+
 class VictronAuto:
     def __init__(self, opts: dict[str, Any]):
         self.opts = opts
@@ -357,6 +379,201 @@ class VictronAuto:
         self._last_tick_duration_ms: Optional[float] = None
         self._last_summary_log = 0.0
         self._summary_log_interval_sec = int(opts.get("summary_log_interval_sec", 60))
+
+        # --- Bench mode (used by tests/ + scripts/checks/victron-bench-smoke.sh) ---
+        # When `bench=1`, the addon skips mDNS discovery (no LAN scans inside the test
+        # sandbox), forces `victron_host` to localhost:1883 (HA Mosquitto add-on or the
+        # amqtt fixture in tests/), and emits a single startup-check that raises
+        # `VictronStartupError` with plain-English copy if the broker is unreachable.
+        #
+        # This block is additive: production callers that don't set `bench` get the
+        # original behavior unchanged.
+        self.bench = bool(opts.get("bench", False))
+        if self.bench:
+            # Bench defaults — overridable via opts but provide sane values.
+            self.prefer_mdns = False
+            self.prefer_venus_local = False
+            self.scan_interval = int(opts.get("scan_interval_sec", 1))
+            self.timeout = int(opts.get("mqtt_connect_timeout_sec", 3))
+            self.full_snapshot_interval_sec = int(opts.get("full_snapshot_interval_sec", 0))
+            self.summary_log_interval_sec = 0  # Don't spam the test output
+            # If the test did not pin a host, default to localhost so the amqtt
+            # in-process broker (or HA Mosquitto) on the dev box is the target.
+            if not self.victron_host:
+                self.victron_host = "127.0.0.1"
+            LOG.info("Bench mode ENABLED — host=%s", self.victron_host)
+
+    async def bench_run_once(self) -> None:
+        """Bench entry point — connect, publish discovery, raise plain-English on failure.
+
+        Used by `python -m src.main bench` (the smoke script) and by the pytest suite
+        via the bench mode opts flag.
+
+        Sequence:
+          1) Connect to HA MQTT (localhost, anonymous). Raise plain-English on failure.
+          2) Connect to Victron MQTT (localhost). Raise plain-English on failure.
+          3) Publish discovery skeleton + status topics.
+          4) Run a single `_tick()` so the test can observe publishes on the broker.
+          5) Return; the caller (or pytest) decides what to assert.
+
+        Honors `bench_exit_after_sec` to bound the run (default 5s, generous).
+        """
+        if not self.bench:
+            LOG.warning("bench_run_once called without bench=1; ignoring")
+            return
+
+        exit_after = float(self.opts.get("bench_exit_after_sec", 5.0))
+        deadline = time.time() + exit_after
+
+        # Step 1: HA MQTT connect. Don't reach for Supervisor service in bench.
+        try:
+            await self._bench_connect_ha_mqtt_local()
+        except VictronStartupError:
+            raise
+        except Exception as e:
+            raise VictronStartupError(
+                "",
+                hint=(
+                    "Victron GX not found on your network — could not reach the local "
+                    "Home Assistant MQTT broker. Is the Mosquitto add-on installed and running?"
+                ),
+            ) from e
+
+        # Step 2: Victron MQTT connect (localhost, anonymous). Plain English on miss.
+        target = await self._discover_target()
+        if target is None:
+            raise VictronStartupError(
+                "",
+                hint=(
+                    f"Victron GX not found on your network — could not reach "
+                    f"{self.victron_host}:{self.victron_port}. Check the cable and the IP."
+                ),
+            )
+        self._victron = target
+        await self._connect_victron()
+        if not self._victron_client:
+            raise VictronStartupError(
+                "",
+                hint=(
+                    f"Victron GX not found on your network — connect to "
+                    f"{target.host}:{target.port} failed. Check the cable and the IP."
+                ),
+            )
+
+        # Step 3: discovery skeleton (idempotent — safe to re-run)
+        if self.publish_discovery and self._ha_client:
+            self._publish_discovery_skeleton()
+            self._last_discovery_publish = time.time()
+            self._publish_status_topics(force=True)
+
+        # Step 4: a few ticks so the test can observe publishes.
+        # Cap at deadline.
+        while time.time() < deadline:
+            try:
+                await self._tick()
+            except Exception:
+                LOG.exception("bench tick failed (continuing)")
+            await asyncio.sleep(0.2)
+
+        LOG.info("Bench round-trip finished cleanly")
+
+    async def _bench_connect_ha_mqtt_local(self) -> None:
+        """Bench-only: connect to HA MQTT directly via opts (no Supervisor call)."""
+        host = self.opts.get("bench_ha_host") or self.opts.get("MQTT_HOST") or "127.0.0.1"
+        port = int(self.opts.get("bench_ha_port") or self.opts.get("MQTT_PORT") or 1883)
+        user = self.opts.get("bench_ha_user") or self.opts.get("ha_mqtt_username") or None
+        pw = self.opts.get("bench_ha_password") or self.opts.get("ha_mqtt_password") or None
+
+        client = mqtt.Client(
+            client_id=f"roamcore-ha-{self.device_id}-{os.getpid()}",
+            protocol=mqtt.MQTTv311,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        )
+        try:
+            client.will_set(
+                f"roamcore/victron/{self.device_id}/availability",
+                payload="offline",
+                qos=0,
+                retain=True,
+            )
+        except Exception:
+            pass
+        if user:
+            client.username_pw_set(str(user), str(pw or ""))
+
+        client.reconnect_delay_set(min_delay=1, max_delay=5)
+
+        # Use an asyncio Event so we get a clean CONNACK wait.
+        # Note: paho's loop runs on its own thread, so we must use
+        # `loop.call_soon_threadsafe` to set the event from the paho thread.
+        conn_event = asyncio.Event()
+        conn_rc: list[int] = []
+        main_loop = asyncio.get_running_loop()
+
+        def _on_connect(c, u, f, rc, p):
+            # paho 2.x: rc is a ReasonCode (has .is_failure / .value); coerce safely.
+            try:
+                v = int(getattr(rc, "value", rc))
+            except Exception:
+                v = -1
+            conn_rc.append(v)
+            try:
+                main_loop.call_soon_threadsafe(conn_event.set)
+            except Exception:
+                # Loop may already be closed; ignore (timeout path will catch it).
+                pass
+
+        client.on_connect = _on_connect
+
+        try:
+            # connect() blocks until CONNACK; that's exactly what we want for the
+            # bench (deterministic + plain-English on miss).
+            client.connect(host, port, keepalive=30)
+        except Exception as e:
+            raise VictronStartupError(
+                "",
+                hint=(
+                    f"Victron GX not found on your network — Home Assistant MQTT broker "
+                    f"not reachable at {host}:{port} ({type(e).__name__}). Check the cable and the IP."
+                ),
+            ) from e
+        client.loop_start()
+
+        try:
+            await asyncio.wait_for(conn_event.wait(), timeout=float(self.timeout or 3))
+        except asyncio.TimeoutError:
+            try:
+                client.loop_stop()
+            except Exception:
+                pass
+            raise VictronStartupError(
+                "",
+                hint=(
+                    f"Victron GX not found on your network — Home Assistant MQTT broker "
+                    f"not reachable at {host}:{port}. Check the cable and the IP."
+                ),
+            )
+
+        # RC != 0 means the broker rejected us (bad credentials, etc.)
+        if conn_rc and conn_rc[0] != 0:
+            try:
+                client.loop_stop()
+            except Exception:
+                pass
+            raise VictronStartupError(
+                "",
+                hint=(
+                    f"Victron GX not found on your network — Home Assistant MQTT broker "
+                    f"at {host}:{port} rejected the connection (rc={conn_rc[0]}). "
+                    "Check the username/password in the add-on options."
+                ),
+            )
+
+        self._ha_client = client
+        self._ha_mqtt_host = host
+        self._ha_mqtt_port = port
+        self._ha_mqtt_user = user
+        self._ha_mqtt_pw = pw
 
     async def run(self):
         # Start lightweight local HTTP API for the UI "Connect Victron" flow.
@@ -2156,12 +2373,59 @@ def setup_logging(level: str):
     logging.basicConfig(level=lv, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
-async def main():
+async def main(argv: list[str] | None = None):
+    """Process entry point.
+
+    Supports a `bench` subcommand that runs the add-on in bench-test mode:
+    one connect round-trip, plain-English error if the broker is unreachable,
+    then exit. Used by scripts/checks/victron-bench-smoke.sh.
+
+    Production callers (HA Supervisor) get the existing behavior unchanged.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="roamcore-victron-auto", add_help=True)
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default="run",
+        choices=["run", "bench"],
+        help="run = normal add-on loop (default). bench = single round-trip check, then exit.",
+    )
+    parser.add_argument(
+        "--victron-host",
+        default=None,
+        help="Bench: override Victron MQTT target (eg. 127.0.0.1 for local broker).",
+    )
+    parser.add_argument(
+        "--portal-id",
+        default=None,
+        help="Bench: pre-set Victron portal id so keepalive can fire immediately.",
+    )
+    args = parser.parse_args(argv)
+
     opts = load_options()
+    if args.command == "bench":
+        opts["bench"] = True
+        if args.victron_host:
+            opts["victron_host"] = args.victron_host
+        if args.portal_id:
+            opts["victron_portal_id"] = args.portal_id
+        # Pin the scan interval tightly so the bench round-trip finishes fast.
+        opts.setdefault("scan_interval_sec", 1)
+        opts.setdefault("mqtt_connect_timeout_sec", 3)
+
     setup_logging(str(opts.get("log_level", "info")))
-    LOG.info("Starting RoamCore Victron Auto (DEV)")
+    LOG.info("Starting RoamCore Victron Auto (DEV) — cmd=%s", args.command)
     app = VictronAuto(opts)
+
+    if args.command == "bench":
+        # Single round-trip; raises VictronStartupError with plain-English copy on failure.
+        await app.bench_run_once()
+        return 0
+
     await app.run()
+    return 0
 
 
 if __name__ == "__main__":

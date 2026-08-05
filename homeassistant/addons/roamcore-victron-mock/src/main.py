@@ -20,11 +20,92 @@ def supervisor_mqtt_service():
 
 
 def main():
+    """RoamCore Victron Mock — DEV mock publisher.
+
+    Production: invoked by HA Supervisor (OPTIONS env var carries the add-on
+    config). Publishes a steady stream of Venus-style notifications so the
+    roamcore-victron-auto add-on has something to consume during dev.
+
+    Bench mode: `--bench` makes the mock publish a deterministic, monotonic
+    sequence of SoC values (10 → 20 → 30 → ... → 100 → repeat) on a short
+    interval. The bench test asserts that the SoC discovery/state topics
+    transition as expected.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="roamcore-victron-mock")
+    parser.add_argument(
+        "--bench",
+        action="store_true",
+        help=(
+            "Bench mode: publish a deterministic sequence of SoC values "
+            "(10..100 step 10, repeated) every --bench-interval seconds. "
+            "Used by tests/ and scripts/checks/victron-bench-smoke.sh."
+        ),
+    )
+    parser.add_argument(
+        "--bench-interval",
+        type=float,
+        default=0.5,
+        help="Bench mode: seconds between publishes (default 0.5).",
+    )
+    parser.add_argument(
+        "--bench-iterations",
+        type=int,
+        default=20,
+        help="Bench mode: number of publishes before exiting (default 20).",
+    )
+    args = parser.parse_args()
+
     # Options passed by Supervisor
     opts = json.loads(os.environ.get("OPTIONS", "{}"))
     portal_id = str(opts.get("portal_id") or "mock-portal")
     interval = int(opts.get("publish_interval_sec") or 5)
     retain = bool(opts.get("retain", True))
+
+    # Bench mode overrides the steady-state publish loop with a deterministic
+    # SoC walk so the bench test can assert value transitions.
+    bench_mode = args.bench or bool(opts.get("bench", False))
+    if bench_mode:
+        interval = float(args.bench_interval)
+        # Don't reach out to Supervisor for MQTT credentials in bench mode —
+        # allow the MQTT_HOST / MQTT_PORT env vars (or localhost) to win.
+        host = os.environ.get("MQTT_HOST") or os.environ.get("SUPERVISOR_MQTT_HOST") or "127.0.0.1"
+        port = int(os.environ.get("MQTT_PORT") or os.environ.get("SUPERVISOR_MQTT_PORT") or "1883")
+        username = os.environ.get("MQTT_USERNAME") or ""
+        password = os.environ.get("MQTT_PASSWORD") or ""
+
+        client = mqtt.Client(
+            client_id=f"roamcore-victron-mock-bench-{portal_id}",
+            protocol=mqtt.MQTTv311,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        )
+        if username:
+            client.username_pw_set(username, password)
+        client.connect(host, port, keepalive=30)
+        client.loop_start()
+        print(f"[mock bench] connected to {host}:{port} portal={portal_id}")
+
+        def j(v):
+            return json.dumps({"value": v})
+
+        # Deterministic SoC walk: 10..100 step 10, repeating.
+        soc_values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        for i in range(args.bench_iterations):
+            soc = soc_values[i % len(soc_values)]
+            client.publish(
+                f"N/{portal_id}/system/0/Soc",
+                payload=j(soc),
+                qos=0,
+                retain=False,
+            )
+            print(f"[mock bench] publish SoC={soc}")
+            time.sleep(interval)
+
+        client.loop_stop()
+        client.disconnect()
+        print("[mock bench] done")
+        return 0
 
     svc = supervisor_mqtt_service()
     host = svc.get("host") or "core-mosquitto"

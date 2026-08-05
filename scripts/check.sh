@@ -61,6 +61,11 @@ run_if_present() {
 banner "HA-only beta: smoke check"
 bash scripts/checks/ha-beta-smoke.sh
 
+# Wave 9 #115: Power Victron bench integration tests. Tier-a-is-honest evidence
+# for the Victron add-on. Runs on every --core-only CI run; skipped gracefully
+# when paho-mqtt/amqtt are missing.
+run_if_present "scripts/checks/victron-bench-smoke.sh" "Victron: bench integration tests"
+
 # Wave 2 #23-#33 smokes live on their own stacked branches. We probe for
 # the well-known names so the chain stays portable; once those PRs land
 # on main, they will chain automatically here.
@@ -148,6 +153,7 @@ if [ "$CORE_ONLY" -eq 0 ]; then
   bash scripts/checks/victron-mapping-plan.sh || true
   banner "Victron: RC contract"
   bash scripts/checks/victron-rc-contract.sh || true
+  run_if_present "scripts/checks/victron-bench-smoke.sh" "Victron: bench integration tests"
 fi
 
 printf '\n\033[1;32m✓ all requested smoke checks passed.\033[0m\n'
