@@ -18,6 +18,8 @@ name: "Smart Automations (one-click enable / disable — 17 prebuilt van-life au
 tier: b
 category: safety
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); 17 prebuilt automations documented + 10 rc_safety_automation_* tiles — operator enables them via the setup wizard (each has a Safe-mode Suppression gate).'
 version: 0.1.0
 description: |
   Smart automations are the **day-to-day convenience layer** of a

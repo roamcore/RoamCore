@@ -154,6 +154,8 @@ name: "Agent actions allowlist — vendor-neutral kill-switch + per-action allow
 tier: b
 category: ai
 status: beta
+state: Connected
+state_reason: 'Wired contract entity `input_boolean.rc_agent_actions_enabled` (and 9 sibling tiles) in homeassistant/packages/roamcore_agent_actions.yaml; kill-switch surfaces as ''Agent actions'' tile.'
 version: 0.1.0
 description: |
   Agent actions allowlist — vendor-neutral kill-switch + per-

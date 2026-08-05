@@ -97,6 +97,8 @@ name: "In-cab tablet dashboard (driving / arrival / lock-screen Lovelace views w
 tier: c
 category: vehicle_obd
 status: recipe_published
+state: Available
+state_reason: 'Tier-c recipe-only connection; the upstream HA Lovelace view system + HA Companion + Traccar + Wican Pro + HA''s input_select/input_button helpers form the contract layer — operator wires Path A ''Driving'' view + Path B ''Arrival'' view + Path C ''Lock screen'' view into `ui-lovelace.yaml` to enable.'
 version: 0.1.0
 description: |
   In-cab tablet dashboard (driving / arrival / lock-screen Lovelace

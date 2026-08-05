@@ -27,6 +27,8 @@ name: "HVAC basics (heating/cooling foundations) — tier-b recipe connection"
 tier: b
 category: hvac
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 #49); 10 rc_hvac_cabin_* tiles documented — operator wires the upstream climate integration.'
 version: 0.1.0
 description: |
   HVAC basics — cabin heating/cooling foundations for vans — is the

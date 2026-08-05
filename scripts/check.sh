@@ -137,6 +137,15 @@ run_if_present "connections/openclaw-api/tests/test_connection_yml.py" \
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 
+# Wave 9 #117 — cross-cutting smoke check for the connection `state:`
+# field + tier-vocabulary rebrand. Asserts every connection.yml has a
+# `state:` field with one of the 10 standard values; asserts the
+# user-facing docs render the new tier vocabulary; asserts the 3
+# in-scope legacy SUPERSEDED stubs are rephrased. Additive + minimal —
+# does not touch any other smoke check.
+run_if_present "homeassistant/packages/tests/test_connection_state.py" \
+  "Connection state field + tier rebrand (Wave 9 #117) — 10-state vocabulary + new chip CSS + user-facing docs render the new vocabulary"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

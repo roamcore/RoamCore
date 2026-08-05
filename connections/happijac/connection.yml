@@ -188,6 +188,8 @@ name: "Happijac bed lift (van bed up/down control) — tier-b recipe connection"
 tier: b
 category: bed_lift
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 #46); rc_bed_lift_* tiles documented — operator wires the upstream cover/entity for the bed-lift relays.'
 version: 0.1.0
 description: |
   Bed lift control — van bed up / down — is the **foundation** of

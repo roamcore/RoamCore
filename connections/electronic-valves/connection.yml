@@ -59,6 +59,8 @@ name: "Electronic valves + auto tank switching (tier-b recipe connection)"
 tier: b
 category: water
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); 10 rc_water_valve_* tiles documented — operator wires the upstream valve switch entities.'
 version: 0.1.0
 description: |
   Electronic valves + auto tank switching — fresh / aux tank routing,

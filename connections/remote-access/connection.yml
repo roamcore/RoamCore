@@ -166,6 +166,8 @@ name: "Remote access (vendor-neutral remote-access umbrella for HA — Tailscale
 tier: b
 category: networking
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + Tailscale contract shipped (Wave 2 #29 + Wave 3 #58 + Wave 9 #116); 9 rc_remote_access_* tiles documented — operator must supply a Tailscale auth key (or choose one of the 4 setup paths) to enable.'
 version: 0.1.0
 description: |
   Remote access (vendor-neutral remote-access umbrella for HA,

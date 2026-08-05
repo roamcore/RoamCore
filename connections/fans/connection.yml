@@ -279,6 +279,8 @@ name: "Fans (vendor-neutral fan-controller umbrella for HA — rooftop vent fans
 tier: b
 category: ventilation
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); 8 rc_fan_* tiles documented — operator wires the upstream fan entity (rain-sensor safety block lives in §8 automation #4).'
 version: 0.1.0
 description: |
   Fans (vendor-neutral fan-controller umbrella for HA, covering

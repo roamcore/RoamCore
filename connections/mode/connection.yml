@@ -213,6 +213,8 @@ name: "Mode (AI mode) — vendor-neutral mode state (Off / Auto / Travel / Camp 
 tier: b
 category: ai
 status: beta
+state: Connected
+state_reason: 'Wired contract tiles (`rc_mode_*`) in homeassistant/packages/roamcore_mode.yaml; the Mode tile (Off/Auto/Travel/Camp/Stealth) renders on the dashboard with last-change + revert.'
 version: 0.1.0
 description: |
   Mode (AI mode) — vendor-neutral mode state (Off / Auto /

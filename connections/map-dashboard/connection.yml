@@ -193,6 +193,8 @@ name: "Map dashboard — vendor-neutral map tile + device_tracker aggregation + 
 tier: a
 category: map
 status: beta
+state: Connected
+state_reason: 'Wired contract tiles (`rc_location_*`, `rc_map_*`, `rc_trip_*`) in homeassistant/packages/roamcore_location.yaml + roamcore_map_route.yaml + roamcore_map.yaml; the map + trip + basemap-mode tiles render on the dashboard.'
 version: 0.1.0
 description: |
   Map dashboard — vendor-neutral map tile + device_tracker

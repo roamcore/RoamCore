@@ -89,6 +89,8 @@ name: "Motion-based lighting (driving + arrival) — tier-b recipe connection"
 tier: b
 category: lighting
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); rc_lighting_motion_* tiles documented — operator wires the upstream motion + presence sensors.'
 version: 0.1.0
 description: |
   Motion-based lighting (driving + arrival) — the umbrella for

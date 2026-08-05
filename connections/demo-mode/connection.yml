@@ -205,6 +205,8 @@ name: "Demo mode — vendor-neutral demo values for missing sensors + auto-disab
 tier: b
 category: ai
 status: beta
+state: Connected
+state_reason: 'Wired contract entity `input_boolean.rc_demo_mode` in homeassistant/packages/roamcore_demo_mode.yaml; tile shows demo-mode on/off + 9 sibling contract entities.'
 version: 0.1.0
 description: |
   Demo mode — vendor-neutral demo values for missing

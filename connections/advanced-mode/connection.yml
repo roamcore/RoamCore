@@ -310,6 +310,8 @@ name: "Advanced mode — vendor-neutral power-user toggle + session-timeout guar
 tier: b
 category: ai
 status: beta
+state: Connected
+state_reason: 'Wired contract entity `input_boolean.rc_advanced_mode_enabled` (and 9 sibling tiles) in homeassistant/packages/roamcore_advanced_mode.yaml; manifests as ''Advanced mode'' tile on the dashboard.'
 version: 0.1.0
 description: |
   Advanced mode — vendor-neutral power-user toggle + session-

@@ -76,6 +76,8 @@ name: "Approach lights (welcome-home exterior + underbody lighting) (tier-b reci
 tier: b
 category: lighting
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 #52); the rc_lighting_approach_* + rc_lighting_underbody_* + rc_lighting_entry_* tiles are documented in the recipe; operator wires the upstream light entities to expose them.'
 version: 0.1.0
 description: |
   Approach lights (welcome-home exterior + underbody lighting) —

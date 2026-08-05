@@ -198,6 +198,8 @@ name: "Heated floors + engine pre-heat (cold-weather comfort) — tier-b recipe 
 tier: b
 category: hvac
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 #44); rc_hvac_floor_* tiles documented — operator wires the upstream climate + temperature sensors.'
 version: 0.1.0
 description: |
   Heated floors + engine pre-heat — cold-weather comfort controls

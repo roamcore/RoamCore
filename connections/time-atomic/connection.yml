@@ -94,6 +94,8 @@ name: "Time (atomic) (NTP-synchronized time with offline-resilience) — tier-c 
 tier: c
 category: time
 status: recipe_published
+state: Connected
+state_reason: 'Wired contract tiles (`rc_time_local` + sibling `rc_time_zone_*`) in homeassistant/packages/roamcore_weather_time.yaml; tier-c recipe surfaces as ''Time (atomic)'' tile on the dashboard.'
 version: 0.1.0
 description: |
   Time (atomic) (NTP-synchronized time with offline-resilience) —

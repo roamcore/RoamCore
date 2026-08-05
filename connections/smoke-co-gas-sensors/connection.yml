@@ -22,6 +22,8 @@ name: "Smoke / CO / gas safety sensors (van life safety monitoring) — tier-b r
 tier: b
 category: safety
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); 10 rc_safety_smoke_* / rc_safety_co_* / rc_safety_gas_* tiles documented — operator wires the upstream smoke/CO/gas sensor integrations.'
 version: 0.1.0
 description: |
   Smoke / CO / gas safety sensors — van life safety monitoring — are
