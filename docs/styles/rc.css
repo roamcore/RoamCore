@@ -198,3 +198,203 @@ a.rc-cta {
 .rc-tier.a { border-color: rgba(124,255,178,0.35); }
 .rc-tier.b { border-color: rgba(91,227,255,0.35); }
 .rc-tier.c { border-color: rgba(255,210,117,0.35); }
+
+/* Connection-state chips (Wave 9 #118 — Phase 1 catalog UI 2026-08-05).
+   The catalogue renders a per-connection state chip + tier chip +
+   Connect button on every connection page (see Starlink demo). The
+   10 standard states are defined by the directive §"Connection states
+   are standardized" (memory/roamcore/2026-08-03-directive.md) and
+   surface here as colour-coded pills so a glance tells the operator
+   where the connection is in its lifecycle.
+
+   Visual language:
+     - green accent       = good (Connected / Available / Update available)
+     - yellow / orange    = needs the operator (Needs information /
+                            Needs attention)
+     - teal accent         = you can do this now (Ready to connect /
+                            Connecting / Detected)
+     - red                 = the device/connection is down (Offline)
+     - gray                = not for you (Unsupported)
+
+   The chip base class (`.rc-state-chip`) is intentionally distinct
+   from `.rc-chip` (the catalog filter chip) and `.rc-tier` (the small
+   support-level pill) to avoid filter confusion. The base shares the
+   same 999px border-radius + 12px font weight 900 + 3px 10px padding
+   vocabulary as `.rc-tier` so the three pill types sit side by side
+   in the catalog row without visual seam. */
+
+.rc-state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+/* Available — neutral gray. The connection is listed but not yet
+   detected on the LAN; the operator can browse it but nothing is
+   live. Lowest visual weight — the chip is informative, not urgent. */
+.rc-state-chip.available {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.75);
+}
+
+/* Detected — light teal. RoamCore sees the device on the network but
+   hasn't wired it up yet; the operator is one click away from a
+   working connection. */
+.rc-state-chip.detected {
+  border-color: rgba(91,227,255,0.35);
+  background: rgba(91,227,255,0.08);
+  color: rgba(91,227,255,0.95);
+}
+
+/* Ready to connect — teal accent at full strength. The connection is
+   fully wired (recipes shipped, docs published) and one Connect tap
+   away from going live. The chip is the brightest of the
+   "you-can-do-this-now" set so it stands out on the catalog row. */
+.rc-state-chip.ready-to-connect {
+  border-color: rgba(91,227,255,0.55);
+  background: rgba(91,227,255,0.16);
+  color: rgba(91,227,255,1.0);
+}
+
+/* Connecting — animated teal pulse. The operator tapped Connect and
+   RoamCore is in the middle of the install flow; the chip stays
+   visible so the operator doesn't tap Connect twice. */
+.rc-state-chip.connecting {
+  border-color: rgba(91,227,255,0.55);
+  background: rgba(91,227,255,0.16);
+  color: rgba(91,227,255,1.0);
+  animation: rc-state-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rc-state-pulse {
+  0%, 100% { opacity: 1.0; }
+  50%      { opacity: 0.55; }
+}
+
+/* Connected — green accent at full strength. The connection is live
+   on the dashboard; this is the most common state in the catalogue.
+   The chip uses the same `--rc-accent` (#7CFFB2) palette as the
+   tier-certified pill so the visual language reads consistently. */
+.rc-state-chip.connected {
+  border-color: rgba(124,255,178,0.55);
+  background: rgba(124,255,178,0.16);
+  color: rgba(124,255,178,1.0);
+}
+
+/* Needs information — yellow. RoamCore is ready to connect but the
+   operator owes 1-2 answers (e.g. an IP, a serial port, a vendor
+   choice). Yellow is the "blocked on you" colour. */
+.rc-state-chip.needs-information {
+  border-color: rgba(255,210,117,0.55);
+  background: rgba(255,210,117,0.16);
+  color: rgba(255,210,117,1.0);
+}
+
+/* Needs attention — orange. Something is wrong but recoverable
+   (e.g. a stale tile, a transient auth failure, a stalled sync).
+   Orange is louder than yellow — the operator should look soon. */
+.rc-state-chip.needs-attention {
+  border-color: rgba(255,170,90,0.55);
+  background: rgba(255,170,90,0.16);
+  color: rgba(255,170,90,1.0);
+}
+
+/* Unsupported — gray + diagonal stripe. The combination of hardware
+   + vendor + RoamCore recipe isn't tested together; the chip reads
+   as "informational only" so the operator doesn't waste time
+   clicking Connect. */
+.rc-state-chip.unsupported {
+  border-color: rgba(255,255,255,0.18);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255,255,255,0.04) 0px,
+      rgba(255,255,255,0.04) 6px,
+      rgba(255,255,255,0.10) 6px,
+      rgba(255,255,255,0.10) 12px
+    );
+  color: rgba(255,255,255,0.65);
+}
+
+/* Offline — red. The device/connection is down; the operator's
+   dashboard is currently missing this tile. Red is reserved for
+   "this isn't working right now" — never used decoratively. */
+.rc-state-chip.offline {
+  border-color: rgba(255,107,107,0.55);
+  background: rgba(255,107,107,0.16);
+  color: rgba(255,107,107,1.0);
+}
+
+/* Update available — purple. The connection works fine but a newer
+   recipe or upstream integration exists; tapping Connect opens the
+   upgrade flow. Purple reads as "newer, optional" so the operator
+   isn't alarmed. */
+.rc-state-chip.update-available {
+  border-color: rgba(196,140,255,0.55);
+  background: rgba(196,140,255,0.16);
+  color: rgba(196,140,255,1.0);
+}
+
+/* Subtitle under a state chip — explains the WHY when the
+   state_reason field is set on the connection manifest. */
+.rc-state-chip-reason {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+  color: rgba(255,255,255,0.70);
+  vertical-align: middle;
+}
+
+/* Connect button — the primary "Connect" / "Set up" / "Reconnect" /
+   "Update" / "Learn more" action on a connection row. Distinct from
+   the existing `.rc-cta` class (which uses a teal/green gradient
+   and a 12px border-radius pill) — Connect is a solid teal button
+   with a tighter 8px radius so it reads as the dominant action on
+   the row. */
+.rc-connect-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(91,227,255,0.55);
+  background: rgba(91,227,255,0.22);
+  color: rgba(255,255,255,0.96);
+  font-weight: 900;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.rc-connect-button:hover {
+  border-color: rgba(91,227,255,0.85);
+  background: rgba(91,227,255,0.34);
+  text-decoration: none;
+}
+
+/* Row container — used by `format_connection_card` to lay out the
+   state chip + tier chip + Connect button side-by-side on a single
+   line. Inline-flex with a 10px gap so the three pills breathe
+   without overlapping on the smallest catalog cards. */
+.rc-state-chip-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0 14px;
+}
+
+.rc-state-chip-row strong {
+  font-weight: 950;
+  color: rgba(255,255,255,0.92);
+  margin-right: 4px;
+}
