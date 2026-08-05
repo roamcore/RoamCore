@@ -1,2 +1,25 @@
+# RoamCore Victron Auto add-on — runtime + bench deps.
+#
+# Runtime deps (used by src/main.py):
+#   * paho-mqtt — MQTT client (Venus OS broker + HA MQTT)
+#   * zeroconf  — mDNS discovery of the Victron GX on the LAN
+#
+# Bench / test deps (used by tests/ and scripts/checks/victron-bench-smoke.sh):
+#   * pytest, pytest-asyncio — test runner + async support
+#   * amqtt                  — pure-Python MQTT 3.1.1 broker for the bench
+#                              fixture (fallback when `mosquitto` binary is
+#                              not on $PATH)
+#
+# The Dockerfile installs this whole file inside the add-on container. In
+# production, the bench deps are dead weight in the container (the bench
+# runs on the dev box / CI, not in HA). They're listed here so the file is
+# the single source of truth for "what you need to make the bench pass on
+# any host". To skip the bloat, comment the bench lines out before building
+# the add-on image.
 paho-mqtt==2.1.0
 zeroconf==0.132.2
+
+# --- bench / test deps (used by tests/) ---
+pytest==9.1.1
+pytest-asyncio==1.4.0
+amqtt==0.11.4
