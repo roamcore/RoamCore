@@ -115,6 +115,8 @@ name: "Peplink (multi-WAN router for van internet) — tier-b recipe connection"
 tier: b
 category: networking
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); rc_net_peplink_* tiles documented — operator wires the upstream Peplink router entities.'
 version: 0.1.0
 description: |
   Peplink Balance / MAX / EP-series routers are rugged, configurable

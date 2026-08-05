@@ -274,6 +274,8 @@ name: "Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella for HA —
 tier: b
 category: vehicle
 status: beta
+state: Connected
+state_reason: 'Wired contract tiles (10 `rc_level_*` entities) in homeassistant/packages/roamcore_level.yaml; pitch/roll + is-level + last-calibrated surfaces on the dashboard.'
 version: 0.1.0
 description: |
   Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella

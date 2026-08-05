@@ -32,6 +32,8 @@ name: "Mock location + track replay (dev/demo polyline generator for the map pag
 tier: a
 category: map
 status: beta
+state: Connected
+state_reason: 'Wired shell_command + script + automation in homeassistant/packages/roamcore_mock_track.yaml (refreshes the dev-only mock track polyline on HA startup); the rc_map_mock_* tiles are provided as dev affordances.'
 version: 0.1.0
 description: |
   Mock location + track replay is the **dev/demo polyline generator**

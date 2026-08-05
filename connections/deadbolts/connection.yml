@@ -26,6 +26,8 @@ name: "Deadbolts (smart lock control for van doors) — tier-b recipe connection
 tier: b
 category: safety
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); 10 rc_safety_lock_* tiles documented — operator wires `lock.<door>` entities from the upstream lock integration.'
 version: 0.1.0
 description: |
   Smart deadbolts — van door lock control for vans — are the

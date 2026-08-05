@@ -29,6 +29,8 @@ name: Starlink (sleep timer + bring-back-up controls)
 tier: b
 category: networking
 status: beta
+state: Ready to connect
+state_reason: '3-path recipe shipped (Wave 9 #108); mocked starlink signal wired in rc_net_starlink_signal_quality_pct via homeassistant/packages/roamcore_net.yaml; operator picks Path A (Starlink Mini only) / Path B (separate router) / Path C (VP2430 VM router) to expose the live rc_net_starlink_* tiles.'
 version: 0.1.0
 description: |
   Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish +

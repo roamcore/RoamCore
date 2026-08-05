@@ -63,6 +63,8 @@ name: "Timezone geolocator (location-aware HA timezone) — tier-c recipe connec
 tier: c
 category: time
 status: recipe_published
+state: Connected
+state_reason: 'Wired contract tiles (`rc_time_zone_*`) in homeassistant/packages/roamcore_weather_time.yaml; tier-c recipe surfaces as ''Time zone geolocator'' tile + GPS-update button.'
 version: 0.1.0
 description: |
   Timezone geolocator (location-aware HA timezone) — the umbrella

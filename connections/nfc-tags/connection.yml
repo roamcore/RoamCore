@@ -109,6 +109,8 @@ name: "NFC tags (vendor-neutral NFC-triggered scenes mapped via tag_id → scene
 tier: c
 category: access_control
 status: recipe_published
+state: Available
+state_reason: 'Tier-c recipe-only connection (DIY / community); the upstream HA core `tag` integration + the HA Companion app''s NFC scanner + the HACS `nfcpy` integration form the contract layer — operator wires `tag_id → scene` mappings in `automations.yaml`.'
 version: 0.1.0
 description: |
   NFC tags (vendor-neutral NFC-triggered scenes mapped via

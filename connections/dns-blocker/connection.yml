@@ -62,6 +62,8 @@ name: Pi-hole or AdGuard Home (network-wide DNS ad blocker)
 tier: b
 category: networking
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Pi-hole / AdGuard Home); rc_net_dns_blocker_reachable + rc_net_dns_blocked_today + rc_net_dns_queries_total tiles documented — operator wires the Pi-hole/AdGuard integration.'
 version: 0.1.0
 description: |
   Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker

@@ -449,6 +449,8 @@ name: "OpenClaw JSON API — vendor-neutral machine-readable summary + skill + r
 tier: a
 category: ai
 status: beta
+state: Connected
+state_reason: 'Wired contract tiles (`rc_openclaw_api_*`) in homeassistant/packages/roamcore_openclaw_api_controls.yaml + the HACS custom component homeassistant/custom_components/roamcore_openclaw_api/ (tier-a, bench-tested per Wave 9 #112).'
 version: 0.1.0
 description: |
   OpenClaw JSON API — vendor-neutral machine-readable

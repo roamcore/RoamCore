@@ -128,6 +128,8 @@ name: "Music Assistant (multi-room van audio) — tier-b recipe connection"
 tier: b
 category: media
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); rc_media_* tiles documented — operator wires the Music Assistant + media_player entities.'
 version: 0.1.0
 description: |
   Music Assistant (<https://www.music-assistant.io/>) is a provider-

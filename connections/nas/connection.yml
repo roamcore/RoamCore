@@ -80,6 +80,8 @@ name: "Network Attached Storage (Synology / QNAP / generic SMB)"
 tier: b
 category: homelab
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3); rc_homelab_nas_* tiles documented — operator wires the upstream NAS sensor entities from the Synology/QNAP/generic SMB integration.'
 version: 0.1.0
 description: |
   A NAS gives RoamCore a reliable local-storage target for media,

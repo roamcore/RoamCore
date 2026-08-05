@@ -80,6 +80,8 @@ name: "Teltonika (LTE/5G router for vans) — tier-b recipe connection"
 tier: b
 category: networking
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 #39); rc_net_teltonika_* tiles documented — operator wires the Teltonika rest/snmp integration.'
 version: 0.1.0
 description: |
   Teltonika RUT-series LTE/5G routers are rugged, configurable

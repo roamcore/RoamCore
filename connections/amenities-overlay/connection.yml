@@ -296,6 +296,8 @@ name: "Amenities overlay — vendor-neutral iOverlander-style POI overlay on the
 tier: b
 category: map
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 stub promoted to tier-b); no wire-up into homeassistant/packages yet — operator must run setup wizard to expose the rc_amenities_overlay_* tiles.'
 version: 0.1.0
 description: |
   Amenities overlay — vendor-neutral iOverlander-style

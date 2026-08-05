@@ -131,6 +131,19 @@
 .rc-chip.b.active { border-color: rgba(91,227,255,0.35); background: rgba(91,227,255,0.10); }
 .rc-chip.c.active { border-color: rgba(255,210,117,0.35); background: rgba(255,210,117,0.10); }
 
+/* Full-word support-level chips (Wave 9 #117 tier-rebrand 2026-08-05).
+   The `.a` / `.b` / `.c` classes above are kept for backward compatibility
+   with legacy catalog pages still rendering data-tier="a|b|c" attribute
+   filters; the new `.certified` / `.verified` / `.experimental` classes
+   carry the full user-facing vocabulary. Active state colours mirror the
+   tier-letter colours so the visual language stays consistent. */
+.rc-chip.certified { border-color: rgba(124,255,178,0.35); }
+.rc-chip.verified  { border-color: rgba(91,227,255,0.35); }
+.rc-chip.experimental { border-color: rgba(255,210,117,0.35); }
+.rc-chip.certified.active { border-color: rgba(124,255,178,0.55); background: rgba(124,255,178,0.16); }
+.rc-chip.verified.active  { border-color: rgba(91,227,255,0.55); background: rgba(91,227,255,0.16); }
+.rc-chip.experimental.active { border-color: rgba(255,210,117,0.55); background: rgba(255,210,117,0.16); }
+
 .rc-filter-meta { color: rgba(255,255,255,0.65); font-size: 12px; }
 
 /* Category feature list (wide bubbles) */
@@ -198,3 +211,11 @@ a.rc-cta {
 .rc-tier.a { border-color: rgba(124,255,178,0.35); }
 .rc-tier.b { border-color: rgba(91,227,255,0.35); }
 .rc-tier.c { border-color: rgba(255,210,117,0.35); }
+
+/* Full-word support-level pills (Wave 9 #117 tier-rebrand 2026-08-05).
+   These render alongside the legacy `.a` / `.b` / `.c` pills and carry the
+   same colour palette. Used by docs/index.md and any future catalog page
+   that surfaces the user-facing support vocabulary in a pill. */
+.rc-tier.certified    { border-color: rgba(124,255,178,0.55); background: rgba(124,255,178,0.10); }
+.rc-tier.verified     { border-color: rgba(91,227,255,0.55); background: rgba(91,227,255,0.10); }
+.rc-tier.experimental { border-color: rgba(255,210,117,0.55); background: rgba(255,210,117,0.10); }

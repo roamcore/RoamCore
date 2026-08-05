@@ -141,6 +141,8 @@ name: "Bluetooth / Wi-Fi presence (who's home?) — tier-b recipe connection"
 tier: b
 category: presence
 status: beta
+state: Ready to connect
+state_reason: 'Recipe + manifest-honesty tests shipped (Wave 3 stub); rc_presence_person_* + rc_presence_anyone_home tiles documented — operator wires `device_tracker.<person>` entities to enable.'
 version: 0.1.0
 description: |
   Presence detection — who is currently home in the van — is the

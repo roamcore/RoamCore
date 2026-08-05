@@ -19,18 +19,23 @@ This site is the **feature catalog** for RoamCore + Home Assistant in a van.
   </a>
 </div>
 
-## Support tiers (simple + honest)
+## Support levels (simple + honest)
 
-- <span class="rc-tier a">A</span> RoamCore native (we own it; supported)
-- <span class="rc-tier b">B</span> Home Assistant supported (existing integration; setup required)
-- <span class="rc-tier c">C</span> Custom/manual (no support; inspiration/potential)
+Each connection in the catalog carries one of three support levels. The recipe
+connection's YAML keeps its `tier: a` / `b` / `c` letter (programmer-facing,
+used for sorting); what you see on the dashboard and in the catalog is one of
+these plain-English labels.
+
+- <span class="rc-tier certified">RoamCore Certified</span> — RoamCore ships and maintains the integration code. Bench-tested.
+- <span class="rc-tier verified">Community Verified</span> — A well-understood recipe over upstream Home Assistant core + HACS add-ons. Setup required.
+- <span class="rc-tier experimental">Experimental</span> — DIY / community inspiration. No support.
 
 ### Show only
 
 <div class="rc-chips">
-  <a class="rc-chip a" href="catalog/tier-a/">A</a>
-  <a class="rc-chip b" href="catalog/tier-b/">B</a>
-  <a class="rc-chip c" href="catalog/tier-c/">C</a>
+  <a class="rc-chip certified" href="catalog/">RoamCore Certified</a>
+  <a class="rc-chip verified" href="catalog/">Community Verified</a>
+  <a class="rc-chip experimental" href="catalog/">Experimental</a>
 </div>
 
 ## Why this site links out
