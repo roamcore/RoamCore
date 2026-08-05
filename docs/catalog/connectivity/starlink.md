@@ -1,5 +1,12 @@
 # Starlink
 
+<div class="rc-state-chip-row">
+  <strong>Starlink</strong>
+  <span class="rc-state-chip ready-to-connect">Ready to connect</span>
+  <span class="rc-tier verified">Community Verified</span>
+  <a class="rc-connect-button" href="/connections/starlink/connect">Connect</a>
+</div>
+
 Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish + router).
 
 ## What you need
