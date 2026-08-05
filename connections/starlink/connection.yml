@@ -39,7 +39,8 @@ description: |
   allow-sleep toggle, one-tap wake-for-30-min button, reachability,
   signal snapshot, and quiet-hours start/end helpers). No native
   config_flow, no shipped Starlink terminal — you bring the dish, we
-  bring the contract.
+  bring the contract. See docs/catalog/connectivity/starlink-diagram.svg
+  for the what-plugs-into-what diagram.
 icon: networking
 codeowners:
   - "@bernardc"
