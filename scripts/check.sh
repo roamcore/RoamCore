@@ -136,6 +136,10 @@ run_if_present "connections/openclaw-api/tests/test_connection_yml.py" \
   "Connection: OpenClaw JSON API (tier-a) — vendor-neutral machine-readable summary + skill + rc_dump + timeseries endpoints for local agents: manifest honesty smoke check"
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
+run_if_present "connections/openwrt/tests/test_connection_yml.py" \
+  "Connection: OpenWrt auto-pair (LAN-probe daemon + auto-add + token push) (tier-a) — manifest honesty smoke check"
+run_if_present "connections/openwrt/tests/test_pair.py" \
+  "Connection: OpenWrt auto-pair (LAN-probe daemon + auto-add + token push) (tier-a) — discovery + pair pytest HTTP probe (fake-bind mock + aiohttp skip-when-missing)"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
