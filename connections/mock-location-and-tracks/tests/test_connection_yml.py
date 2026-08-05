@@ -220,13 +220,25 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
     assert manifest["category"] == "map"
     assert LEGACY_DOC.is_file(), (
         "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "still exist (carrying the supersession banner)"
+        "still exist (so old links resolve to the redirect page)"
     )
+    # Wave 9 #124c: legacy stub converted to a 2-line clean redirect
+    # page (per directive repo-hygiene § "user-facing repo"). The file
+    # must still exist (so old links resolve) and must now be a thin
+    # redirect pointing at the canonical recipe — NOT carry the giant
+    # supersession banner anymore.
     legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "Replaced by" in legacy_text, (
-        "legacy docs/catalog/map/mock-location-and-tracks.md must "
-        "carry a supersession banner pointing at the new connection "
-        "folder"
+    assert "Moved" in legacy_text and "connections/mock-location-and-tracks/docs/recipe.md" in legacy_text, (
+        "legacy docs/catalog/map/mock-location-and-tracks.md must be a 2-line "
+        "'Moved to ...' redirect page pointing at "
+        "connections/mock-location-and-tracks/docs/recipe.md "
+        "(Wave 9 #124c); got:\n" + legacy_text[:200]
+    )
+    # Belt-and-braces: the user-facing legacy doc must NOT carry the
+    # giant supersession banner anymore (directive repo-hygiene §).
+    assert "SUPERSEDED" not in legacy_text, (
+        "legacy docs/catalog/map/mock-location-and-tracks.md must not "
+        "carry the 'SUPERSEDED' banner (Wave 9 #124c — user-facing repo hygiene)"
     )
 
 

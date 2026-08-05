@@ -489,21 +489,23 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         "so we can reference it from the recipe (and add "
         "a supersession banner)"
     )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim
-    # doesn't leak into any downstream catalog scrape.
-    # The banner text is the verbatim spec-required
-    # string.
-    legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/ai/advanced-mode.md must "
-        "carry the 'SUPERSEDED' banner per spec"
+    # Wave 9 #124c: legacy stub converted to a 2-line clean redirect
+    # page (per directive repo-hygiene § "user-facing repo"). The file
+    # must still exist (so old links resolve) and must now be a thin
+    # redirect pointing at the canonical recipe — NOT carry the giant
+    # supersession banner anymore.
+    legacy_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
+    legacy_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
+    assert "Moved" in legacy_text and "connections/advanced-mode/docs/recipe.md" in legacy_text, (
+        "legacy docs/catalog/ai/advanced-mode.md must be a 2-line 'Moved to ...' redirect page pointing at "
+        "connections/advanced-mode/docs/recipe.md (Wave 9 #124c); got:\n" + legacy_text[:200]
     )
-    assert "connections/advanced-mode/" in legacy_index_text, (
-        "legacy docs/catalog/ai/advanced-mode.md must "
-        "point at `connections/advanced-mode/` per spec"
+    # Belt-and-braces: the user-facing legacy doc must NOT carry the
+    # giant supersession banner anymore (directive repo-hygiene §).
+    assert "SUPERSEDED" not in legacy_text, (
+        "legacy docs/catalog/ai/advanced-mode.md must not carry the 'SUPERSEDED' banner (Wave 9 "
+        "#124c — user-facing repo hygiene)"
     )
-
 
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
     """rc_* tile ids must NOT contain vendor names (per

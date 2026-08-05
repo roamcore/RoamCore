@@ -239,6 +239,47 @@ def test_tier_c_documents_reuse_first_strategy(manifest: dict) -> None:
     )
 
 
+def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
+    """Promoted from tier-c legacy doc — category must match.
+
+    The legacy tier-c spec lives at
+    docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md; we
+    promote the connection into the `vehicle_obd` category so the
+    audit + boundary-CI can pair them up (the manifest uses
+    `vehicle_obd` with an underscore per the manifest key
+    convention; the legacy doc path uses the hyphenated
+    `vehicle-obd` form).
+    """
+    assert manifest["category"] == "vehicle_obd", (
+        f"category must stay 'vehicle_obd' (legacy doc lives at "
+        f"docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md); "
+        f"got {manifest['category']!r}"
+    )
+    assert LEGACY_DOC.is_file(), (
+        "expected the legacy tier-c doc to still exist so old links "
+        "resolve to the redirect page"
+    )
+    # Wave 9 #124c: legacy stub converted to a 2-line clean redirect
+    # page (per directive repo-hygiene § "user-facing repo"). The file
+    # must still exist (so old links resolve) and must now be a thin
+    # redirect pointing at the canonical recipe — NOT carry the giant
+    # supersession banner anymore.
+    legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
+    assert "Moved" in legacy_text and "connections/in-cab-tablet-dashboard/docs/recipe.md" in legacy_text, (
+        "legacy docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md must "
+        "be a 2-line 'Moved to ...' redirect page pointing at "
+        "connections/in-cab-tablet-dashboard/docs/recipe.md "
+        "(Wave 9 #124c); got:\n" + legacy_text[:200]
+    )
+    # Belt-and-braces: the user-facing legacy doc must NOT carry the
+    # giant supersession banner anymore (directive repo-hygiene §).
+    assert "SUPERSEDED" not in legacy_text, (
+        "legacy docs/catalog/vehicle-obd/in-cab-tablet-dashboard.md must "
+        "not carry the 'SUPERSEDED' banner (Wave 9 #124c — user-facing "
+        "repo hygiene)"
+    )
+
+
 def test_dashboard_tiles_follow_rc_naming(manifest: dict) -> None:
     r"""rc_* tile ids must NOT contain vendor names (per rc-entity-naming.md).
 

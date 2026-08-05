@@ -384,27 +384,34 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         "so we can reference it from the recipe (and add a "
         "supersession banner)"
     )
-    # Belt-and-braces: the legacy docs must carry the supersession
-    # banner so the false tier-b placeholder doesn't leak into any
-    # downstream catalog scrape. The banner text is the verbatim
-    # spec-required string.
+    # Wave 9 #124c: legacy stubs converted to 2-line clean redirect
+    # pages (per directive repo-hygiene § "user-facing repo"). The
+    # files must still exist (so old links resolve) and must now be
+    # thin redirects pointing at the canonical recipe — NOT carry
+    # the giant supersession banner anymore.
     legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/remote-access/index.md must "
-        "carry the 'SUPERSEDED' banner per spec"
+    assert "Moved" in legacy_index_text and "connections/remote-access/docs/recipe.md" in legacy_index_text, (
+        "legacy docs/catalog/remote-access/index.md must be a 2-line "
+        "'Moved to ...' redirect page pointing at "
+        "connections/remote-access/docs/recipe.md (Wave 9 #124c); got:\n"
+        + legacy_index_text[:200]
     )
-    assert "connections/remote-access/" in legacy_index_text, (
-        "legacy docs/catalog/remote-access/index.md must "
-        "point at `connections/remote-access/` per spec"
+    # Belt-and-braces: the user-facing legacy docs must NOT carry the
+    # giant supersession banner anymore (directive repo-hygiene §).
+    assert "SUPERSEDED" not in legacy_index_text, (
+        "legacy docs/catalog/remote-access/index.md must not carry the "
+        "'SUPERSEDED' banner (Wave 9 #124c — user-facing repo hygiene)"
     )
     legacy_tailscale_text = LEGACY_TAILSCALE_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_tailscale_text, (
-        "legacy docs/catalog/remote-access/tailscale.md must "
-        "carry the 'SUPERSEDED' banner per spec"
+    assert "Moved" in legacy_tailscale_text and "connections/remote-access/docs/recipe.md" in legacy_tailscale_text, (
+        "legacy docs/catalog/remote-access/tailscale.md must be a 2-line "
+        "'Moved to ...' redirect page pointing at "
+        "connections/remote-access/docs/recipe.md (Wave 9 #124c); got:\n"
+        + legacy_tailscale_text[:200]
     )
-    assert "connections/remote-access/" in legacy_tailscale_text, (
-        "legacy docs/catalog/remote-access/tailscale.md must "
-        "point at `connections/remote-access/` per spec"
+    assert "SUPERSEDED" not in legacy_tailscale_text, (
+        "legacy docs/catalog/remote-access/tailscale.md must not carry "
+        "the 'SUPERSEDED' banner (Wave 9 #124c — user-facing repo hygiene)"
     )
 
 

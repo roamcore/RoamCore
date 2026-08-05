@@ -451,18 +451,21 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         "reference it from the recipe (and add a supersession "
         "banner)"
     )
-    # Belt-and-braces: the legacy doc must carry the
-    # supersession banner so the false tier-a claim doesn't
-    # leak into any downstream catalog scrape. The banner
-    # text is the verbatim spec-required string.
+    # Belt-and-braces: the legacy doc must NOT carry the giant
+    # supersession banner anymore (directive repo-hygiene §
+    # "user-facing repo"). The legacy doc is now a thin 2-line
+    # "Moved to connections/mode/docs/recipe.md/" redirect page
+    # so old links still resolve but end users never see the
+    # giant SUPERSEDED block.
     legacy_index_text = LEGACY_INDEX_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_index_text, (
-        "legacy docs/catalog/ai/mode.md must carry the "
-        "'SUPERSEDED' banner per spec"
+    assert "Moved" in legacy_index_text and "connections/mode/docs/recipe.md" in legacy_index_text, (
+        "legacy docs/catalog/ai/mode.md must be a 2-line 'Moved to ...' "
+        "redirect page pointing at connections/mode/docs/recipe.md "
+        "(Wave 9 #124c); got:\n" + legacy_index_text[:200]
     )
-    assert "connections/mode/" in legacy_index_text, (
-        "legacy docs/catalog/ai/mode.md must point at "
-        "`connections/mode/` per spec"
+    assert "SUPERSEDED" not in legacy_index_text, (
+        "legacy docs/catalog/ai/mode.md must not carry the 'SUPERSEDED' "
+        "banner (Wave 9 #124c — user-facing repo hygiene)"
     )
 
 

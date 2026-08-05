@@ -47,13 +47,11 @@ done
 
 # Grandfathered legacy stubs (explicitly accepted by Wave 9 #124 — see
 # commit f0241e1 verification: "only historical banners (acceptable)").
-# These still carry giant SUPERSEDED banners but were left in place for
-# scope reasons. Future slices should clean them up and remove from this
-# list. Paths are repo-relative.
-GRANDFATHERED_FILES=(
-  "docs/catalog/lighting/approach-and-underbody-lights.md"
-  "docs/catalog/map/mock-location-and-tracks.md"
-)
+# Wave 9 #124c cleaned up ALL remaining SUPERSEDED stubs in the user
+# tree (20 connection-specific + category-index stubs → 2-line
+# "Moved to" redirect pages pointing at the canonical connection
+# recipe). The GRANDFATHERED_FILES list is now empty.
+GRANDFATHERED_FILES=()
 
 # --- Pre-flight ---
 [ -d docs ] || fail "missing docs/ — run from repo root"

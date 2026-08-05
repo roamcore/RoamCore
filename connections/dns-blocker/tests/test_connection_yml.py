@@ -211,12 +211,38 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
     )
     assert LEGACY_PIHOLE_DOC.is_file(), (
         f"expected the legacy Pi-hole tier-c doc to still exist at {LEGACY_PIHOLE_DOC} "
-        f"so the supersession banner can point at it"
+        f"so old links resolve to the redirect page"
     )
     assert LEGACY_ADGUARD_DOC.is_file(), (
         f"expected the legacy AdGuard Home tier-c doc to still exist at {LEGACY_ADGUARD_DOC} "
-        f"so the supersession banner can point at it "
+        f"so old links resolve to the redirect page "
         f"(this connection covers BOTH blockers, not just one)"
+    )
+    # Wave 9 #124c: BOTH legacy stubs converted to 2-line clean
+    # redirect pages (per directive repo-hygiene § "user-facing repo").
+    # The files must still exist (so old links resolve) and must now
+    # be thin redirects pointing at the canonical recipe — NOT carry
+    # the giant supersession banner anymore.
+    pihole_text = LEGACY_PIHOLE_DOC.read_text(encoding="utf-8")
+    assert "Moved" in pihole_text and "connections/dns-blocker/docs/recipe.md" in pihole_text, (
+        "legacy docs/catalog/homelab/pi-hole.md must be a 2-line 'Moved to ...' "
+        "redirect page pointing at connections/dns-blocker/docs/recipe.md "
+        "(Wave 9 #124c); got:\n" + pihole_text[:200]
+    )
+    assert "SUPERSEDED" not in pihole_text, (
+        "legacy docs/catalog/homelab/pi-hole.md must not carry the 'SUPERSEDED' "
+        "banner (Wave 9 #124c — user-facing repo hygiene)"
+    )
+    adguard_text = LEGACY_ADGUARD_DOC.read_text(encoding="utf-8")
+    assert "Moved" in adguard_text and "connections/dns-blocker/docs/recipe.md" in adguard_text, (
+        "legacy docs/catalog/homelab/adguard-home.md must be a 2-line "
+        "'Moved to ...' redirect page pointing at "
+        "connections/dns-blocker/docs/recipe.md (Wave 9 #124c); got:\n"
+        + adguard_text[:200]
+    )
+    assert "SUPERSEDED" not in adguard_text, (
+        "legacy docs/catalog/homelab/adguard-home.md must not carry the "
+        "'SUPERSEDED' banner (Wave 9 #124c — user-facing repo hygiene)"
     )
 
 
