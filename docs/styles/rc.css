@@ -37,7 +37,6 @@
   padding-bottom: 2.5rem;
 }
 
-<<<<<<< Updated upstream
 /* Reduce clutter: remove the right-hand TOC sidebar (we integrate TOC into left nav) */
 .md-sidebar--secondary,
 .md-nav--secondary,
@@ -48,12 +47,6 @@ nav[aria-label="Table of contents"] {
 /* Hide "On this page" label that sometimes appears with the TOC */
 .md-sidebar__inner .md-nav--secondary {
   display: none !important;
-=======
-/* Reduce clutter: remove the right-hand TOC sidebar */
-.md-sidebar--secondary,
-nav[aria-label="Table of contents"] {
-  display: none !important;
->>>>>>> Stashed changes
 }
 
 /* Slightly widen main content since we removed the right sidebar */
@@ -78,6 +71,59 @@ li.md-nav__item--section.md-nav__item--nested:has(> input[id="__nav_3"]:checked)
 .md-footer-meta__inner .md-copyright {
   display: none;
 }
+
+
+/* Tier badges (A/B/C) - kept because they answer "does RoamCore maintain this, or am I relying on someone else?" */
+.rc-feature-right {
+  margin-left: auto;
+  padding-left: 10px;
+  flex-shrink: 0;
+}
+
+.rc-feature {
+  display: flex !important;
+  align-items: center;
+}
+
+.rc-feature-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-tier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  min-width: 22px;
+  text-transform: uppercase;
+  /* Override any inherited link color from Material */
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.rc-tier.a {
+  background: rgba(124, 255, 178, 0.18);
+  border: 1px solid rgba(124, 255, 178, 0.40);
+  color: #7CFFB2 !important;
+}
+
+.rc-tier.b {
+  background: rgba(91, 227, 255, 0.15);
+  border: 1px solid rgba(91, 227, 255, 0.35);
+  color: #5BE3FF !important;
+}
+
+.rc-tier.c {
+  background: rgba(255, 210, 117, 0.12);
+  border: 1px solid rgba(255, 210, 117, 0.30);
+  color: #FFD275 !important;
+}
+
 
 /* Visual catalog cards */
 .rc-grid {

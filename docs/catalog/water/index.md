@@ -9,8 +9,8 @@ have left, and whether anything is leaking.
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="water-tanks/"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh + grey level monitoring)</div><div class="rc-feature-sub">See how much fresh water is left and how full the grey tank is, with alerts before you run out or before the grey tank overflows.</div></div></a>
-  <a class="rc-feature" href="electronic-valves/"><div class="rc-feature-left"><div class="rc-feature-title">Electronic valves + auto tank switching</div><div class="rc-feature-sub">Switch between fresh and aux water tanks automatically, and auto-close the grey drain valve to prevent accidental overflow.</div></div></a>
+  <a class="rc-feature" href="water-tanks/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh + grey level monitoring)</div><div class="rc-feature-sub">See how much fresh water is left and how full the grey tank is, with alerts before you run out or before the grey tank overflows.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
+  <a class="rc-feature" href="electronic-valves/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Electronic valves + auto tank switching</div><div class="rc-feature-sub">Switch between fresh and aux water tanks automatically, and auto-close the grey drain valve to prevent accidental overflow.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

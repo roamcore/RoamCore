@@ -3,6 +3,15 @@
 RoamCore talks to the things in your van — power, water, heating, lights,
 internet, location — and shows you what's happening on one dashboard.
 
+
+## Tier legend
+
+How to read the letters next to each feature:
+
+- **A — Full** — RoamCore maintains this natively. Vendor-neutral contract (`rc_*`), automated tests, no upstream dependency.
+- **B — Partial** — RoamCore wraps an existing Home Assistant integration or upstream project. Works, but may have gaps; you depend on the upstream project for some functionality.
+- **C — 3rd party** — RoamCore provides a thin layer on top of someone else's project (e.g. NFC tags, dashboard tablet). You're relying on their maintenance.
+
 ## Power
 
 Batteries, solar, shore power, and inverter control. See state of charge,
