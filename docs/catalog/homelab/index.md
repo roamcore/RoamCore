@@ -1,9 +1,6 @@
 # Homelab
 
-This folder is the **Homelab** tag in the RoamCore catalog.
-
-## Overview
-Some vanlifers run a small “homelab on wheels”: a mini PC, NAS, router, cameras, and local services. This section covers useful self-hosted tools and integrations that can run locally (even without internet) for more privacy and reliability.
+Self-hosted services you might want in the van — DNS blocker, NAS, support bundle.
 
 <!-- RC_FEATURE_LIST_START -->
 

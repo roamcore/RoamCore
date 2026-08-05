@@ -1,19 +1,20 @@
 # Home Assistant installer (one-line)
 
-**Support tier:** A (RoamCore native)
-
-## What this is
+## What it does
 RoamCore ships `install.sh`/`uninstall.sh` to install the integration and assets into Home Assistant.
 
 ## Why it’s useful in a van
 - Fast setup and repeatable installs
 - Easy rollback if something goes wrong
 
-## Extra hardware required
+## How to install
 - None
 
-## Install / best next step
 - See: `docs/howto/homeassistant-installer.md`
 
-## Links
+## Useful links
 - (Add videos/quickstart)
+
+## How it works
+
+What RoamCore does behind the scenes.

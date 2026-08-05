@@ -37,6 +37,7 @@
   padding-bottom: 2.5rem;
 }
 
+<<<<<<< Updated upstream
 /* Reduce clutter: remove the right-hand TOC sidebar (we integrate TOC into left nav) */
 .md-sidebar--secondary,
 .md-nav--secondary,
@@ -47,6 +48,12 @@ nav[aria-label="Table of contents"] {
 /* Hide "On this page" label that sometimes appears with the TOC */
 .md-sidebar__inner .md-nav--secondary {
   display: none !important;
+=======
+/* Reduce clutter: remove the right-hand TOC sidebar */
+.md-sidebar--secondary,
+nav[aria-label="Table of contents"] {
+  display: none !important;
+>>>>>>> Stashed changes
 }
 
 /* Slightly widen main content since we removed the right sidebar */
@@ -54,6 +61,22 @@ nav[aria-label="Table of contents"] {
   .md-grid {
     max-width: 1100px;
   }
+}
+
+/* Collapse "Technical (advanced)" by default — Material auto-expands it
+   when you're on a Technical page (because aria-expanded flips),
+   but on Catalog pages it's noise. We use the input id pattern
+   to target it specifically. */
+li.md-nav__item--section.md-nav__item--nested:has(> input[id="__nav_3"]) > nav.md-nav {
+  display: none;
+}
+li.md-nav__item--section.md-nav__item--nested:has(> input[id="__nav_3"]:checked) > nav.md-nav {
+  display: block;
+}
+
+/* Hide the "Made with Material for MkDocs" footer attribution */
+.md-footer-meta__inner .md-copyright {
+  display: none;
 }
 
 /* Visual catalog cards */

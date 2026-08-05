@@ -1,10 +1,6 @@
 # Presence
 
-This folder is the **Presence** tag in the RoamCore catalog.
-
-## Overview
-
-Presence is the glue that makes a van feel like a smart home: “nobody home” vs “someone just arrived” drives lighting, safety shutdowns (pump/inverter), remote-access keepalive, and more.
+Bluetooth and Wi-Fi presence detection so the van knows who's actually in it.
 
 <!-- RC_FEATURE_LIST_START -->
 

@@ -1,12 +1,8 @@
-> **SUPERSEDED** by `connections/time-atomic/` (Wave 3 #55, shipped 2026-08-02).
-> This page is kept for historical context only. The canonical spec now lives in
-> `connections/time-atomic/connection.yml` + `connections/time-atomic/docs/recipe.md`.
-
 # Time (atomic) — NTP-synchronized time with offline-resilience
 
-**Support tier:** C (recipe)
+> **SUPERSEDED** by `connections/time-atomic/` (Wave 3 #55, shipped 2026-08-02).
 
-## What this is
+## What it does
 RoamCore includes notes for keeping HA's clock accurate even when offline
 (in a van with intermittent connectivity). The recipe recycles the
 upstream HA core `time` integration (since 2022.x — exposes NTP
@@ -30,7 +26,7 @@ unreachable for N minutes).
   integration with the recommended NTP server list
   (`time.cloudflare.com` + `time.google.com` + `pool.ntp.org`)
 
-## Extra hardware required
+## How to install
 - Optional: DS3231 / RV-3028 I2C RTC module for Path C RTC
   fallback (otherwise the recipe relies on Path A NTP + Path B
   GPS only)
@@ -41,11 +37,10 @@ unreachable for N minutes).
 - No extra hardware required for Path A NTP (just HA core's
   `time` integration + the WAN backhaul)
 
-## Install / best next step
 - See: `connections/time-atomic/docs/recipe.md`
 - RoamCore time helpers package: `homeassistant/packages/roamcore_weather_time.yaml`
 
-## Links
+## Useful links
 - HA core `time` integration: https://www.home-assistant.io/integrations/time/
 - Cross-reference to Wave 3 #54 timezone-geolocator (the
   time-category complement — handles "what timezone IS it?"; this
@@ -56,3 +51,7 @@ unreachable for N minutes).
 - Cross-reference to Wican Pro Wave 3 #6 (the optional OBD-II
   GPS source for Path B GPS time correction):
   `connections/wican-pro/`
+
+## How it works
+
+What RoamCore does behind the scenes.

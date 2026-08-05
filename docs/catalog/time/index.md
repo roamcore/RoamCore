@@ -1,9 +1,6 @@
 # Time
 
-This folder is the **Time** tag in the RoamCore catalog.
-
-## Overview
-Time-based helpers let you make the van feel “smart” without overcomplicating things. This section covers schedules, quiet hours, bedtime routines, and time zone handling—useful when you travel across regions or want automations that respect local time.
+Atomic time and timezone handling so the van's clock stays accurate offline.
 
 <!-- RC_FEATURE_LIST_START -->
 

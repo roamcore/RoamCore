@@ -1,10 +1,8 @@
 # Amenities overlay (nearby places)
 
-**Support tier:** C
-
 See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
 
-## What this is
+## What it does
 
 An **optional map overlay** layer that adds “points of interest” (POIs) around your current location.
 
@@ -13,7 +11,7 @@ The goal is practical: when you’re parked somewhere new, you can answer:
 - Is there a **laundrette** nearby?
 - Where can I find a **quiet overnight spot** or a **campsite**?
 
-## What you need
+## How to install
 
 - A working RoamCore Map page (any basemap mode).
 - Internet access (at least when fetching POIs).
@@ -37,3 +35,7 @@ Not shipped yet.
 
 - If the map works but POIs don’t show up, first check if the selected categories are enabled.
 - If you see “rate limit” errors, reduce refresh frequency or use cached results.
+
+## Useful links
+
+Upstream docs and related references.

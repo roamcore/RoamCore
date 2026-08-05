@@ -1,14 +1,12 @@
 # Inverter idle shutdown (automatic power safety)
 
-**Support tier:** C
-
 Automatically turn off (or reduce) inverter usage when it’s been idle for a while, or when nobody is home — to prevent silent battery drain.
 
-## What you need
+## How to install
 - Inverter telemetry (on/off state, load watts) and a safe way to control it
 - Optional: presence detection (nobody home)
 
-## What RoamCore would do
+## How it works
 - Show inverter status + load
 - Provide a safe “inverter allowed” toggle
 - Optionally automate inverter OFF when:
@@ -20,3 +18,10 @@ Automatically turn off (or reduce) inverter usage when it’s been idle for a wh
 - Don’t shut off if a critical load is active (fridge/medical/etc.)
 - Disable in “Travel” if you rely on it while driving
 
+## What it does
+
+What this feature gives you and what it shows in the van.
+
+## Useful links
+
+Upstream docs and related references.

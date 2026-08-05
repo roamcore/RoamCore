@@ -1,9 +1,6 @@
 # Bed Lift
 
-This folder is the **Bed Lift** tag in the RoamCore catalog.
-
-## Overview
-A bed lift can save space and make daily life smoother—if it’s reliable and easy to control. This section covers sensors and controls for lift systems (buttons, limit switches, position sensors), plus safety-focused recipes like “lock out movement when something is in the way”.
+Bed lift controls (Happijac, DIY) — the foundation of every sleep-cycle automation.
 
 <!-- RC_FEATURE_LIST_START -->
 

@@ -1,19 +1,20 @@
 # Support bundle export (logs + config snapshot)
 
-**Support tier:** A (RoamCore native)
-
-## What this is
+## What it does
 A documented way to generate a support bundle so issues can be debugged quickly without back-and-forth.
 
 ## Why it’s useful in a van
 - Faster troubleshooting when something breaks on the road
 - Clear “what to send” when asking for help
 
-## Extra hardware required
+## How to install
 - None
 
-## Install / best next step
 - See: `docs/howto/support-bundle.md`
 
-## Links
+## Useful links
 - (Add troubleshooting video/resources later)
+
+## How it works
+
+What RoamCore does behind the scenes.

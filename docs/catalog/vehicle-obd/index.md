@@ -1,9 +1,6 @@
 # Vehicle OBD
 
-This folder is the **Vehicle OBD** tag in the RoamCore catalog.
-
-## Overview
-OBD data can turn your vehicle into a real-time dashboard: battery voltage, coolant temp, fuel level (sometimes), fault codes, and more. This section covers ways to bring vehicle telemetry into Home Assistant so you can spot issues early and track driving-related metrics.
+Vehicle telemetry from the OBD port — battery, coolant, fuel, fault codes, and driving metrics.
 
 <!-- RC_FEATURE_LIST_START -->
 

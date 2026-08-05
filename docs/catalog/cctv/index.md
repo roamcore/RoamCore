@@ -1,9 +1,6 @@
 # CCTV
 
-This folder is the **CCTV** tag in the RoamCore catalog.
-
-## Overview
-Cameras can help with security, parking checks, and peace of mind—especially when you’re away from the van or sleeping. This section covers camera integrations, viewing options, and simple “check outside” workflows that don’t require building a full security system.
+Cameras for security, parking checks, and peace of mind.
 
 <!-- RC_FEATURE_LIST_START -->
 

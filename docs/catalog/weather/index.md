@@ -1,9 +1,6 @@
 # Weather
 
-This folder is the **Weather** tag in the RoamCore catalog.
-
-## Overview
-Weather matters more when your home moves. This section covers forecasts, alerts, sunrise/sunset, and sensors (inside/outside) so you can avoid bad conditions, manage heating/cooling efficiently, and plan travel days with confidence.
+Weather data and forecasts, wired into automations that depend on temperature or rain.
 
 <!-- RC_FEATURE_LIST_START -->
 

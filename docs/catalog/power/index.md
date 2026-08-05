@@ -1,9 +1,6 @@
 # Power
 
-This folder is the **Power** tag in the RoamCore catalog.
-
-## Overview
-Power is the heart of van life: batteries, solar, shore power, inverter/charger, and how long you can comfortably run everything. This section covers integrations and features that help you monitor state-of-charge, spot problems early, and automate “power-safe” behavior.
+Batteries, solar, shore power, and inverter control. See state of charge, how fast you're charging, and whether you need to plug in tonight.
 
 <!-- RC_FEATURE_LIST_START -->
 

@@ -1,20 +1,21 @@
 # RoamCore TileServer add-on
 
-**Support tier:** A (RoamCore native)
-
-## What this is
+## What it does
 A Home Assistant add-on that serves map tiles locally for reliable map rendering.
 
 ## Why it’s useful in a van
 - Maps work with poor/no internet
 - Faster, predictable map performance
 
-## Extra hardware required
+## How to install
 - None (more storage helps)
 
-## Install / best next step
 - Add-on source: `homeassistant/addons/roamcore-tileserver`
 - Component: `homeassistant/custom_components/roamcore_tileserver`
 
-## Links
+## Useful links
 - (Add usage docs later)
+
+## How it works
+
+What RoamCore does behind the scenes.

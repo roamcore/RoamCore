@@ -1,19 +1,20 @@
 # Victron Mock add-on (demo power data)
 
-**Support tier:** A (RoamCore native)
-
-## What this is
+## What it does
 A demo/mock backend that generates Victron-like power telemetry for development and demos.
 
 ## Why it’s useful in a van
 Mostly for testing and demos—helps you validate dashboards without real hardware connected.
 
-## Extra hardware required
+## How to install
 - None
 
-## Install / best next step
 - Guide: `docs/guides/roamcore-victron-mock-addon.md`
 - Add-on: `homeassistant/addons/roamcore-victron-mock`
 
-## Links
+## Useful links
 - (Add notes later)
+
+## How it works
+
+What RoamCore does behind the scenes.

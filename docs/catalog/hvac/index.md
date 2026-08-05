@@ -1,9 +1,6 @@
 # HVAC
 
-This folder is the **HVAC** tag in the RoamCore catalog.
-
-## Overview
-Heating and cooling is comfort—and sometimes safety (freezing nights, hot days, pets). This section covers thermostats, diesel heaters, AC units, vents, and automations that help keep the van at a stable temperature with minimal power use.
+Heating, cooling, ventilation — climate-control integrations for van builds.
 
 <!-- RC_FEATURE_LIST_START -->
 

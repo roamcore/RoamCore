@@ -1,9 +1,6 @@
 # Level Sensor
 
-This folder is the **Level Sensor** tag in the RoamCore catalog.
-
-## Overview
-Being level makes sleeping, cooking, and living in the van much nicer. This section covers sensors and integrations that measure pitch/roll, show an easy “are we level?” status, and help you dial in a perfect park.
+Pitch and roll sensors that show an easy "are we level?" status before you park.
 
 <!-- RC_FEATURE_LIST_START -->
 
