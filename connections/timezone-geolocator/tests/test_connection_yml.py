@@ -317,18 +317,24 @@ def test_category_matches_existing_legacy_doc(manifest: dict) -> None:
         "expected the legacy tier-c doc to still exist so we can "
         "reference it from the recipe (and add a supersession banner)"
     )
-    # Belt-and-braces: the legacy doc must carry the supersession
-    # banner so the false tier-c placeholder doesn't leak into any
-    # downstream catalog scrape. The banner text is the verbatim
-    # spec-required string.
+    # Wave 9 #124b: legacy stub converted to a 2-line clean redirect
+    # page (per directive repo-hygiene § "user-facing repo"). The file
+    # must still exist (so old links resolve) and must now be a thin
+    # redirect pointing at the canonical recipe — NOT carry the giant
+    # supersession banner anymore.
     legacy_text = LEGACY_DOC.read_text(encoding="utf-8")
-    assert "SUPERSEDED" in legacy_text, (
-        "legacy docs/catalog/time/timezone-geolocator.md must "
-        "carry the 'SUPERSEDED' banner per spec"
+    assert "Moved" in legacy_text and "connections/timezone-geolocator/docs/recipe.md" in legacy_text, (
+        "legacy docs/catalog/time/timezone-geolocator.md must be a "
+        "2-line 'Moved to ...' redirect page pointing at "
+        "connections/timezone-geolocator/docs/recipe.md (Wave 9 "
+        "#124b); got:\n" + legacy_text[:200]
     )
-    assert "connections/timezone-geolocator/" in legacy_text, (
-        "legacy docs/catalog/time/timezone-geolocator.md must "
-        "point at `connections/timezone-geolocator/` per spec"
+    # Belt-and-braces: the user-facing legacy doc must NOT carry the
+    # giant supersession banner anymore (directive repo-hygiene §).
+    assert "SUPERSEDED" not in legacy_text, (
+        "legacy docs/catalog/time/timezone-geolocator.md must not "
+        "carry the 'SUPERSEDED' banner (Wave 9 #124b — user-facing "
+        "repo hygiene)"
     )
 
 

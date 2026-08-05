@@ -61,6 +61,9 @@ run_if_present() {
 banner "HA-only beta: smoke check"
 bash scripts/checks/ha-beta-smoke.sh
 
+banner "Docs: no SUPERSEDED banners in user tree (Wave 9 #124b)"
+bash scripts/checks/no-superseded-in-user-tree.sh
+
 # Wave 2 #23-#33 smokes live on their own stacked branches. We probe for
 # the well-known names so the chain stays portable; once those PRs land
 # on main, they will chain automatically here.
