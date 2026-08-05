@@ -17,11 +17,6 @@
   --md-accent-fg-color: var(--rc-accent2);
 }
 
-/* Hide the "Made with Material for MkDocs" footer attribution — pure noise */
-.md-footer-meta__inner .md-copyright { display: none; }
-.md-footer-meta__inner { justify-content: center; }
-.md-footer { padding-bottom: 0.5rem; }
-
 .md-header {
   background: rgba(7,10,15,0.72);
   backdrop-filter: blur(10px);
@@ -38,15 +33,8 @@
 }
 
 /* Reduce clutter: remove the right-hand TOC sidebar (we integrate TOC into left nav) */
-.md-sidebar--secondary,
-.md-nav--secondary,
-nav[aria-label="Table of contents"] {
-  display: none !important;
-}
-
-/* Hide "On this page" label that sometimes appears with the TOC */
-.md-sidebar__inner .md-nav--secondary {
-  display: none !important;
+.md-sidebar--secondary {
+  display: none;
 }
 
 /* Slightly widen main content since we removed the right sidebar */
@@ -99,6 +87,52 @@ nav[aria-label="Table of contents"] {
   line-height: 1.35;
 }
 
+/* Filter UI */
+.rc-filter {
+  display:flex;
+  flex-wrap:wrap;
+  gap: 10px;
+  align-items:center;
+  margin: 12px 0 18px;
+}
+
+.rc-filter input {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: rgba(255,255,255,0.90);
+  min-width: 220px;
+}
+
+.rc-chips { display:flex; gap:8px; flex-wrap:wrap; }
+
+.rc-chip {
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration:none;
+  cursor: pointer;
+  user-select:none;
+}
+
+.rc-chip.active {
+  border-color: rgba(91,227,255,0.35);
+  background: rgba(91,227,255,0.10);
+}
+
+.rc-chip.a.active { border-color: rgba(124,255,178,0.35); background: rgba(124,255,178,0.10); }
+.rc-chip.b.active { border-color: rgba(91,227,255,0.35); background: rgba(91,227,255,0.10); }
+.rc-chip.c.active { border-color: rgba(255,210,117,0.35); background: rgba(255,210,117,0.10); }
+
+.rc-filter-meta { color: rgba(255,255,255,0.65); font-size: 12px; }
+
 /* Category feature list (wide bubbles) */
 .rc-feature-list {
   display: flex;
@@ -108,7 +142,10 @@ nav[aria-label="Table of contents"] {
 }
 
 .rc-feature {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
   padding: 14px 14px;
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.10);
@@ -125,5 +162,39 @@ nav[aria-label="Table of contents"] {
 .rc-feature-title { font-weight: 950; color: rgba(255,255,255,0.92); }
 .rc-feature-sub { margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.70); line-height: 1.35; }
 
+.rc-feature .rc-tier { flex: 0 0 auto; }
+
 /* Prevent markdown from adding underline styles inside our feature bubbles */
 .rc-feature * { text-decoration: none !important; }
+
+.rc-feature-right { display:flex; align-items:center; }
+
+/* Simple “install CTA button” style for links marked with .rc-cta */
+a.rc-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(135deg, rgba(124,255,178,0.18), rgba(91,227,255,0.14));
+  font-weight: 900;
+  text-decoration: none;
+}
+
+/* Small tier pills */
+.rc-tier {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.rc-tier.a { border-color: rgba(124,255,178,0.35); }
+.rc-tier.b { border-color: rgba(91,227,255,0.35); }
+.rc-tier.c { border-color: rgba(255,210,117,0.35); }

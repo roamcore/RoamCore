@@ -3,6 +3,8 @@
 RoamCore talks to the things in your van — power, water, heating, lights,
 internet, location — and shows you what's happening on one dashboard.
 
+Pick a category to see what's available.
+
 ## Power
 
 Batteries, solar, shore power, and inverter control. See state of charge,
@@ -66,3 +68,10 @@ Tablet dashboards, leveling, and other keep-the-van-working features.
 Anything that doesn't fit a category — NAS, atomic time, timezone sync.
 
 [Browse Misc](misc/)
+
+---
+
+**Tip:** Most features install as one click in the RoamCore dashboard, or
+with a single command on the Home Assistant host. Each category page
+lists the features with what they do, what they need, and how to install
+them.
