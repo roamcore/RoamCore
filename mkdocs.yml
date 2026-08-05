@@ -2,11 +2,8 @@ site_name: RoamCore
 site_description: "RoamCore Docs — Home Assistant for van life"
 site_url: https://roamcore.co.uk/docs/
 
-repo_name: roamcore/RoamCore
-repo_url: https://github.com/roamcore/RoamCore
-edit_uri: edit/main/docs/
-
 docs_dir: docs
+
 site_dir: public/docs
 
 theme:
@@ -15,15 +12,8 @@ theme:
   logo: null
   favicon: null
   features:
-    - navigation.instant
-    - navigation.instant.progress
     - navigation.tracking
     - navigation.sections
-    - navigation.indexes
-    - navigation.top
-    - toc.integrate
-    - search.highlight
-    - search.suggest
     - content.code.copy
   palette:
     - scheme: slate
@@ -33,9 +23,6 @@ theme:
 extra_css:
   - styles/rc.css
 
-extra_javascript:
-  - javascripts/catalog-filter.js
-
 markdown_extensions:
   - admonition
   - attr_list
@@ -44,7 +31,7 @@ markdown_extensions:
   - md_in_html
   - tables
   - toc:
-      permalink: true
+      permalink: false
   - pymdownx.details
   - pymdownx.superfences
   - pymdownx.tabbed:
