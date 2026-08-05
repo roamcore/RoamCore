@@ -30,6 +30,7 @@ tier: b
 category: networking
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish +
   router). Tier-b recipe: we publish the documented setup for an operator-

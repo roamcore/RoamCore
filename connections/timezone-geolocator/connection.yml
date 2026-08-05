@@ -64,6 +64,7 @@ tier: c
 category: time
 status: recipe_published
 version: 0.1.0
+state: Available
 description: |
   Timezone geolocator (location-aware HA timezone) — the umbrella
   for "keep HA's system timezone correct as the van travels across

@@ -80,5 +80,6 @@ nav:
       - Install: howto/homeassistant-installer.md
       - Troubleshooting: guides/troubleshooting.md
       - Support bundle: howto/support-bundle.md
+      - Connection states: reference/rc-connection-states.md
       - Entity naming: reference/rc-entity-naming.md
       - OpenClaw JSON API: reference/openclaw-json-api.md

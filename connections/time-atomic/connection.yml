@@ -95,6 +95,7 @@ tier: c
 category: time
 status: recipe_published
 version: 0.1.0
+state: Available
 description: |
   Time (atomic) (NTP-synchronized time with offline-resilience) —
   the umbrella for "keep HA's clock accurate even when offline

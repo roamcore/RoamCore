@@ -116,6 +116,7 @@ tier: b
 category: networking
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Peplink Balance / MAX / EP-series routers are rugged, configurable
   multi-WAN gateways very popular in van life — they handle

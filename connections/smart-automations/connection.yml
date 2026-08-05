@@ -19,6 +19,7 @@ tier: b
 category: safety
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Smart automations are the **day-to-day convenience layer** of a
   RoamCore van: 17 prebuilt Home Assistant automations that handle

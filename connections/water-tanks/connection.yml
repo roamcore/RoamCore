@@ -36,6 +36,7 @@ tier: b
 category: water
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Water tanks — fresh + grey water telemetry + pump runtime + leak
   detection + freeze-risk monitoring for vans — is the vendor-neutral

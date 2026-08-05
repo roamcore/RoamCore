@@ -28,6 +28,7 @@ tier: b
 category: hvac
 status: beta
 version: 0.1.0
+state: Available
 description: |
   HVAC basics — cabin heating/cooling foundations for vans — is the
   umbrella for thermostat + diesel heater + rooftop AC + cabin

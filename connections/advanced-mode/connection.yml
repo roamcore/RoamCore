@@ -311,6 +311,7 @@ tier: b
 category: ai
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Advanced mode — vendor-neutral power-user toggle + session-
   timeout guard + destructive-calls block — the umbrella for

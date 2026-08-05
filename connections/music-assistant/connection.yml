@@ -129,6 +129,7 @@ tier: b
 category: media
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Music Assistant (<https://www.music-assistant.io/>) is a provider-
   agnostic multi-room audio orchestrator very popular in HA

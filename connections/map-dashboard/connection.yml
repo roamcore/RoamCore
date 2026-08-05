@@ -194,6 +194,7 @@ tier: a
 category: map
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Map dashboard — vendor-neutral map tile + device_tracker
   aggregation + trip overlay + offline-tile cache — the

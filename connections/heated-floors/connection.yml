@@ -199,6 +199,7 @@ tier: b
 category: hvac
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Heated floors + engine pre-heat — cold-weather comfort controls
   for vans — are the **foundation** of every "Warm up" automation

@@ -98,6 +98,7 @@ tier: c
 category: vehicle_obd
 status: recipe_published
 version: 0.1.0
+state: Available
 description: |
   In-cab tablet dashboard (driving / arrival / lock-screen Lovelace
   views with ignition-aware auto-switch) — the umbrella for
