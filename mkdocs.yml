@@ -57,25 +57,43 @@ nav:
   - Home: index.md
   - Catalog:
       - Browse all: catalog/index.md
-      - Power: catalog/power/index.md
-      - Water: catalog/water/index.md
-      - Map: catalog/map/index.md
-      - Weather: catalog/weather/index.md
-      - Time: catalog/time/index.md
-      - CCTV: catalog/cctv/index.md
-      - AI: catalog/ai/index.md
-      - HVAC: catalog/hvac/index.md
-      - Networking: catalog/networking/index.md
-      - Fans: catalog/fans/index.md
-      - Safety: catalog/safety/index.md
-      - Remote Access: catalog/remote-access/index.md
-      - Vehicle OBD: catalog/vehicle-obd/index.md
-      - Lighting: catalog/lighting/index.md
-      - Bed Lift: catalog/bed-lift/index.md
-      - NFC Tags: catalog/nfc-tags/index.md
-      - Audio/Media: catalog/audio-media/index.md
-      - Homelab: catalog/homelab/index.md
-      - Level Sensor: catalog/level-sensor/index.md
+      - Power:
+          - catalog/power/index.md
+      - Water:
+          - catalog/water/index.md
+          - catalog/level-sensor/index.md
+      - Comfort:
+          - catalog/comfort/index.md
+          - catalog/lighting/index.md
+          - catalog/bed-lift/index.md
+          - catalog/audio-media/index.md
+          - catalog/hvac/index.md
+          - catalog/fans/index.md
+      - Connectivity:
+          - catalog/connectivity/index.md
+          - catalog/networking/index.md
+          - catalog/homelab/index.md
+          - catalog/remote-access/index.md
+      - Location:
+          - catalog/location/index.md
+          - catalog/presence/index.md
+          - catalog/map/index.md
+          - catalog/weather/index.md
+      - Safety:
+          - catalog/safety/index.md
+      - Security:
+          - catalog/security/index.md
+          - catalog/cctv/index.md
+          - catalog/nfc-tags/index.md
+      - Automation:
+          - catalog/automation/index.md
+          - catalog/ai/index.md
+          - catalog/time/index.md
+      - Maintenance:
+          - catalog/maintenance/index.md
+          - catalog/vehicle-obd/index.md
+      - Miscellaneous:
+          - catalog/misc/index.md
   - Technical (advanced):
       - Install: howto/homeassistant-installer.md
       - Troubleshooting: guides/troubleshooting.md
