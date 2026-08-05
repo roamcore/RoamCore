@@ -10,7 +10,7 @@ Weather matters more when your home moves. This section covers forecasts, alerts
 ## Features
 
 <div class="rc-feature-list">
-  <a class="rc-feature" href="weather-entities/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Weather entities (forecast + alerts)</div><div class="rc-feature-sub">A curated list of weather integrations that pair well with van life (forecast, alerts, sunrise/sunset), plus guidance on wiring them into the RoamCore dashboard</div></div><div class="rc-feature-right"><span class="rc-tier b">B</span></div></a>
+  <a class="rc-feature" href="weather-entities/"><div class="rc-feature-left"><div class="rc-feature-title">Weather entities (forecast + alerts)</div><div class="rc-feature-sub">A curated list of weather integrations that pair well with van life (forecast, alerts, sunrise/sunset), plus guidance on wiring them into the RoamCore dashboard</div></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->
