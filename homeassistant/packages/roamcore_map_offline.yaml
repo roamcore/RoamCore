@@ -1,0 +1,313 @@
+# RoamCore map — graceful offline degradation package
+#
+# Purpose
+# -------
+# When the upstream tile server is unreachable (slow / blocked / no
+# internet), the RoamCore map falls back to a *graceful* offline mode:
+#   * gray basemap with a plain-English banner
+#     ("Showing your last known location. We'll switch back when the
+#     map reconnects.")
+#   * last-known location pin (preserved from the configured
+#     device_tracker) instead of a live tracking dot
+#   * persistent notification when state flips on / off
+#   * manual override (force_offline / force_online / auto) so the
+#     operator can choose to ignore the probe (e.g. they're connected
+#     via Tailscale and the basemap URL works)
+#
+# Doctrine (Bernard, 2026-08-04 — 'must not fail + super intuitive +
+# critical infrastructure'):
+#   * Verification is mandatory (yaml.safe_load parses the file;
+#     bash smoke in scripts/checks/map-offline-smoke.sh asserts the
+#     offline binary_sensor derives state from the 60s-old last-fetch
+#     threshold; the reachability-probe helper reads a mocked tile
+#     server; no real network calls in tests).
+#   * Auto-recover — flip binary_sensor.rc_map_offline back to off
+#     when the next probe succeeds.
+#   * Plain-English errors — the persistent notification + the
+#     Lovelace conditional card banner both read in plain English.
+#   * Idempotent installers — re-applying the package is a no-op
+#     (every entity uses a stable unique_id).
+#   * Tier discipline — this is a tier-b HA-core-package recipe; no
+#     custom integration; no tier-a claim.
+#
+# Entity naming convention: docs/reference/rc-entity-naming.md (the
+# `map` subsystem added by connections/map-dashboard/).
+
+# ---------------------------------------------------------------------------
+# 1. Manual override (operator picks the state regardless of the probe)
+# ---------------------------------------------------------------------------
+
+input_select:
+  rc_map_force_mode:
+    name: "RC Map Force Mode"
+    options:
+      - auto
+      - force_offline
+      - force_online
+    initial: auto
+    icon: mdi:tune-variant
+
+input_button:
+  rc_map_force_offline:
+    name: "RC Map: Force Offline"
+    icon: mdi:map-marker-off
+
+  rc_map_force_online:
+    name: "RC Map: Force Online"
+    icon: mdi:map-marker
+
+  rc_map_revert_force:
+    name: "RC Map: Revert Manual Override"
+    icon: mdi:restore
+
+# ---------------------------------------------------------------------------
+# 2. Reachability probe (curl HEAD against the operator's tile URL,
+#    scheduled by a 30-second timer). On success, the probe writes an ISO
+#    timestamp into a tiny file under the HA storage dir; on failure, the
+#    file is left untouched. A `command_line` sensor reads that file so
+#    the threshold + manual-override logic stays in pure-Jinja templates.
+# ---------------------------------------------------------------------------
+
+timer:
+  rc_map_reachability_probe:
+    name: "RC Map Reachability Probe"
+    duration: "00:00:30"
+    restore: true
+
+shell_command:
+  rc_map_reachability_probe: >-
+    URL='{{ states("input_text.rc_map_tile_url") }}'
+    OUT=/config/.storage/rc_map_last_tile_fetch.txt
+    if [ -n "$URL" ] && [ "$URL" != "unknown" ] && [ "$URL" != "unavailable" ]; then
+      if curl -fsS --max-time 3 -I "$URL" >/dev/null 2>&1; then
+        date -u +%Y-%m-%dT%H:%M:%SZ > "$OUT"
+      fi
+    fi
+
+sensor:
+  - platform: command_line
+    name: "RC Map Last Tile Fetch Success"
+    unique_id: rc_map_last_tile_fetch_success
+    icon: mdi:check-network-outline
+    scan_interval: 30
+    command: >-
+      sh -lc 'cat /config/.storage/rc_map_last_tile_fetch.txt 2>/dev/null || echo never'
+
+  # ISO timestamp of the last offline-state flip. Useful for the dashboard
+  # banner ("Map has been in offline mode since …") and for OpenClaw.
+  - platform: command_line
+    name: "RC Map Offline State Changed"
+    unique_id: rc_map_offline_state_changed
+    icon: mdi:clock-alert-outline
+    scan_interval: 30
+    command: >-
+      sh -lc 'cat /config/.storage/rc_map_offline_state_changed.txt 2>/dev/null || echo unknown'
+
+# ---------------------------------------------------------------------------
+# 3. Offline-state binary_sensor + last-known-location sensors.
+#    Template sensor state is preserved when the device_tracker goes
+#    unknown (HA re-evaluates the Jinja `this.state` reference and the
+#    sensor's value stays at the last-known latitude / longitude).
+# ---------------------------------------------------------------------------
+
+binary_sensor:
+  - platform: template
+    name: "RC Map Offline"
+    unique_id: rc_map_offline
+    icon: mdi:map-marker-off
+    device_class: connectivity
+    state: >-
+      {% set force = states('input_select.rc_map_force_mode') %}
+      {% if force == 'force_offline' %}
+        on
+      {% elif force == 'force_online' %}
+        off
+      {% else %}
+        {% set last = states('sensor.rc_map_last_tile_fetch_success') %}
+        {% if last in ['unknown','unavailable','none','','never'] %}
+          on
+        {% else %}
+          {% set age = (now() - as_timestamp(last) | default(0)) | int(0) %}
+          {{ 'on' if age > 60 else 'off' }}
+        {% endif %}
+      {% endif %}
+
+template:
+  - sensor:
+      - name: "RC Map Offline Last Location Lat"
+        unique_id: rc_map_offline_last_location_lat
+        icon: mdi:latitude
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {% set lat = state_attr(e, 'latitude') %}
+          {% if lat is not none and lat not in ['unknown','unavailable','none',''] %}
+            {{ lat | float }}
+          {% else %}
+            {# Hold the last known latitude when the upstream goes away. #}
+            {% set prev = this.state | default('unknown') %}
+            {% if prev not in ['unknown','unavailable','none',''] %}
+              {{ prev }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+
+      - name: "RC Map Offline Last Location Lon"
+        unique_id: rc_map_offline_last_location_lon
+        icon: mdi:longitude
+        state: >-
+          {% set e = states('input_text.rc_location_tracker_entity') %}
+          {% set lon = state_attr(e, 'longitude') %}
+          {% if lon is not none and lon not in ['unknown','unavailable','none',''] %}
+            {{ lon | float }}
+          {% else %}
+            {# Hold the last known longitude when the upstream goes away. #}
+            {% set prev = this.state | default('unknown') %}
+            {% if prev not in ['unknown','unavailable','none',''] %}
+              {{ prev }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+
+# ---------------------------------------------------------------------------
+# 4. Plain-English copy + 5-minute cooldown for the back-online toast.
+# ---------------------------------------------------------------------------
+
+input_text:
+  rc_map_offline_banner:
+    name: "RC Map Offline Banner"
+    initial: ""
+    max: 255
+
+# ---------------------------------------------------------------------------
+# 5. Automations — manual overrides, probe tick, state-flip notifications.
+# ---------------------------------------------------------------------------
+
+automation:
+  # 5.1 — manual override buttons flip the force-mode select.
+  - id: rc_map_force_offline_button
+    alias: "RC Map: Force Offline button"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_map_force_offline
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_map_force_mode
+        data:
+          option: force_offline
+
+  - id: rc_map_force_online_button
+    alias: "RC Map: Force Online button"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_map_force_online
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_map_force_mode
+        data:
+          option: force_online
+
+  - id: rc_map_revert_force_button
+    alias: "RC Map: Revert manual override button"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_map_revert_force
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_map_force_mode
+        data:
+          option: auto
+
+  # 5.2 — timer tick drives the probe; restart the timer after each tick.
+  - id: rc_map_reachability_probe_tick
+    alias: "RC Map: Reachability probe tick (timer → shell_command → timer restart)"
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.rc_map_reachability_probe
+    action:
+      - service: shell_command.rc_map_reachability_probe
+      - service: timer.start
+        target:
+          entity_id: timer.rc_map_reachability_probe
+        data: {}
+
+  - id: rc_map_reachability_probe_start
+    alias: "RC Map: Reachability probe start (on HA start)"
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.rc_map_reachability_probe
+        data: {}
+
+  # 5.3 — offline flip ON: persistent notification + banner + timestamp.
+  - id: rc_map_offline_notification_on
+    alias: "RC Map: Offline notification (when going offline)"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.rc_map_offline
+        from: "off"
+        to: "on"
+    action:
+      - service: shell_command.rc_map_reachability_probe
+      - service: persistent_notification.create
+        data:
+          notification_id: rc_map_offline
+          title: "Map is in offline mode"
+          message: >-
+            Map can't reach the internet right now. Showing your last known
+            location. We'll switch back when the map reconnects.
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_map_offline_banner
+        data:
+          value: "Showing your last known location. We'll switch back when the map reconnects."
+      - shell_command: >-
+          date -u +%Y-%m-%dT%H:%M:%SZ > /config/.storage/rc_map_offline_state_changed.txt
+
+  # 5.4 — offline flip OFF: dismiss notification + clear banner (5-min
+  # cooldown so we don't spam the operator when the link flutters).
+  - id: rc_map_offline_notification_off
+    alias: "RC Map: Back-online notification (when coming back online)"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.rc_map_offline
+        from: "on"
+        to: "off"
+    condition:
+      - condition: template
+        value_template: >-
+          {% set last = states('sensor.rc_map_offline_state_changed') %}
+          {{ last in ['unknown','unavailable','none',''] or
+             (now() - as_timestamp(last) | default(0)) | int(0) > 300 }}
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: rc_map_offline
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_map_offline_banner
+        data:
+          value: ""
+      - service: persistent_notification.create
+        data:
+          notification_id: rc_map_back_online
+          title: "Map is back online"
+          message: "Map tiles are loading again. The live tracking dot is back."
+      - shell_command: >-
+          date -u +%Y-%m-%dT%H:%M:%SZ > /config/.storage/rc_map_offline_state_changed.txt
