@@ -275,6 +275,7 @@ tier: b
 category: vehicle
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Leveling (vendor-neutral IMU + jacks + Bluetooth pads umbrella
   for HA, covering phone IMU + permanent IMU board + levelling

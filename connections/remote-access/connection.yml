@@ -167,6 +167,7 @@ tier: b
 category: networking
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Remote access (vendor-neutral remote-access umbrella for HA,
   covering Tailscale + Cloudflare Tunnel + Nabu Casa HA Cloud +

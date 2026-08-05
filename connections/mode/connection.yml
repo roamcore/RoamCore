@@ -214,6 +214,7 @@ tier: b
 category: ai
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Mode (AI mode) — vendor-neutral mode state (Off / Auto /
   Travel / Camp / Stealth) + opt-in AI inference summary +

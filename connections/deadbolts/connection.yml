@@ -27,6 +27,7 @@ tier: b
 category: safety
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Smart deadbolts — van door lock control for vans — are the
   "did I forget to lock the van?" answer. This connection is a

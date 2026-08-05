@@ -33,6 +33,7 @@ tier: a
 category: map
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Mock location + track replay is the **dev/demo polyline generator**
   for the RoamCore map page. It generates a deterministic synthetic

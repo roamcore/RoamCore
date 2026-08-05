@@ -450,6 +450,7 @@ tier: a
 category: ai
 status: beta
 version: 0.1.0
+state: Available
 description: |
   OpenClaw JSON API — vendor-neutral machine-readable
   summary + skill + rc-dump + timeseries endpoints for

@@ -81,6 +81,7 @@ tier: b
 category: homelab
 status: beta
 version: 0.1.0
+state: Available
 description: |
   A NAS gives RoamCore a reliable local-storage target for media,
   camera footage, backups, and logs — especially valuable when you

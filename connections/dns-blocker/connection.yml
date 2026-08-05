@@ -63,6 +63,7 @@ tier: b
 category: networking
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker
   blockers (DNS sinkhole + blocklist + per-client query stats).

@@ -155,6 +155,7 @@ tier: b
 category: ai
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Agent actions allowlist — vendor-neutral kill-switch + per-
   action allowlist + audit-log gateway for safe agent-driven

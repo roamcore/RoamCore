@@ -1,3 +1,13 @@
 # Security
 
-- **[NFC tags](nfc-tags.md)** — Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp).
+NFC tags and other quick-access controls.
+
+<!-- RC_FEATURE_LIST_START -->
+
+## Features
+
+<div class="rc-feature-list">
+  <a class="rc-feature" href="nfc-tags/" data-tier="a"><div class="rc-feature-left"><div class="rc-feature-title">NFC tags (tap to run a scene)</div><div class="rc-feature-sub">Cheap NFC tags you can stick anywhere — tap your phone and run a scene like Lights off, Bedtime, or Leave camp.</div></div><div class="rc-feature-right"><span class="rc-tier a">A</span></div></a>
+</div>
+
+<!-- RC_FEATURE_LIST_END -->

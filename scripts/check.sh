@@ -136,6 +136,8 @@ run_if_present "connections/openclaw-api/tests/test_connection_yml.py" \
   "Connection: OpenClaw JSON API (tier-a) — vendor-neutral machine-readable summary + skill + rc_dump + timeseries endpoints for local agents: manifest honesty smoke check"
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
+run_if_present "scripts/checks/connection-state-smoke.sh" \
+  "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
 
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"

@@ -110,6 +110,7 @@ tier: c
 category: access_control
 status: recipe_published
 version: 0.1.0
+state: Available
 description: |
   NFC tags (vendor-neutral NFC-triggered scenes mapped via
   `tag_id → scene` mapping) — the umbrella for "cheap + simple

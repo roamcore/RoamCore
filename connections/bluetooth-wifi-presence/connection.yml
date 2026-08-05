@@ -142,6 +142,7 @@ tier: b
 category: presence
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Presence detection — who is currently home in the van — is the
   foundation of every occupied/away automation in RoamCore: shut

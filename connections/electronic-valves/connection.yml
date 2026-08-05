@@ -60,6 +60,7 @@ tier: b
 category: water
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Electronic valves + auto tank switching — fresh / aux tank routing,
   grey drain valve auto-close, freeze-risk / leak-detected / low-

@@ -280,6 +280,7 @@ tier: b
 category: ventilation
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Fans (vendor-neutral fan-controller umbrella for HA, covering
   rooftop vent fans + circulation fans + bathroom exhaust fans —

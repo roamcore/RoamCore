@@ -90,6 +90,7 @@ tier: b
 category: lighting
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Motion-based lighting (driving + arrival) — the umbrella for
   ignition-driven interior auto-off + ignition-driven soft-interior

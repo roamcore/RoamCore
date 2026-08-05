@@ -297,6 +297,7 @@ tier: b
 category: map
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Amenities overlay — vendor-neutral iOverlander-style
   POI overlay on the RoamCore Map page + offline cache

@@ -206,6 +206,7 @@ tier: b
 category: ai
 status: beta
 version: 0.1.0
+state: Available
 description: |
   Demo mode — vendor-neutral demo values for missing
   sensors + auto-disable on real sensor reconnect +
