@@ -102,6 +102,46 @@ views:
     title: Power
     icon: mdi:lightning-bolt
     cards:
+      # Wave 9 #114: power mock-kill — plain-English banner when no real Victron source.
+      # Goes ABOVE the battery card so the operator sees the truth first.
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.rc_power_no_real_source
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ## ⚠️ Power not connected — go to Setup.
+            No Victron source is reporting values right now.
+            The tile values below show `unavailable` until a real source is connected.
+
+      # Wave 9 #114: separate banner for the "was online, now offline >5min" case.
+      # Distinct from no-real-source so we don't lie about a broken install.
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.rc_power_offline_checking
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ## ⏳ Power source went offline — checking...
+            The Victron backend was online but hasn't reported in over 5 minutes.
+            RoamCore is still trying to reconnect. If this lasts more than 15 minutes,
+            open Setup and verify the power connection.
+
+      # Wave 9 #114: plain-English status row always visible on the power page.
+      - type: entities
+        title: Power status
+        entities:
+          - entity: sensor.rc_power_source_status
+            name: Status
+          - entity: binary_sensor.rc_power_no_real_source
+            name: Real source
+          - entity: binary_sensor.rc_power_offline_checking
+            name: Offline >5min
+          - entity: binary_sensor.rc_power_shore_connected
+            name: Shore power
+
       - type: entities
         title: Battery
         entities:
