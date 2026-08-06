@@ -126,17 +126,20 @@ def manifests_by_id(manifest_paths: list[Path]) -> dict[str, dict]:
     return out
 
 
-def test_manifest_count_is_thirty_two(manifest_count: int) -> None:
-    """The connection surface is 32 manifests.
+def test_manifest_count_is_thirty_three(manifest_count: int) -> None:
+    """The connection surface is 33 manifests.
 
-    Locked at 32 because (a) the directive §"App-store-style catalog
-    UI" explicitly lists the 32 surface tiles, and (b) the catalog
-    index page (`docs/catalog/index.md`) renders one entry per
-    connection. If a future slice adds a new connection, update this
-    count AND the catalog index AND the inventory build in lockstep.
+    Locked at 33 because (a) the directive §"App-store-style catalog
+    UI" surface tile list + (b) the catalog index page
+    (`docs/catalog/index.md`) renders one entry per connection. If a
+    future slice adds a new connection, update this count AND the
+    catalog index AND the inventory build in lockstep.
+
+    Bumped from 32 to 33 in Wave 9 #120c when PR #79's tier-a
+    support-bundle connection recipe landed (cherry-pick of e8a0718).
     """
-    assert manifest_count == 32, (
-        f"expected exactly 32 connection manifests (per the directive "
+    assert manifest_count == 33, (
+        f"expected exactly 33 connection manifests (per the directive "
         f"§'App-store-style catalog UI' surface tile list + the catalog "
         f"index page); got {manifest_count}. The slice's primary value "
         f"is uniform data, not bespoke configuration — adding a "
@@ -163,7 +166,7 @@ def test_every_manifest_has_state_field(
 ) -> None:
     """Every connection manifest carries a `state:` field.
 
-    Acceptance (a): "presence of `state:` on all 32 manifests".
+    Acceptance (a): "presence of `state:` on all 33 manifests".
     The field is top-level (sibling of `id`, `name`, `tier`, `status`,
     `version`, `category`, `description`, etc.) on each connection.yml.
     """

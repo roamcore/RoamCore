@@ -1,0 +1,183 @@
+# RoamCore — Hub-level Support Bundle export wiring (Wave 9 #120c)
+#
+# Goal:
+# - Provide a one-tap "Send support bundle" button on the Hub dashboard
+#   that calls the existing RoamCore-owned `roamcore.export_support_bundle`
+#   service (already registered by `homeassistant/custom_components/
+#   roamcore/services.yaml` on current main) without requiring the
+#   operator to navigate to Settings → Developer Tools → Services.
+# - Mirror the recipe-level contract (the 8 `rc_support_bundle_*` tiles
+#   in `connections/support-bundle/connection.yml`) at the Hub level with
+#   the `rc_support_bundle_hub_*` prefix per `rc-entity-naming.md` so
+#   the dashboard + OpenClaw can read the same shape without colliding
+#   with the recipe-level entities.
+# - Auto-recover from failures: the export status sensor always reflects
+#   Idle / Export-Running / Exported / Failed so the user can see + retry.
+# - Plain-English errors: the last_error input_text surfaces a
+#   human-readable message ("Export failed — check disk space")
+#   rather than a Python traceback.
+#
+# Contract surface (matches the slice spec):
+#   2 input_buttons:
+#     - input_button.rc_support_bundle_hub_export
+#     - input_button.rc_support_bundle_hub_export_no_zip
+#   3 sensors:
+#     - sensor.rc_support_bundle_hub_last_export_path
+#     - sensor.rc_support_bundle_hub_last_export_at
+#     - sensor.rc_support_bundle_hub_status
+#   3 automations (§8 MANDATORY):
+#     - automation.rc_support_bundle_hub_export_button_guard
+#     - automation.rc_support_bundle_hub_export_success
+#     - automation.rc_support_bundle_hub_export_failure
+#
+# Internal storage (not user-facing):
+#   - input_text.rc_support_bundle_hub_last_export_path_value
+#   - input_text.rc_support_bundle_hub_last_export_at_value
+#   - input_text.rc_support_bundle_hub_last_error_value
+#   - input_text.rc_support_bundle_hub_export_outcome
+#       (token: "ok" | "error:<plain-english-message>")
+#   - input_select.rc_support_bundle_hub_status_value
+#       (Idle | Export-Running | Exported | Failed)
+#
+# Naming convention reference:
+#   docs/reference/rc-entity-naming.md
+
+input_button:
+  rc_support_bundle_hub_export:
+    name: "RC Support Bundle Hub Export"
+    icon: mdi:archive-arrow-down
+  rc_support_bundle_hub_export_no_zip:
+    name: "RC Support Bundle Hub Export (no zip)"
+    icon: mdi:archive
+
+input_text:
+  rc_support_bundle_hub_last_export_path_value:
+    name: "RC Support Bundle Hub Last Export Path (internal)"
+    initial: ""
+  rc_support_bundle_hub_last_export_at_value:
+    name: "RC Support Bundle Hub Last Export At (internal)"
+    initial: ""
+  rc_support_bundle_hub_last_error_value:
+    name: "RC Support Bundle Hub Last Error (internal)"
+    initial: ""
+  rc_support_bundle_hub_export_outcome:
+    name: "RC Support Bundle Hub Export Outcome (internal)"
+    initial: ""
+
+input_select:
+  rc_support_bundle_hub_status_value:
+    name: "RC Support Bundle Hub Status (internal)"
+    options:
+      - "Idle"
+      - "Export-Running"
+      - "Exported"
+      - "Failed"
+    initial: "Idle"
+
+template:
+  - sensor:
+      - name: "RC Support Bundle Hub Last Export Path"
+        unique_id: rc_support_bundle_hub_last_export_path
+        state: "{{ states('input_text.rc_support_bundle_hub_last_export_path_value') }}"
+        icon: mdi:folder
+      - name: "RC Support Bundle Hub Last Export At"
+        unique_id: rc_support_bundle_hub_last_export_at
+        state: "{{ states('input_text.rc_support_bundle_hub_last_export_at_value') }}"
+        icon: mdi:clock
+      - name: "RC Support Bundle Hub Status"
+        unique_id: rc_support_bundle_hub_status
+        state: "{{ states('input_select.rc_support_bundle_hub_status_value') }}"
+        icon: mdi:information
+
+automation:
+  - id: rc_support_bundle_hub_export_button_guard
+    alias: "RC: Support Bundle Hub export button guard"
+    description: "Fires on either Hub export button press. Marks status Export-Running, calls roamcore.export_support_bundle, then writes the outcome token to the shared input_text that the success/failure automations listen to."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id:
+          - input_button.rc_support_bundle_hub_export
+          - input_button.rc_support_bundle_hub_export_no_zip
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_support_bundle_hub_status_value
+        data:
+          option: "Export-Running"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_support_bundle_hub_last_error_value
+        data:
+          value: ""
+      - service: roamcore.export_support_bundle
+        data:
+          zip: >-
+            {{ trigger.entity_id == 'input_button.rc_support_bundle_hub_export' }}
+        response_variable: hub_bundle_result
+        continue_on_error: true
+      - choose:
+          - conditions:
+              - "{{ hub_bundle_result.status == 'ok' }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_support_bundle_hub_export_outcome
+                data:
+                  value: "ok:{{ hub_bundle_result.path | default('/config/.roamcore/support/') }}"
+          - conditions:
+              - "{{ hub_bundle_result.status != 'ok' }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_support_bundle_hub_export_outcome
+                data:
+                  value: >-
+                    error:{{ hub_bundle_result.error | default('Export failed — check disk space') }}
+
+  - id: rc_support_bundle_hub_export_success
+    alias: "RC: Support Bundle Hub export success bookkeeping"
+    description: "Fires when the button guard writes the 'ok:...' outcome token. Populates last_export_path + last_export_at + status=Exported."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_text.rc_support_bundle_hub_export_outcome
+    condition:
+      - "{{ trigger.to_state.state.startswith('ok:') }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_support_bundle_hub_last_export_path_value
+        data:
+          value: "{{ trigger.to_state.state[3:] }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_support_bundle_hub_last_export_at_value
+        data:
+          value: "{{ now().isoformat() }}"
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_support_bundle_hub_status_value
+        data:
+          option: "Exported"
+
+  - id: rc_support_bundle_hub_export_failure
+    alias: "RC: Support Bundle Hub export failure capture"
+    description: "Fires when the button guard writes an 'error:...' outcome token. Captures the plain-English error + marks status=Failed."
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_text.rc_support_bundle_hub_export_outcome
+    condition:
+      - "{{ trigger.to_state.state.startswith('error:') }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_support_bundle_hub_last_error_value
+        data:
+          value: "{{ trigger.to_state.state[6:] }}"
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_support_bundle_hub_status_value
+        data:
+          option: "Failed"
