@@ -35,7 +35,7 @@
 
 id: factory_reset
 name: Factory Reset
-state: needs_information
+state: "Needs information"
 tier: a
 category: system
 summary: A panic button for your Hub — restores everything to a known-good state without losing any of your van data. Always restores from the latest verified Hub Backup, never silent.
