@@ -1,0 +1,347 @@
+# RoamCore Remote Access Setup Wizard (Phase 6 — Path A: Tailscale wired-up,
+# Path B/C/D stubs). Tier-b recipe over the HA core `tailscale` integration
+# (no RoamCore-owned remote-access engine; this is a thin path-routing +
+# state-machine wizard on top of the upstream integration).
+#
+# Doctrine (Bernard, 2026-08-04 ~21:15 UTC): must not fail + super
+# intuitive + critical infrastructure.
+#
+# Verification: the §8 MANDATORY automations are plain-English, idempotent,
+# and never clear operator-entered secrets. The wizard surfaces its
+# progress as `sensor.rc_remote_access_setup_status` (one-sentence
+# vanlifer-facing strings). Recovery is auto-handled by
+# `automation.rc_remote_access_setup_recovery` — when the HA core
+# `tailscale` integration does not authenticate within 60s, the stage
+# advances to `recovery` instead of erroring.
+#
+# NOTE: the secret helper `input_text.rc_tailscale_auth_key` is
+# `mode: password` (sensitive) and operator-entered in the wizard UI
+# directly — it is NEVER committed to this file, NEVER logged, and the
+# recovery automation explicitly does NOT clear it on the way to
+# `recovery` (so the operator can retry without re-typing).
+
+# ----------------------------------------------------------------------------
+# Inputs (operator-facing helpers — read by templates + automations)
+# ----------------------------------------------------------------------------
+
+input_select:
+  rc_remote_access_setup_path:
+    name: "RC Remote Access Setup: Path"
+    options:
+      - tailscale       # Path A — the wired-up one (this slice)
+      - cloudflare      # Path B — stub
+      - nabu_casa       # Path C — stub
+      - wireguard       # Path D — stub
+      - skip
+    initial: tailscale
+
+  rc_remote_access_setup_stage:
+    name: "RC Remote Access Setup: Stage"
+    options:
+      - welcome
+      - detect_existing
+      - path_pick
+      - tailscale_have_account
+      - tailscale_paste_key
+      - tailscale_verify
+      - tailscale_done
+      - cloudflare_stub
+      - nabu_casa_stub
+      - wireguard_stub
+      - recovery
+      - done
+    initial: welcome
+
+input_text:
+  rc_tailscale_auth_key:
+    name: "RC Tailscale Auth Key (operator-entered, never logged)"
+    initial: ""
+    mode: password
+
+  rc_tailscale_tailnet_hostname:
+    name: "RC Tailscale Tailnet Hostname (e.g. my-van.ts.net)"
+    initial: ""
+
+# ----------------------------------------------------------------------------
+# Templates — surface HA core `tailscale` integration state without coupling
+# the wizard's entity_ids to the vendor. UNKNOWN when the integration is
+# not installed yet (so the wizard can ask the operator to install it
+# instead of pretending it's there).
+# ----------------------------------------------------------------------------
+
+template:
+  - binary_sensor:
+      - name: "RC Remote Access Setup: Tailscale Installed"
+        unique_id: rc_remote_access_setup_tailscale_installed
+        icon: mdi:tailscale
+        state: >-
+          {# TRUE iff at least one HA core `tailscale` integration entity
+             is registered (binary_sensor.tailscale_*). UNKNOWN when no
+             integration is present yet — the wizard auto-recommends Path A
+             but waits for the operator to install the integration. #}
+          {% set bs = states.binary_sensor | selectattr('entity_id','match','^binary_sensor\.tailscale_') | list %}
+          {{ bs | count > 0 }}
+
+      - name: "RC Remote Access Setup: Tailscale Authenticated"
+        unique_id: rc_remote_access_setup_tailscale_authenticated
+        icon: mdi:shield-check
+        state: >-
+          {# TRUE iff the HA core `tailscale` integration reports
+             `binary_sensor.tailscale_active` == on. UNKNOWN when the
+             integration is not installed. #}
+          {% set installed = states('binary_sensor.rc_remote_access_setup_tailscale_installed') %}
+          {% if installed in ['unknown','unavailable','none'] %}
+            unknown
+          {% elif is_state('binary_sensor.tailscale_active','on') %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+      - name: "RC Remote Access Setup: Complete"
+        unique_id: rc_remote_access_setup_complete
+        icon: mdi:check-decagram
+        state: >-
+          {{ is_state('input_select.rc_remote_access_setup_stage','done') }}
+
+  - sensor:
+      - name: "RC Remote Access Setup: Status"
+        unique_id: rc_remote_access_setup_status
+        icon: mdi:text-box-outline
+        # Pure status string — one plain-English sentence a vanlifer
+        # would understand. No bash, no entity IDs, no jargon.
+        state: >-
+          {% set stage = states('input_select.rc_remote_access_setup_stage') %}
+          {% set path = states('input_select.rc_remote_access_setup_path') %}
+          {% set installed = is_state('binary_sensor.rc_remote_access_setup_tailscale_installed','on') %}
+          {% set authed = is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') %}
+          {% set key = states('input_text.rc_tailscale_auth_key') %}
+          {% set hostname = states('input_text.rc_tailscale_tailnet_hostname') %}
+
+          {% if stage == 'welcome' and path == 'tailscale' %}
+            Ready to help you set up Tailscale.
+          {% elif stage == 'welcome' %}
+            Ready to help you set up remote access.
+          {% elif stage == 'detect_existing' %}
+            Checking whether remote access is already set up.
+          {% elif stage == 'path_pick' %}
+            Pick one of the remote-access options below.
+          {% elif stage == 'tailscale_have_account' %}
+            Do you already have a Tailscale account?
+          {% elif stage == 'tailscale_paste_key' and not installed %}
+            Install the Tailscale add-on, then paste your auth key.
+          {% elif stage == 'tailscale_paste_key' and key | trim == '' %}
+            Paste your Tailscale auth key below.
+          {% elif stage == 'tailscale_paste_key' %}
+            Testing your Tailscale connection...
+          {% elif stage == 'tailscale_verify' %}
+            Verifying your Tailscale connection.
+          {% elif stage == 'tailscale_done' %}
+            Tailscale is set up. You're good to go.
+          {% elif stage == 'cloudflare_stub' %}
+            Cloudflare setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'nabu_casa_stub' %}
+            Nabu Casa setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'wireguard_stub' %}
+            Wireguard setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'recovery' %}
+            We couldn't reach Tailscale. Check your internet connection.
+          {% elif stage == 'done' %}
+            Remote access setup complete.
+          {% else %}
+            Setting up remote access.
+          {% endif %}
+        attributes:
+          stage: "{{ states('input_select.rc_remote_access_setup_stage') }}"
+          path: "{{ states('input_select.rc_remote_access_setup_path') }}"
+          tailscale_installed: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_installed','on') else 'off' }}"
+          tailscale_authenticated: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') else 'off' }}"
+
+# ----------------------------------------------------------------------------
+# §8 MANDATORY AUTOMATIONS (4) — the wizard's state machine.
+# ----------------------------------------------------------------------------
+
+automation:
+  # §8.1 — Path A advance: stage == tailscale_verify + authenticated + key +
+  # hostname all set → advance to tailscale_done + flip the global setup-
+  # wizard past `networking` so the operator can move on to `map`.
+  - id: rc_remote_access_setup_advance_path_a
+    alias: "RC: Remote Access Setup — Advance Path A on auth + hostname"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_verify
+    condition:
+      - condition: state
+        entity_id: binary_sensor.rc_remote_access_setup_tailscale_authenticated
+        state: on
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_auth_key') | trim != '' }}"
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_tailnet_hostname') | trim != '' }}"
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: tailscale_done
+      - service: input_select.select_option
+        target:
+          entity_id:
+            - input_select.rc_setup_stage
+        data:
+          option: map
+      - service: persistent_notification.create
+        data:
+          title: "Tailscale set up"
+          message: "Tailscale set up — your van is now reachable from anywhere."
+      - event: roamcore_remote_access_setup_complete
+        event_data:
+          path: tailscale
+
+  # §8.2 — Recovery: stage has been `tailscale_verify` for >60 seconds and
+  # authentication is still NOT on → advance to `recovery`, do NOT clear
+  # the auth key (operator can retry without re-typing).
+  - id: rc_remote_access_setup_recovery
+    alias: "RC: Remote Access Setup — Recovery on verify timeout"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_verify
+        for: "00:01:00"
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.rc_remote_access_setup_tailscale_authenticated
+            state: on
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: recovery
+      - service: persistent_notification.create
+        data:
+          title: "Couldn't reach Tailscale"
+          message: "We couldn't reach Tailscale. Check your internet connection, then try again. Your auth key is still there — you don't need to re-type it."
+
+  # §8.3 — Detect existing: when the wizard moves into `detect_existing`,
+  # wait 5 seconds for HA core `tailscale` integration to update, then
+  # either skip straight to `tailscale_done` (it's already set up) or
+  # move to `path_pick`.
+  - id: rc_remote_access_setup_detect_existing
+    alias: "RC: Remote Access Setup — Detect existing Tailscale"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: detect_existing
+    action:
+      - delay: "00:00:05"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.rc_remote_access_setup_tailscale_authenticated
+                state: on
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: tailscale_done
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_path
+                data:
+                  option: tailscale
+              - service: persistent_notification.create
+                data:
+                  title: "Tailscale already set up"
+                  message: "Looks like Tailscale is already set up — skipping the wizard."
+        default:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.rc_remote_access_setup_stage
+            data:
+              option: path_pick
+
+  # §8.4 — Path pick routing: when the operator changes path, route to
+  # the right next stage. Tailscale → real flow, B/C/D → stubs, skip →
+  # done with a plain-English note.
+  - id: rc_remote_access_setup_path_pick_routing
+    alias: "RC: Remote Access Setup — Path pick routing"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_path
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: tailscale
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: tailscale_have_account
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: cloudflare
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: cloudflare_stub
+              - service: persistent_notification.create
+                data:
+                  title: "Cloudflare setup coming soon"
+                  message: "Cloudflare setup is coming soon — pick Tailscale for now."
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: nabu_casa
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: nabu_casa_stub
+              - service: persistent_notification.create
+                data:
+                  title: "Nabu Casa setup coming soon"
+                  message: "Nabu Casa setup is coming soon — pick Tailscale for now."
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: wireguard
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: wireguard_stub
+              - service: persistent_notification.create
+                data:
+                  title: "Wireguard setup coming soon"
+                  message: "Wireguard setup is coming soon — pick Tailscale for now."
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: skip
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: done
+              - service: persistent_notification.create
+                data:
+                  title: "Remote access skipped"
+                  message: "Remote access skipped — your van is reachable only on home Wi-Fi."

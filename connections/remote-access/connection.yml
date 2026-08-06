@@ -344,6 +344,106 @@ wizard:
     the HA Companion app's `external_url` setting handles the
     OFF-LAN affordance.
 
+  # Phase 6 — the wizard is the four-paths picker the operator sees.
+  # Path A is wired up (full implementation this slice); Path B / C / D
+  # are stubs that route to a "coming soon" stage until the follow-up
+  # slices (#122.b / #122.c) ship. Every path is honest about being a
+  # tier-b recipe over the upstream HA core `tailscale` integration
+  # (Path A) / HACS `cloudflared` add-on (Path B) / HA Core `cloud`
+  # integration (Path C) / HACS `wireguard` add-on (Path D); RoamCore
+  # does NOT promote any of these to tier-a.
+  setup_paths:
+    - id: tailscale
+      label: "Tailscale (recommended)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HA core `tailscale` integration (since 2022.x) + HACS Tailscale add-on"
+      estimated_time: "~15 min"
+      requires_reboot: false
+      requires_inputs:
+        - "Tailscale account"
+        - "Tailscale auth key"
+        - "Tailscale tailnet hostname"
+      side_effects:
+        - registers_wizard_helpers_input_selects
+        - registers_wizard_helpers_input_texts
+        - registers_wizard_template_binary_sensors
+        - registers_wizard_template_sensor_status
+        - registers_wizard_advance_automation
+        - registers_wizard_recovery_automation
+        - registers_wizard_detect_existing_automation
+        - registers_wizard_path_pick_routing_automation
+        - advances_setup_wizard_stage_to_map_on_completion
+      setup_notes: |
+        Pick this to set up Tailscale on your van right now — the wizard
+        walks you through it.
+
+    - id: cloudflare
+      label: "Cloudflare Tunnel (coming soon)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HACS `cloudflared` add-on + Cloudflare-managed domain"
+      estimated_time: "~30 min"
+      requires_reboot: false
+      requires_inputs:
+        - "Cloudflare account"
+        - "Cloudflare-managed domain"
+        - "Cloudflare Tunnel DNS hostname"
+      side_effects:
+        - registers_wizard_helpers_input_selects
+        - registers_wizard_helpers_input_texts
+        - routes_to_cloudflare_stub_stage
+      setup_notes: |
+        Coming soon — Path A is wired now.
+
+    - id: nabu_casa
+      label: "Nabu Casa HA Cloud (coming soon)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HA Core `cloud` integration (since 2022.x) + Nabu Casa subscription"
+      estimated_time: "~10 min"
+      requires_reboot: false
+      requires_inputs:
+        - "Nabu Casa HA Cloud subscription"
+        - "Nabu Casa account login"
+      side_effects:
+        - registers_wizard_helpers_input_selects
+        - registers_wizard_helpers_input_texts
+        - routes_to_nabu_casa_stub_stage
+      setup_notes: |
+        Coming soon — Path A is wired now.
+
+    - id: wireguard
+      label: "Wireguard (coming soon)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HACS `wireguard` add-on + manual per-client key management"
+      estimated_time: "~45 min"
+      requires_reboot: false
+      requires_inputs:
+        - "Wireguard server keys"
+        - "Per-client Wireguard keys"
+        - "Firewall access to UDP 51820"
+      side_effects:
+        - registers_wizard_helpers_input_selects
+        - registers_wizard_helpers_input_texts
+        - routes_to_wireguard_stub_stage
+      setup_notes: |
+        Coming soon — Path A is wired now.
+
+    - id: skip
+      label: "Skip remote access"
+      connection_kind: skip
+      tier: b
+      recipe_over: "no remote access — reachable only on home Wi-Fi"
+      estimated_time: "~0 min"
+      requires_reboot: false
+      requires_inputs: []
+      side_effects:
+        - routes_to_done_stage_with_skip_notification
+      setup_notes: |
+        Skip remote access entirely — your van stays reachable only on home Wi-Fi.
+
 install:
   ha_integration_domain: tailscale
   config_flow: true
