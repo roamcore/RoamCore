@@ -1,0 +1,165 @@
+<!doctype html>
+<!--
+  RoamCore PWA entry. Servable as a static file. Loads the manifest,
+  registers the service worker for offline-first shell caching, and
+  renders the dark slate / teal-accent / monospace shell. Real tile data
+  comes from Home Assistant later; this is the scaffold.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070A0F">
+  <title>RoamCore</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.svg">
+  <style>
+    :root {
+      --rc-bg: #070A0F;
+      --rc-bg-elev: #0B0F16;
+      --rc-fg: rgba(255, 255, 255, 0.92);
+      --rc-fg-dim: rgba(255, 255, 255, 0.65);
+      --rc-accent: #5BE3FF;
+      --rc-accent-2: #7CFFB2;
+      --rc-border: rgba(255, 255, 255, 0.10);
+      --rc-mono: 'Roboto Mono', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--rc-bg);
+      color: var(--rc-fg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .rc-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header.rc-header {
+      background: rgba(7, 10, 15, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--rc-border);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .rc-logo {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--rc-accent-2), var(--rc-accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      color: var(--rc-bg);
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+    h1.rc-title {
+      margin: 0;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: -0.01em;
+    }
+    .rc-tag {
+      margin-left: auto;
+      font-family: var(--rc-mono);
+      font-size: 11px;
+      color: var(--rc-fg-dim);
+      padding: 3px 8px;
+      border: 1px solid var(--rc-border);
+      border-radius: 999px;
+    }
+    .rc-tag[data-rc-online="false"] {
+      color: #FFB45B;
+      border-color: rgba(255, 180, 91, 0.40);
+    }
+    main.rc-main {
+      flex: 1;
+      padding: 22px 18px;
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .rc-card {
+      border: 1px solid var(--rc-border);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .rc-card h2 {
+      margin: 0 0 6px;
+      font-family: var(--rc-mono);
+      font-size: 14px;
+      color: var(--rc-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rc-card p {
+      margin: 0;
+      color: var(--rc-fg-dim);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="rc-shell">
+    <header class="rc-header">
+      <div class="rc-logo" aria-hidden="true">RC</div>
+      <h1 class="rc-title">RoamCore</h1>
+      <span class="rc-tag" id="rc-online-tag" data-rc-online="true">Online</span>
+    </header>
+
+    <main class="rc-main">
+      <section class="rc-card">
+        <h2>Welcome to your van</h2>
+        <p>
+          RoamCore gives you water, power, internet, and trip history in one
+          place. Install it to your home screen for one-tap access — even
+          when the van is out of LTE range.
+        </p>
+      </section>
+
+      <section class="rc-card">
+        <h2>What this is</h2>
+        <p>
+          A small installable app that runs on your phone. It remembers the
+          dashboard so you can open it without internet, and it tells you
+          honestly when it can't reach your Hub.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="./profile-store.js"></script>
+  <script src="./pwa.js"></script>
+  <script src="./install-banner.js"></script>
+  <script>
+    // Reflect online/offline state in the header tag (honest UI).
+    (function () {
+      var tag = document.getElementById('rc-online-tag');
+      function apply(e) {
+        var online = (e && typeof e.detail === 'object') ? e.detail.online : navigator.onLine;
+        if (!tag) { return; }
+        tag.setAttribute('data-rc-online', online ? 'true' : 'false');
+        tag.textContent = online ? 'Online' : 'Offline';
+      }
+      window.addEventListener('rc:online-changed', apply);
+      apply();
+    })();
+  </script>
+</body>
+</html>

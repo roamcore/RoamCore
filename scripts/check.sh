@@ -139,6 +139,13 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
 
+# Wave 9 #121 — Phase 5 Installable PWA refresh. Static + live-fetch
+# verification of the dashboard/Frontend/Setup Wizard scaffold + the
+# IKEA-shaped docs/setup/pwa.md user guide. Idempotent + best-effort
+# live http.server fetch (skips silently if python3 + curl unavailable).
+run_if_present "scripts/checks/pwa-install-smoke.sh" \
+  "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
