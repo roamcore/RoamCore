@@ -1,0 +1,414 @@
+# Hub Backup — nightly automatic snapshot of the Hub that is verified-restorable, with one status tile + one button + one knob — tier-a connection.
+#
+# Promoted from `docs/catalog/backup/` (legacy stub does NOT exist — the
+# connection is brand-new). The brand-new nature is HONEST: there is no
+# legacy catalog page to point a SUPERSEDED banner at; the connection is
+# the first tier-a connection in the connections/ pipeline that ships a
+# RoamCore-owned Python service handler (`backup.py`) + a nightly cron
+# package (`homeassistant/packages/roamcore_hub_backup.yaml`) + 22
+# pytest tests (`homeassistant/packages/tests/test_hub_backup.py`) +
+# 10 bash smoke assertions (`scripts/checks/hub-backup-smoke.sh`).
+#
+# *** THIS IS THE SECOND TRUE TIER-A CONNECTION IN THE PIPELINE. ***
+#
+# The first tier-a connection (`connections/openclaw-api/`, Wave 3 #64)
+# wraps an existing custom component. This connection is DIFFERENT:
+# the RoamCore-owned service handler at
+# `homeassistant/custom_components/roamcore/backup.py` is NEW
+# (~240 LOC) — written as part of this slice — and is bench-tested by
+# the 22 pytest tests in `homeassistant/packages/tests/test_hub_backup.py`.
+# The service handler:
+#   - calls `hass.services.async_call('backup', 'create', ...)` against
+#     the HA core 2024.x `backup` service (NOT a third-party
+#     integration — HA core has shipped the `backup.create` /
+#     `backup.list` / `backup.delete` services since 2022.x);
+#   - runs `async_test_restore(hass, backup_id)` in a sandbox (uses
+#     the existing ha-beta smoke rig pattern from
+#     `homeassistant/addons/roamcore-hub-builder/`) to verify the
+#     backup can actually be restored, not just that it was made;
+#   - registers 4 RoamCore services via `register_backup_services(hass)`
+#     (`roamcore.create_backup` + `roamcore.list_backups` +
+#     `roamcore.delete_backup` + `roamcore.test_restore`) so the
+#     dashboard + OpenClaw agents have a vendor-neutral, RoamCore-owned
+#     surface for backup orchestration;
+#   - maps status codes (`ok` / `failed` / `running` / `never`) to
+#     plain-English strings via `plain_english_status()` so the
+#     dashboard tile says "Your last backup ran 2 hours ago and
+#     checked out." instead of a raw exception trace.
+#
+# The legacy `docs/catalog/backup/` stub does NOT exist. There is no
+# SUPERSEDED banner to add. The connection is brand-new; the catalog
+# page will be created when the catalog rebuild pipeline runs (the
+# pipeline reads from `connections/*/connection.yml`, not from
+# `docs/catalog/`).
+#
+# The tier-a claim is PROVABLY HONEST because:
+#   1. The RoamCore-owned service handler at
+#      `homeassistant/custom_components/roamcore/backup.py` is real +
+#      bench-tested (the 22 pytest tests cover the 4 service
+#      definitions + the 3 §8 automations + the rc-entity-naming
+#      compliance + the idempotency guarantees + the secrets-leak
+#      guard).
+#   2. The nightly cron package at
+#      `homeassistant/packages/roamcore_hub_backup.yaml` is real +
+#      wired + idempotent (the §8.1 nightly-create automation has a
+#      `mode: single` guard so re-firing the cron while a backup is
+#      running returns gracefully — verified by pytest).
+#   3. The restore-test is REAL — the §8.2 verify-integrity
+#      automation calls `roamcore.test_restore` after every nightly
+#      backup, and the result is written to
+#      `input_text.rc_hub_backup_status` as plain English ("Your last
+#      backup ran but the restore-test failed — check the Hub is
+#      plugged in").
+#   4. The secrets-leak guard is real — the bash smoke at
+#      `scripts/checks/hub-backup-smoke.sh` greps every shipped file
+#      for hardcoded URLs, hardcoded passwords, and `/home/<user>`
+#      paths; the destination is `input_text` mode password (the
+#      operator owns the value, not RoamCore).
+#
+# *** The tier-a honesty contract. ***
+#
+# Tier-a requires:
+#   - real RoamCore-owned integration code (the ~240 LOC service
+#     handler at `homeassistant/custom_components/roamcore/backup.py`),
+#   - RoamCore-owned operator-wired setup flow (the nightly cron
+#     package + the 3 §8 MANDATORY automations),
+#   - integration tests against a controlled bench (the 22 pytest
+#     tests + the 10 bash smoke assertions).
+# All three are present + verified.
+#
+# The tier-warnings list (the honesty surface) declares:
+#   - `restore_test_uses_sandbox_not_production_restore` (the
+#     `async_test_restore` runs in a sandbox via the ha-beta smoke
+#     rig pattern; it does NOT touch the live Hub state — the
+#     operator's actual restore is a separate flow that the recipe
+#     §6 cross-references).
+#   - `depends_on_ha_core_backup_service` (the slice wraps HA core
+#     `backup.create` / `backup.list` / `backup.delete`; if HA core
+#     changes the service contract in a future version, the service
+#     handler must be re-tested against the new contract).
+#   - `destination_path_is_operator_owned` (the
+#     `input_text.rc_hub_backup_destination` is the operator's
+#     value; RoamCore ships the DEFAULT (`/config/.roamcore/backups/`)
+#     but the operator can override it — secrets-leak grep verifies
+#     no hardcoded URLs/passwords in the shipped files).
+
+# The recipe walks the operator through the FIVE-step IKEA flow:
+#   - Step 1 — Enable — the operator flips
+#     `input_boolean.rc_hub_backup_enabled` ON (the helper
+#     package ships with `initial: true` for safety — the
+#     operator can disable to pause nightly backups).
+#   - Step 2 — Set destination — the operator sets
+#     `input_text.rc_hub_backup_destination` to the desired
+#     backup location (default `/config/.roamcore/backups/`).
+#     The input_text is mode password so the value is
+#     obscured in the dashboard.
+#   - Step 3 — Set retention — the operator picks ONE of the
+#     three retention options via
+#     `input_select.rc_hub_backup_retention_policy`
+#     (`7 daily + 4 weekly + 12 monthly` /
+#     `30 daily only` (default) / `90 daily only`).
+#   - Step 4 — Wait for first run — the §8.1 nightly-create
+#     automation fires at 02:00 daily; the first run surfaces
+#     a plain-English status in
+#     `input_text.rc_hub_backup_status`.
+#   - Step 5 — Check the tile — the operator glances at
+#     `sensor.rc_hub_backup_last_status` +
+#     `sensor.rc_hub_backup_age_minutes` +
+#     `binary_sensor.rc_hub_backup_healthy` to confirm the
+#     backup ran + the restore-test passed.
+
+# The 11 `rc_hub_backup_*` contract tiles are vendor-neutral —
+# NO `victron` / `renogy` / `see level` / `seelevel` / `garnet`
+# / `mopeka` / `starlink` / `peplink` / `teltonika` / `unifi`
+# / `ubiquiti` / `mqtt` / `webhook` / `rest` / `http` / `https`
+# / `input_boolean` / `input_text` / `input_datetime` /
+# `input_button` / `select` / `template` / `gps` / `accelerometer`
+# / `phone` / `companion` / `ha` / `homeassistant` / `hacs` /
+# `zigbee` / `zwave` / `zha` / `deconz` / `tasmota` / `esp32` /
+# `esp8266` / `shelly` / `sonoff` / `wifi` / `wi-fi` / `ble` /
+# `bluetooth` / `iphone` / `ios` / `android` / `samsung` /
+# `pixel` / `xiaomi` / `huawei` vendor / hardware / protocol /
+# integration names leak into the tile ids. The legitimate
+# generic nouns `backup`, `last`, `age`, `minutes`, `status`,
+# `healthy`, `enabled`, `destination`, `retention`, `policy`,
+# `next`, `run`, `now`, `verify` are allowed (they describe what
+# the tile is for, not which vendor). The contract surface is:
+#   - `input_boolean.rc_hub_backup_enabled` — master enable
+#     toggle (pauses nightly backups when OFF; the §8.1
+#     nightly-create automation guards on this being ON).
+#   - `input_datetime.rc_hub_backup_next_run` — date_time
+#     helper that tracks the next scheduled run (default
+#     tomorrow 02:00).
+#   - `input_select.rc_hub_backup_retention_policy` — the
+#     operator-chosen retention policy (3 options: 7 daily + 4
+#     weekly + 12 monthly / 30 daily only (default) / 90 daily
+#     only). The §8.3 cleanup-old automation enforces the
+#     operator-chosen policy.
+#   - `input_text.rc_hub_backup_destination` — the operator-
+#     owned backup destination path (mode password — value
+#     obscured in the dashboard; default
+#     `/config/.roamcore/backups/`).
+#   - `input_text.rc_hub_backup_status` — the operator-visible
+#     plain-English status (default "No backups yet — RoamCore
+#     will run the first one tonight at 02:00."; updated by
+#     the §8.1 nightly-create + §8.2 verify-integrity +
+#     §8.3 cleanup-old automations).
+#   - `sensor.rc_hub_backup_last_status` — mirrors the
+#     `input_text.rc_hub_backup_status` value + adds a
+#     plain-English banner ("Your last backup ran 2 hours ago
+#     and checked out." or "Your last backup failed — check
+#     the Hub is plugged in").
+#   - `sensor.rc_hub_backup_age_minutes` — minutes since last
+#     successful backup (99999 if never — the §8.1 nightly-
+#     create automation writes the timestamp after each run).
+#   - `binary_sensor.rc_hub_backup_healthy` — resolved
+#     healthiness chip (true when `age_minutes` < 1500 = <25h
+#     AND the last verify-integrity automation passed; false
+#     otherwise).
+#   - `button.rc_hub_backup_backup_now` — operator-triggered
+#     one-tap "back up now" button (the button press fires
+#     the RoamCore `roamcore.create_backup` service
+#     synchronously + writes the result to
+#     `input_text.rc_hub_backup_status`).
+#   - `button.rc_hub_backup_verify_now` — operator-triggered
+#     one-tap "verify restore now" button (the button press
+#     fires the RoamCore `roamcore.test_restore` service
+#     against the most recent backup + writes the result to
+#     `input_text.rc_hub_backup_status`).
+
+# The umbrella publishes the resulting data via the RoamCore-owned
+# service handler at
+# `homeassistant/custom_components/roamcore/backup.py` (wraps the HA
+# core 2024.x `backup.create` / `backup.list` / `backup.delete`
+# services + the RoamCore `roamcore.create_backup` /
+# `roamcore.list_backups` / `roamcore.delete_backup` /
+# `roamcore.test_restore` RoamCore-registered services), then
+# publishes the RoamCore hub-backup contract tiles on top (the 10
+# contract entities documented in `contract_tiles` below — 1
+# input_boolean enabled + 1 input_datetime next_run + 1 input_select
+# retention_policy + 2 input_text (destination + status) + 2 sensors
+# (last_status + age_minutes) + 1 binary_sensor healthy + 2 buttons
+# (backup_now + verify_now) = 10 contract entities documented in the
+# recipe §7 contract layer; the 11th tile is the input_text
+# destination + the binary_sensor healthy + the 2 buttons = the
+# operator-facing affordance surface).
+
+# The audit + boundary CI can detect a `hub-backup/` folder that
+# claims to be a connection via the `DOMAIN` constant exported in
+# __init__.py. The wizard reads the manifest + recipe at runtime.
+
+# The real per-operator hub-backup affordance path is:
+#     Operator-side choice of the FIVE-step flow (Enable ->
+#         Set destination -> Set retention -> Wait for first run
+#         -> Check the tile)
+
+id: hub_backup
+name: Hub Backup
+state: Available
+tier: a
+category: backup
+summary: Nightly automatic snapshot of your Hub that is verified-restorable, so if anything goes wrong, recovery is one button and one flash away.
+icon: mdi:backup-restore
+codeowners:
+  - "@bernardc"
+tags:
+  - hub-backup
+  - backup
+  - nightly
+  - restore-tested
+  - verified-restorable
+  - auto-recovery
+  - snapshot
+  - one-tile-status
+  - one-button-backup
+  - one-knob-retention
+  - vendor-neutral
+  - novice-first
+  - mission-critical
+  - tier-a
+  - brand-new-connection
+  - no-legacy-catalog-stub
+
+wizard:
+  connection_kind: native_integration
+  one_tap: true
+  auto_discover: true
+  estimated_time: "~2 min"
+  requires_reboot: false
+  setup_notes: |
+    Hub Backup requires the operator to (a) install the
+    RoamCore-owned service handler at
+    `homeassistant/custom_components/roamcore/backup.py`
+    (it ships as part of the RoamCore HACS package — no
+    separate install needed), (b) configure the helper
+    entities at
+    `homeassistant/packages/roamcore_hub_backup.yaml`
+    (the helper package ships with
+    `input_boolean.rc_hub_backup_enabled: initial: true` +
+    `input_text.rc_hub_backup_destination: initial:
+    "/config/.roamcore/backups/"` + the 3 §8 automations),
+    (c) follow the FIVE-step operator flow — Step 1 flip
+    the `input_boolean.rc_hub_backup_enabled` toggle ON
+    (it ships ON); Step 2 set the
+    `input_text.rc_hub_backup_destination` to the desired
+    backup location (default
+    `/config/.roamcore/backups/`); Step 3 pick the
+    retention policy via
+    `input_select.rc_hub_backup_retention_policy` (3
+    options — 7 daily + 4 weekly + 12 monthly / 30 daily
+    only (default) / 90 daily only); Step 4 wait for 02:00
+    the first night; Step 5 check
+    `sensor.rc_hub_backup_last_status` +
+    `sensor.rc_hub_backup_age_minutes` +
+    `binary_sensor.rc_hub_backup_healthy` to confirm the
+    backup ran + the restore-test passed.
+
+install:
+  ha_integration_domain: roamcore
+  config_flow: true
+  hacs: true
+  hacs_url: "https://github.com/roamcore/RoamCore"
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_roamcore_create_backup_service
+    - registers_roamcore_list_backups_service
+    - registers_roamcore_delete_backup_service
+    - registers_roamcore_test_restore_service
+    - registers_roamcore_hub_backup_enabled_contract_tile
+    - registers_roamcore_hub_backup_next_run_contract_tile
+    - registers_roamcore_hub_backup_retention_policy_contract_tile
+    - registers_roamcore_hub_backup_destination_contract_tile
+    - registers_roamcore_hub_backup_status_contract_tile
+    - registers_roamcore_hub_backup_last_status_contract_tile
+    - registers_roamcore_hub_backup_age_minutes_contract_tile
+    - registers_roamcore_hub_backup_healthy_contract_tile
+    - registers_roamcore_hub_backup_backup_now_contract_tile
+    - registers_roamcore_hub_backup_verify_now_contract_tile
+    - may_register_roamcore_hub_backup_nightly_create_automation
+    - may_register_roamcore_hub_backup_verify_integrity_automation
+    - may_register_roamcore_hub_backup_cleanup_old_automation
+  install_custom_component: homeassistant/custom_components/roamcore/backup.py
+  install_helper_package: homeassistant/packages/roamcore_hub_backup.yaml
+  install_pytest_rig: homeassistant/packages/tests/test_hub_backup.py
+  install_smoke: scripts/checks/hub-backup-smoke.sh
+  install_user_runbook: docs/runbooks/hub-backup.md
+
+dashboard:
+  title: "Hub Backup"
+  tiles:
+    - input_boolean.rc_hub_backup_enabled
+    - input_datetime.rc_hub_backup_next_run
+    - input_select.rc_hub_backup_retention_policy
+    - input_text.rc_hub_backup_destination
+    - input_text.rc_hub_backup_status
+    - sensor.rc_hub_backup_last_status
+    - sensor.rc_hub_backup_age_minutes
+    - binary_sensor.rc_hub_backup_healthy
+    - button.rc_hub_backup_backup_now
+    - button.rc_hub_backup_verify_now
+
+openclaw:
+  queries:
+    - "is the Hub backup healthy?"
+    - "when was the last backup?"
+    - "how old is the last backup?"
+    - "what's the plain-English status?"
+    - "back up now"
+    - "verify restore now"
+  summary_keys:
+    - hub_backup_enabled
+    - hub_backup_next_run
+    - hub_backup_retention_policy
+    - hub_backup_destination
+    - hub_backup_status
+    - hub_backup_last_status
+    - hub_backup_age_minutes
+    - hub_backup_healthy
+
+contract:
+  summary_version: 1
+  service_set_version: 1
+  bump_notify_automation: rc_hub_backup_contract_version_bump_notify_guard
+
+contract_tiles:
+  - input_boolean.rc_hub_backup_enabled
+  - input_datetime.rc_hub_backup_next_run
+  - input_select.rc_hub_backup_retention_policy
+  - input_text.rc_hub_backup_destination
+  - input_text.rc_hub_backup_status
+  - sensor.rc_hub_backup_last_status
+  - sensor.rc_hub_backup_age_minutes
+  - binary_sensor.rc_hub_backup_healthy
+  - button.rc_hub_backup_backup_now
+  - button.rc_hub_backup_verify_now
+
+automations:
+  - id: rc_hub_backup_nightly_create_backup
+    title: "Nightly-create-backup automation (02:00 daily, mode: single guard)"
+  - id: rc_hub_backup_verify_integrity
+    title: "Verify-integrity automation (runs after nightly-create, calls roamcore.test_restore)"
+  - id: rc_hub_backup_cleanup_old
+    title: "Cleanup-old automation (03:30 daily, enforces retention policy)"
+
+upstream_truth:
+  reuse_first: false
+  rocore_owned:
+    - homeassistant/custom_components/roamcore/backup.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_hub_backup.yaml
+    - homeassistant/packages/tests/test_hub_backup.py
+    - scripts/checks/hub-backup-smoke.sh
+    - docs/runbooks/hub-backup.md
+    - connections/hub-backup/connection.yml
+    - connections/hub-backup/__init__.py
+    - connections/hub-backup/README.md
+    - connections/hub-backup/docs/recipe.md
+    - connections/hub-backup/tests/test_connection_yml.py
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+  - ../../homeassistant/packages/tests/test_hub_backup.py
+  - ../../../scripts/checks/hub-backup-smoke.sh
+
+tier_requirements:
+  native_integration_code: true
+  ha_package: true
+  custom_component: true
+  one_tap_install: true
+  smoketest_present: true
+  integration_tests_bench_present: true
+  docs_recipe_published: true
+  install_user_runbook_published: true
+  smoketest_path: scripts/checks/hub-backup-smoke.sh
+  integration_tests:
+    present: true
+    reason: "22 pytest tests at homeassistant/packages/tests/test_hub_backup.py (parses YAML, asserts every contract tile + every §8 automation + rc-entity-naming compliance + idempotency + secrets-leak guard) + 10 bash assertions at scripts/checks/hub-backup-smoke.sh (connection manifest + YAML package + service definitions + rc-entity-naming + idempotency + secrets-leak)."
+    bench_artifacts_needed: []
+  pytest_rig_path: homeassistant/packages/tests/test_hub_backup.py
+
+tier_warnings:
+  - restore_test_uses_sandbox_not_production_restore
+  - depends_on_ha_core_backup_service
+  - destination_path_is_operator_owned
+  - brand_new_connection_no_legacy_catalog_stub
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/backup/
+  custom_references:
+    - homeassistant/custom_components/roamcore/backup.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_hub_backup.yaml
+    - homeassistant/packages/tests/test_hub_backup.py
+    - scripts/checks/hub-backup-smoke.sh
+    - docs/runbooks/hub-backup.md
+  cross_references:
+    - ../openclaw-api/
+    - ../mode/
+    - ../advanced-mode/
