@@ -28,10 +28,11 @@ input_select:
   rc_remote_access_setup_path:
     name: "RC Remote Access Setup: Path"
     options:
-      - tailscale       # Path A — the wired-up one (this slice)
-      - cloudflare      # Path B — stub
-      - nabu_casa       # Path C — stub
-      - wireguard       # Path D — stub
+      - tailscale          # Path A — the wired-up one (#122.a — preserved bit-for-bit)
+      - cloudflare_tunnel  # Path B — wired up in #122.b (recipe over HACS cloudflared + HA cloudflare integration)
+      - cloudflare         # Path B (legacy stub label) — preserved for backward-compat (#122.a)
+      - nabu_casa          # Path C — stub (preserved bit-for-bit from #122.a)
+      - wireguard          # Path D — stub (preserved bit-for-bit from #122.a)
       - skip
     initial: tailscale
 
@@ -45,6 +46,12 @@ input_select:
       - tailscale_paste_key
       - tailscale_verify
       - tailscale_done
+      # Path B (Cloudflare Tunnel) wizard stages — added by #122.b
+      - cloudflare_tunnel_have_domain
+      - cloudflare_tunnel_paste_token
+      - cloudflare_tunnel_pick_hostname
+      - cloudflare_tunnel_verify
+      - cloudflare_tunnel_done
       - cloudflare_stub
       - nabu_casa_stub
       - wireguard_stub
@@ -53,6 +60,10 @@ input_select:
     initial: welcome
 
 input_text:
+  # Path A — Tailscale (#122.a — preserved bit-for-bit; the doctrine
+  # says existing Path A entries are preserved bit-for-bit so the
+  # operator's auth key + tailnet hostname are NOT touched by the
+  # #122.b Cloudflare addition).
   rc_tailscale_auth_key:
     name: "RC Tailscale Auth Key (operator-entered, never logged)"
     initial: ""
@@ -60,6 +71,20 @@ input_text:
 
   rc_tailscale_tailnet_hostname:
     name: "RC Tailscale Tailnet Hostname (e.g. my-van.ts.net)"
+    initial: ""
+
+  # Path B — Cloudflare Tunnel (#122.b). Operator-entered tunnel
+  # token + the hostname they want to reach the Hub at. The token
+  # is password-mode (sensitive — never logged, never displayed
+  # in clear text). The hostname is plain text (operator must
+  # see what they typed so they can spot a typo).
+  rc_remote_access_cloudflare_token:
+    name: "RC Cloudflare Tunnel Token (operator-entered, never logged)"
+    initial: ""
+    mode: password
+
+  rc_remote_access_cloudflare_hostname:
+    name: "RC Cloudflare Hostname (e.g. my-van.example.com — must be on a Cloudflare-managed domain)"
     initial: ""
 
 # ----------------------------------------------------------------------------
@@ -140,6 +165,20 @@ template:
             Tailscale is set up. You're good to go.
           {% elif stage == 'cloudflare_stub' %}
             Cloudflare setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'cloudflare_tunnel_have_domain' %}
+            Do you have a domain on Cloudflare already?
+          {% elif stage == 'cloudflare_tunnel_paste_token' and (states('input_text.rc_remote_access_cloudflare_token') | trim) == '' %}
+            Paste your Cloudflare tunnel token below.
+          {% elif stage == 'cloudflare_tunnel_paste_token' %}
+            Checking your Cloudflare tunnel token...
+          {% elif stage == 'cloudflare_tunnel_pick_hostname' and (states('input_text.rc_remote_access_cloudflare_hostname') | trim) == '' %}
+            Pick a hostname on your Cloudflare domain.
+          {% elif stage == 'cloudflare_tunnel_pick_hostname' %}
+            Testing your Cloudflare tunnel...
+          {% elif stage == 'cloudflare_tunnel_verify' %}
+            Verifying your Cloudflare tunnel.
+          {% elif stage == 'cloudflare_tunnel_done' %}
+            Cloudflare Tunnel is set up. You're good to go.
           {% elif stage == 'nabu_casa_stub' %}
             Nabu Casa setup is coming soon — pick Tailscale for now.
           {% elif stage == 'wireguard_stub' %}
@@ -289,6 +328,20 @@ automation:
                   entity_id: input_select.rc_remote_access_setup_stage
                 data:
                   option: tailscale_have_account
+          - conditions:
+              - condition: state
+                entity_id: input_select.rc_remote_access_setup_path
+                state: cloudflare_tunnel
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: cloudflare_tunnel_have_domain
+              - service: persistent_notification.create
+                data:
+                  title: "Cloudflare Tunnel ready to set up"
+                  message: "Cloudflare Tunnel setup is ready — have your tunnel token and a hostname on a Cloudflare-managed domain handy."
           - conditions:
               - condition: state
                 entity_id: input_select.rc_remote_access_setup_path

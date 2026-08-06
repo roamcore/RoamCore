@@ -76,10 +76,13 @@ echo
 echo "▶ Remote access setup wizard: rc-entity-naming pre-check"
 
 # Every entity_id in the package MUST start with rc_remote_access_setup_ or rc_tailscale_
+# (Wave 9 #122.b — Path B adds rc_remote_access_cloudflare_* helpers,
+# which are allowed too: the wizard UI uses them to collect the operator's
+# tunnel token + hostname for the Cloudflare Tunnel path.)
 naming_violations=$(python3 - "$PACKAGE" <<'PYEOF'
 import sys, yaml
 data = yaml.safe_load(open(sys.argv[1]))
-allowed = ("rc_remote_access_setup_", "rc_tailscale_")
+allowed = ("rc_remote_access_setup_", "rc_tailscale_", "rc_remote_access_cloudflare_")
 violations = []
 for kind in ("input_select", "input_text", "input_boolean", "input_number", "input_datetime"):
     for eid in (data.get(kind) or {}).keys():

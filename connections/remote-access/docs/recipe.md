@@ -294,6 +294,30 @@ contract is a SUPERSET of Path A only; this slice's
 `connections/remote-access/` is the vendor-neutral umbrella
 that includes Path A as one of four operator-pickable paths.
 
+### Choose your setup (IKEA 5-step user guide)
+
+Each operator-pickable path has a user-facing IKEA 5-step
+guide in `docs/catalog/remote-access/`:
+
+- **Path A — Tailscale** — the recommended default for most
+  operators (mesh VPN, no inbound ports, MagicDNS hostname
+  resolution). User guide:
+  `docs/catalog/remote-access/tailscale.md`.
+- **Path B — Cloudflare Tunnel** — the free-everywhere
+  fallback that doesn't require a Tailscale account. Best for
+  operators who already have a Cloudflare-managed domain.
+  Wave 9 #122.b ships the wizard support + the contract
+  helpers (`apply_cloudflare_setup_path` +
+  `describe_cloudflare_setup_path`) + the user guide at
+  `docs/catalog/remote-access/cloudflare.md`. Recipe
+  instructions below in §4.
+- **Path C — Nabu Casa HA Cloud** — the HA Core official cloud
+  relay (paid). User guide deferred; pick this in the wizard
+  once Path C ships in a future slice.
+- **Path D — Wireguard** — the self-hosted VPN (manual key
+  management). User guide deferred; pick this in the wizard
+  once Path D ships in a future slice.
+
 ## §4 Path B — Cloudflare Tunnel (no inbound ports, default for operators with a Cloudflare-managed domain)
 
 Path B is the default for any van operator who already has a
