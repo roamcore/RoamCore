@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoamCore Capability Mapping Rules",
+  "description": "Declarative rules that turn raw Home Assistant entity_ids into canonical RoamCore capability ids. The rule list is consumed by the pure-Python mapper in homeassistant/custom_components/roamcore/capability_mapper.py. Every rule's `canonical_capability` MUST exist in canonical_capabilities.json (validated by validate_mapping_rules). Pattern syntax is Python re (matched against the entity_id via re.fullmatch). Naming follows docs/reference/rc-entity-naming.md: contract ids start with `rc_`, no vendor names in contract ids, but the `source_pattern` is allowed to mention vendor names (it is matching raw upstream entity_ids, not contract ids).",
+  "version": 1,
+  "rules": [
+    {
+      "id": "victron_battery_soc",
+      "source_pattern": "sensor\\.(vt_|victron).*battery_?(state_of_charge|soc|state)(_percent|_pct)?",
+      "canonical_capability": "rc_power_battery_soc",
+      "weight": 95,
+      "description": "Victron (any model) battery state of charge → leisure battery percentage"
+    },
+    {
+      "id": "victron_battery_voltage",
+      "source_pattern": "sensor\\.(vt_|victron).*battery_?(voltage|v)(_v)?",
+      "canonical_capability": "rc_power_battery_voltage",
+      "weight": 95,
+      "description": "Victron (any model) battery terminal voltage"
+    },
+    {
+      "id": "victron_battery_current",
+      "source_pattern": "sensor\\.(vt_|victron).*battery_?(current|i)(_a)?",
+      "canonical_capability": "rc_power_battery_current",
+      "weight": 95,
+      "description": "Victron (any model) battery current (positive = charging)"
+    },
+    {
+      "id": "renogy_battery_soc",
+      "source_pattern": "sensor\\.renogy.*soc",
+      "canonical_capability": "rc_power_battery_soc",
+      "weight": 90,
+      "description": "Renogy battery monitor → leisure battery percentage (fallback to victron rule)"
+    },
+    {
+      "id": "victron_solar_power",
+      "source_pattern": "sensor\\.(vt_|victron_)?solar_?(power|w)(_w)?",
+      "canonical_capability": "rc_power_solar_power",
+      "weight": 95,
+      "description": "Victron / generic solar charging power in watts"
+    },
+    {
+      "id": "renogy_solar_power",
+      "source_pattern": "sensor\\.renogy.*solar.*(power|w)",
+      "canonical_capability": "rc_power_solar_power",
+      "weight": 90,
+      "description": "Renogy solar controller → solar charging power"
+    },
+    {
+      "id": "victron_shore_connected",
+      "source_pattern": "binary_sensor\\.(vt_|victron_)?shore.*(connected|plug)",
+      "canonical_capability": "rc_power_shore_connected",
+      "weight": 95,
+      "description": "Whether the van is plugged into shore / mains power"
+    },
+    {
+      "id": "interior_lights_state",
+      "source_pattern": "switch\\.(cabin[_a-z0-9]*|interior[_a-z0-9]*|main_lights|rc_lighting_interior)",
+      "canonical_capability": "rc_lighting_interior_state",
+      "weight": 90,
+      "description": "Interior cabin lights on/off (cabin / interior / main_lights, with any suffix)"
+    },
+    {
+      "id": "approach_lights_state",
+      "source_pattern": "switch\\.(porch_light[a-z0-9_]*|awning_light[a-z0-9_]*|approach_light[a-z0-9_]*|exterior_light[a-z0-9_]*|rc_lighting_approach[a-z_0-9]*)",
+      "canonical_capability": "rc_lighting_approach_state",
+      "weight": 90,
+      "description": "Approach / porch / awning lights on/off"
+    },
+    {
+      "id": "indoor_temperature",
+      "source_pattern": "sensor\\.(indoor_temp[a-z0-9_]*|indoor_temperature[a-z0-9_]*|cabin_temp[a-z0-9_]*|cabin_temperature[a-z0-9_]*|rc_climate_indoor[a-z_0-9]*)",
+      "canonical_capability": "rc_climate_indoor_temperature",
+      "weight": 90,
+      "description": "Indoor cabin temperature (degrees C)"
+    },
+    {
+      "id": "hvac_main_state",
+      "source_pattern": "switch\\.(hvac_main[a-z0-9_]*|hvac[a-z0-9_]*|webasto[a-z0-9_]*|air_conditioner[a-z0-9_]*|ac_main[a-z0-9_]*|heater_main[a-z0-9_]*|rc_climate_hvac[a-z_0-9]*)",
+      "canonical_capability": "rc_climate_hvac_state",
+      "weight": 90,
+      "description": "Primary HVAC / heater / AC / Webasto on/off"
+    },
+    {
+      "id": "fresh_water_level",
+      "source_pattern": "sensor\\.(fresh_water[a-z0-9_]*|fresh_tank[a-z0-9_]*|water_fresh[a-z0-9_]*|potable_water[a-z0-9_]*|rc_water_fresh[a-z_0-9]*)",
+      "canonical_capability": "rc_water_fresh_level",
+      "weight": 90,
+      "description": "Fresh / potable water tank level (percent)"
+    },
+    {
+      "id": "water_pump_state",
+      "source_pattern": "switch\\.(water_pump[a-z0-9_]*|shurflo[a-z0-9_]*|rc_water_pump[a-z_0-9]*)",
+      "canonical_capability": "rc_water_pump_state",
+      "weight": 90,
+      "description": "12V water pump on/off"
+    },
+    {
+      "id": "gps_latitude",
+      "source_pattern": "(sensor|device_tracker)\\.(gps_lat|vehicle_lat|vt_vehicle_lat|rc_position_lat|location_latitude)",
+      "canonical_capability": "rc_position_lat",
+      "weight": 85,
+      "description": "Vehicle GPS latitude (degrees)"
+    },
+    {
+      "id": "gps_longitude",
+      "source_pattern": "(sensor|device_tracker)\\.(gps_lon|gps_lng|vehicle_lon|vt_vehicle_lon|rc_position_lon|location_longitude)",
+      "canonical_capability": "rc_position_lon",
+      "weight": 85,
+      "description": "Vehicle GPS longitude (degrees)"
+    },
+    {
+      "id": "vehicle_device_tracker",
+      "source_pattern": "device_tracker\\.(vt_vehicle|roamcore_vehicle|van_gps|vehicle)",
+      "canonical_capability": "rc_position_lat",
+      "weight": 70,
+      "description": "device_tracker-style GPS — primary mapping to lat (lat + lon both available in the same tracker)"
+    },
+    {
+      "id": "internet_reachable",
+      "source_pattern": "binary_sensor\\.(rc_net_internet_reachable|internet_reachable|wan_reachable|net_internet)",
+      "canonical_capability": "rc_network_internet_reachable",
+      "weight": 95,
+      "description": "Whether the van has any working internet path (LTE, Starlink, Wi-Fi)"
+    },
+    {
+      "id": "wan_ip_address",
+      "source_pattern": "sensor\\.(rc_net_wan_ip|wan_ip|public_ip|external_ip)",
+      "canonical_capability": "rc_network_wan_ip",
+      "weight": 90,
+      "description": "Current public / WAN IP address of the active internet link"
+    },
+    {
+      "id": "roamcore_contract_power_soc",
+      "source_pattern": "sensor\\.rc_power_battery_soc",
+      "canonical_capability": "rc_power_battery_soc",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile (identity rule — passes through if a downstream template already published one)"
+    },
+    {
+      "id": "roamcore_contract_power_voltage",
+      "source_pattern": "sensor\\.rc_power_battery_voltage",
+      "canonical_capability": "rc_power_battery_voltage",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_power_current",
+      "source_pattern": "sensor\\.rc_power_battery_current",
+      "canonical_capability": "rc_power_battery_current",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_solar_power",
+      "source_pattern": "sensor\\.rc_power_solar_power",
+      "canonical_capability": "rc_power_solar_power",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_shore_connected",
+      "source_pattern": "binary_sensor\\.rc_power_shore_connected",
+      "canonical_capability": "rc_power_shore_connected",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_lighting_interior",
+      "source_pattern": "switch\\.rc_lighting_interior_state",
+      "canonical_capability": "rc_lighting_interior_state",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_lighting_approach",
+      "source_pattern": "switch\\.rc_lighting_approach_state",
+      "canonical_capability": "rc_lighting_approach_state",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_climate_indoor",
+      "source_pattern": "sensor\\.rc_climate_indoor_temperature",
+      "canonical_capability": "rc_climate_indoor_temperature",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_climate_hvac",
+      "source_pattern": "switch\\.rc_climate_hvac_state",
+      "canonical_capability": "rc_climate_hvac_state",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_water_fresh",
+      "source_pattern": "sensor\\.rc_water_fresh_level",
+      "canonical_capability": "rc_water_fresh_level",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_water_pump",
+      "source_pattern": "switch\\.rc_water_pump_state",
+      "canonical_capability": "rc_water_pump_state",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_position_lat",
+      "source_pattern": "(sensor|device_tracker)\\.rc_position_lat",
+      "canonical_capability": "rc_position_lat",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_position_lon",
+      "source_pattern": "(sensor|device_tracker)\\.rc_position_lon",
+      "canonical_capability": "rc_position_lon",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_network_internet",
+      "source_pattern": "binary_sensor\\.rc_network_internet_reachable",
+      "canonical_capability": "rc_network_internet_reachable",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "roamcore_contract_network_wan_ip",
+      "source_pattern": "sensor\\.rc_network_wan_ip",
+      "canonical_capability": "rc_network_wan_ip",
+      "weight": 100,
+      "description": "Self-mapping of an existing canonical tile"
+    },
+    {
+      "id": "generic_battery_soc_fallback",
+      "source_pattern": "sensor\\..*battery.*(soc|state_of_charge)",
+      "canonical_capability": "rc_power_battery_soc",
+      "weight": 60,
+      "description": "Last-resort fallback: any sensor mentioning battery + soc maps to the leisure battery percentage"
+    },
+    {
+      "id": "generic_solar_power_fallback",
+      "source_pattern": "sensor\\..*solar.*(power|w)",
+      "canonical_capability": "rc_power_solar_power",
+      "weight": 60,
+      "description": "Last-resort fallback: any sensor mentioning solar + power/w maps to solar charging power"
+    }
+  ]
+}
