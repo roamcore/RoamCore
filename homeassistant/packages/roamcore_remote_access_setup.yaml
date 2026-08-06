@@ -1,7 +1,9 @@
 # RoamCore Remote Access Setup Wizard (Phase 6 — Path A: Tailscale wired-up,
-# Path B/C/D stubs). Tier-b recipe over the HA core `tailscale` integration
-# (no RoamCore-owned remote-access engine; this is a thin path-routing +
-# state-machine wizard on top of the upstream integration).
+# Path B/C stubs, Path D: Wireguard wired-up in #122.d.i). Tier-b recipe
+# over the HA core `tailscale` integration (Path A) + the upstream HA Core
+# `wireguard` integration since HAOS 2024.4 (Path D); the wizard is a
+# thin path-routing + state-machine layer on top of those upstream
+# integrations.
 #
 # Doctrine (Bernard, 2026-08-04 ~21:15 UTC): must not fail + super
 # intuitive + critical infrastructure.
@@ -10,14 +12,19 @@
 # and never clear operator-entered secrets. The wizard surfaces its
 # progress as `sensor.rc_remote_access_setup_status` (one-sentence
 # vanlifer-facing strings). Recovery is auto-handled by
-# `automation.rc_remote_access_setup_recovery` — when the HA core
-# `tailscale` integration does not authenticate within 60s, the stage
+# `automation.rc_remote_access_setup_recovery` (Path A) +
+# `automation.rc_remote_access_setup_recovery_wireguard` (Path D) — when
+# the upstream integration does not authenticate within 60s, the stage
 # advances to `recovery` instead of erroring.
 #
-# NOTE: the secret helper `input_text.rc_tailscale_auth_key` is
+# NOTE: the secret helpers `input_text.rc_tailscale_auth_key` +
+# `input_text.rc_wireguard_server_endpoint` +
+# `input_text.rc_wireguard_server_public_key` +
+# `input_text.rc_wireguard_peer_private_key` +
+# `input_text.rc_wireguard_peer_allowed_ips` are all
 # `mode: password` (sensitive) and operator-entered in the wizard UI
-# directly — it is NEVER committed to this file, NEVER logged, and the
-# recovery automation explicitly does NOT clear it on the way to
+# directly — they are NEVER committed to this file, NEVER logged, and
+# the recovery automations explicitly do NOT clear them on the way to
 # `recovery` (so the operator can retry without re-typing).
 
 # ----------------------------------------------------------------------------
@@ -47,7 +54,10 @@ input_select:
       - tailscale_done
       - cloudflare_stub
       - nabu_casa_stub
-      - wireguard_stub
+      - wireguard_have_server
+      - wireguard_paste_keys
+      - wireguard_verify
+      - wireguard_done
       - recovery
       - done
     initial: welcome
@@ -61,6 +71,33 @@ input_text:
   rc_tailscale_tailnet_hostname:
     name: "RC Tailscale Tailnet Hostname (e.g. my-van.ts.net)"
     initial: ""
+
+  # Path D — Wireguard wizard helpers (Wave 9 #122.d.i). All four
+  # helpers are operator-entered secrets; all four are `mode: password`
+  # so casual viewers (kids, contractors, repair shops) can't read
+  # them over the operator's shoulder. The server endpoint is not a
+  # key per se but we still keep it in `mode: password` so the
+  # dashboard masks it consistently with the keys (operator-
+  # friendliness — one visual treatment, not two).
+  rc_wireguard_server_endpoint:
+    name: "RC Wireguard Server Endpoint (e.g. wg.example.com:51820, operator-entered, never logged)"
+    initial: ""
+    mode: password
+
+  rc_wireguard_server_public_key:
+    name: "RC Wireguard Server Public Key (operator-entered, never logged)"
+    initial: ""
+    mode: password
+
+  rc_wireguard_peer_private_key:
+    name: "RC Wireguard Peer Private Key (operator-entered, never logged)"
+    initial: ""
+    mode: password
+
+  rc_wireguard_peer_allowed_ips:
+    name: "RC Wireguard Peer Allowed IPs (e.g. 10.0.0.2/32, operator-entered, never logged)"
+    initial: ""
+    mode: password
 
 # ----------------------------------------------------------------------------
 # Templates — surface HA core `tailscale` integration state without coupling
@@ -104,6 +141,51 @@ template:
         state: >-
           {{ is_state('input_select.rc_remote_access_setup_stage','done') }}
 
+      # Path D — Wireguard interface detection (Wave 9 #122.d.i).
+      # Reuses the upstream HA Core `wireguard` integration (since
+      # HAOS 2024.4 — exposes the operator's Wireguard interface
+      # status via `binary_sensor.wireguard_*` entities + the
+      # `device_tracker.wireguard_*` entities for active peers). The
+      # `binary_sensor.wireguard_<interface_name>_active` entity is
+      # populated by the upstream integration only when (a) the
+      # operator has configured a Wireguard interface in HA + (b)
+      # the upstream daemon is reporting the interface is up. UNKNOWN
+      # when the integration is not installed yet — same fall-through
+      # as Path A's `tailscale_installed` binary_sensor.
+      - name: "RC Remote Access Setup: Wireguard Installed"
+        unique_id: rc_remote_access_setup_wireguard_installed
+        icon: mdi:shield-lock
+        state: >-
+          {# TRUE iff at least one HA Core `wireguard` integration
+             entity is registered (binary_sensor.wireguard_*). UNKNOWN
+             when no integration is present yet — the wizard will
+             ask the operator to install the HACS `wireguard` add-on
+             first, then paste the peer keys. #}
+          {% set bs = states.binary_sensor | selectattr('entity_id','match','^binary_sensor\.wireguard_') | list %}
+          {{ bs | count > 0 }}
+
+      - name: "RC Remote Access Setup: Wireguard Active"
+        unique_id: rc_remote_access_setup_wireguard_active
+        icon: mdi:shield-check
+        state: >-
+          {# TRUE iff any HA Core `wireguard` integration interface
+             reports `binary_sensor.wireguard_<name>_active` == on.
+             UNKNOWN when the integration is not installed yet. #}
+          {% set installed = states('binary_sensor.rc_remote_access_setup_wireguard_installed') %}
+          {% if installed in ['unknown','unavailable','none'] %}
+            unknown
+          {% else %}
+            {% set active_bs = states.binary_sensor
+                | selectattr('entity_id','match','^binary_sensor\.wireguard_.*_active$')
+                | selectattr('state','equalto','on')
+                | list %}
+            {% if active_bs | count > 0 %}
+              on
+            {% else %}
+              off
+            {% endif %}
+          {% endif %}
+
   - sensor:
       - name: "RC Remote Access Setup: Status"
         unique_id: rc_remote_access_setup_status
@@ -117,9 +199,17 @@ template:
           {% set authed = is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') %}
           {% set key = states('input_text.rc_tailscale_auth_key') %}
           {% set hostname = states('input_text.rc_tailscale_tailnet_hostname') %}
+          {% set wg_installed = is_state('binary_sensor.rc_remote_access_setup_wireguard_installed','on') %}
+          {% set wg_active = is_state('binary_sensor.rc_remote_access_setup_wireguard_active','on') %}
+          {% set wg_endpoint = states('input_text.rc_wireguard_server_endpoint') %}
+          {% set wg_server_pub = states('input_text.rc_wireguard_server_public_key') %}
+          {% set wg_peer_priv = states('input_text.rc_wireguard_peer_private_key') %}
+          {% set wg_peer_ips = states('input_text.rc_wireguard_peer_allowed_ips') %}
 
           {% if stage == 'welcome' and path == 'tailscale' %}
             Ready to help you set up Tailscale.
+          {% elif stage == 'welcome' and path == 'wireguard' %}
+            Ready to help you set up Wireguard.
           {% elif stage == 'welcome' %}
             Ready to help you set up remote access.
           {% elif stage == 'detect_existing' %}
@@ -142,10 +232,20 @@ template:
             Cloudflare setup is coming soon — pick Tailscale for now.
           {% elif stage == 'nabu_casa_stub' %}
             Nabu Casa setup is coming soon — pick Tailscale for now.
-          {% elif stage == 'wireguard_stub' %}
-            Wireguard setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'wireguard_have_server' %}
+            Do you already run your own Wireguard VPN?
+          {% elif stage == 'wireguard_paste_keys' and not wg_installed %}
+            Install the Wireguard add-on, then paste your server details.
+          {% elif stage == 'wireguard_paste_keys' and (wg_endpoint | trim == '' or wg_server_pub | trim == '' or wg_peer_priv | trim == '' or wg_peer_ips | trim == '') %}
+            Paste your Wireguard server endpoint, public key, peer private key, and allowed IPs.
+          {% elif stage == 'wireguard_paste_keys' %}
+            Testing your Wireguard connection...
+          {% elif stage == 'wireguard_verify' %}
+            Verifying your Wireguard connection.
+          {% elif stage == 'wireguard_done' %}
+            Wireguard is set up. You're good to go.
           {% elif stage == 'recovery' %}
-            We couldn't reach Tailscale. Check your internet connection.
+            We couldn't reach your remote-access server. Check your internet connection.
           {% elif stage == 'done' %}
             Remote access setup complete.
           {% else %}
@@ -156,6 +256,8 @@ template:
           path: "{{ states('input_select.rc_remote_access_setup_path') }}"
           tailscale_installed: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_installed','on') else 'off' }}"
           tailscale_authenticated: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') else 'off' }}"
+          wireguard_installed: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_wireguard_installed','on') else 'off' }}"
+          wireguard_active: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_wireguard_active','on') else 'off' }}"
 
 # ----------------------------------------------------------------------------
 # §8 MANDATORY AUTOMATIONS (4) — the wizard's state machine.
@@ -326,11 +428,11 @@ automation:
                 target:
                   entity_id: input_select.rc_remote_access_setup_stage
                 data:
-                  option: wireguard_stub
+                  option: wireguard_have_server
               - service: persistent_notification.create
                 data:
-                  title: "Wireguard setup coming soon"
-                  message: "Wireguard setup is coming soon — pick Tailscale for now."
+                  title: "Setting up Wireguard"
+                  message: "We'll walk you through setting up Wireguard. Have your server endpoint, server public key, peer private key, and peer allowed IPs ready."
           - conditions:
               - condition: state
                 entity_id: input_select.rc_remote_access_setup_path
@@ -345,3 +447,126 @@ automation:
                 data:
                   title: "Remote access skipped"
                   message: "Remote access skipped — your van is reachable only on home Wi-Fi."
+
+  # §8.5 — Path D advance (Wave 9 #122.d.i): stage ==
+  # wireguard_verify + wireguard active + endpoint + server public key +
+  # peer private key + peer allowed IPs all set → advance to
+  # wireguard_done + flip the global setup-wizard past `networking` so
+  # the operator can move on to `map`. Plain-English "Wireguard is
+  # set up. You're good to go." — not raw `wg show wg0: latest handshake`.
+  - id: rc_remote_access_setup_advance_path_d
+    alias: "RC: Remote Access Setup — Advance Path D on Wireguard active"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: wireguard_verify
+    condition:
+      - condition: state
+        entity_id: binary_sensor.rc_remote_access_setup_wireguard_active
+        state: on
+      - condition: template
+        value_template: "{{ states('input_text.rc_wireguard_server_endpoint') | trim != '' }}"
+      - condition: template
+        value_template: "{{ states('input_text.rc_wireguard_server_public_key') | trim != '' }}"
+      - condition: template
+        value_template: "{{ states('input_text.rc_wireguard_peer_private_key') | trim != '' }}"
+      - condition: template
+        value_template: "{{ states('input_text.rc_wireguard_peer_allowed_ips') | trim != '' }}"
+      - condition: state
+        entity_id: input_select.rc_remote_access_setup_path
+        state: wireguard
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: wireguard_done
+      - service: input_select.select_option
+        target:
+          entity_id:
+            - input_select.rc_setup_stage
+        data:
+          option: map
+      - service: persistent_notification.create
+        data:
+          title: "Wireguard set up"
+          message: "Wireguard is set up — your van is now reachable from anywhere over a tunnel you control."
+      - event: roamcore_remote_access_setup_complete
+        event_data:
+          path: wireguard
+
+  # §8.6 — Path D recovery (Wave 9 #122.d.i): stage has been
+  # `wireguard_verify` for >60 seconds and the upstream `wireguard`
+  # integration is still NOT active → advance to `recovery`, do NOT
+  # clear the peer keys (operator can retry without re-typing). Plain-
+  # English "We couldn't reach your Wireguard server. Check that the
+  # server is reachable from your van's internet connection and that
+  # UDP 51820 is open on the server's firewall" — NOT "wg-quick:
+  # interface not found" or "errno: ENETUNREACH".
+  - id: rc_remote_access_setup_recovery_wireguard
+    alias: "RC: Remote Access Setup — Recovery on Wireguard verify timeout"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: wireguard_verify
+        for: "00:01:00"
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.rc_remote_access_setup_wireguard_active
+            state: on
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: recovery
+      - service: persistent_notification.create
+        data:
+          title: "Couldn't reach Wireguard"
+          message: "We couldn't reach your Wireguard server. Check that the server is reachable from your van's internet connection and that UDP 51820 is open on the server's firewall. Your keys are still in the boxes — you don't need to re-type them."
+
+  # §8.7 — Path D detect existing (Wave 9 #122.d.i): when the wizard
+  # moves into `detect_existing`, also check Wireguard status after
+  # 5 seconds and route to `wireguard_done` if the upstream
+  # `wireguard` integration is already configured. Same idempotency
+  # contract as Path A's §8.3 — does NOT clear the peer keys + does
+  # NOT fire if the operator hasn't picked the wireguard path.
+  - id: rc_remote_access_setup_detect_existing_wireguard
+    alias: "RC: Remote Access Setup — Detect existing Wireguard"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: detect_existing
+    action:
+      - delay: "00:00:05"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.rc_remote_access_setup_wireguard_active
+                state: on
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: wireguard_done
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_path
+                data:
+                  option: wireguard
+              - service: persistent_notification.create
+                data:
+                  title: "Wireguard already set up"
+                  message: "Looks like Wireguard is already set up — skipping the wizard."
+        default:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.rc_remote_access_setup_stage
+            data:
+              option: path_pick
