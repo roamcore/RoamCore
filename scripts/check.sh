@@ -138,6 +138,8 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 run_if_present "connections/support-bundle/tests/test_connection_yml.py" \
   "Connection: Support bundle (vendor-neutral diagnostic snapshot exporter for RoamCore-installed HA instances) (tier-a) — manifest honesty smoke check"
+run_if_present "scripts/checks/support-bundle-hub-smoke.sh" \
+  "Hub-level Support Bundle export wiring: smoke check (3 sensors + 3 automations + rc-entity-naming compliance, Wave 9 #120c)"
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
 

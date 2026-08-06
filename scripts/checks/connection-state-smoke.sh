@@ -14,7 +14,7 @@
 #   bash scripts/checks/connection-state-smoke.sh
 #
 # Exit codes:
-#   0  all 32 connection manifests carry a valid `state:` value
+#   0  all 33 connection manifests carry a valid `state:` value
 #   1  one or more manifests are missing the `state:` field (FAIL)
 #   1  one or more manifests carry a value outside the 10-state allowlist (FAIL)
 #   1  pytest failed for some other reason (FAIL)
@@ -40,7 +40,7 @@ PYTEST_EXIT=$?
 set -e
 
 if [ "$PYTEST_EXIT" -eq 0 ]; then
-  echo "OK: all 32 connections have a valid state"
+  echo "OK: all 33 connections have a valid state"
   exit 0
 fi
 

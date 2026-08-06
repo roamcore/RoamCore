@@ -599,6 +599,7 @@ description: |
   below (8 canned-response bench artifacts needed for
   full tier-a promotion).
 icon: mdi:archive-arrow-down
+state: Available
 codeowners:
   - "@bernardc"
 tags:
