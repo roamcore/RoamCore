@@ -220,3 +220,32 @@ binary_sensor:
     scan_interval: 30
     payload_on: "ON"
     payload_off: "OFF"
+
+# Advance the main setup wizard past `networking` once the Remote
+# Access Setup wizard (Phase 6 — Path A Tailscale, see
+# `roamcore_remote_access_setup.yaml`) reports completion.
+#
+# This is additive only: the existing helpers + templates + binary
+# sensor are untouched. New automation wires one helper → another.
+automation:
+  - id: rc_setup_advance_after_remote_access
+    alias: "RC: Advance setup wizard after Remote Access is complete"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.rc_remote_access_setup_complete
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_select.rc_setup_stage
+        state: networking
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_setup_stage
+        data:
+          option: map
+      - service: persistent_notification.create
+        data:
+          title: "Remote access done"
+          message: "Remote access is set up — moving on to the next setup step."

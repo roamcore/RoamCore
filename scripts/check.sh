@@ -75,6 +75,7 @@ run_if_present "scripts/checks/system-summary-smoke.sh"        "System summary: 
 run_if_present "scripts/checks/advanced-mode-smoke.sh"         "Advanced mode: smoke check"
 run_if_present "scripts/checks/automation-apply-smoke.sh"      "Automation apply: smoke check"
 run_if_present "scripts/checks/mode-builder-smoke.sh"          "Mode builder: smoke check"
+run_if_present "scripts/checks/remote-access-setup-smoke.sh"    "Remote access setup wizard (Tailscale Path A): smoke check"
 
 # Connection manifest smokes live under connections/<id>/tests/. We probe
 # for the well-known names so the chain picks them up automatically once
@@ -163,6 +164,13 @@ run_if_present "scripts/checks/hub-restart-stability-smoke.sh" \
 # actual .img.gz bake happens on a Linux+Docker host.
 run_if_present "scripts/checks/hub-golden-image-smoke.sh" \
   "Hub golden image: Phase 3 Hub golden-image build pipeline smoke (script + manifest + base-image reachability + SHA format + idempotent cache + retry pattern)"
+
+# Wave 9 #121 — Phase 5 Installable PWA refresh. Static + live-fetch
+# verification of the dashboard/Frontend/Setup Wizard scaffold + the
+# IKEA-shaped docs/setup/pwa.md user guide. Idempotent + best-effort
+# live http.server fetch (skips silently if python3 + curl unavailable).
+run_if_present "scripts/checks/pwa-install-smoke.sh" \
+  "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
 # Wave 9 #121 — Phase 5 Installable PWA refresh. Static + live-fetch
 # verification of the dashboard/Frontend/Setup Wizard scaffold + the
