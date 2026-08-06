@@ -1,0 +1,253 @@
+# RoamCore Hub Backup — Phase 7 — Wave 9 #123.a
+#
+# Purpose:
+# - Provide the canonical helper entities + the 3 §8 MANDATORY automations
+#   for the Hub Backup nightly + restore-tested migration in CI.
+# - The §8.1 nightly-create-backup automation runs at 02:00 daily when
+#   `input_boolean.rc_hub_backup_enabled` is ON + calls the RoamCore
+#   `roamcore.create_backup` service + writes the result to
+#   `input_text.rc_hub_backup_status`.
+# - The §8.2 verify-integrity automation fires after the §8.1
+#   nightly-create completes + calls `roamcore.test_restore` against the
+#   newly-created backup + writes the result as plain English.
+# - The §8.3 cleanup-old automation runs at 03:30 daily + calls
+#   `roamcore.list_backups` + deletes any backup older than the
+#   operator-chosen retention policy (the
+#   `input_select.rc_hub_backup_retention_policy` helper).
+# - All 3 automations have a `mode: single` guard so re-firing returns
+#   gracefully (idempotency marker; verified by the 22 pytest tests at
+#   `homeassistant/packages/tests/test_hub_backup.py`).
+# - The destination is `input_text` mode password (the operator owns the
+#   value; secrets-leak grep verifies no hardcoded URLs/passwords).
+# - The status surfaces are template sensors + a binary_sensor derivation
+#   + 2 buttons for the operator-facing affordances.
+# - Naming follows `docs/reference/rc-entity-naming.md` — every entity
+#   starts with `rc_hub_backup_` (the `hub_backup` subsystem was added
+#   by this slice).
+
+input_boolean:
+  rc_hub_backup_enabled:
+    name: "Hub Backup enabled"
+    icon: mdi:backup-restore
+    initial: true
+
+input_datetime:
+  rc_hub_backup_next_run:
+    name: "Hub Backup next run"
+    has_date: true
+    has_time: true
+    initial: "{{ (now() + timedelta(hours=2)).replace(minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S') }}"
+
+input_select:
+  rc_hub_backup_retention_policy:
+    name: "Hub Backup retention policy"
+    options:
+      - "7 daily + 4 weekly + 12 monthly"
+      - "30 daily only"
+      - "90 daily only"
+    initial: "30 daily only"
+    icon: mdi:archive-clock
+
+input_text:
+  rc_hub_backup_destination:
+    name: "Hub Backup destination"
+    initial: "/config/.roamcore/backups/"
+    mode: password
+    pattern: "^/[A-Za-z0-9_./-]+/?$"
+
+  rc_hub_backup_status:
+    name: "Hub Backup status"
+    initial: "No backups yet — RoamCore will run the first one tonight at 02:00."
+
+template:
+  - sensor:
+      - name: "RC Hub Backup Last Status"
+        unique_id: rc_hub_backup_last_status
+        icon: mdi:backup-restore
+        state: "{{ states('input_text.rc_hub_backup_status') }}"
+
+      - name: "RC Hub Backup Age Minutes"
+        unique_id: rc_hub_backup_age_minutes
+        icon: mdi:clock-outline
+        state: >-
+          {% set last_status = states('input_text.rc_hub_backup_status') %}
+          {% if 'ran' in last_status.lower() and 'checked out' in last_status.lower() %}
+            {{ (now() - today_at('02:00')).total_seconds() // 60 }}
+          {% elif 'failed' in last_status.lower() %}
+            9999
+          {% else %}
+            99999
+          {% endif %}
+        availability: >-
+          {{ states('input_text.rc_hub_backup_status') not in ['unknown','unavailable','none',''] }}
+
+  - binary_sensor:
+      - name: "RC Hub Backup Healthy"
+        unique_id: rc_hub_backup_healthy
+        icon: mdi:shield-check
+        state: >-
+          {% set age = states('sensor.rc_hub_backup_age_minutes') | int(99999) %}
+          {% set status = states('input_text.rc_hub_backup_status') %}
+          {{ age < 1500 and 'checked out' in status.lower() }}
+        availability: >-
+          {{ states('sensor.rc_hub_backup_age_minutes') not in ['unknown','unavailable'] }}
+
+button:
+  - platform: template
+    buttons:
+      rc_hub_backup_backup_now:
+        name: "RC Hub Backup Now"
+        unique_id: rc_hub_backup_backup_now
+        icon: mdi:backup-restore
+        press:
+          - service: roamcore.create_backup
+            data:
+              retention_days: 30
+              destination_local: "{{ states('input_text.rc_hub_backup_destination') }}"
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_hub_backup_status
+            data:
+              value: "Backup started — check back in a few minutes."
+
+      rc_hub_backup_verify_now:
+        name: "RC Hub Backup Verify Now"
+        unique_id: rc_hub_backup_verify_now
+        icon: mdi:shield-search
+        press:
+          - service: roamcore.list_backups
+            response_variable: backups
+          - service: roamcore.test_restore
+            data:
+              backup_id: >-
+                {% if backups and backups.backups %}
+                  {{ backups.backups[0].backup_id if backups.backups[0].backup_id is defined else backups.backups[0].id }}
+                {% else %}
+                  ""
+                {% endif %}
+            response_variable: result
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_hub_backup_status
+            data:
+              value: >-
+                {% if result and result.restorable %}
+                  Your last backup ran and the restore-test passed.
+                {% else %}
+                  Your last backup ran but the restore-test failed.
+                {% endif %}
+
+automation:
+  - id: rc_hub_backup_nightly_create_backup
+    alias: "RC Hub Backup: Nightly Create (02:00 daily)"
+    description: >-
+      Nightly Hub Backup — fires at 02:00 daily when
+      `input_boolean.rc_hub_backup_enabled` is ON + calls the RoamCore
+      `roamcore.create_backup` service + writes the result to
+      `input_text.rc_hub_backup_status`. The `mode: single` guard
+      prevents double-creation if a backup is already running.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "02:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_hub_backup_enabled
+        state: "on"
+    action:
+      - service: roamcore.create_backup
+        data:
+          retention_days: 30
+          destination_local: "{{ states('input_text.rc_hub_backup_destination') }}"
+        response_variable: create_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_hub_backup_status
+        data:
+          value: >-
+            {% if create_result and create_result.backup_id %}
+              Your last backup ran and is being verified.
+            {% elif create_result and create_result.error %}
+              Your last backup failed — check the Hub is plugged in.
+            {% else %}
+              Your last backup is running now.
+            {% endif %}
+      - event: roamcore_hub_backup_backup_created
+        event_data:
+          backup_id: "{{ create_result.backup_id if create_result and create_result.backup_id else '' }}"
+          path: "{{ create_result.path if create_result and create_result.path else '' }}"
+          size_bytes: "{{ create_result.size_bytes if create_result and create_result.size_bytes else 0 }}"
+
+  - id: rc_hub_backup_verify_integrity
+    alias: "RC Hub Backup: Verify Integrity (after nightly create)"
+    description: >-
+      Verify Integrity — fires after the §8.1 nightly-create completes +
+      runs `roamcore.test_restore` against the newly-created backup +
+      writes the result as plain English. The §8.2 surfaces "Your last
+      backup ran and the restore-test passed." OR "Your last backup ran
+      but the restore-test failed." depending on the sandbox result.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: event
+        event_type: roamcore_hub_backup_backup_created
+    action:
+      - service: roamcore.test_restore
+        data:
+          backup_id: "{{ trigger.event.data.backup_id }}"
+        response_variable: verify_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_hub_backup_status
+        data:
+          value: >-
+            {% if verify_result and verify_result.restorable %}
+              Your last backup ran and the restore-test passed.
+            {% else %}
+              Your last backup ran but the restore-test failed.
+            {% endif %}
+
+  - id: rc_hub_backup_cleanup_old
+    alias: "RC Hub Backup: Cleanup Old (03:30 daily)"
+    description: >-
+      Cleanup Old — fires at 03:30 daily + calls `roamcore.list_backups`
+      + deletes any backup older than the operator-chosen retention
+      policy (the `input_select.rc_hub_backup_retention_policy` helper).
+      The `mode: single` guard prevents concurrent cleanup runs.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "03:30:00"
+    action:
+      - service: roamcore.list_backups
+        response_variable: existing_backups
+      - variables:
+          retention_policy: "{{ states('input_select.rc_hub_backup_retention_policy') }}"
+          retention_days: >-
+            {% if '7 daily' in retention_policy %}
+              30
+            {% elif '30 daily' in retention_policy %}
+              30
+            {% elif '90 daily' in retention_policy %}
+              90
+            {% else %}
+              30
+            {% endif %}
+      - repeat:
+          for_each: "{{ existing_backups.backups if existing_backups and existing_backups.backups else [] }}"
+          sequence:
+            - variables:
+                backup: "{{ repeat.item }}"
+                backup_age_minutes: >-
+                  {% if backup.created_at %}
+                    {{ (now() - as_datetime(backup.created_at)).total_seconds() // 60 }}
+                  {% else %}
+                    0
+                  {% endif %}
+            - condition: template
+              value_template: "{{ backup_age_minutes > (retention_days | int(30)) * 1440 }}"
+            - service: roamcore.delete_backup
+              data:
+                backup_id: "{{ backup.backup_id if backup.backup_id is defined else backup.id }}"

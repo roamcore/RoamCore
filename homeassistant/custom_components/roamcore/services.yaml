@@ -110,3 +110,81 @@ backup_update:
       required: false
       selector:
         text: {}
+
+create_backup:
+  name: Create Hub backup
+  description: >-
+    Create a nightly snapshot of your Hub that RoamCore can restore from.
+    RoamCore runs this every night at 02:00, but you can trigger it
+    anytime by tapping the "Back up now" button on the Hub Backup tile.
+    The backup includes your full Hub state — automations, helpers,
+    dashboards, and settings. Use retention_days to keep the backup
+    for the chosen number of days; use destination_local to point at
+    a USB drive or network share (defaults to the Hub's built-in
+    backup folder).
+  fields:
+    retention_days:
+      name: Keep this backup for (days)
+      description: How many days to keep this backup before RoamCore deletes it. The default of 30 is fine for most people.
+      required: false
+      default: 30
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 365
+          step: 1
+          unit_of_measurement: days
+    destination_local:
+      name: Where to save the backup
+      description: Folder on your Hub where RoamCore saves the backup. Defaults to the Hub's built-in backup folder.
+      required: false
+      default: "/config/.roamcore/backups/"
+      example: "/config/.roamcore/backups/"
+      selector:
+        text: {}
+    destination_remote:
+      name: Also copy to a second place (optional)
+      description: Optional second location (e.g. a network share) where RoamCore also saves the backup. Leave blank to keep things simple.
+      required: false
+      selector:
+        text: {}
+
+list_backups:
+  name: List Hub backups
+  description: >-
+    Show every Hub backup RoamCore has on file, with the date and size
+    of each. Useful when you're picking which backup to restore from.
+  fields: {}
+
+delete_backup:
+  name: Delete a Hub backup
+  description: >-
+    Remove a Hub backup so it doesn't count toward your retention
+    limit. Useful when you're freeing up space on the backup drive.
+    The backup_id is shown on the Hub Backup tile and in the
+    "List Hub backups" service response.
+  fields:
+    backup_id:
+      name: Backup ID
+      description: The ID of the backup to delete. Tap "List Hub backups" first to find the ID.
+      required: true
+      example: "2026-08-06T02:00:00_backup"
+      selector:
+        text: {}
+
+test_restore:
+  name: Test that a Hub backup can be restored
+  description: >-
+    Confirm that a Hub backup actually works — not just that it was
+    made. RoamCore runs this every night right after creating a
+    backup, so you can usually trust the "checked out" status on the
+    tile. Tap "Verify now" on the Hub Backup tile to re-run the
+    check by hand. The result shows up on the tile as plain English.
+  fields:
+    backup_id:
+      name: Backup ID
+      description: The ID of the backup to test. The most recent backup is used if you leave this blank.
+      required: false
+      selector:
+        text: {}

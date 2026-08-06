@@ -781,6 +781,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=None,
     )
 
+    # --- Hub Backup (Phase 7 — Wave 9 #123.a) ---
+    # Register the 4 RoamCore Hub Backup services via the RoamCore-owned
+    # service handler at `homeassistant/custom_components/roamcore/backup.py`.
+    # The handler wraps the HA core 2024.x `backup.create` / `backup.list`
+    # / `backup.delete` services + a sandbox restore-test runner +
+    # a plain-English status mapper. Safe to call repeatedly (HA
+    # overwrites handlers with the same name).
+    try:
+        from .backup import register_backup_services
+        register_backup_services(hass)
+    except Exception:
+        # Hub Backup is best-effort — never break HA startup.
+        pass
+
     return True
 
 
