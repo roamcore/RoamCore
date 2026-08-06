@@ -16,32 +16,69 @@ their update will not break the install.
 
 ## §1 What this is
 
-There is one acceptance test per release gate. Today only Gate A
-exists (clean install). Future slices will add Gate B (connection
-flow), Gate C (dashboard reliability), Gate D (agent integration),
+There is one acceptance test per release gate. Today two gates exist:
+Gate A (clean install) and Gate B (connection flow). Future slices
+will add Gate C (dashboard reliability), Gate D (agent integration),
 Gate E (remote access), and Gate F (recovery) — one file per gate,
-following the same shape as the existing one.
+following the same shape as the existing ones.
 
 Each gate has two halves:
 
 - A **bash test** (`gate_<name>.sh`) — the canonical contract. Boots
-  a real HAOS VM, verifies the contract, tears down. Lives on a
+  a real HAOS VM (Gate A) or cold-starts a mock Victron device on a
+  real PTY (Gate B), verifies the contract, tears down. Lives on a
   Linux host with `qemu-system-x86_64` + the existing `ha-beta` smoke
-  rig available. On any other host the bash test takes the
-  "script-only delivery" path: it prints a plain-English "this gate
-  runs in the CI sandbox only" message and exits 0.
+  rig (Gate A) or `socat` (Gate B) available. On any other host the
+  bash test takes the "script-only delivery" path: it prints a
+  plain-English "this gate runs in the CI sandbox only" message and
+  exits 0.
 - A **pytest rig** (`test_gate_<name>.py`) — fast, always-on
   coverage that runs on every push to main + on every PR + on the
-  cron host. Mocks subprocess so it can verify the bash test
-  contains the right step shape (the right flags, the right
-  greps, the right plain-English failure messages) without needing
-  qemu on every runner.
+  cron host. Mocks subprocess (Gate A) + mocks the PTY-backed device
+  + mocks the HA instance (Gate B) so it can verify the bash test
+  contains the right step shape (the right flags, the right greps,
+  the right plain-English failure messages) without needing qemu
+  or socat on every runner.
 
-The fixture file `conftest.py` provides the four shared fixtures the
-pytest rigs depend on (the bash script path, a mocked `subprocess.run`,
-a canned HAOS response, a pinned SHA). The `__init__.py` marks the
-directory as a Python package so pytest can collect the rigs under
-the import path `scripts.tests.acceptance`.
+The fixture file `conftest.py` provides the shared fixtures the
+pytest rigs depend on (the bash script paths, a mocked
+`subprocess.run`, canned HAOS / Victron responses, pinned SHAs +
+SHA-canonical mock SoC + canonical HA tile id). The `__init__.py`
+marks the directory as a Python package so pytest can collect the
+rigs under the import path `scripts.tests.acceptance`.
+
+### Gate B — connection flow (Wave 9 #123.d.ii)
+
+Gate B verifies the canonical RoamCore connection-flow contract
+verbatim from the 2026-08-03 directive:
+
+> detection → click Connect → essential questions → upstream
+> integration → mapping → verification → dashboard →
+> reboot-survives
+
+In the rig this becomes 15 stages, each with its own plain-English
+step banner + plain-English failure message:
+
+1. Cold-start a mock Victron device on a PTY (socat-style)
+2. Discovery layer detects the mock device within 5 s
+3. Capability mapper maps device → `power.battery.soc`
+4. Upstream integration (`roamcore.victron`) registers in HA
+5. Verification: data point updates within 5 s (SoC ∈ [0, 100])
+6. Dashboard generator creates `sensor.rc_power_battery_soc`
+7. Tile value queryable via the HA `/api/states` endpoint
+8. Reboot-survives: restart the mock HA instance
+9. Re-query the tile within 30 s — value still present
+10. Idempotency: rerun the gate produces the same end state
+11. Cleanup trap removes the mock device + mock HA state
+12. Plain-English error copy on every failure path
+13. No secrets leaked into any acceptance rig file
+14. Mock device uses canonical rc-entity-naming
+15. Idempotent fixture cache (re-runs reuse the PTY bytes)
+
+The bash test in `--mock` mode uses an in-process mock device + mock
+HA instance so it runs anywhere with `bash` + `python3` installed
+(no socat / no PTY required). The real PTY path runs on a CI sandbox
+runner with the `HAS_VICTRON_PTY=true` env var set.
 
 ## §2 What you see
 
@@ -162,17 +199,25 @@ If the pytest rig reports an `AssertionError`:
 
 - User-facing description of the acceptance tests:
   [`docs/runbooks/automated-acceptance-tests.md`](../../../../docs/runbooks/automated-acceptance-tests.md)
+- User-facing description of the Gate B acceptance test:
+  [`docs/runbooks/automated-acceptance-tests-gate-b.md`](../../../../docs/runbooks/automated-acceptance-tests-gate-b.md)
 - GitHub Actions workflow for Gate A:
   [`.github/workflows/acceptance-gate-a.yml`](../../../workflows/acceptance-gate-a.yml)
-- The bash test (the canonical contract):
+- GitHub Actions workflow for Gate B:
+  [`.github/workflows/acceptance-gate-b.yml`](../../../workflows/acceptance-gate-b.yml)
+- Gate A bash test (the canonical contract):
   [`gate_a_clean_install.sh`](gate_a_clean_install.sh)
-- The pytest rig (the fast, always-on coverage):
+- Gate A pytest rig (the fast, always-on coverage):
   [`test_gate_a_clean_install.py`](test_gate_a_clean_install.py)
+- Gate B bash test (the canonical contract):
+  [`gate_b_connection_flow.sh`](gate_b_connection_flow.sh)
+- Gate B pytest rig (the fast, always-on coverage):
+  [`test_gate_b_connection_flow.py`](test_gate_b_connection_flow.py)
 - Shared fixtures: [`conftest.py`](conftest.py)
 - Package marker: [`__init__.py`](__init__.py)
-- The canonical Hub golden-image manifest (the SHA256 the bash
-  test pins to):
+- The canonical Hub golden-image manifest (the SHA256 Gate A's
+  bash test pins to):
   [`scripts/build/hub-golden-image.manifest.yml`](../../build/hub-golden-image.manifest.yml)
 - The `ha-beta` smoke rig (the upstream qemu-based HAOS sandbox rig
-  this gate is designed to run on):
+  Gate A is designed to run on):
   [`scripts/checks/ha-beta-smoke.sh`](../../checks/ha-beta-smoke.sh)

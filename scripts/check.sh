@@ -179,6 +179,16 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #123.d.ii — Phase 7 Hardened release — Gate B (connection flow).
+# Developer-convenience smoke that invokes the Gate B bash test in
+# --mock mode + the Gate B pytest rig. Idempotent (re-runs produce
+# the same end state) + safe on any host (mock mode skips the real
+# PTY socat work; real PTY runs are CI-only). NOT part of core-only —
+# developers can run `bash scripts/check.sh` (without --core-only) to
+# exercise the Gate B acceptance rig locally before opening a PR.
+run_if_present "scripts/tests/acceptance/gate_b_connection_flow.sh" \
+  "Acceptance Gate B (connection flow): 15-stage bash contract (mock PTY + mock HA instance + reboot-survives)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
