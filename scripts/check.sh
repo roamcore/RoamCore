@@ -139,6 +139,15 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
 
+# Wave 9 #120d — Phase 3 Hub golden image build pipeline (foundation).
+# Asserts scripts/build/hub-golden-image.sh + manifest + their cross-
+# references are healthy, the manifest pins a reachable + verifiable
+# base image, and the script's user-facing surface is plain English.
+# Script-only delivery (similar to #106 OpenWrt Image Builder); the
+# actual .img.gz bake happens on a Linux+Docker host.
+run_if_present "scripts/checks/hub-golden-image-smoke.sh" \
+  "Hub golden image: Phase 3 Hub golden-image build pipeline smoke (script + manifest + base-image reachability + SHA format + idempotent cache + retry pattern)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

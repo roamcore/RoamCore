@@ -35,3 +35,10 @@ artifacts/**/*.zip
 
 # MkDocs output (site_dir)
 public/
+
+# RoamCore Hub golden-image build cache (downloaded base images;
+# scripts/build/hub-golden-image.sh writes here, never committed).
+.cache/
+roamcore-hub-golden-*.img.gz
+roamcore-hub-golden-*.img
+roamcore-hub-golden-*.img.xz

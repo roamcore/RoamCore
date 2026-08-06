@@ -1,0 +1,88 @@
+# RoamCore Hub — golden-image builder (Wave 9 #120d)
+#
+# This Dockerfile is the "what scripts/build/hub-golden-image.sh
+# invokes on a Linux+Docker host" piece. It pulls the pinned HAOS
+# base image (URL + SHA from scripts/build/hub-golden-image.manifest.yml),
+# layers the RoamCore files (custom_components + addons + packages)
+# on top, and produces the roamcore-hub-golden-v0.1.0.img.gz output.
+#
+# It is intentionally minimal in this slice: the script-only delivery
+# on this host prints "Baking skipped — script-only delivery" and
+# exits 0, so the Dockerfile's role is to make the bake actionable
+# on a real Linux+Docker build host in the next slice.
+#
+# To run the real bake:
+#
+#   1. Stage the RoamCore layer into a temp dir:
+#        ./scripts/build/hub-golden-image.sh
+#      (the script stages homeassistant/custom_components/roamcore,
+#       homeassistant/addons/roamcore-{tileserver,traccar-init,
+#       traccar-proxy,victron-auto,victron-mock,hub-builder}, and
+#       homeassistant/packages/roamcore_*.yaml into <STAGING>/layer/)
+#
+#   2. Invoke the build from the staging directory:
+#        docker build -t roamcore-hub-golden-builder:latest \
+#                     -f <repo>/homeassistant/addons/roamcore-hub-builder/Dockerfile.hub \
+#                     <STAGING>
+#
+#   3. Run a one-shot container that extracts the .img.gz to the host:
+#        docker run --rm -v $(pwd):/out roamcore-hub-golden-builder:latest \
+#          cp /build/roamcore-hub-golden-v0.1.0.img.gz /out/
+#
+#   4. Pin the new SHA into scripts/build/hub-golden-image.manifest.yml:
+#        output.expected_sha256: "<new SHA>"
+#
+# The actual decompression + mount + rsync + recompress sequence (the
+# real HAOS image-builder pattern) is left as a follow-up slice once
+# the manifest pin + staging contract are settled. This Dockerfile is
+# the foundation: a valid, parseable build that downstream slices can
+# flesh out with the real on-host mount loop.
+
+ARG BUILD_FROM=ubuntu:22.04
+FROM ${BUILD_FROM}
+
+# Minimal toolchain for the HAOS image build. The full build needs:
+#   - xz-utils (decompress the .img.xz + recompress the .img.gz)
+#   - util-linux (losetup + mount for the partition loop)
+#   - rsync (copy the layer into the mounted rootfs)
+#   - e2fsprogs (resize the partition if the layer is larger than
+#     the original rootfs)
+#   - dosfstools (the vfat boot partition is touched by losetup)
+#   - ca-certificates (HTTPS for the base-image download — though
+#     the script pre-downloads, having curl here keeps the Dockerfile
+#     self-contained for ad-hoc runs)
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes \
+      ca-certificates \
+      curl \
+      xz-utils \
+      util-linux \
+      rsync \
+      e2fsprogs \
+      dosfstools \
+ && rm -rf /var/lib/apt/lists/*
+
+# The bake staging directory is bind-mounted at /staging by the
+# host-side build driver. The pinned HAOS base image lives at
+# /staging/haos-base.img.xz; the RoamCore layer lives at
+# /staging/layer/ and preserves the original repo-relative paths
+# (homeassistant/custom_components/, homeassistant/addons/, etc).
+WORKDIR /build
+
+# Stage 1 — TODO(beyond-script-only): decompress the .img.xz into a
+# raw .img, split into partitions via fdisk/losetup, run e2fsck on
+# the root partition, resize2fs to make room for the RoamCore layer,
+# mount the root partition, rsync the /staging/layer/* into the
+# mounted rootfs (preserving the relative paths), unmount, recompose
+# the .img, xz -9 to produce the .img.gz.
+
+# Stage 2 — present-tense minimum: copy the layer into /build/layer
+# so the Dockerfile is parseable + runnable on a real host (the
+# follow-up slice adds the actual mount loop).
+COPY layer/ /build/layer/
+RUN ls -la /build/layer/homeassistant/addons/ > /build/layer-manifest.txt 2>&1 || true
+
+# The output file path. The host-side build driver copies this out of
+# the container (see the docker run example in the comment block
+# above).
+CMD ["bash", "-lc", "echo 'hub-golden-image builder ready — see TODO(beyond-script-only) above for the real bake sequence'"]

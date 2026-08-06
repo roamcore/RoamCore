@@ -1,0 +1,84 @@
+# RoamCore Hub — golden image manifest
+#
+# Wave 9 #120d — Phase 3 Hub: golden image build pipeline (foundation).
+# Source of truth for "what is in the RoamCore Hub golden image".
+# Consumed by:
+#   - scripts/build/hub-golden-image.sh
+#       (the bake; reads base_image.url + base_image.expected_sha256 +
+#        roamcore_layer.addons / .custom_components / .packages to assemble
+#        the layer overlay)
+#   - scripts/checks/hub-golden-image-smoke.sh
+#       (the verifier; parses this YAML, validates the base_image URL is
+#        reachable + the SHA is a 64-char hex, validates the script
+#        references this file, validates --help is plain English)
+#   - docs/runbooks/hub-golden-image.md
+#       (§5 developer reference; reads base_image.name + the output
+#        filename to describe the bake)
+#
+# Pinning policy:
+#   base_image.url + base_image.expected_sha256 are pinned to a real,
+#   reachable HAOS release (HAOS 14.1, generic). The SHA is the actual
+#   SHA256 of the .img.xz at that URL, verified on 2026-08-06.
+#   output.expected_sha256 is a TBD placeholder until the first real
+#   bake runs on a Linux+Docker host (this slice is script-only; the
+#   actual .img.gz is not produced on this host). Once the first real
+#   bake runs, replace the TBD value with the SHA and remove the
+#   `sha256_placeholder` field.
+
+manifest_version: 1
+
+base_image:
+  name: "Home Assistant OS 14.1 (generic)"
+  url: "https://github.com/home-assistant/operating-system/releases/download/14.1/haos_generic-x86-64-14.1.img.xz"
+  expected_sha256: "504c10f5703ebadcc70ebe625929f2e7910d64c78145a87725eb6baabe1072b0"
+  size_bytes: 396582036
+  architectures:
+    - x86_64
+    - aarch64
+  # Alternative architecture (also pinned + reachable, HAOS 14.1):
+  #   url:        https://github.com/home-assistant/operating-system/releases/download/14.1/haos_generic-aarch64-14.1.img.xz
+  #   sha256:     c1afe72f46e9db9f26afe89d7fd6ec768fc2db53554f328ea0a4a8a14acc23c3
+  #   size_bytes: 342931572
+  # The script downloads the first URL in this file for the x86_64
+  # build; swap in the aarch64 URL for an ARM build (Raspberry Pi 5,
+  # Home Assistant Green, ODROID, etc).
+
+roamcore_layer:
+  commit: "TBD-PINNED-AT-FIRST-REAL-BAKE"
+  custom_components:
+    - "homeassistant/custom_components/roamcore/"
+  addons:
+    - "homeassistant/addons/roamcore-tileserver/"
+    - "homeassistant/addons/roamcore-traccar-init/"
+    - "homeassistant/addons/roamcore-traccar-proxy/"
+    - "homeassistant/addons/roamcore-victron-auto/"
+    - "homeassistant/addons/roamcore-victron-mock/"
+    - "homeassistant/addons/roamcore-hub-builder/"   # The builder Dockerfile for the bake itself.
+  packages:
+    - "homeassistant/packages/roamcore_*.yaml"
+  # The bake copies these into a staging directory, then layers them
+  # onto the base image via the docker_image below. Path globs are
+  # expanded by the script at bake time.
+
+output:
+  filename: "roamcore-hub-golden-v0.1.0.img.gz"
+  # TODO(beyond-script-only): pinned on first real bake — replace the
+  # TBD value with the SHA256 of the produced .img.gz, then remove the
+  # `sha256_placeholder` field below. Until then the script's
+  # idempotency check cannot verify the output against this manifest;
+  # it re-runs the bake unconditionally (safe — the script only
+  # produces the output if Docker is available; on this host it
+  # prints a clear "Baking skipped — script-only delivery" message).
+  expected_sha256: "TBD-PINNED-ON-FIRST-REAL-BAKE"
+  sha256_placeholder: "0000000000000000000000000000000000000000000000000000000000000000"
+
+build:
+  docker_image: "roamcore-hub-golden-builder:latest"
+  dockerfile: "homeassistant/addons/roamcore-hub-builder/Dockerfile.hub"
+  # The script invokes (on a Linux+Docker host):
+  #   docker build -t ${docker_image} -f ${dockerfile} <staging-dir>
+  # On a non-Linux host (this slice is script-only on the OpenClaw
+  # cron host) the script prints the "Would run: ..." message and
+  # exits with a clear "Baking skipped — script-only delivery" note.
+  expected_bake_minutes: 25
+  expected_bake_minutes_aarch64: 35
