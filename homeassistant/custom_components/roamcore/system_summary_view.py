@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from .contract_header import apply_contract_header
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -129,5 +130,4 @@ class RoamcoreSystemSummaryView(HomeAssistantView):
             "network": net,
         }
 
-        return self.json(payload)
-
+        return apply_contract_header(self.json(payload))

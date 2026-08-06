@@ -1,0 +1,18 @@
+# pytest integration tests for connections/openclaw-api/ tests/.
+#
+# Why these pins:
+# - pytest >=8.0: the BDD-style fixtures (`yield` cleanup, parametrize) +
+#   `pytest.ini` markers are stable and well-supported in 8.x.
+# - pytest-asyncio >=0.23: needed for any async test helpers (the suite is
+#   async-heavy; each test spins up a real HomeAssistant instance and tears
+#   it down). Pinned to 0.23+ to match the HA 2025.x runtime constraints.
+# - pytest-homeassistant-custom-components is NOT available. The package
+#   was archived on PyPI in 2024 (the upstream github repo
+#   https://github.com/MatthewFlamm/pytest-homeassistant-custom-components
+#   is gone). The conftest.py re-implements the minimal subset we need
+#   (a real HomeAssistant instance + aiohttp test client) on top of the
+#   first-party `homeassistant` package, which is already pinned at the
+#   RoamCore test rig (HA 2025.1.x). This is explicitly documented as an
+#   open question in the slice's POST-COMMIT message.
+pytest>=8.0,<10
+pytest-asyncio>=0.23,<1.0

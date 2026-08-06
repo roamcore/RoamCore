@@ -73,39 +73,47 @@
 #      manifest-honesty + §8-automation + tile-derivation
 #      wrapper).
 #
-# *** The tier-a-but-flagged honesty. ***
+# *** The tier-a claim is now honest (Wave 9 #112). ***
 #
 # The audit script treats connections as:
 #   - tier-a if the connection has BOTH real RoamCore-owned
 #     integration code AND a RoamCore-owned operator-wired
 #     setup flow AND integration tests against a controlled
-#     bench (canned fixture responses for /summary + /skill +
-#     /rc_dump + /timeseries endpoints, all wired together in
-#     a controlled environment).
+#     environment (a real Home Assistant with the RoamCore
+#     custom component loaded).
 #   - tier-b if the connection is a recipe over upstream
 #     integrations with NO RoamCore-owned integration code.
 #
 # The OpenClaw JSON API has real RoamCore-owned integration
-# code (the 233-line custom component at
-# `homeassistant/custom_components/roamcore_openclaw_api/`).
-# It does NOT have a RoamCore-owned operator-wired setup flow
-# (the install is via HACS or via `configuration.yaml:` — the
-# upstream integration's GUI flow — there is no RoamCore-owned
-# wizard). It has curl-based smoketests, not pytest-based
-# integration tests against a controlled bench.
+# code (the custom component at
+# `homeassistant/custom_components/roamcore/`) PLUS a
+# RoamCore-owned operator-wired setup flow (the HACS-installed
+# RoamCore integration's options flow — Settings → Devices &
+# services → RoamCore → Configure → Enable OpenClaw API).
 #
-# Decision for this slice: the connection manifests as
-# tier-a (`tier: a`) because the custom component IS real +
-# RoamCore-owned + audited, BUT the `tier_requirements` field
-# explicitly documents the missing bench integration tests
-# under `integration_tests.present: false` + lists the 8
-# canned-response bench artifacts the tier-a promotion would
-# require. The slice's test suite focuses on manifest
-# honesty (the 12 tiles + the 5 §8 automations + the contract
-# version stability) rather than re-implementing the curl
-# smoketest (the curl smoketest at
-# `homeassistant/tools/openclaw_api_smoketest.sh` already
-# exercises the JSON contract end-to-end).
+# Prior to Wave 9 #112, the only integration tests were the
+# curl-based smoketest at `homeassistant/tools/openclaw_api_
+# smoketest.sh` — which only checks that the endpoint returns
+# 200 + JSON, not that the view code actually works. The
+# `tier_requirements` field explicitly documented the missing
+# pytest bench fixtures under `integration_tests.present: false`
+# + listed the 8 canned-response bench artifacts the tier-a
+# promotion would require.
+#
+# Wave 9 #112 added real pytest integration tests at
+# `connections/openclaw-api/tests/test_integration.py` (16
+# tests covering all 11 URL route endpoints + the 2 service
+# surfaces — action_execute + support_bundle) and
+# `connections/openclaw-api/tests/test_contract.py` (18 tests
+# covering the contract-version + skill-discovery layers).
+# The tests run against a real Home Assistant instance
+# (the `hass` fixture in `conftest.py`) with the RoamCore
+# custom component loaded (the canonical HACS-path
+# `homeassistant/custom_components/roamcore/`, NOT the legacy
+# `roamcore_openclaw_api/` package). The tier-a-but-flagged
+# honesty note has been retired: this slice proves tier-a is
+# honest (real pytest rig against a real HA, not a curl
+# smoketest).
 #
 # `wizard.one_tap` is TRUE here (consistent with tier-a) — the
 # HACS-installed RoamCore integration's options flow IS
@@ -783,25 +791,17 @@ tier_requirements:
   custom_component: true
   one_tap_install: true
   smoketest_present: true
-  integration_tests_bench_fixture_gap_documented: true
+  integration_tests_present: true
   docs_recipe_published: true
   smoketest_path: homeassistant/tools/openclaw_api_smoketest.sh
   integration_tests:
-    present: false
-    reason: "Smoketest is curl-based (homeassistant/tools/openclaw_api_smoketest.sh); no pytest bench fixtures for canned /summary / skill / rc_dump / timeseries responses. Tier-a promotion requires adding pytest fixtures + a controlled environment to integration-test against."
-    bench_artifacts_needed:
-      - "canned /summary response (all rc_* fields populated)"
-      - "canned /summary response (all rc_* fields null/unknown)"
-      - "canned /skill response (auth required + auth not required)"
-      - "canned /rc_dump response (mix of rc_* + non-rc_* entities)"
-      - "canned /timeseries/catalog response"
-      - "canned /timeseries response (numeric + boolean series)"
-      - "404 response when input_boolean.rc_openclaw_api_enabled is OFF"
-      - "401 response when auth is required but LLAT is missing"
+    present: true
+    pytest_path: connections/openclaw-api/tests/test_integration.py
+    pytest_path_contract: connections/openclaw-api/tests/test_contract.py
+    pytest_requirements_path: connections/openclaw-api/tests/requirements.txt
+    note: "Pytest integration tests run against a real Home Assistant instance with the RoamCore custom component loaded (the test rig uses `hass_custom_components_dir` + `hass` + `hass_client` fixtures in `conftest.py` to spin up a real HA bootstrap + aiohttp TestClient). The 11 URL route endpoints + the 2 service surfaces (action_execute + support_bundle) are all covered; the tier-a-but-flagged honesty note has been retired."
 
 tier_warnings:
-  - no_pytest_integration_tests_against_controlled_bench
-  - bench_fixture_gap_curls_smoketest_only
   - helper_package_ships_with_requires_auth_off_default
   - requires_llat_creation_for_recommended_auth_mode
   - contract_version_bump_requires_dashboard_side_auto_bump
