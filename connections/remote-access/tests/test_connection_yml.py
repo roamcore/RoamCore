@@ -955,5 +955,329 @@ def test_automations_are_documented(manifest: dict) -> None:
     )
 
 
+
+# ----------------------------------------------------------------------------
+# Wave 9 #122.b — Path B (Cloudflare Tunnel) wiring tests.
+#
+# The Path B addition adds the new `cloudflare_tunnel` setup-path entry
+# to the wizard's `setup_paths` list. We assert:
+#   1. The path is present (test_cloudflare_path_in_setup_paths).
+#   2. The tunnel_token input has `secret: true` (sensitive — never
+#      logged; never displayed in clear text).
+#   3. The path does NOT require a reboot (it's a pure network-layer
+#      daemon; no HA server restart is needed).
+#   4. The Path B Python helpers (`apply_cloudflare_setup_path` +
+#      `describe_cloudflare_setup_path`) are idempotent — re-running
+#      with the same params returns `{"state": "already_configured"}`
+#      instead of re-registering the tunnel.
+#   5. The Path B Python helpers retry transient failures 3× with
+#      backoff before surfacing the plain-English error.
+#
+# Doctrine (Bernard, 2026-08-04): verification is mandatory — the
+# acceptance criteria are REAL pytest tests (≥5 new tests) + a new
+# bash smoke (≥6 assertions) wired into scripts/check.sh. These
+# tests are the pytest half of that bar.
+# ----------------------------------------------------------------------------
+
+
+def _reset_cloudflare_module_cache() -> Any:
+    """Reset the module-level idempotency cache between tests."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_remote_access_under_test",
+        CONNECTION_DIR / "__init__.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    if hasattr(mod, "_applied_cache"):
+        mod._applied_cache.clear()  # type: ignore[attr-defined]
+    return mod
+
+
+def test_cloudflare_path_in_setup_paths(manifest: dict) -> None:
+    """The wizard's `setup_paths` list MUST include the new
+    `cloudflare_tunnel` entry alongside the existing `tailscale`
+    (Path A) entry. This is the manifest-level half of the
+    acceptance criteria: "the path is in the YAML"."""
+    setup_paths = (
+        (manifest.get("wizard") or {}).get("setup_paths") or []
+    )
+    path_ids = [p.get("id") for p in setup_paths]
+    assert "cloudflare_tunnel" in path_ids, (
+        f"setup_paths must include 'cloudflare_tunnel' (Wave 9 "
+        f"#122.b); got {path_ids}"
+    )
+    # Belt-and-braces: the existing tailscale Path A entry is
+    # preserved bit-for-bit (acceptance: "existing YAML entries
+    # preserved bit-for-bit").
+    assert "tailscale" in path_ids, (
+        f"setup_paths must preserve Path A 'tailscale' (the "
+        f"existing Path A entry from Wave 9 #122.a must not be "
+        f"rewritten); got {path_ids}"
+    )
+
+
+def test_cloudflare_path_has_token_secret_marker(manifest: dict) -> None:
+    """The `cloudflare_tunnel_token` input MUST carry `secret: true`
+    so the wizard UI treats it as a password-style field (never
+    logged; never displayed in clear text; never committed to the
+    repo).
+
+    Acceptance: "the `secret: true` flag is on the tunnel_token
+    input".
+    """
+    setup_paths = (
+        (manifest.get("wizard") or {}).get("setup_paths") or []
+    )
+    cf_path = next(
+        (p for p in setup_paths if p.get("id") == "cloudflare_tunnel"),
+        None,
+    )
+    assert cf_path is not None, (
+        "cloudflare_tunnel path missing from setup_paths; "
+        "test_cloudflare_path_in_setup_paths should have caught this"
+    )
+    inputs = cf_path.get("requires_inputs") or []
+    token_input = next(
+        (i for i in inputs if i.get("field") == "cloudflare_tunnel_token"),
+        None,
+    )
+    assert token_input is not None, (
+        f"cloudflare_tunnel path requires an input with field="
+        f"'cloudflare_tunnel_token'; got inputs={inputs}"
+    )
+    assert token_input.get("secret") is True, (
+        f"cloudflare_tunnel_token MUST carry secret=true (sensitive "
+        f"credential); got secret={token_input.get('secret')!r}"
+    )
+
+
+def test_cloudflare_path_does_not_require_reboot(manifest: dict) -> None:
+    """The Cloudflare Tunnel path does NOT require a reboot — the
+    `cloudflared` daemon is a network-layer process that doesn't
+    touch the HA server's kernel or systemd units. The wizard UI
+    relies on this so the operator can flip a path and have it
+    live immediately without rebooting the HA server."""
+    setup_paths = (
+        (manifest.get("wizard") or {}).get("setup_paths") or []
+    )
+    cf_path = next(
+        (p for p in setup_paths if p.get("id") == "cloudflare_tunnel"),
+        None,
+    )
+    assert cf_path is not None, (
+        "cloudflare_tunnel path missing; "
+        "test_cloudflare_path_in_setup_paths should have caught this"
+    )
+    assert cf_path.get("requires_reboot") is False, (
+        f"cloudflare_tunnel path MUST NOT require a reboot "
+        f"(cloudflared is a network-layer daemon; reboot would "
+        f"break the wizard's live-within-seconds promise); "
+        f"got requires_reboot={cf_path.get('requires_reboot')!r}"
+    )
+
+
+def test_cloudflare_path_idempotency() -> None:
+    """The Path B Python helpers (`apply_cloudflare_setup_path`) are
+    idempotent — re-running with the same params returns
+    `{"state": "already_configured"}` instead of re-registering
+    the tunnel."""
+    mod = _reset_cloudflare_module_cache()
+
+    import sys
+    import types
+
+    fake_cloudflare = types.ModuleType("cloudflare")
+    call_count = {"n": 0}
+
+    def _fake_setup(**kwargs):
+        call_count["n"] += 1
+        return {"ok": True, "kwargs": kwargs}
+
+    fake_cloudflare.setup = _fake_setup
+    sys.modules["cloudflare"] = fake_cloudflare
+    try:
+        token = "CF" + "a" * 60 + "=="
+        hostname = "my-van.example.com"
+
+        first = mod.apply_cloudflare_setup_path(
+            hass=None,
+            tunnel_token=token,
+            hostname=hostname,
+        )
+        assert first["state"] == "configured", (
+            f"first call must return state='configured'; got {first}"
+        )
+        assert call_count["n"] == 1, (
+            f"upstream setup service must be called exactly once on "
+            f"first apply; got {call_count['n']} calls"
+        )
+
+        second = mod.apply_cloudflare_setup_path(
+            hass=None,
+            tunnel_token=token,
+            hostname=hostname,
+        )
+        assert second["state"] == "already_configured", (
+            f"second call with same params MUST return "
+            f"state='already_configured' (idempotency doctrine); "
+            f"got {second}"
+        )
+        assert call_count["n"] == 1, (
+            f"upstream setup service must NOT be re-called on the "
+            f"idempotent re-run; got {call_count['n']} calls "
+            f"(re-running must NOT re-register the tunnel)"
+        )
+        assert second["hostname"] == hostname, (
+            f"hostname must be normalized to lowercase in the "
+            f"idempotent response; got {second['hostname']!r}"
+        )
+    finally:
+        del sys.modules["cloudflare"]
+
+
+def test_cloudflare_path_retry_with_backoff() -> None:
+    """The Path B Python helpers retry transient failures 3× with
+    backoff before surfacing the plain-English error."""
+    mod = _reset_cloudflare_module_cache()
+
+    import sys
+    import types
+
+    fake_cloudflare = types.ModuleType("cloudflare")
+    call_count = {"n": 0}
+
+    class _TransientError(RuntimeError):
+        """Simulates a transient network blip (the kind a flaky
+        Starlink connection would cause)."""
+
+    def _flaky_setup(**kwargs):
+        call_count["n"] += 1
+        if call_count["n"] < 3:
+            raise _TransientError(f"blip {call_count['n']}")
+        return {"ok": True, "kwargs": kwargs}
+
+    fake_cloudflare.setup = _flaky_setup
+    sys.modules["cloudflare"] = fake_cloudflare
+    try:
+        token = "CF" + "b" * 60 + "=="
+        hostname = "flaky.example.com"
+
+        result = mod.apply_cloudflare_setup_path(
+            hass=None,
+            tunnel_token=token,
+            hostname=hostname,
+            retries=3,
+        )
+        assert call_count["n"] == 3, (
+            f"upstream setup service must be retried up to 3 times "
+            f"on transient failure; got {call_count['n']} calls"
+        )
+        assert result["state"] == "configured", (
+            f"after 2 transient failures + 1 success, the result "
+            f"must be state='configured'; got {result}"
+        )
+
+        # Final-failure path.
+        _reset_cloudflare_module_cache()
+        call_count["n"] = 0
+
+        def _always_fails(**kwargs):
+            call_count["n"] += 1
+            raise _TransientError(f"blip {call_count['n']}")
+
+        fake_cloudflare.setup = _always_fails
+        sys.modules["cloudflare"] = fake_cloudflare
+
+        token2 = "CF" + "c" * 60 + "=="
+        try:
+            mod.apply_cloudflare_setup_path(
+                hass=None,
+                tunnel_token=token2,
+                hostname="broken.example.com",
+                retries=3,
+            )
+        except mod.RoamCoreRemoteAccessSetupError as exc:
+            assert exc.slug == "cloudflare_unreachable", (
+                f"final-failure slug must be 'cloudflare_unreachable' "
+                f"so the wizard UI can map it to a plain-English "
+                f"error; got {exc.slug!r}"
+            )
+            assert call_count["n"] == 3, (
+                f"final-failure path must call upstream 3 times "
+                f"before surfacing the plain-English error; got "
+                f"{call_count['n']} calls"
+            )
+        else:
+            raise AssertionError(
+                "apply_cloudflare_setup_path must raise "
+                "RoamCoreRemoteAccessSetupError on final-failure; "
+                "got a silent success"
+            )
+        # Token-rejected path.
+        _reset_cloudflare_module_cache()
+        call_count["n"] = 0
+        try:
+            mod.apply_cloudflare_setup_path(
+                hass=None,
+                tunnel_token="x" * 5,  # too short
+                hostname="short.example.com",
+            )
+        except mod.RoamCoreRemoteAccessSetupError as exc:
+            assert exc.slug == "cloudflare_rejected_token", (
+                f"token-rejected slug must be "
+                f"'cloudflare_rejected_token' so the wizard UI can "
+                f"map it to 'Cloudflare rejected the tunnel token — "
+                f"copy it again from your Cloudflare dashboard'; "
+                f"got {exc.slug!r}"
+            )
+            assert call_count["n"] == 0, (
+                f"token-rejected path MUST NOT call the upstream "
+                f"service (cheap local-format check first); got "
+                f"{call_count['n']} calls"
+            )
+        else:
+            raise AssertionError(
+                "apply_cloudflare_setup_path must raise "
+                "RoamCoreRemoteAccessSetupError on invalid token"
+            )
+    finally:
+        sys.modules.pop("cloudflare", None)
+
+
+def test_describe_cloudflare_setup_path() -> None:
+    """`describe_cloudflare_setup_path()` returns the YAML-shaped
+    dict the wizard renders as the Cloudflare Tunnel radio option."""
+    mod = _reset_cloudflare_module_cache()
+
+    desc = mod.describe_cloudflare_setup_path()
+    assert desc["id"] == "cloudflare_tunnel"
+    assert desc["slug"] == "cloudflare_tunnel"
+    assert desc["connection_kind"] == "outbound_tunnel_to_relay"
+    assert desc["tier"] == "b"
+    assert desc["requires_reboot"] is False
+    assert desc["estimated_time_minutes"] == 12
+    inputs = {i["field"]: i for i in desc["requires_inputs"]}
+    assert "cloudflare_tunnel_token" in inputs, (
+        f"describe_cloudflare_setup_path must include the tunnel "
+        f"token input; got {list(inputs.keys())}"
+    )
+    assert inputs["cloudflare_tunnel_token"]["secret"] is True
+    assert "cloudflare_hostname" in inputs
+    assert inputs["cloudflare_hostname"]["secret"] is False
+    side_effects = " ".join(desc["side_effects"])
+    for marker in (
+        "idempotent_already_configured_state_on_repeat",
+        "calls_upstream_cloudflared_setup_service_with_retries",
+        "todo_mdns_fallback_on_unreachable_deferred_to_wave9_122d",
+    ):
+        assert marker in side_effects, (
+            f"describe_cloudflare_setup_path side_effects MUST "
+            f"include {marker!r}; got {side_effects}"
+        )
+
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
