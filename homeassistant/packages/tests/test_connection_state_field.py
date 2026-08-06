@@ -127,20 +127,22 @@ def manifests_by_id(manifest_paths: list[Path]) -> dict[str, dict]:
 
 
 def test_manifest_count_is_thirty_three(manifest_count: int) -> None:
-    """The connection surface is 33 manifests.
+    """The connection surface is 34 manifests.
 
-    Locked at 33 because (a) the directive §"App-store-style catalog
-    UI" explicitly lists the 32 surface tiles, and (b) the catalog
+    Locked at 34 because (a) the directive §"App-store-style catalog
+    UI" explicitly lists the 32 surface tiles, (b) the catalog
     index page (`docs/catalog/index.md`) renders one entry per
-    connection. Wave 9 #123.a adds `connections/hub-backup/` as the
-    33rd manifest. If a future slice adds a new connection, update
-    this count AND the catalog index AND the inventory build in
-    lockstep.
+    connection, and (c) Wave 9 #123.a adds `connections/hub-backup/`
+    as the 33rd manifest + Wave 9 #123.c.ii adds
+    `connections/security-review/` as the 34th manifest. If a future
+    slice adds a new connection, update this count AND the catalog
+    index AND the inventory build in lockstep.
     """
-    assert manifest_count == 33, (
-        f"expected exactly 33 connection manifests (per the directive "
+    assert manifest_count == 34, (
+        f"expected exactly 34 connection manifests (per the directive "
         f"§'App-store-style catalog UI' surface tile list + the "
-        f"catalog index page + Wave 9 #123.a hub-backup); got "
+        f"catalog index page + Wave 9 #123.a hub-backup + Wave 9 "
+        f"#123.c.ii security-review); got "
         f"{manifest_count}. The slice's primary value is uniform "
         f"data, not bespoke configuration — adding a connection is a "
         f"deliberate action."

@@ -188,3 +188,51 @@ test_restore:
       required: false
       selector:
         text: {}
+
+rotate_api_token:
+  name: Rotate access code
+  description: >-
+    Rotate the access code that OpenClaw agents use to ask your Hub
+    questions. RoamCore writes a backup before the new code is saved,
+    so you can always undo the change from the audit log. The
+    rotation runs automatically every 90 days; tap "Rotate access
+    code" on the Security Review tile to do it on demand. The new
+    code is shown on the tile as plain English.
+  fields:
+    reason:
+      name: Why are you rotating?
+      description: A short note that goes into the audit log (e.g. "manual", "scheduled_90_day", "lockout_recovery"). Most operators leave this blank.
+      required: false
+      default: "manual"
+      example: "manual"
+      selector:
+        text: {}
+    force:
+      name: Force-rotate even if a recent rotation is in the backup file
+      description: By default, RoamCore appends to the backup file. Turn this on to overwrite the backup file with the new state.
+      required: false
+      default: false
+      selector:
+        boolean: {}
+
+audit_ssh:
+  name: Audit SSH settings
+  description: >-
+    Check the SSH settings on the Hub and surface a plain-English
+    warning for each risky setting (for example, "Your SSH allows
+    password login — switch to keys" or "Your SSH allows root
+    login"). Read-only — RoamCore does not change the SSH config
+    itself. RoamCore runs this every night at 02:30; tap "Audit SSH
+    now" on the Security Review tile to run it on demand.
+  fields: {}
+
+audit_firewall:
+  name: Audit firewall rules
+  description: >-
+    Check the firewall rules on the Hub and surface a plain-English
+    warning for each risky rule (for example, "Port 22 (SSH) is open
+    to the whole internet — restrict to your IP range"). Read-only —
+    RoamCore does not change the firewall itself. RoamCore runs
+    this every night at 02:45; tap "Audit firewall now" on the
+    Security Review tile to run it on demand.
+  fields: {}

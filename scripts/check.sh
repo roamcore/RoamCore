@@ -142,6 +142,12 @@ run_if_present "homeassistant/packages/tests/test_hub_backup.py" \
   "Hub Backup (Phase 7 — Wave 9 #123.a) — nightly + restore-tested migration: 22 pytest contract tests"
 run_if_present "scripts/checks/hub-backup-smoke.sh" \
   "Hub Backup (Phase 7 — Wave 9 #123.a) — nightly + restore-tested migration: 10 bash smoke assertions"
+run_if_present "connections/security-review/tests/test_connection_yml.py" \
+  "Connection: Security Review (tier-a) — proactive plain-English audit of SSH + firewall + access codes: manifest honesty smoke check"
+run_if_present "homeassistant/packages/tests/test_security_review.py" \
+  "Security Review (Phase 7 — Wave 9 #123.c.ii) — proactive plain-English audit: ~20 pytest contract tests"
+run_if_present "scripts/checks/security-review-smoke.sh" \
+  "Security Review (Phase 7 — Wave 9 #123.c.ii) — proactive plain-English audit: ~10 bash smoke assertions"
 run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py" \
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 run_if_present "scripts/checks/connection-state-smoke.sh" \

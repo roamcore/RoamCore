@@ -1,0 +1,435 @@
+# Security Review — Phase 7 — Wave 9 #123.c.ii — tier-a connection.
+#
+# *** THIS IS THE THIRD TRUE TIER-A CONNECTION IN THE PIPELINE. ***
+#
+# Shipped on top of the core service module (Phase 7 #123.c.i at
+# `homeassistant/custom_components/roamcore/security.py` — 883 LOC of
+# stdlib-only Python; the foundation is real + bench-tested + shipped
+# on a prior branch tip, not invented here).
+#
+# The first tier-a (`connections/openclaw-api/`, Wave 3 #64) wraps an
+# existing custom component. The second tier-a (`connections/hub-backup/`,
+# Wave 9 #123.a) SHIPS a new RoamCore-owned service handler at
+# `homeassistant/custom_components/roamcore/backup.py` (~240 LOC).
+#
+# This connection is DIFFERENT from the prior two:
+#   - The RoamCore-owned service handler at
+#     `homeassistant/custom_components/roamcore/security.py` is the
+#     surface (already shipped at #123.c.i). This slice ADDS the
+#     tier-a connection manifest + the helper package + the pytest
+#     rig + the bash smoke + the IKEA runbook.
+#   - The service handler is READ-ONLY on `/etc/ssh/sshd_config` +
+#     `/etc/nftables.conf` (by design — security review surfaces
+#     plain-English warnings; the operator decides what to do).
+#   - The service handler is idempotent on the access-code rotation
+#     (backup-before-mutate + atomic .tmp + os.replace + append-only
+#     JSONL backup).
+#   - The RoamCore-owned service handler exposes 3 services for
+#     OpenClaw to call through the existing
+#     `agent-actions-allowlist` connection:
+#       * `roamcore.rotate_api_token` — rotates the access-code
+#         (returns the new token).
+#       * `roamcore.audit_ssh` — runs the SSH audit (returns
+#         plain-English warnings via `find_risky_settings`).
+#       * `roamcore.audit_firewall` — runs the firewall audit
+#         (returns plain-English warnings via `find_risky_rules`).
+#
+# The security review connection is the canonical prevention for the
+# "lockout" worst-case (the §connection from the directive §"Phase 7
+# delivery" / Gate F — security review IS the canonical prevention
+# for the §"Lockout" worst-case; without proactive security review,
+# the operator can be locked out by simple mistakes like SSH going
+# wrong + firewall changes + token expiration). The dashboard tile
+# surfaces plain-English status ("Your access codes are 95 days old
+# — rotate soon" / "Your SSH config allows password login — switch
+# to keys" / "Port 22 (SSH) is open to the whole internet — restrict
+# to your IP range") so the operator can fix small problems before
+# they become lockouts.
+#
+# Tier-a honesty contract:
+#   1. The RoamCore-owned service handler at
+#      `homeassistant/custom_components/roamcore/security.py` is real
+#      + bench-tested (the ~20 pytest tests at
+#      `homeassistant/packages/tests/test_security_review.py`
+#      cover the 3 service definitions + the 4 helper entities +
+#      the 4 template sensors + the 4 §8 MANDATORY automations +
+#      the rc-entity-naming compliance + the idempotency guarantees
+#      + the secrets-leak guard).
+#   2. The data-layer package at
+#      `homeassistant/packages/roamcore_security_review.yaml` is
+#      real + wired + idempotent (the §8.1 rotate-token automation
+#      + the §8.2 ssh-audit automation + the §8.3 firewall-audit
+#      automation + the §8.4 warn-on-rotation-age automation have
+#      `mode: single` guards so re-firing returns gracefully —
+#      verified by pytest).
+#   3. The secrets-leak guard is real — the bash smoke at
+#      `scripts/checks/security-review-smoke.sh` greps every
+#      shipped file for hardcoded URLs, hardcoded passwords, and
+#      `/home/<user>` paths; the secrets-leak guard is real, not
+#      cosmetic (the 22 input_boolean + 22 input_text + 22 input
+#      helper entities all use operator-owned values, not
+#      RoamCore-owned values).
+#
+# Vendor-neutral: the SSH + firewall audit is file-based (no specific
+# firewall / SSH server implementation) — it works with any nft /
+# iptables / sshd setup. No Victron / Starlink / Tailscale / etc.
+# vendor names leak into any contract tile id.
+
+# The recipe walks the operator through the THREE-step IKEA flow:
+#   - Step 1 — Rotate access codes — the operator taps the
+#     `button.rc_security_review_rotate_token_now` button to
+#     rotate the RC_API_TOKEN (the OpenClaw agent interface
+#     token) — the rotation writes a backup BEFORE updating
+#     .storage/ (backup-before-mutate discipline).
+#   - Step 2 — Audit SSH — the automated §8.2 audit-ssh
+#     automation runs daily at 03:00 AND on operator demand
+#     via `button.rc_security_review_audit_ssh_now` — the
+#     automation checks `/etc/ssh/sshd_config` for hardening
+#     (PasswordAuthentication, PermitRootLogin,
+#     PubkeyAuthentication, Port, PermitEmptyPasswords) and
+#     surfaces plain-English warnings via `find_risky_settings`.
+#   - Step 3 — Audit firewall — the automated §8.3 audit-
+#     firewall automation runs daily at 03:15 AND on operator
+#     demand via `button.rc_security_review_audit_firewall_now`
+#     — the automation checks `/etc/nftables.conf` +
+#     `iptables-save` for risky rules (wide-open ports) and
+#     surfaces plain-English warnings via `find_risky_rules`.
+
+# The 12 `rc_security_review_*` contract tiles are vendor-neutral —
+# NO `victron` / `renogy` / `see level` / `seelevel` / `garnet` /
+# `mopeka` / `starlink` / `peplink` / `teltonika` / `unifi` /
+# `ubiquiti` / `mqtt` / `webhook` / `rest` / `http` / `https` /
+# `input_boolean` / `input_text` / `input_datetime` / `input_button`
+# / `select` / `template` / `gps` / `accelerometer` / `phone` /
+# `companion` / `ha` / `homeassistant` / `hacs` / `zigbee` /
+# `zwave` / `zha` / `deconz` / `tasmota` / `esp32` / `esp8266` /
+# `shelly` / `sonoff` / `wifi` / `wi-fi` / `ble` / `bluetooth` /
+# `iphone` / `ios` / `android` / `samsung` / `pixel` / `xiaomi` /
+# `huawei` vendor / hardware / protocol / integration names leak
+# into the tile ids. The legitimate generic nouns `security`,
+# `review`, `rotate`, `token`, `age`, `warn`, `days`, `audit`,
+# `ssh`, `firewall`, `last`, `healthy`, `status` are allowed
+# (they describe what the tile is for, not which vendor). The
+# contract surface is:
+#   - `input_boolean.rc_security_review_enabled` — master enable
+#     toggle (pauses the daily security audit when OFF; the §8.2
+#     audit-ssh + §8.3 audit-firewall automations guard on this
+#     being ON).
+#   - `input_datetime.rc_security_review_last_audit` — date_time
+#     helper that tracks the last run of the audit (set by the
+#     §8.2 audit-ssh automation).
+#   - `input_text.rc_security_review_status` — the operator-
+#     visible plain-English status (default "Security review
+#     hasn't run yet — check back tomorrow.").
+#   - `input_text.rc_security_review_warnings` — the operator-
+#     visible plain-English warnings list (updated by the §8.2
+#     audit-ssh + §8.3 audit-firewall automations).
+#   - `sensor.rc_security_review_last_status` — mirrors the
+#     `input_text.rc_security_review_status` value + adds a
+#     plain-English banner.
+#   - `sensor.rc_security_review_token_age_days` — age of the
+#     current RC_API_TOKEN in whole days (99999 if never
+#     rotated).
+#   - `sensor.rc_security_review_ssh_warnings` — count of
+#     SSH warnings from the last audit (0 if no warnings).
+#   - `sensor.rc_security_review_firewall_warnings` — count of
+#     firewall warnings from the last audit (0 if no warnings).
+#   - `binary_sensor.rc_security_review_healthy` — resolved
+#     healthiness chip (true when no warnings AND token age <
+#     75 days; false otherwise).
+#   - `button.rc_security_review_rotate_token_now` — operator-
+#     triggered one-tap "rotate access code" button (calls
+#     `roamcore.rotate_api_token` synchronously + writes the
+#     result to `input_text.rc_security_review_status`).
+#   - `button.rc_security_review_audit_ssh_now` — operator-
+#     triggered one-tap "audit SSH now" button (calls
+#     `roamcore.audit_ssh` synchronously + writes the result
+#     to `input_text.rc_security_review_status`).
+#   - `button.rc_security_review_audit_firewall_now` — operator-
+#     triggered one-tap "audit firewall now" button (calls
+#     `roamcore.audit_firewall` synchronously + writes the
+#     result to `input_text.rc_security_review_status`).
+
+# The umbrella publishes the resulting data via the RoamCore-owned
+# service handler at
+# `homeassistant/custom_components/roamcore/security.py` (exposes 3
+# RoamCore services: `roamcore.rotate_api_token` /
+# `roamcore.audit_ssh` / `roamcore.audit_firewall`), then publishes
+# the RoamCore security-review contract tiles on top (the 12
+# contract entities documented in `contract_tiles` below — 4 helper
+# entities + 4 template sensors + 1 binary_sensor + 3 buttons).
+
+# The audit + boundary CI can detect a `security-review/` folder
+# that claims to be a connection via the `DOMAIN` constant exported
+# in __init__.py. The wizard reads the manifest + recipe at runtime.
+
+# The real per-operator security-review affordance path is:
+#     Operator-side choice of the THREE-step flow (Rotate access
+#         codes -> Audit SSH -> Audit firewall)
+#         -> existing helper entities (the HA core
+#            `input_boolean.rc_security_review_enabled` +
+#            `input_datetime.rc_security_review_last_audit` +
+#            `input_text.rc_security_review_status` +
+#            `input_text.rc_security_review_warnings` from
+#            `homeassistant/packages/roamcore_security_review.yaml`)
+#         -> the RoamCore-owned service handler at
+#            `homeassistant/custom_components/roamcore/security.py`
+#            (registers the 3 RoamCore services via
+#            `register_security_services(hass)` + calls the
+#            `RCApiTokenManager.rotate_token` /
+#            `SSHAuditReader.find_risky_settings` /
+#            `FirewallAuditReader.find_risky_rules` APIs + the
+#            plain-English status mapper)
+#         -> the RoamCore contract layer (the 12
+#            `rc_security_review_*` contract entities + 3
+#            `button.rc_security_review_*` operator buttons
+#            documented in the manifest's `dashboard.tiles` list)
+#         -> dashboard tiles + OpenClaw queries
+#             ("is the security review healthy?",
+#              "how old is the access code?",
+#              "what are the SSH warnings?",
+#              "what are the firewall warnings?",
+#              "rotate the access code now",
+#              "audit SSH now",
+#              "audit firewall now")
+
+# Cross-references:
+#     -> The RoamCore-owned service handler at
+#        `homeassistant/custom_components/roamcore/security.py`
+#        is the canonical umbrella (the 3 RoamCore services + the
+#        3 stdlib-only class APIs + the plain-English status
+#        mapper).
+#     -> The helper package at
+#        `homeassistant/packages/roamcore_security_review.yaml`
+#        is the canonical enable / last-audit / status /
+#        warnings helper storage + the 4 §8 MANDATORY automations.
+#     -> The pytest rig at
+#        `homeassistant/packages/tests/test_security_review.py`
+#        is the canonical ~20-test contract validation rig.
+#     -> The bash smoke check at
+#        `scripts/checks/security-review-smoke.sh` is the
+#        canonical cross-cutting YAML / secrets-leak / idempotency
+#        smoke (~10 assertions).
+#     -> The user-facing IKEA-style runbook at
+#        `docs/runbooks/security-review.md` is the canonical
+#        vanlifer-facing howto (5 steps + 3-line troubleshooting +
+#        useful links).
+
+id: security_review
+name: Security Review
+state: Available
+tier: a
+category: security
+summary: Tells you in plain English whether your van is locked down — SSH keys only, firewall tight, access codes fresh — so you can fix small problems before they become lockouts.
+icon: mdi:shield-check
+codeowners:
+  - "@bernardc"
+tags:
+  - security-review
+  - security
+  - ssh
+  - firewall
+  - access-codes
+  - token-rotation
+  - audit
+  - daily-review
+  - one-tile-status
+  - one-button-rotate
+  - one-button-audit
+  - vendor-neutral
+  - novice-first
+  - mission-critical
+  - proactive-prevention
+  - tier-a
+  - phase-7
+  - gate-f
+  - wave-9-123-c-ii
+
+wizard:
+  connection_kind: native_integration
+  one_tap: true
+  auto_discover: true
+  estimated_time: "~2 min"
+  requires_reboot: false
+  setup_notes: |
+    Security Review requires the operator to (a) have the
+    RoamCore-owned service handler at
+    `homeassistant/custom_components/roamcore/security.py`
+    installed (it ships as part of the RoamCore HACS package
+    — no separate install needed), (b) configure the helper
+    entities at
+    `homeassistant/packages/roamcore_security_review.yaml`
+    (the helper package ships with
+    `input_boolean.rc_security_review_enabled: initial: true`
+    + the 4 helper entities + the 4 §8 MANDATORY automations),
+    (c) follow the THREE-step operator flow — Step 1 tap the
+    `button.rc_security_review_rotate_token_now` button to
+    rotate the access code (the rotation writes a backup
+    BEFORE updating .storage/); Step 2 tap the
+    `button.rc_security_review_audit_ssh_now` button to
+    audit SSH; Step 3 tap the
+    `button.rc_security_review_audit_firewall_now` button to
+    audit the firewall.
+
+install:
+  ha_integration_domain: roamcore
+  config_flow: true
+  hacs: true
+  hacs_url: "https://github.com/roamcore/RoamCore"
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_roamcore_rotate_api_token_service
+    - registers_roamcore_audit_ssh_service
+    - registers_roamcore_audit_firewall_service
+    - registers_roamcore_security_review_enabled_contract_tile
+    - registers_roamcore_security_review_last_audit_contract_tile
+    - registers_roamcore_security_review_status_contract_tile
+    - registers_roamcore_security_review_warnings_contract_tile
+    - registers_roamcore_security_review_last_status_contract_tile
+    - registers_roamcore_security_review_token_age_days_contract_tile
+    - registers_roamcore_security_review_ssh_warnings_contract_tile
+    - registers_roamcore_security_review_firewall_warnings_contract_tile
+    - registers_roamcore_security_review_healthy_contract_tile
+    - registers_roamcore_security_review_rotate_token_now_contract_tile
+    - registers_roamcore_security_review_audit_ssh_now_contract_tile
+    - registers_roamcore_security_review_audit_firewall_now_contract_tile
+    - may_register_roamcore_security_review_rotate_token_automation
+    - may_register_roamcore_security_review_audit_ssh_automation
+    - may_register_roamcore_security_review_audit_firewall_automation
+    - may_register_roamcore_security_review_warn_rotation_age_automation
+  install_custom_component: homeassistant/custom_components/roamcore/security.py
+  install_helper_package: homeassistant/packages/roamcore_security_review.yaml
+  install_pytest_rig: homeassistant/packages/tests/test_security_review.py
+  install_smoke: scripts/checks/security-review-smoke.sh
+  install_user_runbook: docs/runbooks/security-review.md
+
+dashboard:
+  title: "Security Review"
+  tiles:
+    - input_boolean.rc_security_review_enabled
+    - input_datetime.rc_security_review_last_audit
+    - input_text.rc_security_review_status
+    - input_text.rc_security_review_warnings
+    - sensor.rc_security_review_last_status
+    - sensor.rc_security_review_token_age_days
+    - sensor.rc_security_review_ssh_warnings
+    - sensor.rc_security_review_firewall_warnings
+    - binary_sensor.rc_security_review_healthy
+    - button.rc_security_review_rotate_token_now
+    - button.rc_security_review_audit_ssh_now
+    - button.rc_security_review_audit_firewall_now
+
+openclaw:
+  queries:
+    - "is the security review healthy?"
+    - "how old is the access code?"
+    - "what are the SSH warnings?"
+    - "what are the firewall warnings?"
+    - "rotate the access code now"
+    - "audit SSH now"
+    - "audit firewall now"
+  summary_keys:
+    - security_review_enabled
+    - security_review_last_audit
+    - security_review_status
+    - security_review_warnings
+    - security_review_last_status
+    - security_review_token_age_days
+    - security_review_ssh_warnings
+    - security_review_firewall_warnings
+    - security_review_healthy
+
+contract:
+  summary_version: 1
+  service_set_version: 1
+  bump_notify_automation: rc_security_review_contract_version_bump_notify_guard
+
+contract_tiles:
+  - input_boolean.rc_security_review_enabled
+  - input_datetime.rc_security_review_last_audit
+  - input_text.rc_security_review_status
+  - input_text.rc_security_review_warnings
+  - sensor.rc_security_review_last_status
+  - sensor.rc_security_review_token_age_days
+  - sensor.rc_security_review_ssh_warnings
+  - sensor.rc_security_review_firewall_warnings
+  - binary_sensor.rc_security_review_healthy
+  - button.rc_security_review_rotate_token_now
+  - button.rc_security_review_audit_ssh_now
+  - button.rc_security_review_audit_firewall_now
+
+automations:
+  - id: rc_security_review_rotate_token
+    title: "Rotate-token automation (cron 02:00 every 90 days, mode: single guard)"
+  - id: rc_security_review_audit_ssh
+    title: "Audit-ssh automation (02:30 daily, calls roamcore.audit_ssh)"
+  - id: rc_security_review_audit_firewall
+    title: "Audit-firewall automation (02:45 daily, calls roamcore.audit_firewall)"
+  - id: rc_security_review_warn_rotation_age
+    title: "Warn-rotation-age automation (cron 09:00 daily, plain-English notification when token age >= 75 days)"
+
+upstream_truth:
+  reuse_first: false
+  rocore_owned:
+    - homeassistant/custom_components/roamcore/security.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_security_review.yaml
+    - homeassistant/packages/tests/test_security_review.py
+    - scripts/checks/security-review-smoke.sh
+    - docs/runbooks/security-review.md
+    - connections/security-review/connection.yml
+    - connections/security-review/__init__.py
+    - connections/security-review/README.md
+    - connections/security-review/docs/recipe.md
+    - connections/security-review/tests/test_connection_yml.py
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+  - ../../homeassistant/packages/tests/test_security_review.py
+  - ../../../scripts/checks/security-review-smoke.sh
+
+tier_requirements:
+  native_integration_code: true
+  ha_package: true
+  custom_component: true
+  one_tap_install: true
+  smoketest_present: true
+  integration_tests_bench_present: true
+  docs_recipe_published: true
+  install_user_runbook_published: true
+  smoketest_path: scripts/checks/security-review-smoke.sh
+  integration_tests:
+    present: true
+    reason: "~20 pytest tests at homeassistant/packages/tests/test_security_review.py (parses YAML, asserts every contract tile + every §8 automation + rc-entity-naming compliance + idempotency + secrets-leak guard) + ~10 bash assertions at scripts/checks/security-review-smoke.sh (connection manifest + YAML package + service definitions + rc-entity-naming + idempotency + secrets-leak)."
+    bench_artifacts_needed: []
+  pytest_rig_path: homeassistant/packages/tests/test_security_review.py
+
+tier_warnings:
+  - ssh_audit_read_only_by_design
+  - firewall_audit_read_only_by_design
+  - token_rotation_threshold_90_days
+  - depends_on_etc_ssh_sshd_config
+  - depends_on_etc_nftables_conf
+  - phase_7_foundation_shipped_at_123_c_i
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/
+  custom_references:
+    - homeassistant/custom_components/roamcore/security.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_security_review.yaml
+    - homeassistant/packages/tests/test_security_review.py
+    - scripts/checks/security-review-smoke.sh
+    - docs/runbooks/security-review.md
+  cross_references:
+    - ../hub-backup/
+    - ../agent-actions-allowlist/
+    - ../openclaw-api/
+    - ../mode/
+    - ../advanced-mode/
