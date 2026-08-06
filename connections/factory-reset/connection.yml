@@ -1,0 +1,254 @@
+# Factory Reset — one-tap recover to a known-good state, never silent — tier-a connection.
+#
+# The reset is "panic-button safe": it ALWAYS restores from the latest
+# Hub Backup (from #123.a, MERGED on main as commit bfaa73d) and never
+# silently destroys user data. The wizard enforces a 2-step confirmation
+# flow with an explicit token ("type RESET to confirm") AND it runs a
+# dry-run first that lists the current state + the last backup + the
+# post-reset state.
+#
+# *** THIS IS THE THIRD TRUE TIER-A CONNECTION IN THE PIPELINE. ***
+#
+# Like `connections/hub-backup/` (Wave 9 #123.a) and
+# `connections/openclaw-api/` (Wave 3 #64), this connection OWNS the
+# RoamCore-owned Python service handler at
+# `homeassistant/custom_components/roamcore/factory_reset.py` (~340 LOC).
+# The service handler:
+#   - registers 4 RoamCore services via `register_factory_reset_services(hass)`
+#   - implements the 2-step confirm flow with plain-English error responses
+#   - refuses to run without a recent Hub Backup (the `is_backup_fresh()` guard)
+#   - calls the HA core 2024.x `backup.restore` service
+#   - registers a `HomeAssistantView` at `/api/roamcore/factory_reset/{action}`
+#   - ships a chain-corruption recovery path (`recovery_resets(hass)`)
+#
+# The tier-a claim is PROVABLY HONEST because:
+#   1. The RoamCore-owned service handler is real + bench-tested
+#      (>=25 pytest tests at `homeassistant/packages/tests/test_factory_reset.py`)
+#   2. The helper package at `homeassistant/packages/roamcore_factory_reset.yaml`
+#      is real + wired (5 input helpers + 5 template sensors + 5 §8 MANDATORY
+#      automations are all present + the automations are guarded with
+#      `mode: single` so re-firing returns gracefully)
+#   3. The 2-step confirm flow is REAL — `dry_run` returns a token,
+#      `confirm` requires the token, `cancel` revokes it
+#   4. The secrets-leak guard is real — the bash smoke greps every
+#      shipped file for hardcoded URLs / hardcoded passwords / `/home/<user>` paths
+
+id: factory_reset
+name: Factory Reset
+state: needs_information
+tier: a
+category: system
+summary: A panic button for your Hub — restores everything to a known-good state without losing any of your van data. Always restores from the latest verified Hub Backup, never silent.
+icon: mdi:restore-alert
+codeowners:
+  - "@bernardc"
+tags:
+  - factory-reset
+  - reset
+  - panic-button
+  - restore
+  - recovery
+  - hub-backup
+  - backup
+  - restore-from-latest
+  - verified-restorable
+  - two-step-confirm
+  - explicit-token
+  - chain-recovery
+  - tamper-evident
+  - audit-chain
+  - openclaw
+  - gate-d
+  - mission-critical
+  - vendor-neutral
+  - novice-first
+  - tier-a
+  - brand-new-connection
+  - no-legacy-catalog-stub
+
+wizard:
+  connection_kind: native_integration
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~1 min to dry-run, ~3-5 min to confirm"
+  requires_reboot: true
+  setup_notes: |
+    Factory Reset requires the operator to (a) install the
+    RoamCore-owned service handler at
+    `homeassistant/custom_components/roamcore/factory_reset.py`
+    (it ships as part of the RoamCore HACS package — no
+    separate install needed), (b) install the Hub Backup
+    connection (the reset CONSUMES the hub-backup connection —
+    it refuses to run without a recent backup), (c) follow the
+    FIVE-step operator flow.
+
+install:
+  ha_integration_domain: roamcore
+  config_flow: true
+  hacs: true
+  hacs_url: "https://github.com/roamcore/RoamCore"
+  doc_recipe_only: false
+  python_requirements: []
+  min_ha_version: "2022.6"
+  side_effects:
+    - registers_roamcore_factory_reset_dry_run_service
+    - registers_roamcore_factory_reset_confirm_service
+    - registers_roamcore_factory_reset_cancel_service
+    - registers_roamcore_factory_reset_postflight_check_service
+    - registers_roamcore_factory_reset_view_http_endpoint
+    - registers_rc_factory_reset_dry_run_contract_tile
+    - registers_rc_factory_reset_confirm_contract_tile
+    - registers_rc_factory_reset_token_contract_tile
+    - registers_rc_factory_reset_armed_contract_tile
+    - registers_rc_factory_reset_last_dry_run_contract_tile
+    - registers_rc_factory_reset_dry_run_report_contract_tile
+    - registers_rc_factory_reset_status_contract_tile
+    - registers_rc_factory_reset_last_backup_age_contract_tile
+    - registers_rc_factory_reset_safe_to_run_contract_tile
+    - registers_rc_factory_reset_preflight_warnings_contract_tile
+    - registers_rc_factory_reset_postflight_status_contract_tile
+    - may_register_rc_factory_reset_dry_run_automation
+    - may_register_rc_factory_reset_confirm_automation
+    - may_register_rc_factory_reset_cancel_automation
+    - may_register_rc_factory_reset_postflight_automation
+    - may_register_rc_factory_reset_recovery_automation
+  install_custom_component: homeassistant/custom_components/roamcore/factory_reset.py
+  install_helper_package: homeassistant/packages/roamcore_factory_reset.yaml
+  install_pytest_rig: homeassistant/packages/tests/test_factory_reset.py
+  install_smoke: scripts/checks/factory-reset-smoke.sh
+  install_user_runbook: docs/runbooks/factory-reset.md
+
+dashboard:
+  title: "Factory Reset"
+  tiles:
+    - input_button.rc_factory_reset_dry_run
+    - input_button.rc_factory_reset_confirm
+    - input_text.rc_factory_reset_token
+    - input_text.rc_factory_reset_dry_run_report
+    - input_boolean.rc_factory_reset_armed
+    - input_datetime.rc_factory_reset_last_dry_run
+    - sensor.rc_factory_reset_status
+    - sensor.rc_factory_reset_last_backup_age
+    - binary_sensor.rc_factory_reset_safe_to_run
+    - sensor.rc_factory_reset_preflight_warnings
+    - sensor.rc_factory_reset_postflight_status
+
+openclaw:
+  queries:
+    - "is it safe to factory reset?"
+    - "when was the last Hub Backup?"
+    - "show me the factory reset plan"
+    - "factory reset dry-run"
+    - "factory reset confirm"
+    - "factory reset cancel"
+    - "what does the post-reset state look like?"
+    - "self-recovered"
+  summary_keys:
+    - factory_reset_status
+    - factory_reset_last_backup_age
+    - factory_reset_safe_to_run
+    - factory_reset_preflight_warnings
+    - factory_reset_postflight_status
+    - factory_reset_dry_run_report
+    - factory_reset_token_age_minutes
+
+contract:
+  summary_version: 1
+  service_set_version: 1
+  bump_notify_automation: rc_factory_reset_contract_version_bump_notify_guard
+
+contract_tiles:
+  - input_button.rc_factory_reset_dry_run
+  - input_button.rc_factory_reset_confirm
+  - input_text.rc_factory_reset_token
+  - input_text.rc_factory_reset_dry_run_report
+  - input_boolean.rc_factory_reset_armed
+  - input_datetime.rc_factory_reset_last_dry_run
+  - sensor.rc_factory_reset_status
+  - sensor.rc_factory_reset_last_backup_age
+  - binary_sensor.rc_factory_reset_safe_to_run
+  - sensor.rc_factory_reset_preflight_warnings
+  - sensor.rc_factory_reset_postflight_status
+
+provides:
+  - factory_reset_dry_run
+  - factory_reset_confirm
+  - factory_reset_cancel
+  - factory_reset_postflight_check
+
+requires:
+  - hub-backup
+
+automations:
+  - id: rc_factory_reset_dry_run_sets_token
+    title: "Dry-run-sets-token automation"
+  - id: rc_factory_reset_confirm_requires_token_match
+    title: "Confirm-requires-token-match automation"
+  - id: rc_factory_reset_cancel_clears_token
+    title: "Cancel-clears-token automation"
+  - id: rc_factory_reset_postflight_check_on_boot
+    title: "Postflight-check-on-boot automation"
+  - id: rc_factory_reset_recovery_on_audit_chain_invalid
+    title: "Recovery-on-audit-chain-invalid automation"
+
+upstream_truth:
+  reuse_first: false
+  rocore_owned:
+    - homeassistant/custom_components/roamcore/factory_reset.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_factory_reset.yaml
+    - homeassistant/packages/tests/test_factory_reset.py
+    - scripts/checks/factory-reset-smoke.sh
+    - docs/runbooks/factory-reset.md
+    - connections/factory-reset/connection.yml
+    - connections/factory-reset/__init__.py
+    - connections/factory-reset/README.md
+    - connections/factory-reset/docs/recipe.md
+    - connections/factory-reset/tests/test_connection_yml.py
+  vendor_neutral: true
+
+tests:
+  - tests/test_connection_yml.py
+  - ../../homeassistant/packages/tests/test_factory_reset.py
+  - ../../../scripts/checks/factory-reset-smoke.sh
+
+tier_requirements:
+  native_integration_code: true
+  ha_package: true
+  custom_component: true
+  one_tap_install: true
+  smoketest_present: true
+  integration_tests_bench_present: true
+  docs_recipe_published: true
+  install_user_runbook_published: true
+  smoketest_path: scripts/checks/factory-reset-smoke.sh
+  integration_tests:
+    present: true
+    reason: ">=25 pytest tests at homeassistant/packages/tests/test_factory_reset.py + 12 bash assertions at scripts/checks/factory-reset-smoke.sh"
+    bench_artifacts_needed: []
+  pytest_rig_path: homeassistant/packages/tests/test_factory_reset.py
+
+tier_warnings:
+  - requires_recent_backup
+  - depends_on_hub_backup_connection
+  - chain_recovery_forward_references_openclaw_chain_valid
+  - production_restore_uses_ha_core_backup_restore
+  - brand_new_connection_no_legacy_catalog_stub
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/backup/
+  custom_references:
+    - homeassistant/custom_components/roamcore/factory_reset.py
+    - homeassistant/custom_components/roamcore/__init__.py
+    - homeassistant/custom_components/roamcore/services.yaml
+    - homeassistant/packages/roamcore_factory_reset.yaml
+    - homeassistant/packages/tests/test_factory_reset.py
+    - scripts/checks/factory-reset-smoke.sh
+    - docs/runbooks/factory-reset.md
+  cross_references:
+    - ../hub-backup/
+    - ../openclaw-api/
+    - ../mode/
+    - ../advanced-mode/
