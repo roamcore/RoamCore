@@ -46,7 +46,10 @@ input_select:
       - tailscale_verify
       - tailscale_done
       - cloudflare_stub
-      - nabu_casa_stub
+      - nabu_casa_have_subscription
+      - nabu_casa_paste_email
+      - nabu_casa_verify
+      - nabu_casa_done
       - wireguard_stub
       - recovery
       - done
@@ -61,6 +64,11 @@ input_text:
   rc_tailscale_tailnet_hostname:
     name: "RC Tailscale Tailnet Hostname (e.g. my-van.ts.net)"
     initial: ""
+
+  rc_nabu_casa_account_email:
+    name: "RC Nabu Casa Account Email (operator-entered, never logged)"
+    initial: ""
+    mode: password
 
 # ----------------------------------------------------------------------------
 # Templates — surface HA core `tailscale` integration state without coupling
@@ -104,6 +112,43 @@ template:
         state: >-
           {{ is_state('input_select.rc_remote_access_setup_stage','done') }}
 
+      # Path C — Nabu Casa HA Cloud detection (Wave 9 #122.c).
+      # Reuses the upstream HA Core `cloud` integration (since
+      # 2022.x) so RoamCore does NOT ship a native Nabu Casa
+      # bridge. The `sensor.home_assistant_cloud_remote` entity
+      # is populated by the HA Core `cloud` integration only when
+      # (a) the operator has logged in to Nabu Casa + (b) the
+      # operator has an active subscription + (c) the operator
+      # has enabled remote access. UNKNOWN when the integration
+      # is not installed yet — same fall-through as Path A's
+      # `tailscale_installed` binary_sensor.
+      - name: "RC Remote Access Setup: Nabu Casa Installed"
+        unique_id: rc_remote_access_setup_nabu_casa_installed
+        icon: mdi:cloud-cog
+        state: >-
+          {% set s = states('sensor.home_assistant_cloud_remote') %}
+          {{ s not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Remote Access Setup: Nabu Casa Active"
+        unique_id: rc_remote_access_setup_nabu_casa_active
+        icon: mdi:cloud-check
+        state: >-
+          {# TRUE iff the HA Core `cloud` integration is connected
+             AND the operator has enabled remote access via Nabu
+             Casa. UNKNOWN when the integration is not installed,
+             so the wizard can ask the operator to subscribe first. #}
+          {% set installed = states('binary_sensor.rc_remote_access_setup_nabu_casa_installed') %}
+          {% if installed in ['unknown','unavailable','none'] %}
+            unknown
+          {% else %}
+            {% set remote_url = states('sensor.home_assistant_cloud_remote') %}
+            {% if remote_url in ['unknown','unavailable','none',''] %}
+              off
+            {% else %}
+              on
+            {% endif %}
+          {% endif %}
+
   - sensor:
       - name: "RC Remote Access Setup: Status"
         unique_id: rc_remote_access_setup_status
@@ -117,9 +162,13 @@ template:
           {% set authed = is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') %}
           {% set key = states('input_text.rc_tailscale_auth_key') %}
           {% set hostname = states('input_text.rc_tailscale_tailnet_hostname') %}
+          {% set nc_installed = is_state('binary_sensor.rc_remote_access_setup_nabu_casa_installed','on') %}
+          {% set nc_email = states('input_text.rc_nabu_casa_account_email') %}
 
           {% if stage == 'welcome' and path == 'tailscale' %}
             Ready to help you set up Tailscale.
+          {% elif stage == 'welcome' and path == 'nabu_casa' %}
+            Ready to help you set up Nabu Casa HA Cloud.
           {% elif stage == 'welcome' %}
             Ready to help you set up remote access.
           {% elif stage == 'detect_existing' %}
@@ -140,8 +189,18 @@ template:
             Tailscale is set up. You're good to go.
           {% elif stage == 'cloudflare_stub' %}
             Cloudflare setup is coming soon — pick Tailscale for now.
-          {% elif stage == 'nabu_casa_stub' %}
-            Nabu Casa setup is coming soon — pick Tailscale for now.
+          {% elif stage == 'nabu_casa_have_subscription' %}
+            Do you already pay for Nabu Casa HA Cloud?
+          {% elif stage == 'nabu_casa_paste_email' and not nc_installed %}
+            Subscribe to Nabu Casa HA Cloud, then paste your account email.
+          {% elif stage == 'nabu_casa_paste_email' and nc_email | trim == '' %}
+            Paste your Nabu Casa account email below.
+          {% elif stage == 'nabu_casa_paste_email' %}
+            Testing your Nabu Casa connection...
+          {% elif stage == 'nabu_casa_verify' %}
+            Verifying your Nabu Casa connection.
+          {% elif stage == 'nabu_casa_done' %}
+            Nabu Casa is set up. You're good to go.
           {% elif stage == 'wireguard_stub' %}
             Wireguard setup is coming soon — pick Tailscale for now.
           {% elif stage == 'recovery' %}
@@ -156,6 +215,8 @@ template:
           path: "{{ states('input_select.rc_remote_access_setup_path') }}"
           tailscale_installed: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_installed','on') else 'off' }}"
           tailscale_authenticated: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_tailscale_authenticated','on') else 'off' }}"
+          nabu_casa_installed: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_nabu_casa_installed','on') else 'off' }}"
+          nabu_casa_active: "{{ 'on' if is_state('binary_sensor.rc_remote_access_setup_nabu_casa_active','on') else 'off' }}"
 
 # ----------------------------------------------------------------------------
 # §8 MANDATORY AUTOMATIONS (4) — the wizard's state machine.
@@ -312,11 +373,11 @@ automation:
                 target:
                   entity_id: input_select.rc_remote_access_setup_stage
                 data:
-                  option: nabu_casa_stub
+                  option: nabu_casa_have_subscription
               - service: persistent_notification.create
                 data:
-                  title: "Nabu Casa setup coming soon"
-                  message: "Nabu Casa setup is coming soon — pick Tailscale for now."
+                  title: "Setting up Nabu Casa"
+                  message: "We'll walk you through setting up Nabu Casa HA Cloud. Have your account email ready."
           - conditions:
               - condition: state
                 entity_id: input_select.rc_remote_access_setup_path
@@ -345,3 +406,118 @@ automation:
                 data:
                   title: "Remote access skipped"
                   message: "Remote access skipped — your van is reachable only on home Wi-Fi."
+
+  # §8.5 — Path C advance: stage == nabu_casa_verify + remote URL present +
+  # account email set + operator-chosen path == nabu_casa → advance to
+  # nabu_casa_done + flip the global setup-wizard past `networking` so
+  # the operator can move on to `map`. Plain-English "Your Nabu Casa
+  # subscription is active and your van is reachable" — not raw
+  # `cloud.remote_connect: ok`.
+  - id: rc_remote_access_setup_advance_path_c
+    alias: "RC: Remote Access Setup — Advance Path C on Nabu Casa active"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: nabu_casa_verify
+    condition:
+      - condition: state
+        entity_id: binary_sensor.rc_remote_access_setup_nabu_casa_active
+        state: on
+      - condition: template
+        value_template: "{{ states('input_text.rc_nabu_casa_account_email') | trim != '' }}"
+      - condition: state
+        entity_id: input_select.rc_remote_access_setup_path
+        state: nabu_casa
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: nabu_casa_done
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_setup_stage
+        data:
+          option: map
+      - service: persistent_notification.create
+        data:
+          title: "Nabu Casa set up"
+          message: "Nabu Casa HA Cloud is set up — your van is now reachable from anywhere via your Nabu Casa URL."
+      - event: roamcore_remote_access_setup_complete
+        event_data:
+          path: nabu_casa
+
+  # §8.6 — Path C recovery: stage has been `nabu_casa_verify` for >60
+  # seconds and the operator either has NOT subscribed to Nabu Casa OR
+  # the remote URL is still empty → advance to `recovery`, do NOT clear
+  # the account email (operator can retry without re-typing). Plain-
+  # English "Your Nabu Casa subscription is paused — log into
+  # home.nabu-casa.com to resume" — NOT "hassio: cloud subscription
+  # inactive" or "403 Forbidden".
+  - id: rc_remote_access_setup_recovery_nabu_casa
+    alias: "RC: Remote Access Setup — Recovery on Nabu Casa verify timeout"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: nabu_casa_verify
+        for: "00:01:00"
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.rc_remote_access_setup_nabu_casa_active
+            state: on
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_remote_access_setup_stage
+        data:
+          option: recovery
+      - service: persistent_notification.create
+        data:
+          title: "Couldn't reach Nabu Casa"
+          message: "We couldn't reach Nabu Casa. Check that your subscription is active (log into home.nabu-casa.com to check). Your account email is still there — you don't need to re-type it."
+
+  # §8.7 — Path C detect existing: when the wizard moves into
+  # `detect_existing`, also check Nabu Casa status after 5 seconds
+  # and route to `nabu_casa_done` if the upstream integration is
+  # already configured. Same idempotency contract as Path A's
+  # §8.3 — does NOT clear the account email + does NOT fire if the
+  # operator hasn't picked the nabu_casa path.
+  - id: rc_remote_access_setup_detect_existing_nabu_casa
+    alias: "RC: Remote Access Setup — Detect existing Nabu Casa"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: detect_existing
+    action:
+      - delay: "00:00:05"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.rc_remote_access_setup_nabu_casa_active
+                state: on
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_stage
+                data:
+                  option: nabu_casa_done
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_remote_access_setup_path
+                data:
+                  option: nabu_casa
+              - service: persistent_notification.create
+                data:
+                  title: "Nabu Casa already set up"
+                  message: "Looks like Nabu Casa is already set up — skipping the wizard."
+        default:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.rc_remote_access_setup_stage
+            data:
+              option: path_pick
