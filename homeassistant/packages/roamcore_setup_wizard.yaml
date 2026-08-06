@@ -249,3 +249,27 @@ automation:
         data:
           title: "Remote access done"
           message: "Remote access is set up — moving on to the next setup step."
+
+  # Wave 9 #122.d.ii — Phase 6 Tailscale QR tile. When the operator
+  # transitions into the `tailscale_paste_key` stage the wizard
+  # needs the device-key for the QR generator. We copy the value
+  # from `input_text.rc_tailscale_auth_key` (in
+  # `roamcore_remote_access_setup.yaml`) into the QR-package helper
+  # `input_text.rc_tailscale_qr_device_key` on the same stage
+  # transition. One automation, idempotent across re-fires.
+  - id: rc_setup_register_tailscale_qr_device_key
+    alias: "RC: Copy Tailscale auth key into the QR-package device key"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_paste_key
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_auth_key') | trim != '' }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_tailscale_qr_device_key
+        data:
+          value: "{{ states('input_text.rc_tailscale_auth_key') | trim }}"
