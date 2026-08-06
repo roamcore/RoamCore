@@ -164,6 +164,13 @@ run_if_present "scripts/checks/hub-restart-stability-smoke.sh" \
 run_if_present "scripts/checks/hub-golden-image-smoke.sh" \
   "Hub golden image: Phase 3 Hub golden-image build pipeline smoke (script + manifest + base-image reachability + SHA format + idempotent cache + retry pattern)"
 
+# Wave 9 #121 — Phase 5 Installable PWA refresh. Static + live-fetch
+# verification of the dashboard/Frontend/Setup Wizard scaffold + the
+# IKEA-shaped docs/setup/pwa.md user guide. Idempotent + best-effort
+# live http.server fetch (skips silently if python3 + curl unavailable).
+run_if_present "scripts/checks/pwa-install-smoke.sh" \
+  "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

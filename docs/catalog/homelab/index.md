@@ -17,6 +17,7 @@ Self-hosted services you can run inside or alongside Home Assistant OS. These ar
   <a class="rc-feature" href="pi-hole/"><div class="rc-feature-left"><div class="rc-feature-title">Pi-hole (network-wide ad blocking)</div><div class="rc-feature-sub">Pi-hole blocks ads and trackers for every device on your network by acting as DNS.</div></div><div class="rc-feature-right"><span class="rc-tier c" title="3rd party">C</span></div></a>
   <a class="rc-feature" href="ha-installer/"><div class="rc-feature-left"><div class="rc-feature-title">Home Assistant installer (one-line)</div><div class="rc-feature-sub">RoamCore ships install.sh/uninstall.sh to install the integration and assets into Home Assistant.</div></div></a>
   <a class="rc-feature" href="support-bundle/"><div class="rc-feature-left"><div class="rc-feature-title">Support bundle export (logs + config snapshot)</div><div class="rc-feature-sub">A documented way to generate a support bundle so issues can be debugged quickly without back-and-forth.</div></div></a>
+  <a class="rc-feature" href="pwa/"><div class="rc-feature-left"><div class="rc-feature-title">RoamCore on your phone (installable app)</div><div class="rc-feature-sub">RoamCore can live on your phone's home screen like a regular app — one tap to open, works even when the internet is gone.</div></div></a>
 </div>
 
 <!-- RC_FEATURE_LIST_END -->

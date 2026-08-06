@@ -1,0 +1,168 @@
+<!doctype html>
+<!--
+  RoamCore offline fallback. The service worker (sw.js) serves this page
+  any time it can't reach the Hub — so the user always sees something
+  honest instead of a blank screen or a browser error.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070A0F">
+  <title>RoamCore — Offline</title>
+  <link rel="icon" href="icon-192.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --rc-bg: #070A0F;
+      --rc-bg-elev: #0B0F16;
+      --rc-fg: rgba(255, 255, 255, 0.92);
+      --rc-fg-dim: rgba(255, 255, 255, 0.65);
+      --rc-accent: #5BE3FF;
+      --rc-accent-2: #7CFFB2;
+      --rc-border: rgba(255, 255, 255, 0.10);
+      --rc-mono: 'Roboto Mono', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--rc-bg);
+      color: var(--rc-fg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .rc-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 32px 22px;
+    }
+    header.rc-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .rc-logo {
+      width: 44px; height: 44px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--rc-accent-2), var(--rc-accent));
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      color: var(--rc-bg);
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+    h1.rc-title {
+      margin: 0;
+      font-family: var(--rc-mono);
+      font-weight: 900;
+      font-size: 22px;
+    }
+    .rc-offline-card {
+      border: 1px solid var(--rc-border);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
+      padding: 22px;
+    }
+    .rc-offline-card h2 {
+      margin: 0 0 12px;
+      font-family: var(--rc-mono);
+      font-size: 16px;
+      color: var(--rc-accent);
+    }
+    .rc-offline-card p {
+      margin: 0 0 12px;
+      color: var(--rc-fg-dim);
+    }
+    .rc-last-seen {
+      display: inline-block;
+      margin-top: 8px;
+      font-family: var(--rc-mono);
+      font-size: 13px;
+      color: var(--rc-fg-dim);
+      padding: 4px 10px;
+      border: 1px solid var(--rc-border);
+      border-radius: 999px;
+    }
+    .rc-retry {
+      margin-top: 18px;
+      display: inline-block;
+      background: linear-gradient(135deg, var(--rc-accent-2), var(--rc-accent));
+      color: var(--rc-bg);
+      font-family: var(--rc-mono);
+      font-weight: 700;
+      font-size: 14px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .rc-retry:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <main class="rc-shell">
+    <header class="rc-header">
+      <div class="rc-logo" aria-hidden="true">RC</div>
+      <h1 class="rc-title">RoamCore</h1>
+    </header>
+
+    <section class="rc-offline-card" aria-live="polite">
+      <h2>Couldn't reach your van</h2>
+      <p>
+        We're trying to reach your RoamCore Hub. Last seen
+        <span id="rc-last-seen" class="rc-last-seen">a few minutes ago</span>.
+      </p>
+      <p>
+        Showing you the last-known state. Pull down to retry, or check your
+        connection — your phone may be on Wi-Fi without internet, or out of
+        LTE range.
+      </p>
+      <button type="button" class="rc-retry" id="rc-retry">Try again</button>
+    </section>
+  </main>
+
+  <script>
+    // Tiny recovery pill: best-effort "try again" + remembers when we last
+    // heard from the Hub so the offline shell can show it honestly.
+    (function () {
+      var retryBtn = document.getElementById('rc-retry');
+      var lastSeenEl = document.getElementById('rc-last-seen');
+
+      function safeRead(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+      }
+
+      function renderLastSeen() {
+        var raw = safeRead('rc.lastSeen');
+        if (!raw) return;
+        var mins = Math.max(1, Math.round((Date.now() - Number(raw)) / 60000));
+        lastSeenEl.textContent = mins + ' minute' + (mins === 1 ? '' : 's') + ' ago';
+      }
+
+      if (retryBtn) {
+        retryBtn.addEventListener('click', function () {
+          // Best effort: ask the SW to skipWaiting if a new SW is waiting,
+          // then reload so we re-attempt the live fetch.
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.getRegistration().then(function (reg) {
+              if (reg && reg.waiting) { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); }
+            }).catch(function () {});
+          }
+          window.location.reload();
+        });
+      }
+
+      renderLastSeen();
+    })();
+  </script>
+</body>
+</html>
