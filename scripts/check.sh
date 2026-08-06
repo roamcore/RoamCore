@@ -155,6 +155,15 @@ run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
 run_if_present "scripts/checks/hub-restart-stability-smoke.sh" \
   "Hub restart-stability: Phase 3 Hub smoke test rig (5 addons + manifest + real port-bind reboot check)"
 
+# Wave 9 #120d — Phase 3 Hub golden image build pipeline (foundation).
+# Asserts scripts/build/hub-golden-image.sh + manifest + their cross-
+# references are healthy, the manifest pins a reachable + verifiable
+# base image, and the script's user-facing surface is plain English.
+# Script-only delivery (similar to #106 OpenWrt Image Builder); the
+# actual .img.gz bake happens on a Linux+Docker host.
+run_if_present "scripts/checks/hub-golden-image-smoke.sh" \
+  "Hub golden image: Phase 3 Hub golden-image build pipeline smoke (script + manifest + base-image reachability + SHA format + idempotent cache + retry pattern)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
