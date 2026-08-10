@@ -179,6 +179,17 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #123.d.iv — Phase 7 Hardened release — Gate D (agent integration).
+# Developer-convenience smoke that runs the Gate D bash test in --mock
+# mode + the Gate D pytest rig. Idempotent (re-runs produce the same
+# end state) + safe on any host (mock mode skips live OpenClaw API
+# calls; real API runs are CI-only via HAS_OPENCLAW_API=true).
+# NOT part of core-only — developers can run `bash scripts/check.sh`
+# (without --core-only) to exercise the Gate D acceptance rig locally
+# before opening a PR.
+run_if_present "scripts/checks/gate-d-agent-integration-smoke.sh" \
+  "Acceptance Gate D (agent integration): 12-stage bash contract (auth + model read + allowlist + confirmation + audit chain + tamper detection + agent failure isolation + multi-tenant isolation + reboot-survives)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
