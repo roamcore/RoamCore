@@ -249,3 +249,22 @@ automation:
         data:
           title: "Remote access done"
           message: "Remote access is set up — moving on to the next setup step."
+
+  # Mount the Tailscale self-test trigger (Wave 9 #122.d.iii — Phase 6
+  # Gate E "tunnel works both ways" check). When the Remote Access Setup
+  # wizard reaches `tailscale_done` (operator has finished setting up
+  # Tailscale), this automation fires the `rc_run_tailscale_self_test`
+  # event so the self-test package runs its outbound + inbound probes.
+  # The self-test then advances `rc_setup_stage` past `networking` via
+  # §8.T.3 if the round-trip succeeds. Idempotent: re-firing the event
+  # does NOT reset the tunnel URL or the operator's wizard progress.
+  - id: rc_setup_trigger_tailscale_self_test_after_done
+    alias: "RC: Setup — Trigger Tailscale self-test after wizard done"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_done
+    action:
+      - event: rc_run_tailscale_self_test
+        event_data: {}

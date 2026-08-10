@@ -444,6 +444,51 @@ wizard:
       setup_notes: |
         Skip remote access entirely — your van stays reachable only on home Wi-Fi.
 
+    # Connectivity self-test (Wave 9 #122.d.iii — Gate E "tunnel works
+    # both ways" check). This entry is separate from the four remote-
+    # access paths above (A/B/C/D); it doesn't pick a path, it verifies
+    # that the chosen path is honestly working two-way. The operator
+    # types their tunnel URL once, taps Run now, and the package runs
+    # an outbound probe (Hub → tunnel URL via magicdns) + an inbound
+    # probe (simulated phone callback carrying a one-time nonce back
+    # through the tunnel) and reports the round-trip result in plain
+    # English. Tier-b recipe over the HA core `tailscale` integration
+    # + two shell_command probes with 10-second timeouts.
+    - id: self_test
+      label: "Tailscale tunnel self-test (one-tap two-way check — recommended after setup)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HA core `tailscale` integration (since 2022.x — exposes the upstream `binary_sensor.tailscale_*` entities + `device_tracker.tailscale_*` entities) + two `shell_command` probes (10s timeouts) with file-based nonce round-trip verification"
+      estimated_time: "~1 min"
+      requires_reboot: false
+      requires_inputs:
+        - "Tailscale tunnel URL (e.g. https://my-van.ts.net)"
+      side_effects:
+        - registers_tailscale_self_test_tunnel_url_input_text_password_mode
+        - registers_tailscale_self_test_running_input_boolean
+        - registers_tailscale_run_self_test_input_button
+        - registers_tailscale_self_test_last_run_input_datetime
+        - registers_tailscale_self_test_outbound_probe_shell_command_10s_timeout
+        - registers_tailscale_self_test_inbound_probe_shell_command_10s_timeout
+        - registers_tailscale_self_test_outbound_ok_binary_sensor
+        - registers_tailscale_self_test_inbound_ok_binary_sensor
+        - registers_tailscale_self_test_ok_binary_sensor
+        - registers_tailscale_self_test_recovery_binary_sensor
+        - registers_tailscale_self_test_status_sensor_plain_english
+        - registers_tailscale_self_test_run_automation_button_event_stage
+        - registers_tailscale_self_test_recovery_automation_60s_timeout
+        - registers_tailscale_self_test_wizard_advance_automation_on_round_trip_success
+        - surfaces_persistent_notification_on_recovery_with_run_wizard_from_inside_van_guidance
+        - surfaces_persistent_notification_on_wizard_advance_with_van_reachable_from_anywhere
+      setup_notes: |
+        One-tap check that proves your tunnel works in both directions —
+        not just that the dashboard loads (a stale tunnel can still serve
+        a cached page). Type your tunnel address once, tap Run now, and
+        the dashboard tells you honestly whether your van is really
+        reachable from anywhere. Recovery is automatic — if the check
+        times out, the dashboard shows plain-English guidance instead
+        of dropping you into a manual recovery.
+
 install:
   ha_integration_domain: tailscale
   config_flow: true
