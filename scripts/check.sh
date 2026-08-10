@@ -150,6 +150,16 @@ run_if_present "scripts/checks/connection-state-smoke.sh" \
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
+# Wave 9 #119c — Phase 2 canonical vehicle model DASHBOARD GENERATOR
+# (sibling slice to the mapping layer #119b and the verification
+# framework #119d, all three consuming the #119a schema primitive).
+# Runs the pure-stdlib dashboard_generator.py pytest rig (>= 30
+# tests) + the bash smoke (vendor-neutrality sweep + IKEA doc shape
+# + rc-entity-naming honour + empty-input placeholder + buttons
+# hidden + determinism). Pure repo-local; no HA runtime.
+run_if_present "scripts/checks/dashboard-generator-smoke.sh" \
+  "Dashboard generator (Phase 2 auto-dashboard — Wave 9 #119c): smoke check"
+
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
 # + spawns a real port-bind regression to prove every Hub service comes
