@@ -179,6 +179,19 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #123.d.iii — Phase 7 Hardened release — Gate C (dashboard
+# reliability). Developer-convenience smoke that verifies the
+# bash contract's 12-stage shape + every fail() message has a
+# plain-English recovery hint + the user-facing runbook has the
+# IKEA 5-step shape + the bash contract is idempotent + the
+# pytest rig passes. Idempotent (re-runs produce the same end
+# state) + safe on any host (mock mode skips the real renderer
+# work; real renderer runs are CI-only). NOT part of core-only —
+# developers can run `bash scripts/check.sh` (without --core-only)
+# to exercise the Gate C acceptance rig locally before opening a PR.
+run_if_present "scripts/checks/gate-c-dashboard-reliability-smoke.sh" \
+  "Acceptance Gate C (dashboard reliability): 12-stage bash contract (auto-generated dashboard + plain-English unavailable-data banner + control reflects state + phone viewport + custom section survives + reboot-survives)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
