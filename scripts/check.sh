@@ -179,6 +179,14 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #123.d.v — Phase 7 Gate E (remote access) acceptance test.
+# 11 bash assertions covering pytest-rig importable + 13 stages present +
+# 4 wizard paths (A/B/C/D) + QR code format + plain-English error copy +
+# no bash in user-facing §1-§4 + no vendor tokens + rc-entity-naming +
+# IKEA doc shape + no Wave/tier/PR/cron jargon + idempotent re-run.
+run_if_present "scripts/checks/gate-e-remote-access-smoke.sh" \
+  "Gate E — remote access: Phase 7 acceptance test smoke (13 stages + 4 wizard paths + QR format + rc-naming + IKEA doc + vendor-neutral + idempotent)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
