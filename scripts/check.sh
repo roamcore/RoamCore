@@ -150,6 +150,15 @@ run_if_present "scripts/checks/connection-state-smoke.sh" \
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
+# Wave 9 #119b — Phase 2 canonical vehicle model mapping layer.
+# Verifies the vendor-entity → canonical-capability translator (the
+# pure-stdlib capability_mapping.py module) parses + tests cleanly,
+# the mapping rules JSON validates, rc-naming holds end-to-end, and
+# the IKEA user doc has the 5-step shape. Mirrors the schema-primitive
+# smoke above; both are additive and never rewrites.
+run_if_present "scripts/checks/capability-mapping-smoke.sh" \
+  "Capability mapping (Phase 2 mapping layer — Wave 9 #119b): smoke check"
+
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
 # + spawns a real port-bind regression to prove every Hub service comes

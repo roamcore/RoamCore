@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoamCore vendor-entity \u2192 canonical-capability mapping rules",
+  "description": "Explicit mapping rules for the Phase 2 mapping layer (Wave 9 #119b). Each rule says 'this vendor-specific entity id is exactly this canonical capability id'. The mapping layer reads this file (optional) at startup and combines it with the canonical schema's example_sources index and a fuzzy suffix match to produce the final canonical map. Naming follows docs/reference/rc-entity-naming.md: every canonical_id starts with rc_ and contains no vendor name. The mapping layer validates every rule against this rule at load time and refuses to start on a malformed file.",
+  "rules": [
+    {
+      "vendor_entity_id_pattern": "sensor.vt_battery_soc_percent",
+      "canonical_id": "rc_power_battery_soc"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.vt_battery_voltage_v",
+      "canonical_id": "rc_power_battery_voltage"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.vt_battery_current_a",
+      "canonical_id": "rc_power_battery_current"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.vt_solar_power_w",
+      "canonical_id": "rc_power_solar_power"
+    },
+    {
+      "vendor_entity_id_pattern": "binary_sensor.vt_shore_connected",
+      "canonical_id": "rc_power_shore_connected"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.dish_signal_quality",
+      "canonical_id": "rc_network_internet_reachable"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.pep_wan_ip",
+      "canonical_id": "rc_network_wan_ip"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.rut_signal_strength",
+      "canonical_id": "rc_network_internet_reachable"
+    },
+    {
+      "vendor_entity_id_pattern": "switch.cabin_main",
+      "canonical_id": "rc_lighting_interior_state"
+    },
+    {
+      "vendor_entity_id_pattern": "switch.porch_light",
+      "canonical_id": "rc_lighting_approach_state"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.indoor_temp",
+      "canonical_id": "rc_climate_indoor_temperature"
+    },
+    {
+      "vendor_entity_id_pattern": "switch.hvac_main",
+      "canonical_id": "rc_climate_hvac_state"
+    },
+    {
+      "vendor_entity_id_pattern": "sensor.fresh_water_tank_level",
+      "canonical_id": "rc_water_fresh_level"
+    },
+    {
+      "vendor_entity_id_pattern": "switch.water_pump",
+      "canonical_id": "rc_water_pump_state"
+    }
+  ]
+}
