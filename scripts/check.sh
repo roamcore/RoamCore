@@ -151,6 +151,15 @@ run_if_present "scripts/checks/catalog-state-chip-smoke.sh" \
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
+# Wave 9 #119.b — Phase 2 capability mapping layer (turns raw HA
+# entity_ids into the canonical capability ids declared in
+# connections/_schema/canonical_capabilities.json). The rule list
+# lives in connections/_schema/mapping_rules.json; the pure-Python
+# engine is at homeassistant/custom_components/roamcore/capability_mapper.py.
+# Repo-local only; no live HA / Proxmox / vendor calls.
+run_if_present "scripts/checks/capability-mapping-smoke.sh" \
+  "Capability mapping: declarative rules + pure-Python mapper + 30 pytest tests (Wave 9 #119.b)"
+
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
 # + spawns a real port-bind regression to prove every Hub service comes
