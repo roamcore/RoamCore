@@ -1,6 +1,6 @@
 # <!-- SUPERSEDED: This legacy stub is superseded by the tier-b recipe connection at `connections/remote-access/`. The legacy 16-line stub listed ONLY Tailscale at "Support tier: B" with no recipe + no contract + no broader vendor-neutral coverage — just a placeholder about "check sensor status, view cameras, get alerts, or (optionally) control systems" + "safe ways to reach Home Assistant remotely, with clear notes on security and support level". The tier-b recipe connection promotes the legacy concept into a vendor-neutral remote-access umbrella covering FOUR operator-pickable paths (Path A Tailscale mesh VPN + Path B Cloudflare Tunnel no-inbound-ports + Path C Nabu Casa HA Cloud official cloud relay + Path D Wireguard self-hosted VPN) + lifts the Wave 2 #29 Tailscale contract (`feat/wave2-remote-access-tailscale` @ `0caa9c2`) into the `connections/` pipeline + adds the broader vendor-neutral contract layer. See `connections/remote-access/README.md` for the new connection overview + `connections/remote-access/docs/recipe.md` for the full howto. See `Cron-handoff/2026-08-02-remote-access-connection.md` for the slice handoff. -->
 
-Check the van from anywhere — VPN, tunnel, cloud relay, or mesh.
+Check the van from anywhere — VPN, tunnel, cloud relay, or mesh. **Community Verified** — the four-path recipe is tested on a real van by a member of the community.
 
 <!-- RC_FEATURE_LIST_START -->
 

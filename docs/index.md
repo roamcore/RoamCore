@@ -48,3 +48,15 @@ people see a working build.
 
 If you want to try it: [Install OpenClaw →](https://github.com/openclaw/openclaw)
 or read the [JSON API reference](reference/openclaw-json-api.md).
+
+---
+
+## Support tiers
+
+Every device in the catalog wears a small pill next to its name that tells you honestly who built it. There are three tiers, and each one means something different for what you can expect from us.
+
+- **RoamCore Certified** — RoamCore builds and maintains this end-to-end. It works the way we say it works, and we'll fix it if it breaks.
+- **Community Verified** — A member of the community tested this on a real van and it works. RoamCore doesn't maintain it day-to-day, but the recipe and the contract are ours.
+- **Experimental** — It builds but hasn't been integration-tested yet. Useful for tinkerers; not a day-to-day driver.
+
+The pill is generated from the device's `tier:` field in the catalog at build time, so the prose you see on the page is always the same regardless of which letter the underlying manifest carries. The full reference for the tier vocabulary — and the catalogue chips beside every device — lives in the [Connection state chip reference](reference/rc-connection-state-chip.md).

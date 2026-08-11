@@ -87,6 +87,7 @@ nav:
       - Troubleshooting: guides/troubleshooting.md
       - Support bundle: howto/support-bundle.md
       - Connection states: reference/rc-connection-states.md
+      - Connection state chip: reference/rc-connection-state-chip.md
       - Entity naming: reference/rc-entity-naming.md
       - RoamCore Hub: reference/rc-hub.md
       - OpenClaw JSON API: reference/openclaw-json-api.md

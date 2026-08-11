@@ -146,6 +146,8 @@ run_if_present "connections/agent-actions-allowlist/tests/test_connection_yml.py
   "Connection: Agent actions allowlist (tier-b) — vendor-neutral kill-switch + per-action allowlist + audit-log gateway for safe agent-driven RoamCore actions: manifest honesty smoke check"
 run_if_present "scripts/checks/connection-state-smoke.sh" \
   "Connection state field: cross-cutting state-field smoke check (every connection.yml carries a valid state from the 10-state allowlist)"
+run_if_present "scripts/checks/catalog-state-chip-smoke.sh" \
+  "Catalog UI state chip primitive: kebab CSS classes + pytest rig + every connection.yml state maps to a chip (Wave 9 #118)"
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
