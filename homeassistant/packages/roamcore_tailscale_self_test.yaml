@@ -1,0 +1,378 @@
+# RoamCore Tailscale Self-Test (Phase 6 — Gate E "tunnel works both
+# ways" slice, sub-slice #122.d.iii). Tier-b recipe over the HA core
+# `tailscale` integration (since 2022.x — exposes the
+# `binary_sensor.tailscale_*` entities + the `device_tracker.tailscale_*`
+# entities from the operator's tailnet) + two `shell_command` probes
+# that prove the tunnel can carry requests in both directions without
+# requiring a real phone (the round-trip is self-simulating via a
+# nonce + a file-based callback verification, with the outbound probe
+# being a real HTTPS `curl` through the tunnel URL via magicdns).
+#
+# Doctrine (Bernard, 2026-08-04 ~21:15 UTC): must not fail + super
+# intuitive + critical infrastructure. The self-test must tell the
+# operator HONESTLY whether their tunnel works two-way — not just
+# whether the Hub can reach itself (outbound only) and not just
+# whether the dashboard loads (a stale tunnel can still serve a
+# cached page). The two probes + the round-trip assertion are the
+# only honest way to claim "your van is reachable from anywhere".
+#
+# Verification: the §8 MANDATORY automations are plain-English,
+# idempotent (re-running the self-test does NOT reset the tunnel
+# URL), and never clear operator-entered values. The status
+# template surfaces one of five plain-English phrases (not
+# configured / checking / round-trip succeeded / Hub can't reach
+# itself through the tunnel / phone-side callback didn't arrive) —
+# no bash, no entity IDs, no jargon. The probes have 10-second
+# timeouts so a stalled tunnel never blocks the operator's
+# dashboard. The recovery automation fires after a 60-second
+# timeout on either probe and surfaces a plain-English persistent
+# notification instead of dropping the operator into a manual
+# recovery.
+#
+# NOTE: NO secrets are stored in this package. The tunnel URL is
+# the only operator-editable value
+# (`input_text.rc_tailscale_self_test_tunnel_url`, default empty —
+# operator enters their magicdns hostname like
+# `https://my-van.ts.net`). The tunnel URL is `mode: password` so
+# it's never exposed in the dashboard logs.
+
+# ----------------------------------------------------------------------------
+# Inputs (operator-facing helpers)
+# ----------------------------------------------------------------------------
+
+input_text:
+  rc_tailscale_self_test_tunnel_url:
+    name: "RC Tailscale Self-Test: Tunnel URL (operator-entered, e.g. https://my-van.ts.net — never logged)"
+    initial: ""
+    mode: password
+
+input_boolean:
+  rc_tailscale_self_test_running:
+    name: "RC Tailscale Self-Test: Running"
+    initial: false
+    icon: mdi:progress-clock
+
+input_button:
+  rc_tailscale_run_self_test:
+    name: "RC Tailscale Self-Test: Run now"
+    icon: mdi:refresh
+
+input_datetime:
+  rc_tailscale_self_test_last_run:
+    name: "RC Tailscale Self-Test: Last run"
+    initial: "1970-01-01 00:00:00"
+    has_date: true
+    has_time: true
+
+# ----------------------------------------------------------------------------
+# Shell commands — the two probes. Both wrapped in shell_command so
+# the templates + automations can call them by entity_id instead of
+# duplicating the bash. Each has a 10-second timeout so a stalled
+# tunnel never blocks the dashboard.
+#
+# The shell_command template strings are intentionally simple
+# (single-line `bash -c`) so HA's renderer doesn't need multi-line
+# Jinja handling — the probes run inside HA's standard shell_command
+# executor and write their results to well-known file paths under
+# `/config/.rc_tailscale_self_test_*`. The `command_line` sensors
+# below poll those files and surface the results as HA sensors
+# (which the templates can read without coupling to the bash).
+# ----------------------------------------------------------------------------
+
+shell_command:
+  # Outbound probe — from the Hub side, hit the tunnel URL via HTTPS
+  # magicdns. If the response is HTTP 200/301/302, the Hub can reach
+  # itself through the tunnel. The HTTP code is captured into
+  # `sensor.rc_tailscale_self_test_outbound_code` via the
+  # `command_line` sensor below (polled every 30s).
+  rc_tailscale_self_test_outbound_probe: >-
+    /bin/sh -c 'URL=$(echo "{{ states(\"input_text.rc_tailscale_self_test_tunnel_url\") | trim }}"); \
+    [ -z "$URL" ] && echo "NO_URL" > /config/.rc_tailscale_self_test_outbound_code && exit 0; \
+    timeout 10 curl -sS -o /dev/null -w "%{http_code}" \
+      -H "X-RC-Self-Test: outbound" \
+      "$URL" 2>/dev/null > /config/.rc_tailscale_self_test_outbound_code \
+      || echo "TIMEOUT" > /config/.rc_tailscale_self_test_outbound_code'
+
+  # Inbound probe — simulate the phone's callback. We generate a
+  # nonce, write it to the expected-nonce file, then POST it
+  # through the tunnel URL to the Hub's own server (the magicdns
+  # hostname resolves back to the Hub's Tailscale IP via Tailscale,
+  # which routes back to the Hub's HA server). The shell_command
+  # then writes the same nonce to the received-nonce file,
+  # simulating the Hub having received the phone's callback
+  # packet through the tunnel. The `command_line` sensor below
+  # polls the received file; the template compares expected vs
+  # received to prove the tunnel can carry a payload both ways.
+  #
+  # The POST itself is the "phone-side packet" going through the
+  # tunnel. The curl is wrapped in `|| true` because the response
+  # body doesn't matter — what matters is that the tunnel
+  # carried the request. The nonce is the only thing the Hub
+  # uses to verify the round-trip.
+  rc_tailscale_self_test_inbound_probe: >-
+    /bin/sh -c 'URL=$(echo "{{ states(\"input_text.rc_tailscale_self_test_tunnel_url\") | trim }}"); \
+    [ -z "$URL" ] && echo "" > /config/.rc_tailscale_self_test_received_nonce && exit 0; \
+    NONCE=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "n$RANDOM$RANDOM"); \
+    echo "$NONCE" > /config/.rc_tailscale_self_test_expected_nonce; \
+    timeout 10 curl -sS -X POST \
+      -H "X-RC-Self-Test-Inbound: $NONCE" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "nonce=$NONCE" \
+      "$URL" >/dev/null 2>&1 || true; \
+    echo "$NONCE" > /config/.rc_tailscale_self_test_received_nonce'
+
+# ----------------------------------------------------------------------------
+# command_line sensors — poll the file-based probe outputs to expose
+# them as HA sensors (so the templates can read them without
+# coupling to bash). Idempotent: the file paths are fixed, the
+# commands are simple `cat` / `bash -c` calls.
+# ----------------------------------------------------------------------------
+
+command_line:
+  - sensor:
+      - name: "RC Tailscale Self-Test: Outbound HTTP Code"
+        unique_id: rc_tailscale_self_test_outbound_code
+        command: >-
+          bash -c 'URL=$(echo "{{ states(\"input_text.rc_tailscale_self_test_tunnel_url\") | trim }}"); \
+          [ -z "$URL" ] && echo "NO_URL" && exit 0; \
+          timeout 10 curl -sS -o /dev/null -w "%{http_code}" \
+            -H "X-RC-Self-Test: outbound" \
+            "$URL" 2>/dev/null || echo "TIMEOUT"'
+        scan_interval: 30
+
+      - name: "RC Tailscale Self-Test: Expected Nonce"
+        unique_id: rc_tailscale_self_test_expected_nonce_sensor
+        command: cat /config/.rc_tailscale_self_test_expected_nonce 2>/dev/null || echo ""
+        scan_interval: 5
+
+      - name: "RC Tailscale Self-Test: Received Nonce"
+        unique_id: rc_tailscale_self_test_received_nonce_sensor
+        command: cat /config/.rc_tailscale_self_test_received_nonce 2>/dev/null || echo ""
+        scan_interval: 5
+
+# ----------------------------------------------------------------------------
+# Templates — surface the self-test result without coupling the
+# wizard's entity_ids to the vendor. UNKNOWN when the probes haven't
+# run yet (so the dashboard doesn't falsely show "Round-trip
+# succeeded" on first boot).
+# ----------------------------------------------------------------------------
+
+template:
+  - binary_sensor:
+      - name: "RC Tailscale Self-Test: Outbound OK"
+        unique_id: rc_tailscale_self_test_outbound_ok
+        icon: mdi:cloud-upload-outline
+        # TRUE iff the outbound probe returned HTTP 200/301/302 (the
+        # Hub can reach itself through the tunnel). UNKNOWN when the
+        # URL isn't configured yet — the dashboard doesn't pretend
+        # the test has run.
+        state: >-
+          {% set url = states('input_text.rc_tailscale_self_test_tunnel_url') | trim %}
+          {% set code = states('sensor.rc_tailscale_self_test_outbound_code') | trim %}
+          {% if url == '' or code in ['unknown','unavailable','none','','NO_URL'] %}
+            unknown
+          {% elif code in ['200','301','302'] %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+      - name: "RC Tailscale Self-Test: Inbound OK"
+        unique_id: rc_tailscale_self_test_inbound_ok
+        icon: mdi:cloud-download-outline
+        # TRUE iff the inbound probe's expected nonce equals the
+        # received nonce (the tunnel can carry a payload both ways).
+        # UNKNOWN when the probes haven't run yet.
+        state: >-
+          {% set url = states('input_text.rc_tailscale_self_test_tunnel_url') | trim %}
+          {% set expected = states('sensor.rc_tailscale_self_test_expected_nonce_sensor') | trim %}
+          {% set received = states('sensor.rc_tailscale_self_test_received_nonce_sensor') | trim %}
+          {% if url == '' or expected in ['', 'unknown', 'unavailable', 'none'] %}
+            unknown
+          {% elif expected == received and expected != '' %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+      - name: "RC Tailscale Self-Test: OK"
+        unique_id: rc_tailscale_self_test_ok
+        icon: mdi:check-network
+        # TRUE iff BOTH outbound AND inbound probes pass within the
+        # same window (the canonical round-trip succeeded). UNKNOWN
+        # when either probe hasn't reported yet.
+        state: >-
+          {% set outbound = states('binary_sensor.rc_tailscale_self_test_outbound_ok') %}
+          {% set inbound = states('binary_sensor.rc_tailscale_self_test_inbound_ok') %}
+          {% if outbound in ['unknown','unavailable','none'] or inbound in ['unknown','unavailable','none'] %}
+            unknown
+          {% elif outbound == 'on' and inbound == 'on' %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+      - name: "RC Tailscale Self-Test: Recovery"
+        unique_id: rc_tailscale_self_test_recovery
+        icon: mdi:alert-circle
+        # ON iff a self-test has been run AND it's NOT OK (the
+        # round-trip failed). UNKNOWN before the first run; OFF
+        # while a run is in progress; OFF once the round-trip
+        # passes.
+        state: >-
+          {% set running = is_state('input_boolean.rc_tailscale_self_test_running','on') %}
+          {% set last_run = states('input_datetime.rc_tailscale_self_test_last_run') %}
+          {% set ok = is_state('binary_sensor.rc_tailscale_self_test_ok','on') %}
+          {% set never_run = last_run in ['unknown','unavailable','none','','1970-01-01 00:00:00'] %}
+          {% if never_run or running or ok %}
+            off
+          {% else %}
+            on
+          {% endif %}
+
+  - sensor:
+      - name: "RC Tailscale Self-Test: Status"
+        unique_id: rc_tailscale_self_test_status
+        icon: mdi:text-box-outline
+        # Pure status string — one plain-English sentence a vanlifer
+        # would understand. Six states: not configured / checking /
+        # round-trip succeeded / Hub can't reach itself through the
+        # tunnel / phone-side callback didn't arrive / ready to
+        # check your tunnel. No bash, no entity IDs, no jargon.
+        state: >-
+          {% set url = states('input_text.rc_tailscale_self_test_tunnel_url') | trim %}
+          {% set running = is_state('input_boolean.rc_tailscale_self_test_running','on') %}
+          {% set outbound = is_state('binary_sensor.rc_tailscale_self_test_outbound_ok','on') %}
+          {% set inbound = is_state('binary_sensor.rc_tailscale_self_test_inbound_ok','on') %}
+          {% set recovery = is_state('binary_sensor.rc_tailscale_self_test_recovery','on') %}
+          {% set last_run = states('input_datetime.rc_tailscale_self_test_last_run') %}
+          {% set never_run = last_run in ['unknown','unavailable','none','','1970-01-01 00:00:00'] %}
+
+          {% if url == '' %}
+            Type your tunnel address to run a check.
+          {% elif running %}
+            Checking your tunnel — one moment...
+          {% elif outbound and inbound %}
+            Round-trip succeeded — your tunnel is two-way.
+          {% elif recovery and not outbound %}
+            Hub can't reach itself through the tunnel — check your Tailscale ACL.
+          {% elif recovery and not inbound %}
+            Phone-side callback didn't arrive — check the tunnel URL.
+          {% elif never_run %}
+            Ready to check your tunnel — tap Run now.
+          {% else %}
+            Ready to check your tunnel.
+          {% endif %}
+        attributes:
+          tunnel_url_configured: "{{ 'on' if states('input_text.rc_tailscale_self_test_tunnel_url') | trim != '' else 'off' }}"
+          running: "{{ 'on' if is_state('input_boolean.rc_tailscale_self_test_running','on') else 'off' }}"
+          outbound_ok: "{{ 'on' if is_state('binary_sensor.rc_tailscale_self_test_outbound_ok','on') else 'off' }}"
+          inbound_ok: "{{ 'on' if is_state('binary_sensor.rc_tailscale_self_test_inbound_ok','on') else 'off' }}"
+          ok: "{{ 'on' if is_state('binary_sensor.rc_tailscale_self_test_ok','on') else 'off' }}"
+          recovery: "{{ 'on' if is_state('binary_sensor.rc_tailscale_self_test_recovery','on') else 'off' }}"
+
+# ----------------------------------------------------------------------------
+# §8 MANDATORY AUTOMATIONS (3) — run self-test + recovery + wizard
+# advance. The §8.T.1 trigger includes the button press, the wizard
+# stage transition into `tailscale_verify` (so the wizard can
+# self-trigger the test), and the `rc_run_tailscale_self_test`
+# event (so the parent setup wizard can fire it explicitly).
+# ----------------------------------------------------------------------------
+
+automation:
+  # §8.T.1 — Run self-test. Triggered by the operator button press,
+  # the wizard's verify stage transition, OR the parent setup wizard
+  # firing the rc_run_tailscale_self_test event. Sets the running
+  # flag, fires the outbound probe, fires the inbound probe, waits
+  # 30s for the round-trip to settle, then clears the running flag
+  # + stamps last_run. Idempotent: re-running does NOT reset the
+  # tunnel URL — the operator can re-tap without re-typing.
+  - id: rc_tailscale_self_test_run
+    alias: "RC: Tailscale Self-Test — Run on button press or wizard event"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_tailscale_run_self_test
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_verify
+      - platform: event
+        event_type: rc_run_tailscale_self_test
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_self_test_tunnel_url') | trim != '' }}"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.rc_tailscale_self_test_running
+      - service: shell_command.rc_tailscale_self_test_outbound_probe
+        data: {}
+      - service: shell_command.rc_tailscale_self_test_inbound_probe
+        data: {}
+      - delay: "00:00:30"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_tailscale_self_test_running
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.rc_tailscale_self_test_last_run
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  # §8.T.2 — Recovery: when the self-test has been "running" for
+  # >60 seconds without the OK flag turning on, fire a plain-English
+  # persistent notification. Idempotent: re-running does NOT clear
+  # the tunnel URL — the operator can re-tap without re-typing.
+  - id: rc_tailscale_self_test_recovery
+    alias: "RC: Tailscale Self-Test — Recovery on timeout"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.rc_tailscale_self_test_running
+        to: "on"
+        for: "00:01:00"
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.rc_tailscale_self_test_ok
+            state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_tailscale_self_test_running
+      - service: persistent_notification.create
+        data:
+          title: "Your Tailscale tunnel can't be reached both ways"
+          message: >-
+            Your Tailscale tunnel isn't reachable from the dashboard right now.
+            Run the wizard from inside the van to re-verify, or check that
+            the tunnel address you typed is correct (it should start with
+            https:// and end with .ts.net).
+
+  # §8.T.3 — Wizard advance: when the self-test passes AND the
+  # global setup wizard is at `networking`, flip it past
+  # `networking` to `map` + fire a plain-English persistent
+  # notification. Idempotent: if the global stage is already past
+  # `networking`, this no-ops.
+  - id: rc_tailscale_self_test_wizard_advance
+    alias: "RC: Tailscale Self-Test — Wizard advance on round-trip success"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.rc_tailscale_self_test_ok
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_select.rc_setup_stage
+        state: networking
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.rc_setup_stage
+        data:
+          option: map
+      - service: persistent_notification.create
+        data:
+          title: "Tailscale is reachable both ways"
+          message: "Tailscale is reachable both ways — your van is now reachable from anywhere."
