@@ -75,11 +75,12 @@ fi
 echo
 echo "▶ Remote access setup wizard: rc-entity-naming pre-check"
 
-# Every entity_id in the package MUST start with rc_remote_access_setup_ or rc_tailscale_
+# Every entity_id in the package MUST start with rc_remote_access_setup_,
+# rc_tailscale_, or rc_nabu_casa_.
 naming_violations=$(python3 - "$PACKAGE" <<'PYEOF'
 import sys, yaml
 data = yaml.safe_load(open(sys.argv[1]))
-allowed = ("rc_remote_access_setup_", "rc_tailscale_")
+allowed = ("rc_remote_access_setup_", "rc_tailscale_", "rc_nabu_casa_")
 violations = []
 for kind in ("input_select", "input_text", "input_boolean", "input_number", "input_datetime"):
     for eid in (data.get(kind) or {}).keys():
@@ -148,10 +149,98 @@ echo "▶ Remote access setup wizard: secrets-leak check"
 # grep for tskey- / ts-auth- / tailnet auth-key patterns — fail if found
 SECRETS=$(grep -E '(tskey-[A-Za-z0-9_-]{10,}|ts-auth-[A-Za-z0-9_-]{10,})' "$PACKAGE" || true)
 if [ -z "$SECRETS" ]; then
-  note_pass "no secrets (tskey- / ts-auth-) leaked in YAML"
+  note_pass "no Tailscale secrets (tskey- / ts-auth-) leaked in YAML"
 else
   note_fail "SECRET PATTERN FOUND in YAML — operator auth keys MUST NOT be committed"
   echo "$SECRETS"
+fi
+
+# grep for Nabu Casa hardcoded URLs / account emails / tokens — fail if found.
+# The plain-English home.nabu-casa.com public-portal link in the recovery
+# notice is intentional user-facing copy and is allowlisted (the regex
+# below matches operator-specific instances like
+# hass-abc123def.nabu-casa.com, NOT the home portal).
+NABU_SECRETS=$(grep -E '(@nabu-casa\.com|nabucasa_[a-z0-9_-]{10,}|[a-z]{2,}-[a-z0-9]{8,}\.nabu-casa\.com|hass-[a-z0-9]{8,}\.nabu-casa\.com)' "$PACKAGE" || true)
+if [ -z "$NABU_SECRETS" ]; then
+  note_pass "no Nabu Casa hardcoded secrets (operator-specific @nabu-casa.com / hass-*.nabu-casa.com) in YAML"
+else
+  note_fail "NABU CASA HARDCODE FOUND in YAML — operator credentials MUST NOT be committed"
+  echo "$NABU_SECRETS"
+fi
+
+# Path C wiring assertion: every new helper / automation / binary_sensor MUST be present.
+NABU_WIRING=$(python3 - "$PACKAGE" <<'PYEOF'
+import sys, yaml
+data = yaml.safe_load(open(sys.argv[1]))
+missing = []
+helpers = data.get("input_text") or {}
+if "rc_nabu_casa_account_email" not in helpers:
+    missing.append("input_text.rc_nabu_casa_account_email")
+elif helpers["rc_nabu_casa_account_email"].get("mode") != "password":
+    missing.append("input_text.rc_nabu_casa_account_email must be mode: password")
+stages = (data.get("input_select") or {}).get("rc_remote_access_setup_stage", {}).get("options") or []
+for required_stage in ("nabu_casa_have_subscription", "nabu_casa_paste_email", "nabu_casa_verify", "nabu_casa_done"):
+    if required_stage not in stages:
+        missing.append(f"input_select stage option missing: {required_stage}")
+binary_sensor_uids = set()
+for entry in (data.get("template") or []):
+    for bs in (entry.get("binary_sensor") or []):
+        uid = bs.get("unique_id")
+        if uid: binary_sensor_uids.add(uid)
+for required_uid in ("rc_remote_access_setup_nabu_casa_installed", "rc_remote_access_setup_nabu_casa_active"):
+    if required_uid not in binary_sensor_uids:
+        missing.append(f"binary_sensor unique_id missing: {required_uid}")
+automation_ids = set(a.get("id") for a in (data.get("automation") or []))
+for required_id in ("rc_remote_access_setup_advance_path_c", "rc_remote_access_setup_recovery_nabu_casa", "rc_remote_access_setup_detect_existing_nabu_casa"):
+    if required_id not in automation_ids:
+        missing.append(f"automation id missing: {required_id}")
+if missing:
+    for m in missing:
+        print(f"  MISSING: {m}")
+    sys.exit(1)
+PYEOF
+) || true
+if [ -z "$NABU_WIRING" ]; then
+  note_pass "Path C wiring complete (input_text + 4 stages + 2 binary_sensors + 3 automations)"
+else
+  note_fail "Path C wiring incomplete — see above"
+  echo "$NABU_WIRING"
+fi
+
+# Path C recovery plain-English assertion: message MUST mention
+# "home.nabu-casa.com" or "subscription" — NOT "403", "Forbidden",
+# or raw "cloud.remote_connect" service codes.
+NC_RECOVERY=$(python3 - "$PACKAGE" <<'PYEOF'
+import sys, yaml
+data = yaml.safe_load(open(sys.argv[1]))
+autos = data.get("automation") or []
+auto = next((a for a in autos if a.get("id") == "rc_remote_access_setup_recovery_nabu_casa"), None)
+if auto is None:
+    print("  MISSING: rc_remote_access_setup_recovery_nabu_casa")
+    sys.exit(1)
+actions_dump = yaml.safe_dump(auto.get("action") or [], default_flow_style=False)
+failures = []
+if "403" in actions_dump:
+    failures.append("raw 403 Forbidden found in recovery action")
+if "Forbidden" in actions_dump:
+    failures.append("raw 'Forbidden' found in recovery action")
+if "cloud.remote_connect" in actions_dump:
+    failures.append("raw upstream service code 'cloud.remote_connect' found in recovery action")
+if "hassio: cloud subscription inactive" in actions_dump:
+    failures.append("raw HA error 'hassio: cloud subscription inactive' found in recovery action")
+if "nabu-casa.com" not in actions_dump and "home.nabu-casa" not in actions_dump:
+    failures.append("plain-English nudge to home.nabu-casa.com MISSING")
+if failures:
+    for f in failures:
+        print(f"  PLAIN-ENGLISH FAIL: {f}")
+    sys.exit(1)
+PYEOF
+) || true
+if [ -z "$NC_RECOVERY" ]; then
+  note_pass "Path C recovery uses plain-English errors (no raw codes)"
+else
+  note_fail "Path C recovery fails plain-English check — see above"
+  echo "$NC_RECOVERY"
 fi
 
 echo

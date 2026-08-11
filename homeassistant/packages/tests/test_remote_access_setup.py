@@ -1,16 +1,19 @@
 """Manifest-honesty + structural tests for
 `homeassistant/packages/roamcore_remote_access_setup.yaml`
-(Wave 9 #122.a — Phase 6 Tailscale wizard, sub-slice A).
+(Wave 9 #122.a + #122.c — Phase 6 Tailscale wizard: Path A Tailscale,
+Path C Nabu Casa HA Cloud, Path B/D stubs).
 
 This is the verification rig for the new guided remote-access setup
 wizard. It asserts:
 
   - YAML parses successfully (sanity check).
-  - Every required helper is present (input_select × 2, input_text × 2,
-    binary_sensor × 3, sensor × 1).
-  - All 4 §8 MANDATORY automations are present with the correct
+  - Every required helper is present (input_select × 2, input_text × 3,
+    binary_sensor × 5, sensor × 1).
+  - All 7 §8 MANDATORY automations are present with the correct
     unique_id (in `id:`) and trigger/action contract.
   - `input_text.rc_tailscale_auth_key` is `mode: password` (sensitive).
+  - `input_text.rc_nabu_casa_account_email` is `mode: password`
+    (sensitive).
   - `sensor.rc_remote_access_setup_status` template covers all the
     stage × path × integration combinations from the slice spec
     (pure-function test — extract the template logic into a small
@@ -18,12 +21,16 @@ wizard. It asserts:
   - Idempotency: running the YAML through PyYAML twice produces the
     same dict (no random IDs, no timestamps).
   - rc-entity-naming compliance: every entity_id starts with
-    `rc_remote_access_setup_` or `rc_tailscale_`.
+    `rc_remote_access_setup_`, `rc_tailscale_`, or `rc_nabu_casa_`.
   - No secrets in YAML: grep for `tskey-` or any tailnet auth-key
     pattern — must NOT find any.
+  - No Nabu Casa hardcoded URLs/emails/tokens in YAML.
   - Path routing logic is correct: every path option has a
     corresponding advance-stage action in
     `automation.rc_remote_access_setup_path_pick_routing`.
+  - Path C recovery automation NEVER calls `input_text.set_value`
+    targeting the account email helper (operator can retry without
+    re-typing).
 
 Run locally:
     cd /home/bernard/clawd/RoamCore
@@ -124,11 +131,14 @@ REQUIRED_INPUT_SELECTS = (
 REQUIRED_INPUT_TEXTS = (
     "rc_tailscale_auth_key",
     "rc_tailscale_tailnet_hostname",
+    "rc_nabu_casa_account_email",
 )
 REQUIRED_BINARY_SENSOR_UNIQUE_IDS = (
     "rc_remote_access_setup_tailscale_installed",
     "rc_remote_access_setup_tailscale_authenticated",
     "rc_remote_access_setup_complete",
+    "rc_remote_access_setup_nabu_casa_installed",
+    "rc_remote_access_setup_nabu_casa_active",
 )
 REQUIRED_SENSOR_UNIQUE_IDS = (
     "rc_remote_access_setup_status",
@@ -183,6 +193,9 @@ REQUIRED_AUTOMATIONS = (
     "rc_remote_access_setup_recovery",
     "rc_remote_access_setup_detect_existing",
     "rc_remote_access_setup_path_pick_routing",
+    "rc_remote_access_setup_advance_path_c",
+    "rc_remote_access_setup_recovery_nabu_casa",
+    "rc_remote_access_setup_detect_existing_nabu_casa",
 )
 
 
@@ -301,7 +314,7 @@ def test_automation_path_pick_routing_contract(package: dict) -> None:
     for path_option, target_stage in (
         ("tailscale", "tailscale_have_account"),
         ("cloudflare", "cloudflare_stub"),
-        ("nabu_casa", "nabu_casa_stub"),
+        ("nabu_casa", "nabu_casa_have_subscription"),
         ("wireguard", "wireguard_stub"),
         ("skip", "done"),
     ):
@@ -309,6 +322,112 @@ def test_automation_path_pick_routing_contract(package: dict) -> None:
             f"path_pick_routing must route path={path_option!r} to stage={target_stage!r}; "
             f"got actions={actions}"
         )
+
+
+def test_automation_advance_path_c_contract(package: dict) -> None:
+    """§8.5 — Path C advance: triggers on stage → nabu_casa_verify,
+    requires Nabu Casa active + email + path=nabu_casa, advances to
+    nabu_casa_done, fires persistent_notification."""
+    autos = _automations(package)
+    auto = next(a for a in autos if a.get("id") == "rc_remote_access_setup_advance_path_c")
+    triggers = auto.get("trigger") or []
+    assert any(
+        t.get("platform") == "state"
+        and t.get("entity_id") == "input_select.rc_remote_access_setup_stage"
+        and t.get("to") == "nabu_casa_verify"
+        for t in triggers
+    ), f"advance_path_c must trigger on stage → nabu_casa_verify; got triggers={triggers}"
+    conds = auto.get("condition") or []
+    cond_serialized = " ".join(str(c) for c in conds)
+    assert "rc_remote_access_setup_nabu_casa_active" in cond_serialized, (
+        f"advance_path_c condition must reference nabu_casa_active; got {conds}"
+    )
+    assert "rc_nabu_casa_account_email" in cond_serialized, (
+        f"advance_path_c condition must reference rc_nabu_casa_account_email; got {conds}"
+    )
+    actions = auto.get("action") or []
+    actions_serialized = " ".join(str(a) for a in actions)
+    assert "nabu_casa_done" in actions_serialized, (
+        f"advance_path_c must advance stage to nabu_casa_done; got actions={actions}"
+    )
+    # The advance MUST also flip the global setup-wizard past
+    # `networking` so the operator can move on to `map` (this is
+    # what the rc_setup_advance_after_remote_access automation
+    # depends on for the done-transition wired in
+    # `roamcore_setup_wizard.yaml`).
+    assert "rc_setup_stage" in actions_serialized, (
+        f"advance_path_c must advance rc_setup_stage (so the global "
+        f"setup wizard moves past networking); got actions={actions}"
+    )
+    assert "persistent_notification.create" in actions_serialized, (
+        f"advance_path_c must fire persistent_notification.create; got actions={actions}"
+    )
+    assert "input_text.set_value" not in actions_serialized, (
+        f"advance_path_c must NEVER call input_text.set_value (would clear "
+        f"operator secret); got actions={actions}"
+    )
+
+
+def test_automation_recovery_nabu_casa_contract(package: dict) -> None:
+    """§8.6 — Nabu Casa recovery: triggers on stage → nabu_casa_verify
+    FOR > 60s, advances to recovery, does NOT clear the email."""
+    autos = _automations(package)
+    auto = next(a for a in autos if a.get("id") == "rc_remote_access_setup_recovery_nabu_casa")
+    triggers = auto.get("trigger") or []
+    assert any(
+        t.get("platform") == "state"
+        and t.get("entity_id") == "input_select.rc_remote_access_setup_stage"
+        and t.get("to") == "nabu_casa_verify"
+        and t.get("for") is not None
+        for t in triggers
+    ), f"recovery_nabu_casa must trigger on stage → nabu_casa_verify with a `for` clause; got triggers={triggers}"
+    actions = auto.get("action") or []
+    actions_serialized = " ".join(str(a) for a in actions)
+    assert "recovery" in actions_serialized, (
+        f"recovery_nabu_casa must advance stage to recovery; got actions={actions}"
+    )
+    # Plain-English error copy: NOT "403 Forbidden", NOT
+    # "hassio: cloud subscription inactive".
+    # Idempotent: never clears the account email.
+    assert "input_text.set_value" not in actions_serialized, (
+        f"recovery_nabu_casa must NEVER call input_text.set_value (would "
+        f"clear operator-entered email); got actions={actions}"
+    )
+    # Must NOT reference upstream service codes in the message — the
+    # plain-English subscribe-via-home.nabu-casa.com hint is
+    # required.
+    action_dump = yaml.safe_dump(actions, default_flow_style=False)
+    assert "nabu-casa.com" in action_dump or "home.nabu-casa" in action_dump, (
+        f"recovery_nabu_casa must surface a plain-English nudge to log into "
+        f"home.nabu-casa.com (not 'cloud subscription inactive' or '403 '); "
+        f"got actions={action_dump}"
+    )
+
+
+def test_automation_detect_existing_nabu_casa_contract(package: dict) -> None:
+    """§8.7 — Path C detect existing: triggers on stage → detect_existing,
+    waits 5s, branches on nabu_casa_active state, advances to
+    nabu_casa_done or path_pick."""
+    autos = _automations(package)
+    auto = next(a for a in autos if a.get("id") == "rc_remote_access_setup_detect_existing_nabu_casa")
+    triggers = auto.get("trigger") or []
+    assert any(
+        t.get("platform") == "state" and t.get("to") == "detect_existing"
+        for t in triggers
+    ), f"detect_existing_nabu_casa must trigger on stage → detect_existing; got triggers={triggers}"
+    actions = auto.get("action") or []
+    actions_serialized = " ".join(str(a) for a in actions)
+    assert "delay" in actions_serialized, (
+        f"detect_existing_nabu_casa must include a delay (5-second wait); got actions={actions}"
+    )
+    assert "nabu_casa_done" in actions_serialized, (
+        f"detect_existing_nabu_casa must advance to nabu_casa_done when "
+        f"already set up; got actions={actions}"
+    )
+    assert "path_pick" in actions_serialized, (
+        f"detect_existing_nabu_casa must fall through to path_pick when not "
+        f"set up; got actions={actions}"
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -325,6 +444,20 @@ def test_auth_key_helper_is_password_mode(package: dict) -> None:
     )
 
 
+def test_nabu_casa_email_helper_is_password_mode(package: dict) -> None:
+    """Nabu Casa account email must also be mode: password (sensitive,
+    even though it is not the auth key itself — operators still want
+    the dashboard to mask this helper so casual viewers can't read it
+    over the operator's shoulder)."""
+    helpers = _helpers_by_entity_id(package, "input_text")
+    email = helpers.get("rc_nabu_casa_account_email")
+    assert email is not None, "rc_nabu_casa_account_email helper missing"
+    assert email.get("mode") == "password", (
+        f"rc_nabu_casa_account_email MUST be mode: password (sensitive); "
+        f"got mode={email.get('mode')!r}"
+    )
+
+
 # ----------------------------------------------------------------------------
 # (e) Status sensor template — covers all stage × path × integration combos
 # ----------------------------------------------------------------------------
@@ -336,10 +469,15 @@ def test_auth_key_helper_is_password_mode(package: dict) -> None:
 # spec's 10+ branches all produce non-empty strings (no hidden
 # fall-through to the catch-all `else`).
 EXPECTED_STATUS_BRANCHES: tuple[tuple[tuple[str, str, bool], str], ...] = (
-    # (stage, path, tailscale_installed) → expected substring (lowercase)
+    # (stage, path, installed) → expected substring (lowercase)
+    # `installed` is a generic "is the relevant integration installed"
+    # gate that drives both the Tailscale + Nabu Casa flows. The pure
+    # function below uses it as both the Tailscale + Nabu Casa gate
+    # (a simplification acceptable for branch coverage).
     (("welcome", "tailscale", True), "ready to help you set up tailscale"),
     (("welcome", "tailscale", False), "ready to help you set up tailscale"),
     (("welcome", "cloudflare", True), "ready to help you set up remote access"),
+    (("welcome", "nabu_casa", True), "ready to help you set up nabu casa"),
     (("detect_existing", "tailscale", True), "checking whether remote access"),
     (("path_pick", "tailscale", True), "pick one of the remote-access"),
     (("tailscale_have_account", "tailscale", True), "do you already have a tailscale"),
@@ -348,14 +486,20 @@ EXPECTED_STATUS_BRANCHES: tuple[tuple[tuple[str, str, bool], str], ...] = (
     (("tailscale_verify", "tailscale", True), "verifying your tailscale"),
     (("tailscale_done", "tailscale", True), "tailscale is set up"),
     (("cloudflare_stub", "tailscale", True), "coming soon"),
-    (("nabu_casa_stub", "tailscale", True), "coming soon"),
+    (("nabu_casa_have_subscription", "nabu_casa", True), "do you already pay for nabu casa"),
+    (("nabu_casa_paste_email", "nabu_casa", False), "subscribe to nabu casa ha cloud"),
+    (("nabu_casa_paste_email", "nabu_casa", True), "testing your nabu casa connection"),
+    (("nabu_casa_verify", "nabu_casa", True), "verifying your nabu casa"),
+    (("nabu_casa_done", "nabu_casa", True), "nabu casa is set up"),
     (("wireguard_stub", "tailscale", True), "coming soon"),
     (("recovery", "tailscale", True), "couldn't reach tailscale"),
+    (("recovery", "nabu_casa", True), "couldn't reach tailscale"),
     (("done", "tailscale", True), "remote access setup complete"),
+    (("done", "nabu_casa", True), "remote access setup complete"),
 )
 
 
-def _status_pure(stage: str, path: str, tailscale_installed: bool) -> str:
+def _status_pure(stage: str, path: str, installed: bool) -> str:
     """Pure-function reimplementation of `sensor.rc_remote_access_setup_status`.
 
     Extracted out of the YAML template so the test can call it with
@@ -363,13 +507,32 @@ def _status_pure(stage: str, path: str, tailscale_installed: bool) -> str:
     Keep this in lockstep with the YAML template; the test asserts
     the YAML still contains the strings this function emits, so the
     two cannot drift silently.
+
+    `installed` is a generic "is the relevant integration installed"
+    gate that drives both the Tailscale + Nabu Casa flows. When
+    `installed=True`, both the Tailscale key + Nabu Casa email are
+    assumed to be filled (idempotent re-typing); when `installed=False`,
+    neither is assumed to be filled. This is a simplification that
+    matches the YAML template's per-flow branches.
     """
-    authed = tailscale_installed  # simplified: only matters for one branch
-    key = "fake-key" if stage == "tailscale_paste_key" else ""
-    hostname = "my-van.ts.net" if stage == "tailscale_paste_key" else ""
+    # Compatibility alias for the body below (the YAML uses
+    # `installed` for the tailscale branch explicitly).
+    tailscale_installed = installed
+    # The Tailscale branch's "key | trim == ''" check: the YAML uses
+    # `states('input_text.rc_tailscale_auth_key')` directly, which is
+    # empty when the operator hasn't typed one yet. The pure function
+    # assumes the key is empty UNLESS the wizard is on the
+    # tailscale_paste_key stage AND installed=True (i.e. add-on is
+    # installed, so the operator has presumably typed one).
+    key = "fake-key" if (stage == "tailscale_paste_key" and installed) else ""
+    # Same shape for the Nabu Casa branch.
+    nc_email = "fake@nabu-casa.com" if (stage == "nabu_casa_paste_email" and installed) else ""
+    nc_installed = installed
 
     if stage == "welcome" and path == "tailscale":
         return "Ready to help you set up Tailscale."
+    if stage == "welcome" and path == "nabu_casa":
+        return "Ready to help you set up Nabu Casa HA Cloud."
     if stage == "welcome":
         return "Ready to help you set up remote access."
     if stage == "detect_existing":
@@ -390,8 +553,18 @@ def _status_pure(stage: str, path: str, tailscale_installed: bool) -> str:
         return "Tailscale is set up. You're good to go."
     if stage == "cloudflare_stub":
         return "Cloudflare setup is coming soon — pick Tailscale for now."
-    if stage == "nabu_casa_stub":
-        return "Nabu Casa setup is coming soon — pick Tailscale for now."
+    if stage == "nabu_casa_have_subscription":
+        return "Do you already pay for Nabu Casa HA Cloud?"
+    if stage == "nabu_casa_paste_email" and not nc_installed:
+        return "Subscribe to Nabu Casa HA Cloud, then paste your account email."
+    if stage == "nabu_casa_paste_email" and nc_email.strip() == "":
+        return "Paste your Nabu Casa account email below."
+    if stage == "nabu_casa_paste_email":
+        return "Testing your Nabu Casa connection..."
+    if stage == "nabu_casa_verify":
+        return "Verifying your Nabu Casa connection."
+    if stage == "nabu_casa_done":
+        return "Nabu Casa is set up. You're good to go."
     if stage == "wireguard_stub":
         return "Wireguard setup is coming soon — pick Tailscale for now."
     if stage == "recovery":
@@ -433,6 +606,7 @@ def test_status_template_present_in_yaml(package: dict) -> None:
     must_contain = (
         "ready to help you set up tailscale",
         "ready to help you set up remote access",
+        "ready to help you set up nabu casa",
         "checking whether remote access",
         "pick one of the remote-access",
         "do you already have a tailscale",
@@ -441,6 +615,11 @@ def test_status_template_present_in_yaml(package: dict) -> None:
         "testing your tailscale connection",
         "verifying your tailscale",
         "tailscale is set up",
+        "do you already pay for nabu casa",
+        "subscribe to nabu casa ha cloud",
+        "testing your nabu casa connection",
+        "verifying your nabu casa",
+        "nabu casa is set up",
         "coming soon",
         "couldn't reach tailscale",
         "remote access setup complete",
@@ -483,6 +662,7 @@ def test_yaml_idempotent(package: dict) -> None:
 ALLOWED_ENTITY_ID_PREFIXES = (
     "rc_remote_access_setup_",
     "rc_tailscale_",
+    "rc_nabu_casa_",
 )
 
 
@@ -525,6 +705,35 @@ def test_no_secrets_in_yaml() -> None:
         assert not matches, (
             f"secret pattern {pat.pattern!r} found in YAML: {matches[:3]} "
             f"— operator auth keys MUST NOT be committed"
+        )
+
+
+NABU_CASA_HARDCODED_PATTERNS = (
+    # Operator account email addresses
+    re.compile(r"[A-Za-z0-9._%+-]+@nabu-casa\.com", re.IGNORECASE),
+    # Operator-specific Nabu Casa remote-URL hostnames
+    # (e.g. hass-abcdef123456.nabu-casa.com). Plain-English
+    # references to `home.nabu-casa.com` (the public login
+    # portal) are allowlisted because they are intentional
+    # user-facing copy in the recovery notification.
+    re.compile(r"nabucasa_[a-z0-9_-]{10,}", re.IGNORECASE),
+    re.compile(r"\bhass-[a-z0-9]{8,}\.nabu-casa\.com\b", re.IGNORECASE),
+)
+
+
+def test_no_nabu_casa_hardcoded_secrets_in_yaml() -> None:
+    """Operator Nabu Casa credentials MUST NEVER appear in this YAML.
+    The wizard exposes them as `input_text.rc_nabu_casa_account_email`
+    (mode: password) and reads the remote URL from the upstream
+    `sensor.home_assistant_cloud_remote`. Hardcoding a URL or email
+    here would both a) leak an operator's account + b) be a tier
+    promotion we explicitly do NOT ship at tier-b."""
+    text = PACKAGE_PATH.read_text(encoding="utf-8")
+    for pat in NABU_CASA_HARDCODED_PATTERNS:
+        matches = pat.findall(text)
+        assert not matches, (
+            f"hardcoded Nabu Casa secret pattern {pat.pattern!r} found in YAML: "
+            f"{matches[:3]} — operator credentials MUST NOT be committed"
         )
 
 

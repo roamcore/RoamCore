@@ -397,21 +397,30 @@ wizard:
         Coming soon — Path A is wired now.
 
     - id: nabu_casa
-      label: "Nabu Casa HA Cloud (coming soon)"
+      label: "Nabu Casa HA Cloud"
       connection_kind: recipe
       tier: b
       recipe_over: "HA Core `cloud` integration (since 2022.x) + Nabu Casa subscription"
       estimated_time: "~10 min"
       requires_reboot: false
       requires_inputs:
-        - "Nabu Casa HA Cloud subscription"
-        - "Nabu Casa account login"
+        - "Nabu Casa HA Cloud subscription (active)"
+        - "Nabu Casa account email (operator-entered helper, never logged)"
+        - "Nabu Casa remote URL (auto-detected from `sensor.home_assistant_cloud_remote`)"
       side_effects:
         - registers_wizard_helpers_input_selects
         - registers_wizard_helpers_input_texts
-        - routes_to_nabu_casa_stub_stage
+        - registers_wizard_template_binary_sensors
+        - registers_wizard_template_sensor_status
+        - registers_wizard_advance_automation
+        - registers_wizard_recovery_automation
+        - registers_wizard_detect_existing_automation
+        - registers_wizard_path_pick_routing_automation
+        - advances_setup_wizard_stage_to_map_on_completion
+        - nabu_casa_uses_cloud_remote_connect_idempotently
       setup_notes: |
-        Coming soon — Path A is wired now.
+        Pick this if you already pay for Nabu Casa HA Cloud — the wizard
+        walks you through it in three plain-English taps.
 
     - id: wireguard
       label: "Wireguard (coming soon)"

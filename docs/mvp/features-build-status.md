@@ -1,10 +1,21 @@
 # RoamCore MVP — Features Build Status
 
-Last updated: 2026-08-03
+Last updated: 2026-08-06
 
 This is an internal status page for the remaining MVP feature build-out.
 
 ## Shipped (repo)
+
+- Wave 9 #122.c Path C Nabu Casa — Phase 6 Tailscale wizard Path C (Nabu Casa HA Cloud)
+  - Connection: [`connections/remote-access/`](../../connections/remote-access/) `wizard.setup_paths.nabu_casa` flipped from "coming soon" stub to fully wired (tier-b honest, additive to #122.a's Path A foundation)
+  - Package: `homeassistant/packages/roamcore_remote_access_setup.yaml` (additive — Path A/B/D code paths untouched)
+  - New Path C helpers (`input_text.rc_nabu_casa_account_email` mode:password + 4 new wizard stages: `nabu_casa_have_subscription` / `nabu_casa_paste_email` / `nabu_casa_verify` / `nabu_casa_done`)
+  - New Path C detection: `binary_sensor.rc_remote_access_setup_nabu_casa_installed` + `binary_sensor.rc_remote_access_setup_nabu_casa_active` (reuses upstream `sensor.home_assistant_cloud_remote`)
+  - New §8.5 `automation.rc_remote_access_setup_advance_path_c` (§8.5 advance + flip `rc_setup_stage` past `networking`) + §8.6 `automation.rc_remote_access_setup_recovery_nabu_casa` (60s verify-timeout → recovery stage; plain-English nudge to home.nabu-casa.com; NEVER clears operator email) + §8.7 `automation.rc_remote_access_setup_detect_existing_nabu_casa` (auto-skip wizard when upstream `cloud` integration already exposes a remote URL)
+  - User-facing IKEA doc: [`docs/setup/guided-remote-access.md`](../setup/guided-remote-access.md) §6 (5-step Nabu Casa HA Cloud section, mirrors §3 Tailscale structure)
+  - No secrets in repo: operator-entered email is `input_text` mode:password; grep smoke asserts no hardcoded `@nabu-casa.com` / `hass-*.nabu-casa.com` / `nabucasa_*` tokens
+  - rc-entity-naming compliance: new helpers use `rc_nabu_casa_` prefix (third allowed subsystem prefix alongside `rc_remote_access_setup_` + `rc_tailscale_`)
+  - Verification: `bash scripts/check.sh --core-only` exit 0 + `bash scripts/checks/remote-access-setup-smoke.sh` 11/11 PASS + `python3 -m pytest homeassistant/packages/tests/test_remote_access_setup.py -v` 56/56 PASS
 
 - Weather + time contract sensors
   - `homeassistant/packages/roamcore_weather_time.yaml`
