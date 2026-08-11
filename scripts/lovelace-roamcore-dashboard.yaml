@@ -1,386 +1,161 @@
-# RoamCore — Lovelace Dashboard (paste this into the dashboard Raw Configuration Editor)
+# RoamCore — Lovelace Dashboard (paste this into the Raw Configuration Editor)
 #
-# How to install this dashboard:
-#   1. Open http://192.168.1.66:8123
-#   2. Settings → Dashboards → Add Dashboard → name: "RoamCore"
-#   3. Open the new RoamCore dashboard (sidebar will show it)
-#   4. Click the ⋮ menu → "Edit dashboard" → "Raw configuration"
-#   5. Replace the entire contents with this file's contents
-#   6. Save
+# This uses the RoamCore custom Lovelace cards (already deployed to /config/www/roamcore/).
+# Before this dashboard works, you MUST register these 4 JS resources in the HA UI:
 #
-# Optional — use the dedicated "RoamCore" custom card instead of stock cards:
-#   1. Settings → Dashboards → Resources → Add Resource
-#      URL:  /local/roamcore/roamcore-dashboard.js
-#      Type: JavaScript Module
-#   2. The card type is custom:roamcore-dashboard-card
+#   Settings → Dashboards → Resources → + Add Resource (4 times):
+#     URL: /local/roamcore/roamcore-dashboard.js          Type: JavaScript Module
+#     URL: /local/roamcore/roamcore-pages.js              Type: JavaScript Module
+#     URL: /local/roamcore/roamcore-tiles.js              Type: JavaScript Module
+#     URL: /local/roamcore/roamcore-victron-connect.js    Type: JavaScript Module
+#
+# After registering, hard-refresh the browser (Ctrl+Shift+R / Cmd+Shift+R).
+#
+# How to install:
+#   1. Settings → Dashboards → Add Dashboard → "RoamCore"
+#   2. Open the new RoamCore dashboard
+#   3. ⋮ → Edit dashboard → Raw configuration
+#   4. Delete everything in the editor, paste this whole file
+#   5. Save → Done
 
 title: RoamCore
 views:
 
   # ────────────────────────────────────────────────────────────────
-  # VIEW 1: Overview — the one-glance dashboard
+  # Home — the main RoamCore overview (uses the primary custom card)
   # ────────────────────────────────────────────────────────────────
-  - title: Overview
-    path: overview
-    icon: mdi:home-outline
+  - path: home
+    title: Dashboard
+    icon: mdi:home
+    panel: true
     cards:
-      # Hero — Mode + Setup status
+      - type: custom:roamcore-dashboard-card
+
+  # ────────────────────────────────────────────────────────────────
+  # Power — Victron connect + power detail
+  # ────────────────────────────────────────────────────────────────
+  - path: power
+    title: Power
+    icon: mdi:lightning-bolt
+    panel: false
+    cards:
       - type: vertical-stack
         cards:
-          - type: glance
-            title: "🚐 RoamCore — Van Mode"
-            entities:
-              - entity: input_select.rc_mode
-                name: Mode
-                icon: mdi:car-tourbus
-              - entity: binary_sensor.rc_advanced_mode
-                name: Advanced
-                icon: mdi:tune
-              - entity: input_boolean.rc_demo_mode
-                name: Demo
-                icon: mdi:flask-outline
-              - entity: input_boolean.rc_openclaw_api_enabled
-                name: OpenClaw
-                icon: mdi:robot
-
-          - type: glance
-            title: Setup readiness
-            entities:
-              - entity: binary_sensor.rc_setup_owner_ready
-                name: Owner
-              - entity: binary_sensor.rc_setup_map_ready
-                name: Map
-              - entity: binary_sensor.rc_setup_victron_ready
-                name: Victron
-              - entity: binary_sensor.rc_setup_trip_wrapped_ready
-                name: Trip Wrapped
-
-      # Power — battery, solar, load, shore
-      - type: glance
-        title: ⚡ Power
-        entities:
-          - entity: sensor.rc_power_battery_soc
-            name: Battery
-            icon: mdi:battery
-          - entity: sensor.rc_power_solar_power
-            name: Solar (W)
-            icon: mdi:solar-power
-          - entity: sensor.rc_power_load_power
-            name: Load (W)
-            icon: mdi:flash
-          - entity: binary_sensor.rc_power_shore_connected
-            name: Shore
-            icon: mdi:power-plug
-
-      # Network — WAN status, source, speeds
-      - type: glance
-        title: 📡 Network
-        entities:
-          - entity: sensor.rc_net_wan_status
-            name: WAN
-          - entity: sensor.rc_net_wan_source
-            name: Source
-          - entity: sensor.rc_net_download
-            name: ↓ Mbps
-            icon: mdi:download
-          - entity: sensor.rc_net_upload
-            name: ↑ Mbps
-            icon: mdi:upload
-          - entity: binary_sensor.rc_net_internet_reachable
-            name: Online
-
-      # Mode controls
-      - type: button
-        title: Quick mode switch
-        entities:
-          - entity: script.rc_mode_set_auto
-            name: Auto
-            icon: mdi:home-circle
-            show_state: false
-          - entity: script.rc_mode_set_travel
-            name: Travel
-            icon: mdi:road-variant
-            show_state: false
-          - entity: script.rc_mode_set_camp
-            name: Camp
-            icon: mdi:tent
-            show_state: false
-          - entity: script.rc_mode_set_stealth
-            name: Stealth
-            icon: mdi:eye-off
-            show_state: false
-
-      # Trip Wrapped trigger
-      - type: entities
-        title: 🗺️ Trip Wrapped
-        entities:
-          - entity: input_text.rc_mock_trip_time_today
-            name: Time today
-          - entity: input_text.rc_mock_trip_time_total
-            name: Time total
-          - type: button
-            entity: script.rc_trip_wrapped_run
-            name: Generate Trip Wrapped
-            icon: mdi:map-marker-path
-            show_state: false
-            tap_action:
-              action: call-service
-              service: script.rc_trip_wrapped_run
+          - type: custom:roamcore-victron-connect
+            title: Victron (Connect)
+          - type: custom:roamcore-power-page
 
   # ────────────────────────────────────────────────────────────────
-  # VIEW 2: Map — device tracker + tile config
+  # Network — WAN/LTE/Starlink status
   # ────────────────────────────────────────────────────────────────
-  - title: Map
-    path: map
-    icon: mdi:map
-    cards:
-      - type: map
-        default_zoom: 11
-        hours_to_show: 24
-        entities:
-          - entity: device_tracker.roamcore_van
-
-      - type: entities
-        title: Map config
-        entities:
-          - entity: input_text.rc_mock_map_location
-            name: Mock location
-          - entity: input_text.rc_map_tile_url
-            name: Tile URL
-          - entity: input_text.rc_map_style_url
-            name: MapLibre style
-
-  # ────────────────────────────────────────────────────────────────
-  # VIEW 3: Power — Victron + mock power details
-  # ────────────────────────────────────────────────────────────────
-  - title: Power
-    path: power
-    icon: mdi:battery-charging
-    cards:
-      - type: gauge
-        entity: sensor.rc_power_battery_soc
-        name: Battery SoC
-        min: 0
-        max: 100
-        severity:
-          red: 0
-          yellow: 30
-          green: 60
-
-      - type: entities
-        title: Battery & charging
-        entities:
-          - entity: sensor.rc_power_battery_voltage
-            name: Voltage
-            icon: mdi:flash-triangle-outline
-          - entity: sensor.rc_power_battery_soc
-            name: SoC %
-            icon: mdi:battery
-          - entity: sensor.rc_power_solar_power
-            name: Solar (W)
-            icon: mdi:solar-power
-          - entity: sensor.rc_power_load_power
-            name: Load (W)
-            icon: mdi:flash
-          - entity: sensor.rc_power_ac_in_power
-            name: AC In (W)
-            icon: mdi:transmission-tower-import
-          - entity: sensor.rc_power_ac_out_power
-            name: AC Out (W)
-            icon: mdi:transmission-tower-export
-          - entity: binary_sensor.rc_power_shore_connected
-            name: Shore connected
-            icon: mdi:power-plug
-          - entity: sensor.rc_power_inverter_status
-            name: Inverter
-
-      - type: entities
-        title: Victron backend
-        entities:
-          - entity: update.roamcore_victron_mock_dev_update
-            name: Victron Mock addon update
-          - entity: update.roamcore_victron_auto_dev_update
-            name: Victron Auto addon update
-
-  # ────────────────────────────────────────────────────────────────
-  # VIEW 4: Connectivity — WAN failover status, LTE/Starlink/WiFi
-  # ────────────────────────────────────────────────────────────────
-  - title: Connectivity
-    path: connectivity
+  - path: network
+    title: Network
     icon: mdi:wifi
+    panel: true
     cards:
-      - type: entities
-        title: Current connection
-        entities:
-          - entity: sensor.rc_net_wan_status
-            name: WAN status
-          - entity: sensor.rc_net_wan_source
-            name: WAN source
-          - entity: binary_sensor.rc_net_internet_reachable
-            name: Internet reachable
-          - entity: sensor.rc_net_download
-            name: Download (Mbps)
-            icon: mdi:download
-          - entity: sensor.rc_net_upload
-            name: Upload (Mbps)
-            icon: mdi:upload
-          - entity: sensor.rc_net_ping
-            name: Ping (ms)
-
-      - type: entities
-        title: Mock cellular details
-        entities:
-          - entity: input_text.rc_mock_net_cell_provider
-            name: Provider
-          - entity: input_text.rc_mock_net_cell_technology
-            name: Technology
-          - entity: input_text.rc_mock_net_ssid
-            name: SSID
-          - entity: input_text.rc_mock_net_channel
-            name: Channel
-          - entity: input_text.rc_mock_net_frequency
-            name: Frequency
-          - entity: input_text.rc_mock_net_uptime
-            name: Uptime
-          - entity: input_text.rc_mock_net_last_disconnect
-            name: Last disconnect
+      - type: custom:roamcore-network-page
 
   # ────────────────────────────────────────────────────────────────
-  # VIEW 5: System — level, mode, automation toggles
+  # Location / GPS
   # ────────────────────────────────────────────────────────────────
-  - title: System
-    path: system
-    icon: mdi:cog
+  - path: location
+    title: Location
+    icon: mdi:map-marker
+    panel: true
     cards:
-      - type: entities
-        title: Mode
-        entities:
-          - entity: input_select.rc_mode
-            name: Current mode
-          - entity: sensor.rc_mode_current
-            name: Reported
-          - entity: binary_sensor.rc_advanced_mode
-            name: Advanced mode active
-          - entity: input_boolean.rc_advanced_mode_enabled
-            name: Allow Advanced Mode
-          - entity: input_boolean.rc_demo_mode
-            name: Demo Mode
-
-      - type: entities
-        title: Levelling
-        entities:
-          - entity: binary_sensor.rc_system_level
-            name: System level
-          - entity: sensor.rc_system_level_status
-            name: Status
-          - entity: sensor.rc_system_level_adjustment_hint
-            name: Hint
-
-      - type: entities
-        title: Agent / OpenClaw safety
-        entities:
-          - entity: input_boolean.rc_agent_actions_enabled
-            name: Agent actions enabled
-          - entity: input_boolean.rc_openclaw_api_enabled
-            name: OpenClaw JSON API enabled
-
-      - type: entities
-        title: Setup
-        entities:
-          - entity: input_select.rc_setup_stage
-            name: Setup stage
-          - entity: binary_sensor.rc_setup_owner_ready
-            name: Owner ready
-          - entity: binary_sensor.rc_setup_map_ready
-            name: Map ready
-          - entity: binary_sensor.rc_setup_victron_ready
-            name: Victron ready
-          - entity: binary_sensor.rc_setup_trip_wrapped_ready
-            name: Trip Wrapped ready
+      - type: custom:roamcore-location-page
 
   # ────────────────────────────────────────────────────────────────
-  # VIEW 6: Trip Wrapped — full report + history
+  # Map (embedded, uses Traccar proxy)
   # ────────────────────────────────────────────────────────────────
-  - title: Trip Wrapped
-    path: trip-wrapped
-    icon: mdi:map-marker-path
+  - path: map
+    title: Map
+    icon: mdi:map
+    panel: true
     cards:
       - type: iframe
-        url: /local/roamcore/trip_wrapped/latest.html
-        title: Latest Trip Wrapped
-        aspect_ratio: "9:16"
-
-      - type: entities
-        title: Trip data
-        entities:
-          - entity: input_text.rc_mock_trip_time_today
-            name: Time today
-          - entity: input_text.rc_mock_trip_time_total
-            name: Time total
-          - type: button
-            entity: script.rc_trip_wrapped_run_today
-            name: Regenerate today
-            icon: mdi:refresh
-            show_state: false
+        url: /traccar/
+        aspect_ratio: 75%
 
   # ────────────────────────────────────────────────────────────────
-  # VIEW 7: Developer / API — OpenClaw endpoints + diagnostics
+  # Traccar (full UI, auto-login via RoamCore proxy)
   # ────────────────────────────────────────────────────────────────
-  - title: API
-    path: api
-    icon: mdi:api
+  - path: traccar
+    title: Traccar
+    icon: mdi:map-clock
+    panel: true
+    cards:
+      - type: iframe
+        url: /api/roamcore/traccar/
+        aspect_ratio: 75%
+
+  # ────────────────────────────────────────────────────────────────
+  # Level — levelling page with tilt animation
+  # ────────────────────────────────────────────────────────────────
+  - path: level
+    title: Level
+    icon: mdi:spirit-level
+    panel: true
+    cards:
+      - type: custom:roamcore-level-page
+
+  # ────────────────────────────────────────────────────────────────
+  # Settings
+  # ────────────────────────────────────────────────────────────────
+  - path: settings
+    title: Settings
+    icon: mdi:cog
+    panel: true
+    cards:
+      - type: custom:roamcore-settings-page
+
+  # ────────────────────────────────────────────────────────────────
+  # Setup wizard (guided first-run)
+  # ────────────────────────────────────────────────────────────────
+  - path: setup
+    title: Setup
+    icon: mdi:magic-staff
+    panel: true
+    cards:
+      - type: custom:roamcore-setup-page
+
+  # ────────────────────────────────────────────────────────────────
+  # Diagnostics
+  # ────────────────────────────────────────────────────────────────
+  - path: diagnostics
+    title: Diagnostics
+    icon: mdi:stethoscope
+    panel: true
+    cards:
+      - type: custom:roamcore-diagnostics-page
+
+  # ────────────────────────────────────────────────────────────────
+  # Status — stock entities view of backend health
+  # (safe fallback if any custom card JS hasn't loaded yet)
+  # ────────────────────────────────────────────────────────────────
+  - path: status
+    title: Status
+    icon: mdi:heart-pulse
+    panel: false
     cards:
       - type: entities
-        title: OpenClaw JSON API endpoints
+        title: Power backend (Victron)
         entities:
-          - entity: input_boolean.rc_openclaw_api_enabled
-            name: API enabled
-          - type: button
-            name: System summary JSON
-            icon: mdi:code-json
-            show_state: false
-            tap_action:
-              action: navigate
-              navigation_path: "https://192.168.1.66:8123/api/roamcore/system/summary"
-          - type: button
-            name: OpenClaw rc_dump JSON
-            icon: mdi:code-json
-            show_state: false
-            tap_action:
-              action: navigate
-              navigation_path: "https://192.168.1.66:8123/api/roamcore/openclaw/rc_dump"
-          - type: button
-            name: Diagnostics JSON
-            icon: mdi:code-json
-            show_state: false
-            tap_action:
-              action: navigate
-              navigation_path: "https://192.168.1.66:8123/api/roamcore/diagnostics"
-          - type: button
-            name: Time-series catalog
-            icon: mdi:code-json
-            show_state: false
-            tap_action:
-              action: navigate
-              navigation_path: "https://192.168.1.66:8123/api/roamcore/openclaw/timeseries/catalog"
+          - entity: binary_sensor.rc_system_power_backend_connected
+          - entity: sensor.rc_system_power_backend_status
+          - entity: sensor.rc_system_power_backend_snapshot_state
+          - entity: sensor.rc_system_power_backend_devices
+          - entity: sensor.rc_system_power_backend_topics
 
-      - type: markdown
-        title: Live data endpoints (JSON)
-        content: |
-          ## RoamCore JSON API (live data)
-
-          All these endpoints return real-time JSON. Click to open in a new tab.
-
-          - **System summary:** [/api/roamcore/system/summary](http://192.168.1.66:8123/api/roamcore/system/summary)
-          - **OpenClaw rc_dump:** [/api/roamcore/openclaw/rc_dump](http://192.168.1.66:8123/api/roamcore/openclaw/rc_dump) (319 entities)
-          - **OpenClaw skill:** [/api/roamcore/openclaw/skill](http://192.168.1.66:8123/api/roamcore/openclaw/skill)
-          - **Diagnostics:** [/api/roamcore/diagnostics](http://192.168.1.66:8123/api/roamcore/diagnostics)
-          - **Time-series catalog:** [/api/roamcore/openclaw/timeseries/catalog](http://192.168.1.66:8123/api/roamcore/openclaw/timeseries/catalog)
-          - **Update info:** [/api/roamcore/update](http://192.168.1.66:8123/api/roamcore/update)
-          - **Trip Wrapped HTML:** [/local/roamcore/trip_wrapped/latest.html](/local/roamcore/trip_wrapped/latest.html)
-          - **Mock track (GeoJSON):** [/local/roamcore/mock/track.geojson](/local/roamcore/mock/track.geojson)
-
-          ## Component info
-          - **Component version:** 0.1.0-beta.1
-          - **Code ref:** bd8cbef (deployed 2026-08-11)
-          - **Total entities loaded:** 345
+      - type: entities
+        title: Networking (rc_net_*)
+        entities:
+          - entity: sensor.rc_net_wan_status
+          - entity: sensor.rc_net_wan_source
+          - entity: sensor.rc_net_ping
+          - entity: sensor.rc_net_download
+          - entity: sensor.rc_net_upload
+          - entity: sensor.rc_net_packet_loss
+          - entity: sensor.rc_net_jitter
+          - entity: sensor.rc_net_uptime
+          - entity: sensor.rc_net_last_disconnect
