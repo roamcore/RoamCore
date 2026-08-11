@@ -76,6 +76,7 @@ run_if_present "scripts/checks/advanced-mode-smoke.sh"         "Advanced mode: s
 run_if_present "scripts/checks/automation-apply-smoke.sh"      "Automation apply: smoke check"
 run_if_present "scripts/checks/mode-builder-smoke.sh"          "Mode builder: smoke check"
 run_if_present "scripts/checks/remote-access-setup-smoke.sh"    "Remote access setup wizard (Tailscale Path A): smoke check"
+run_if_present "scripts/checks/tailscale-self-test-smoke.sh"    "Tailscale self-test (Phase 6 — Wave 9 #122.d.iii) — round-trip HA → tunnel → phone → tunnel → HA: smoke check (10 bash assertions + pytest contract)"
 
 # Connection manifest smokes live under connections/<id>/tests/. We probe
 # for the well-known names so the chain picks them up automatically once
@@ -150,6 +151,16 @@ run_if_present "scripts/checks/catalog-state-chip-smoke.sh" \
   "Catalog UI state chip primitive: kebab CSS classes + pytest rig + every connection.yml state maps to a chip (Wave 9 #118)"
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
+
+# Wave 9 #119c — Phase 2 canonical vehicle model DASHBOARD GENERATOR
+# (sibling slice to the mapping layer #119b and the verification
+# framework #119d, all three consuming the #119a schema primitive).
+# Runs the pure-stdlib dashboard_generator.py pytest rig (>= 30
+# tests) + the bash smoke (vendor-neutrality sweep + IKEA doc shape
+# + rc-entity-naming honour + empty-input placeholder + buttons
+# hidden + determinism). Pure repo-local; no HA runtime.
+run_if_present "scripts/checks/dashboard-generator-smoke.sh" \
+  "Dashboard generator (Phase 2 auto-dashboard — Wave 9 #119c): smoke check"
 
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
