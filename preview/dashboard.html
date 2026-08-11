@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>RoamCore Dashboard Preview</title>
+<style>
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; }
+  .rc-app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .rc-sidebar { background: #1a1d24; color: #fff; padding: 16px 0; }
+  .rc-sidebar h2 { padding: 0 16px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a96a8; margin: 16px 0 8px; }
+  .rc-sidebar .rc-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; font-size: 14px; color: #d2d6df; }
+  .rc-sidebar .rc-item.active { background: #2d323d; color: #fff; border-left: 3px solid #6ee7ff; padding-left: 13px; }
+  .rc-sidebar .rc-item .mdi { font-family: "Material Design Icons"; font-size: 20px; }
+  .rc-main { padding: 24px 32px; background: linear-gradient(180deg, #f5f7fa 0%, #eef2f7 100%); }
+  .rc-main h1 { margin: 0 0 24px; font-size: 28px; color: #1a1d24; display: flex; align-items: center; gap: 12px; }
+  .rc-tabs { display: flex; gap: 4px; border-bottom: 1px solid #d4dae3; margin-bottom: 24px; }
+  .rc-tab { padding: 10px 16px; cursor: pointer; font-size: 13px; color: #5a6577; border-bottom: 2px solid transparent; }
+  .rc-tab.active { color: #1a1d24; border-bottom-color: #6ee7ff; font-weight: 600; }
+  .rc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .rc-tile { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e6eaf0; }
+  .rc-tile-title { font-size: 12px; color: #5a6577; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .rc-tile-value { font-size: 32px; font-weight: 700; color: #1a1d24; }
+  .rc-tile-sub { font-size: 13px; color: #6c7689; margin-top: 4px; }
+  .rc-tile.good { border-left: 4px solid #10b981; }
+  .rc-tile.warn { border-left: 4px solid #f59e0b; }
+  .rc-tile.bad { border-left: 4px solid #ef4444; }
+  .rc-status { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .rc-status-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .rc-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; background: #f0f3f8; color: #1a1d24; }
+  .rc-pill.ok { background: #d1fae5; color: #065f46; }
+  .rc-pill.off { background: #fee2e2; color: #991b1b; }
+  .rc-pill.warn { background: #fef3c7; color: #92400e; }
+  .rc-row { display: grid; grid-template-columns: 2fr 3fr; gap: 16px; margin-bottom: 16px; }
+  .rc-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e6eaf0; }
+  .rc-card h3 { margin: 0 0 12px; font-size: 15px; color: #1a1d24; }
+  .rc-bullet { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: #1a1d24; }
+  .rc-bullet .dot { width: 8px; height: 8px; border-radius: 50%; background: #6ee7ff; }
+  .rc-bullet .dot.off { background: #cbd5e1; }
+  .rc-bullet .dot.warn { background: #f59e0b; }
+  .rc-mode-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid #d4dae3; background: #fff; font-size: 13px; cursor: pointer; }
+  .rc-mode-btn.active { background: #1a1d24; color: #fff; border-color: #1a1d24; }
+</style>
+</head>
+<body>
+<div class="rc-app">
+  <aside class="rc-sidebar">
+    <h2>Main</h2>
+    <div class="rc-item"><span class="mdi">🏠</span> Overview</div>
+    <div class="rc-item"><span class="mdi">🗺️</span> Map</div>
+    <div class="rc-item"><span class="mdi">⚡</span> Energy</div>
+    <div class="rc-item"><span class="mdi">📡</span> Connectivity</div>
+    <h2>System</h2>
+    <div class="rc-item"><span class="mdi">⚙️</span> Settings</div>
+    <div class="rc-item"><span class="mdi">🪄</span> Setup</div>
+    <h2>Other</h2>
+    <div class="rc-item"><span class="mdi">📊</span> History</div>
+    <div class="rc-item"><span class="mdi">📋</span> Logbook</div>
+    <div class="rc-item"><span class="mdi">🔌</span> Energy</div>
+    <h2>RoamCore</h2>
+    <div class="rc-item active"><span class="mdi">🚐</span> RoamCore</div>
+    <div class="rc-item"><span class="mdi">📍</span> Map</div>
+  </aside>
+
+  <main class="rc-main">
+    <h1>🚐 RoamCore</h1>
+
+    <div class="rc-tabs">
+      <div class="rc-tab active">Dashboard</div>
+      <div class="rc-tab">Power</div>
+      <div class="rc-tab">Network</div>
+      <div class="rc-tab">Level</div>
+      <div class="rc-tab">Map</div>
+      <div class="rc-tab">Settings</div>
+      <div class="rc-tab">Setup</div>
+    </div>
+
+    <div class="rc-status">
+      <h3 style="margin:0 0 12px;font-size:15px;">System status</h3>
+      <div class="rc-status-row">
+        <span class="rc-pill ok">● Mode: Auto</span>
+        <span class="rc-pill ok">● Level: OK</span>
+        <span class="rc-pill ok">● Internet reachable</span>
+        <span class="rc-pill warn">● Setup stage: welcome</span>
+        <span class="rc-pill off">● Victron: not connected</span>
+        <span class="rc-pill ok">● OpenClaw API: ON</span>
+      </div>
+    </div>
+
+    <div class="rc-grid">
+      <div class="rc-tile good">
+        <div class="rc-tile-title">Battery</div>
+        <div class="rc-tile-value">73%</div>
+        <div class="rc-tile-sub">26.4V · 12h 30m runtime</div>
+      </div>
+      <div class="rc-tile good">
+        <div class="rc-tile-title">Solar</div>
+        <div class="rc-tile-value">420 W</div>
+        <div class="rc-tile-sub">charging · clear sky</div>
+      </div>
+      <div class="rc-tile warn">
+        <div class="rc-tile-title">Load</div>
+        <div class="rc-tile-value">650 W</div>
+        <div class="rc-tile-sub">fridge + lights + devices</div>
+      </div>
+      <div class="rc-tile">
+        <div class="rc-tile-title">Shore</div>
+        <div class="rc-tile-value">Off</div>
+        <div class="rc-tile-sub">disconnected</div>
+      </div>
+    </div>
+
+    <div class="rc-row" style="margin-top:16px;">
+      <div class="rc-card">
+        <h3>📡 Network</h3>
+        <div class="rc-bullet"><span class="dot"></span>WAN: good</div>
+        <div class="rc-bullet"><span class="dot"></span>Source: Starlink</div>
+        <div class="rc-bullet"><span class="dot"></span>↓ 53 Mbps · ↑ 15 Mbps · 43 ms ping</div>
+        <div class="rc-bullet"><span class="dot"></span>SSID: RoamCore-Van · 5GHz · ch 36</div>
+        <div class="rc-bullet"><span class="dot"></span>Provider: EE (4G LTE) · uptime 4d 12h</div>
+      </div>
+      <div class="rc-card">
+        <h3>🗺️ Location & Trip</h3>
+        <div class="rc-bullet"><span class="dot"></span>Mock location: Lake District, UK</div>
+        <div class="rc-bullet"><span class="dot"></span>Drive time today: 1h 12m</div>
+        <div class="rc-bullet"><span class="dot"></span>Total drive time: 38h 04m</div>
+        <div class="rc-bullet"><span class="dot"></span>Mock track: <a href="http://192.168.1.66:8123/local/roamcore/mock/track.geojson">track.geojson</a></div>
+        <div class="rc-bullet"><span class="dot"></span>Latest Trip Wrapped: <a href="http://192.168.1.66:8123/local/roamcore/trip_wrapped/latest.html">view →</a></div>
+      </div>
+    </div>
+
+    <div class="rc-row">
+      <div class="rc-card">
+        <h3>Mode</h3>
+        <p style="margin:0 0 12px;color:#5a6577;font-size:13px;">Switch between van modes. Travel = drive-friendly; Camp = relaxed; Stealth = quiet.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="rc-mode-btn active">Auto</button>
+          <button class="rc-mode-btn">Travel</button>
+          <button class="rc-mode-btn">Camp</button>
+          <button class="rc-mode-btn">Stealth</button>
+          <button class="rc-mode-btn">Off</button>
+        </div>
+      </div>
+      <div class="rc-card">
+        <h3>OpenClaw JSON API</h3>
+        <p style="margin:0 0 12px;color:#5a6577;font-size:13px;">Stable local JSON contract for OpenClaw (your AI assistant) and any other local agent.</p>
+        <div class="rc-bullet"><span class="dot"></span><a href="http://192.168.1.66:8123/api/roamcore/system/summary">/api/roamcore/system/summary</a></div>
+        <div class="rc-bullet"><span class="dot"></span><a href="http://192.168.1.66:8123/api/roamcore/openclaw/rc_dump">/api/roamcore/openclaw/rc_dump</a> (319 entities)</div>
+        <div class="rc-bullet"><span class="dot"></span><a href="http://192.168.1.66:8123/api/roamcore/diagnostics">/api/roamcore/diagnostics</a></div>
+        <div class="rc-bullet"><span class="dot"></span><a href="http://192.168.1.66:8123/api/roamcore/openclaw/timeseries/catalog">/api/roamcore/openclaw/timeseries/catalog</a></div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;padding:20px;margin-top:16px;border:1px solid #e6eaf0;">
+      <h3 style="margin:0 0 8px;font-size:15px;">📊 How to view this for real</h3>
+      <p style="margin:0 0 12px;font-size:13px;color:#5a6577;">This page is a static preview. The actual RoamCore dashboard is at:</p>
+      <p style="margin:0;font-family:monospace;font-size:14px;background:#f5f7fa;padding:8px 12px;border-radius:6px;">http://192.168.1.66:8123/lovelace/roamcore</p>
+      <p style="margin:12px 0 0;font-size:13px;color:#5a6577;">Look in the left sidebar for <strong>RoamCore</strong> (van icon 🚐).</p>
+    </div>
+  </main>
+</div>
+</body>
+</html>
