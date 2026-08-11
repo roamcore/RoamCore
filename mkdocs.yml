@@ -90,5 +90,6 @@ nav:
       - Connection state chip: reference/rc-connection-state-chip.md
       - Entity naming: reference/rc-entity-naming.md
       - RoamCore Hub: reference/rc-hub.md
+      - Capability mapping: reference/rc-capability-mapping.md
       - OpenClaw JSON API: reference/openclaw-json-api.md
       - RoamCore on your phone: setup/pwa.md
