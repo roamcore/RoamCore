@@ -151,6 +151,14 @@ run_if_present "scripts/checks/catalog-state-chip-smoke.sh" \
 run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
   "Canonical vehicle model: schema-as-data + validator smoke check (Wave 9 #119)"
 
+# Wave 9 #125 — Phase 1 catalog UI proper: render 27 (28 today)
+# connection cards via format_connection_card() + per-connection state
+# field. Builds on the Wave 9 #118 chip primitive + the Wave 9 #117
+# cross-cutting state field; asserts the render layer emits the right
+# card count, the right CSS classes, and the right per-category counts.
+run_if_present "scripts/checks/catalog-ui-cards-smoke.sh" \
+  "Catalog UI cards (Phase 1 proper): ≥20 cards + state chip + tier chip + Connect button + per-category counts + IKEA shape + CSS lockstep (Wave 9 #125)"
+
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
 # + spawns a real port-bind regression to prove every Hub service comes

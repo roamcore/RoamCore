@@ -23,6 +23,7 @@ location/map-dashboard.md
 maintenance/in-cab-tablet-dashboard.md
 maintenance/index.md
 maintenance/leveling.md
+misc/hub-backup.md
 misc/index.md
 misc/nas.md
 misc/time-atomic.md

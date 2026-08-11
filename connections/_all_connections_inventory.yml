@@ -13,6 +13,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/automation/advanced-mode.md
     summary: RoamCore includes an Advanced Mode toggle that can reveal extra controls and diagnostics without cluttering the default UI. Keeps the dashboard clean for daily use. Still gives power users access to deeper controls when needed.
     needs_curation_review: true
@@ -30,6 +32,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/automation/agent-actions-allowlist.md
     summary: "Agent actions allowlist (safety gateway): A safety layer that defaults to deny and only permits explicitly-allowed agent actions, with a kill switch. Lets you use automation/agents without fear of unexpected device control; Clear boundary between read-only and can change things."
     needs_curation_review: true
@@ -47,6 +51,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/automation/demo-mode.md
     summary: Demo Mode lets RoamCore show example values when critical sensors are missing, so the UI still looks and feels complete during setup or demos.
     needs_curation_review: true
@@ -64,6 +70,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/automation/mode.md
     summary: Quickly switch the van between common states (driving, parked, quiet night). A clean way to group automations later without building everything at once.
     needs_curation_review: true
@@ -81,6 +89,8 @@ items:
     support_tier: A
     install_method: hacs
     status: beta
+    state: Available
+    reason: ""
     page: catalog/automation/openclaw-api.md
     summary: RoamCore exposes stable JSON endpoints for local agents (system summary + skill execution) so assistants can read state and (optionally) take safe actions.
     needs_curation_review: true
@@ -98,6 +108,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/approach-lights.md
     summary: "Approach lights (welcome-home exterior + underbody lighting) — the universal small-comfort van automation: open the door after dark, the underbody + entry + soft-interior lights come on for a configurable duration (default 2 min) so you can see where you're stepping and feel like the van is welcoming you home."
     tags:
@@ -114,6 +126,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/fans.md
     summary: "Fans are a simple upgrade that massively improves comfort: airflow, condensation control, cooking smells, and keeping the van livable in warm weather."
     tags:
@@ -130,6 +144,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/hvac-basics.md
     summary: HVAC basics — RoamCore catalog entry.
     needs_curation_review: true
@@ -147,6 +163,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/happijac.md
     summary: "Bed lift control — van bed up / down — is the foundation of every sleep-cycle automation in a van with a Happijac (or any 2-relay + 2-limit-switch bed lift: LCI Happijac, DIY linear actuators, winch + strap, etc."
     needs_curation_review: true
@@ -164,6 +182,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/heated-floors.md
     summary: "Heated floors + engine pre-heat — cold-weather comfort controls for vans — are the foundation of every \"Warm up\" automation in winter van life."
     needs_curation_review: true
@@ -181,6 +201,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/motion-based-lighting.md
     summary: Motion-based lighting — RoamCore catalog entry.
     needs_curation_review: true
@@ -198,6 +220,8 @@ items:
     support_tier: B
     install_method: hacs
     status: beta
+    state: Available
+    reason: ""
     page: catalog/comfort/music-assistant.md
     summary: "Music Assistant is a provider- agnostic multi-room audio orchestrator very popular in HA installs — it unifies Spotify, Apple Music, TuneIn/radio, local files, and Chromecast/AirPlay/Sonos receivers behind a single \"play everywhere\" surface with per-zone controls."
     needs_curation_review: true
@@ -215,6 +239,8 @@ items:
     support_tier: B
     install_method: manual
     status: beta
+    state: Available
+    reason: ""
     page: catalog/connectivity/peplink.md
     summary: "Peplink Balance / MAX / EP-series routers are rugged, configurable multi-WAN gateways very popular in van life — they handle LTE/5G + Starlink + campground Wi-Fi with automatic failover and load balancing, giving a single stable \"van Wi-Fi\" network."
     tags:
@@ -231,6 +257,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/connectivity/dns-blocker.md
     summary: Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker blockers (DNS sinkhole + blocklist + per-client query stats).
     tags:
@@ -247,6 +275,8 @@ items:
     support_tier: B
     install_method: hacs
     status: beta
+    state: Available
+    reason: ""
     page: catalog/connectivity/remote-access.md
     summary: "Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems."
     tags:
@@ -263,6 +293,8 @@ items:
     support_tier: B
     install_method: manual
     status: beta
+    state: Available
+    reason: ""
     page: catalog/connectivity/starlink.md
     summary: Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish + router).
     tags:
@@ -278,6 +310,8 @@ items:
     support_tier: B
     install_method: manual
     status: beta
+    state: Available
+    reason: ""
     page: catalog/connectivity/teltonika.md
     summary: Teltonika RUT-series LTE/5G routers are rugged, configurable mobile-internet gateways widely used in van life.
     tags:
@@ -294,6 +328,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/location/amenities-overlay.md
     summary: Amenities overlay (nearby places) — See nearby things you actually care about when living on the road — water taps, laundrettes, gyms, dump points, campsites, supermarkets, and more — directly on the RoamCore map.
     tags:
@@ -310,6 +346,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/location/bluetooth-wifi-presence.md
     summary: "Presence detection — who is currently home in the van — is the foundation of every occupied/away automation in RoamCore: shut down inverter + pump when nobody is home, turn on approach lighting when the first person returns after dark, suppress Stealth-silent-hours actions when only the driver is present, alert…"
     needs_curation_review: true
@@ -327,6 +365,8 @@ items:
     support_tier: A
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/location/map-dashboard.md
     summary: "RoamCore provides a map experience inside Home Assistant, including current location and route/trip context. Quick 'where are we / where did we park?' view. Nice context for trips and daily travel. Extra hardware required: None if you already have a `device_tracker` or location source. Install / best next step:…"
     needs_curation_review: true
@@ -344,6 +384,8 @@ items:
     support_tier: A
     install_method: manual
     status: beta
+    state: Available
+    reason: ""
     page: catalog/location/mock-location-and-tracks.md
     summary: Mock location + track replay is the dev/demo polyline generator for the RoamCore map page.
     needs_curation_review: true
@@ -361,6 +403,8 @@ items:
     support_tier: C
     install_method: manual
     status: recipe_published
+    state: Available
+    reason: ""
     page: catalog/maintenance/in-cab-tablet-dashboard.md
     summary: Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving + a richer control surface on arrival + a battery-friendly lock screen while parked.
     needs_curation_review: true
@@ -378,6 +422,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/maintenance/leveling.md
     summary: "Better sleep and cooking. Quick 'good enough' check without guessing."
     tags:
@@ -387,6 +433,24 @@ items:
       - roll
       - imu
       - accelerometer
+  - id: hub_backup
+    title: Hub Backup
+    category: misc
+    yaml_category: backup
+    support_tier: A
+    install_method: hacs
+    status: beta
+    state: Available
+    reason: ""
+    page: catalog/misc/hub-backup.md
+    summary: Hub Backup — RoamCore catalog entry.
+    tags:
+      - hub-backup
+      - backup
+      - nightly
+      - restore-tested
+      - verified-restorable
+      - auto-recovery
   - id: nas
     title: Network Attached Storage
     category: misc
@@ -394,6 +458,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/misc/nas.md
     summary: "A NAS gives RoamCore a reliable local-storage target for media, camera footage, backups, and logs — especially valuable when you don't want to depend on cloud services."
     tags:
@@ -410,6 +476,8 @@ items:
     support_tier: C
     install_method: one_line
     status: recipe_published
+    state: Available
+    reason: ""
     page: catalog/misc/time-atomic.md
     summary: "Keep HA's clock accurate even when offline (in a van with intermittent connectivity)."
     tags:
@@ -426,6 +494,8 @@ items:
     support_tier: C
     install_method: hacs
     status: recipe_published
+    state: Available
+    reason: ""
     page: catalog/misc/timezone-geolocator.md
     summary: "Keep HA's system timezone correct as the van travels across regions so that time-based automations (sun events + `now` + `today_at`) keep working."
     needs_curation_review: true
@@ -443,6 +513,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/safety/deadbolts.md
     summary: "Smart deadbolts — van door lock control for vans — are the \"did I forget to lock the van?\" answer."
     tags:
@@ -459,6 +531,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/safety/smart-automations.md
     summary: "Smart automations are the day-to-day convenience layer of a RoamCore van: 17 prebuilt Home Assistant automations that handle mode-aware transitions (Night Mode Stealth/Auto), power-aware responses (Low Battery Mode → Camp, Battery Full Alert, Battery Critical Alert, Solar is Crushing It), safety alerts (Inverter…"
     needs_curation_review: true
@@ -476,6 +550,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/safety/smoke-co-gas-sensors.md
     summary: "Smoke / CO / gas safety sensors — van life safety monitoring — are the foundation of every \"is it safe to sleep in the van?\" question."
     tags:
@@ -492,6 +568,8 @@ items:
     support_tier: C
     install_method: hacs
     status: recipe_published
+    state: Available
+    reason: ""
     page: catalog/security/nfc-tags.md
     summary: "Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp)."
     tags:
@@ -508,6 +586,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/water/electronic-valves.md
     summary: "Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns \"which tank am I drawing from right now?\" + \"is the grey valve about to overflow?\" + \"can I safely open a…"
     needs_curation_review: true
@@ -525,6 +605,8 @@ items:
     support_tier: B
     install_method: one_line
     status: beta
+    state: Available
+    reason: ""
     page: catalog/water/water-tanks.md
     summary: "Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns \"is the fresh tank still full enough to last the night?\" into a dashboard tile + a push notification + a mode-aware automation."
     needs_curation_review: true

@@ -1,18 +1,54 @@
 # Connectivity
 
-Mobile internet, Starlink, Wi-Fi management, DNS-level ad blocking, and
-remote access. Everything that keeps the van online.
+Each item below shows a colour chip telling you whether the connection is ready to use, needs a small action from you, or has hit a problem — and a small pill telling you who built it (RoamCore, community, or experimental).
 
-<!-- RC_FEATURE_LIST_START -->
+## [Peplink](peplink.md)
 
-## Features
+Peplink Balance / MAX / EP-series routers are rugged, configurable multi-WAN gateways very popular in van life — they handle LTE/5G + Starlink + campground Wi-Fi with automatic failover and load balancing, giving a single stable "van Wi-Fi" network.
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="peplink/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Peplink multi-WAN routers</div><div class="rc-feature-sub">Use LTE + Starlink + campground Wi-Fi together with automatic failover and load balancing, giving the van one stable Wi-Fi network.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
-  <a class="rc-feature" href="teltonika/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Teltonika RUT routers</div><div class="rc-feature-sub">Rugged mobile-internet gateways for LTE/5G with good remote-management features.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
-  <a class="rc-feature" href="starlink/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Starlink (Gen-2 / Gen-3)</div><div class="rc-feature-sub">High-speed mobile internet anywhere with a clear sky — see the dish status, latency, and data usage from the dashboard.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
-  <a class="rc-feature" href="dns-blocker/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Pi-hole or AdGuard Home (network ad blocking)</div><div class="rc-feature-sub">Block ads and trackers for every device on the van's Wi-Fi by running a small DNS server locally.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
-  <a class="rc-feature" href="remote-access/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Remote access (check the van from anywhere)</div><div class="rc-feature-sub">See sensor status, view cameras, get alerts, and (optionally) control systems when you're not in the van.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
+<div class="rc-state-chip-row" data-connection-name="Peplink">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="peplink/" title="Open the setup page for peplink">Connect →</a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## [Pi-hole or AdGuard Home](dns-blocker.md)
+
+Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker blockers (DNS sinkhole + blocklist + per-client query stats).
+
+<div class="rc-state-chip-row" data-connection-name="Pi-hole or AdGuard Home">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="dns-blocker/" title="Open the setup page for dns-blocker">Connect →</a>
+</div>
+
+## [Remote access](remote-access.md)
+
+Check the van from anywhere: see sensor status, view cameras, get alerts, or (optionally) control systems.
+
+<div class="rc-state-chip-row" data-connection-name="Remote access">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="remote-access/" title="Open the setup page for remote-access">Connect →</a>
+</div>
+
+## [Starlink](starlink.md)
+
+Starlink is a self-hosted mobile-internet terminal (Gen-2/Gen-3 dish + router).
+
+<div class="rc-state-chip-row" data-connection-name="Starlink">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="starlink/" title="Open the setup page for starlink">Connect →</a>
+</div>
+
+## [Teltonika](teltonika.md)
+
+Teltonika RUT-series LTE/5G routers are rugged, configurable mobile-internet gateways widely used in van life.
+
+<div class="rc-state-chip-row" data-connection-name="Teltonika">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="teltonika/" title="Open the setup page for teltonika">Connect →</a>
+</div>
+

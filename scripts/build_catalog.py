@@ -45,6 +45,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import build_catalog_lib as lib  # noqa: E402
 
+import connection_card  # noqa: E402  (Wave 9 #125 — Phase 1 catalog UI proper)
+
 
 CATALOG_DIR = ROOT / "docs" / "catalog"
 TEMPLATE_PATH = CATALOG_DIR / "_templates" / "integration-page.template.md"
@@ -136,6 +138,8 @@ def emit_inventory(items: list[dict[str, object]], full: bool = False) -> str:
         out.write(f"    support_tier: {_yaml_escape(str(item['support_tier']))}\n")
         out.write(f"    install_method: {_yaml_escape(str(item['install_method']))}\n")
         out.write(f"    status: {_yaml_escape(str(item['status']))}\n")
+        out.write(f"    state: {_yaml_escape(str(item.get('state', 'Available')))}\n")
+        out.write(f"    reason: {_yaml_escape(str(item.get('reason', '')))}\n")
         out.write(f"    page: catalog/{item['category']}/{item['slug']}.md\n")
         out.write(f"    summary: {_yaml_escape(str(item['summary']))}\n")
         if item.get("needs_curation_review"):
@@ -162,6 +166,8 @@ def inventory_items_for(connections: list[lib.Connection]) -> list[dict[str, obj
                 "summary": c.summary,
                 "tags": c.tags,
                 "needs_curation_review": c.needs_curation_review,
+                "state": c.state,
+                "reason": c.reason,
             }
         )
     return items
@@ -178,8 +184,17 @@ def render_catalog_index(
 ) -> str:
     """Render ``docs/catalog/index.md`` grouped by category.
 
-    IKEA-style: plain English, plain bullet list, no tier letters,
-    no install codes, no warning emojis.
+    Each connection is rendered as a connection card via
+    ``scripts/connection_card.py`` (Wave 9 #125). The card carries:
+
+      * the device title + summary as the visible card body
+      * a coloured state chip (``rc-state-chip--<kebab>`` modifier)
+      * a tier pill (``rc-tier--<vocab>`` modifier)
+      * a one-tap ``Connect →`` button linking to the device's docs page
+
+    IKEA-style: plain English, no tier letters in prose, no install
+    codes, no warning emojis. The 10 standard states default to
+    "Available" so a missing YAML ``state:`` field still renders.
     """
 
     by_cat: dict[str, list[lib.Connection]] = defaultdict(list)
@@ -191,25 +206,63 @@ def render_catalog_index(
     out.write(
         "Stuff you can add to your van. Pick what you want and install it.\n\n"
     )
+    # Tier legend so the catalog user can read the pill colours at a glance.
+    out.write("## Tier legend\n\n")
+    out.write(
+        "Each connection card shows who built it honestly:\n\n"
+        "- **RoamCore Certified** — RoamCore builds and maintains this end-to-end.\n"
+        "- **Community Verified** — A member of the community tested this on a real van.\n"
+        "- **Experimental** — It builds but hasn't been integration-tested yet.\n\n"
+    )
 
     for cat in sorted(by_cat):
         out.write(f"## {cat.title()}\n\n")
         for c in sorted(by_cat[cat], key=lambda x: x.title):
-            out.write(f"- **[{c.title}]({cat}/{c.slug}.md)** \u2014 {c.summary}\n")
-        out.write("\n")
+            out.write(f"### [{c.title}]({cat}/{c.slug}.md)\n\n")
+            out.write(f"{c.summary}\n\n")
+            out.write(
+                connection_card.format_connection_card(
+                    name=c.title,
+                    slug=c.slug,
+                    tier=c.tier,
+                    state=c.state or "Available",
+                    reason=(c.reason or None),
+                )
+                + "\n\n"
+            )
     return out.getvalue()
 
 
 def render_category_index(conns: list[lib.Connection], category: str) -> str:
     """Render a per-category landing page (e.g. ``docs/catalog/comfort/index.md``).
 
-    Plain bullet list. No tier letters.
+    Each connection renders as a connection card via
+    ``scripts/connection_card.py``. The card carries the title link,
+    a state chip, a tier pill, and a Connect button — the same
+    shape used on every catalog page so the user can read the chip
+    + pill colours consistently across the site.
     """
 
     out = io.StringIO()
     out.write(f"# {category.title()}\n\n")
+    out.write(
+        "Each item below shows a colour chip telling you whether the connection is "
+        "ready to use, needs a small action from you, or has hit a problem — and a "
+        "small pill telling you who built it (RoamCore, community, or experimental).\n\n"
+    )
     for c in sorted(conns, key=lambda x: x.title):
-        out.write(f"- **[{c.title}]({c.slug}.md)** \u2014 {c.summary}\n")
+        out.write(f"## [{c.title}]({c.slug}.md)\n\n")
+        out.write(f"{c.summary}\n\n")
+        out.write(
+            connection_card.format_connection_card(
+                name=c.title,
+                slug=c.slug,
+                tier=c.tier,
+                state=c.state or "Available",
+                reason=(c.reason or None),
+            )
+            + "\n\n"
+        )
     return out.getvalue()
 
 
