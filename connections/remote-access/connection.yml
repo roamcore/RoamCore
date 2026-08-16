@@ -414,22 +414,30 @@ wizard:
         Coming soon — Path A is wired now.
 
     - id: wireguard
-      label: "Wireguard (coming soon)"
+      label: "Wireguard (self-hosted VPN)"
       connection_kind: recipe
       tier: b
       recipe_over: "HACS `wireguard` add-on + manual per-client key management"
       estimated_time: "~45 min"
       requires_reboot: false
       requires_inputs:
-        - "Wireguard server keys"
-        - "Per-client Wireguard keys"
-        - "Firewall access to UDP 51820"
+        - "Wireguard server endpoint (public hostname or IP)"
+        - "Wireguard server public key"
+        - "Wireguard peer (client) private key"
+        - "Wireguard peer allowed IPs (e.g. 10.0.0.2/32)"
       side_effects:
         - registers_wizard_helpers_input_selects
         - registers_wizard_helpers_input_texts
-        - routes_to_wireguard_stub_stage
+        - registers_wizard_template_binary_sensors
+        - registers_wizard_template_sensor_status
+        - registers_wizard_advance_automation
+        - registers_wizard_recovery_automation
+        - registers_wizard_detect_existing_automation
+        - registers_wizard_path_pick_routing_automation
+        - advances_setup_wizard_stage_to_map_on_completion
       setup_notes: |
-        Coming soon — Path A is wired now.
+        Pick this if you already run your own Wireguard VPN — the wizard
+        walks you through it in four plain-English taps.
 
     - id: skip
       label: "Skip remote access"
