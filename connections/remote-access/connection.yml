@@ -357,13 +357,27 @@ wizard:
       label: "Tailscale (recommended)"
       connection_kind: recipe
       tier: b
+      # Path A remains the tier-a promotion candidate — it has a
+      # full wizard implementation + Path-A-specific pytest rig +
+      # the §8 MANDATORY automations. Path B (Cloudflare Tunnel)
+      # is tier-b (recipe over the upstream HA `cloudflare`
+      # integration + the HACS `cloudflared` add-on). The two
+      # tiers are honest about what RoamCore owns vs. what we
+      # recipe over.
+      tier_a_promotion_candidate: tailscale
       recipe_over: "HA core `tailscale` integration (since 2022.x) + HACS Tailscale add-on"
       estimated_time: "~15 min"
       requires_reboot: false
       requires_inputs:
-        - "Tailscale account"
-        - "Tailscale auth key"
-        - "Tailscale tailnet hostname"
+        - field: tailscale_account
+          label: "Tailscale account"
+          secret: false
+        - field: tailscale_auth_key
+          label: "Tailscale auth key"
+          secret: true
+        - field: tailscale_tailnet_hostname
+          label: "Tailscale tailnet hostname (e.g. my-van.ts.net)"
+          secret: false
       side_effects:
         - registers_wizard_helpers_input_selects
         - registers_wizard_helpers_input_texts
@@ -377,6 +391,51 @@ wizard:
       setup_notes: |
         Pick this to set up Tailscale on your van right now — the wizard
         walks you through it.
+
+    # Path B — Cloudflare Tunnel (free, no Tailscale account needed).
+    # Wave 9 #122.b — wired in this slice. Recipe over the upstream
+    # HA `cloudflare` integration + the HACS `cloudflared` add-on
+    # (we do NOT fork any of the upstream code). Tier-b: the wizard
+    # UI accepts the operator's tunnel token + hostname, validates
+    # the token format, calls the upstream `cloudflared` setup
+    # service with retries, surfaces a plain-English error on
+    # failure, and falls back to "already configured" on idempotent
+    # re-run. The auto-recover to mDNS `roamcore.local` is deferred
+    # to Wave 9 #122.d; this slice leaves a TODO marker for the
+    # next slice.
+    - id: cloudflare_tunnel
+      slug: cloudflare_tunnel
+      title: "Cloudflare Tunnel (free, no Tailscale account needed)"
+      connection_kind: outbound_tunnel_to_relay
+      tier: b
+      recipe_over: "HACS `cloudflared` add-on + HA Core `cloudflare` integration + upstream `cloudflared` daemon"
+      estimated_time_minutes: 12
+      requires_reboot: false
+      requires_inputs:
+        - field: cloudflare_tunnel_token
+          label: "Your tunnel token from Cloudflare"
+          secret: true
+          help_link: "https://one.dash.cloudflare.com/?to=/:account/:zone/access/tunnels"
+        - field: cloudflare_hostname
+          label: "A hostname you control (e.g. my-van.example.com)"
+          secret: false
+      side_effects:
+        - opens_outbound_to_cloudflare_edge: true
+        - requires_public_dns_record: true
+        - registers_wizard_helpers_input_texts_for_cloudflare
+        - calls_upstream_cloudflared_setup_service_with_retries
+        - surfaces_plain_english_error_on_token_rejection
+        - idempotent_already_configured_state_on_repeat
+        # TODO (#122.d): when the Cloudflare Tunnel is unreachable
+        # (e.g. the operator's domain DNS fails or the edge is
+        # blocked), fall back to mDNS resolution at
+        # `roamcore.local` (the LAN-only address the operator
+        # already uses at home). Deferred to Wave 9 #122.d.
+        - todo_mdns_fallback_on_unreachable_deferred_to_wave9_122d
+      setup_notes: |
+        Best for users who already have a domain name and want free
+        remote access without a Tailscale account. Tailscale (Path A)
+        is still the recommended path for most users.
 
     - id: cloudflare
       label: "Cloudflare Tunnel (coming soon)"

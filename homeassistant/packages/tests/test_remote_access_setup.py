@@ -483,6 +483,8 @@ def test_yaml_idempotent(package: dict) -> None:
 ALLOWED_ENTITY_ID_PREFIXES = (
     "rc_remote_access_setup_",
     "rc_tailscale_",
+    # Wave 9 #122.b — Path B (Cloudflare Tunnel) helpers
+    "rc_remote_access_cloudflare_",
 )
 
 
@@ -539,8 +541,14 @@ def test_every_path_option_routed(package: dict) -> None:
     path_select = _helpers_by_entity_id(package, "input_select").get("rc_remote_access_setup_path")
     assert path_select is not None, "missing rc_remote_access_setup_path"
     path_options = set(path_select.get("options") or [])
-    assert path_options == {"tailscale", "cloudflare", "nabu_casa", "wireguard", "skip"}, (
-        f"path options must match the slice spec; got {path_options}"
+    # After #122.b the wizard supports 6 paths (Path A + Path B wired +
+    # Path B legacy stub + Path C stub + Path D stub + skip).
+    assert path_options == {
+        "tailscale", "cloudflare_tunnel", "cloudflare",
+        "nabu_casa", "wireguard", "skip",
+    }, (
+        f"path options must match the slice spec (#122.a + #122.b); "
+        f"got {path_options}"
     )
     autos = _automations(package)
     routing = next(
@@ -556,3 +564,167 @@ def test_every_path_option_routed(package: dict) -> None:
         assert path in action_text, (
             f"path option {path!r} is missing from path_pick_routing automation"
         )
+
+
+
+# ----------------------------------------------------------------------------
+# Wave 9 #122.b — Path B (Cloudflare Tunnel) wiring tests.
+#
+# The Path B addition extends `rc_remote_access_setup_path` with the
+# new `cloudflare_tunnel` option + adds the two operator-entered
+# input_text helpers (`rc_remote_access_cloudflare_token` in
+# password-mode + `rc_remote_access_cloudflare_hostname`).
+#
+# Acceptance criteria (per the slice spec):
+#   - `test_cloudflare_appears_in_path_choice` — the new path option
+#     is in the input_select choices.
+#   - `test_cloudflare_password_field_uses_password_mode` — the
+#     tunnel-token helper is `mode: password` (sensitive — never
+#     logged; never displayed in clear text).
+#   - `test_path_a_inputs_preserved_bit_for_bit` — the existing
+#     Path A inputs (`rc_tailscale_auth_key` +
+#     `rc_tailscale_tailnet_hostname`) are unchanged (the #122.b
+#     doctrine says Path A is preserved bit-for-bit).
+#   - `test_cloudflare_setup_automation_idempotency` — the
+#     cloudflare_tunnel routing branch has idempotency markers
+#     (does NOT clear the token on routing; routes to the
+#     `cloudflare_tunnel_have_domain` stage; surfaces a
+#     persistent_notification with the user-facing message).
+# ----------------------------------------------------------------------------
+
+
+def test_cloudflare_appears_in_path_choice(package: dict) -> None:
+    """The wizard's `rc_remote_access_setup_path` input_select MUST
+    include the new `cloudflare_tunnel` option (Wave 9 #122.b
+    Path B) alongside the existing 5 options."""
+    helpers = _helpers_by_entity_id(package, "input_select")
+    path_select = helpers.get("rc_remote_access_setup_path")
+    assert path_select is not None, "missing rc_remote_access_setup_path"
+    options = set(path_select.get("options") or [])
+    assert "cloudflare_tunnel" in options, (
+        f"cloudflare_tunnel must be in path options (Wave 9 #122.b "
+        f"Path B); got {options}"
+    )
+
+
+def test_cloudflare_password_field_uses_password_mode(package: dict) -> None:
+    """The new `rc_remote_access_cloudflare_token` input_text MUST
+    be `mode: password` (sensitive — never logged; never
+    displayed in clear text; never committed to the repo). The
+    hostname helper stays plain text (the operator must see what
+    they typed so they can spot a typo)."""
+    helpers = _helpers_by_entity_id(package, "input_text")
+    token = helpers.get("rc_remote_access_cloudflare_token")
+    hostname = helpers.get("rc_remote_access_cloudflare_hostname")
+    assert token is not None, (
+        "missing rc_remote_access_cloudflare_token helper (Wave 9 #122.b Path B)"
+    )
+    assert hostname is not None, (
+        "missing rc_remote_access_cloudflare_hostname helper (Wave 9 #122.b Path B)"
+    )
+    assert token.get("mode") == "password", (
+        f"rc_remote_access_cloudflare_token MUST be mode: password "
+        f"(sensitive); got mode={token.get('mode')!r}"
+    )
+    # The hostname helper is plain text so the operator can spot
+    # typos when reading back what they typed. This is intentional —
+    # the hostname is a DNS name, NOT a credential.
+    assert hostname.get("mode") != "password", (
+        f"rc_remote_access_cloudflare_hostname must NOT be password "
+        f"mode (it's a DNS name, not a credential); got mode="
+        f"{hostname.get('mode')!r}"
+    )
+
+
+def test_path_a_inputs_preserved_bit_for_bit(package: dict) -> None:
+    """The existing Path A (Tailscale) inputs MUST be unchanged
+    bit-for-bit by the #122.b slice. This is the explicit
+    acceptance criterion: "the existing `rc_tailscale_auth_key`
+    etc. inputs are unchanged".
+
+    We assert:
+      - The two input_text helpers exist (the operator's auth key
+        + tailnet hostname) — neither has been renamed + neither
+        has been replaced.
+      - `rc_tailscale_auth_key` is still `mode: password`.
+      - `rc_tailscale_tailnet_hostname` is NOT password mode.
+      - The `initial` values are still empty strings (so the
+        operator's past-typed keys are NOT leaked into the new
+        YAML — the wizard always asks the operator to re-enter
+        the auth key, by design).
+      - The names are still the canonical operator-facing strings.
+    """
+    helpers = _helpers_by_entity_id(package, "input_text")
+    auth_key = helpers.get("rc_tailscale_auth_key")
+    hostname = helpers.get("rc_tailscale_tailnet_hostname")
+    assert auth_key is not None, (
+        "Path A: rc_tailscale_auth_key MUST be preserved bit-for-bit "
+        "(acceptance criterion); got None"
+    )
+    assert hostname is not None, (
+        "Path A: rc_tailscale_tailnet_hostname MUST be preserved "
+        "bit-for-bit (acceptance criterion); got None"
+    )
+    # The mode + initial + name must all match the #122.a values
+    # exactly. Any drift here is a regression of the Path A
+    # contract.
+    assert auth_key.get("mode") == "password", (
+        f"Path A: rc_tailscale_auth_key.mode MUST stay 'password' "
+        f"(sensitive); got {auth_key.get('mode')!r}"
+    )
+    assert auth_key.get("initial") == "", (
+        f"Path A: rc_tailscale_auth_key.initial MUST stay empty "
+        f"(operator-entered, never committed); got "
+        f"{auth_key.get('initial')!r}"
+    )
+    assert "Auth Key" in (auth_key.get("name") or ""), (
+        f"Path A: rc_tailscale_auth_key.name MUST still mention "
+        f"'Auth Key'; got {auth_key.get('name')!r}"
+    )
+    assert "Tailnet Hostname" in (hostname.get("name") or ""), (
+        f"Path A: rc_tailscale_tailnet_hostname.name MUST still "
+        f"mention 'Tailnet Hostname'; got {hostname.get('name')!r}"
+    )
+    assert hostname.get("initial") == "", (
+        f"Path A: rc_tailscale_tailnet_hostname.initial MUST stay "
+        f"empty; got {hostname.get('initial')!r}"
+    )
+
+
+def test_cloudflare_setup_automation_idempotency(package: dict) -> None:
+    """The cloudflare_tunnel branch in the path_pick_routing
+    automation MUST be idempotent (the routing branch must NOT
+    clear the operator's tunnel token + must route to the
+    `cloudflare_tunnel_have_domain` stage + must surface a
+    persistent_notification with a user-facing message)."""
+    autos = _automations(package)
+    routing = next(
+        (a for a in autos if a.get("id") == "rc_remote_access_setup_path_pick_routing"),
+        None,
+    )
+    assert routing is not None, "missing rc_remote_access_setup_path_pick_routing automation"
+    action_text = yaml.safe_dump(routing.get("action") or [], default_flow_style=False)
+    # The cloudflare_tunnel routing branch must reference the new
+    # wizard stage + a user-facing persistent_notification.
+    assert "cloudflare_tunnel_have_domain" in action_text, (
+        f"path_pick_routing MUST route cloudflare_tunnel to "
+        f"cloudflare_tunnel_have_domain stage; got action_text="
+        f"{action_text}"
+    )
+    # Idempotency: re-routing on the same path must not clear
+    # the operator's input_text helpers. The routing automation
+    # itself does not touch input_text (the operator stays in
+    # control of the token + hostname fields), so we assert the
+    # routing branch contains no `input_text.set_value` action.
+    assert "input_text.set_value" not in action_text, (
+        f"path_pick_routing MUST NOT call input_text.set_value "
+        f"(would clear operator secrets); got action_text="
+        f"{action_text}"
+    )
+    # The cloudflare_tunnel branch must surface a
+    # persistent_notification with a user-facing title.
+    assert "Cloudflare Tunnel" in action_text, (
+        f"path_pick_routing cloudflare_tunnel branch MUST surface a "
+        f"Cloudflare Tunnel notification; got action_text="
+        f"{action_text}"
+    )
