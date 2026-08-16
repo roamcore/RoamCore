@@ -1,0 +1,2248 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="RoamCore Docs — Home Assistant for van life">
+      
+      
+      
+        <link rel="canonical" href="https://roamcore.co.uk/docs/mvp/features-build-status/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../None">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>RoamCore MVP — Features Build Status - RoamCore</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../styles/rc.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#roamcore-mvp-features-build-status" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="RoamCore" class="md-header__button md-logo" aria-label="RoamCore" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RoamCore
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              RoamCore MVP — Features Build Status
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="RoamCore" class="md-nav__button md-logo" aria-label="RoamCore" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RoamCore
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Catalog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browse all
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Power
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/power/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Water
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Water
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/water/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Water
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/level-sensor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Level Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comfort
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Comfort
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/comfort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comfort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/lighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/bed-lift/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bed Lift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/audio-media/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audio/Media
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/hvac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HVAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/fans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connectivity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Connectivity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/connectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connectivity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/remote-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Homelab
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Homelab
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/homelab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Homelab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Location
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Location
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/location/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Location
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/presence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/weather/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weather
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Safety
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/cctv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCTV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/nfc-tags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NFC Tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Automations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/automations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/time/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/vehicle-obd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicle OBD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Miscellaneous
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Miscellaneous
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Misc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical (advanced)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical (advanced)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/homeassistant-installer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../howto/support-bundle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support bundle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/rc-connection-states/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection states
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/rc-connection-state-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection state chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/rc-entity-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entity naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/rc-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RoamCore Hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/openclaw-json-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenClaw JSON API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/pwa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RoamCore on your phone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped (repo)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps-needs-haos-setup-ui-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next steps (needs HAOS setup / UI wiring)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="roamcore-mvp-features-build-status">RoamCore MVP — Features Build Status</h1>
+<p>Last updated: 2026-08-03</p>
+<p>This is an internal status page for the remaining MVP feature build-out.</p>
+<h2 id="shipped-repo">Shipped (repo)</h2>
+<ul>
+<li>Weather + time contract sensors</li>
+<li>
+<p><code>homeassistant/packages/roamcore_weather_time.yaml</code></p>
+</li>
+<li>
+<p>Timezone override contract sensor (no HA restart required)</p>
+</li>
+<li>
+<p><code>sensor.rc_time_zone</code> via <code>input_text.rc_time_zone_override</code></p>
+</li>
+<li>
+<p>Levelling contract (HA-only beta)</p>
+</li>
+<li><code>homeassistant/packages/roamcore_level.yaml</code></li>
+<li>
+<p>auto-maps common ESPHome pitch/roll sensors into stable <code>rc_level_*</code> entities</p>
+</li>
+<li>
+<p>Advanced mode (power-user toggle that reveals extra controls + diagnostics without cluttering the default UI) (tier-b recipe connection)</p>
+</li>
+<li>tier-b manifest: <code>connections/advanced-mode/connection.yml</code> (ai category, beta status; reuse-first recipe over upstream HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_datetime</code> + <code>input_button</code> + <code>select</code> helpers (since 2022.x — expose a GUI flow for the operator to add the helper entities from the HA UI under Settings → Helpers) + HA core <code>template:</code> sensor wrapper (since 2022.x — wraps any upstream sensor state into a derived <code>sensor.*</code> entity) + HA core <code>template:</code> binary_sensor wrapper (since 2022.x — wraps any upstream sensor threshold into a derived <code>binary_sensor.*</code> entity) + a thin RoamCore upstream-entity-aggregation wrapper; RoamCore does NOT maintain a custom advanced-mode engine; the upstream helpers + <code>template:</code> wrappers handle 95%+ of operator-facing advanced-mode operations; <code>install.hacs: false</code> + <code>install.config_flow: true</code> because the recipe depends on the HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_datetime</code> + <code>input_button</code> + <code>select</code> helpers + the HA core <code>template:</code> sensor + <code>template:</code> binary_sensor wrappers all expose a GUI flow since 2022.x — honest upstream truth, NOT a tier-a marker for RoamCore's tier; FOUR-step operator flow — Step 1 Confirm (operator flips <code>input_boolean.rc_advanced_mode_confirmed</code> ON, acknowledging "I understand advanced mode exposes destructive irreversible service calls"); Step 2 Enable (operator flips <code>input_boolean.rc_advanced_mode_enabled</code> ON OR presses <code>button.rc_advanced_mode_enable</code> — flips the master toggle ON + sets <code>input_datetime.rc_advanced_mode_session_expires_at</code> to "now + selected duration" + surfaces a confirm-modal if the confirm-flag is OFF); Step 3 Session window (advanced mode stays ON until either the operator disables it OR the session_expires_at timestamp is reached; default 24 hours, controlled by the <code>select.rc_advanced_mode_session_duration</code> selector 1 hour / 6 hours / 24 hours / 7 days / Never); Step 4 Audit + revert (every destructive irreversible service call the operator initiates is logged to <code>sensor.rc_advanced_mode_last_action_at</code> + counted in <code>sensor.rc_advanced_mode_session_action_count</code>; the operator can revert at any time via <code>button.rc_advanced_mode_disable_now</code>))</li>
+<li>recipe: <code>connections/advanced-mode/docs/recipe.md</code> (~1035-line howto: HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_datetime</code> + <code>input_button</code> + <code>select</code> helpers install + HA core <code>template:</code> sensor wrapper install + HA core <code>template:</code> binary_sensor wrapper install + §3 Step 1 Confirm wiring (5 steps) + §4 Step 2 Enable wiring (8 steps) + §5 Step 3 Session window wiring (6 steps) + §6 Step 4 Audit + revert wiring (5 steps) + §7 the 11 <code>rc_advanced_mode_*</code> contract tiles (1 input_boolean confirmed + 1 input_boolean enabled + 1 input_datetime session_expires_at + 1 sensor seconds_until_expiry + 1 sensor session_action_count + 1 sensor last_action_at + 1 binary_sensor is_active + 1 binary_sensor is_blocking_destructive_calls + 1 select session_duration + 1 button enable + 1 button disable_now = 11 contract entities); FIVE MANDATORY §8 automations (§8.1 confirm-before-toggle-on guard (triggers when a non-operator source tries to flip <code>input_boolean.rc_advanced_mode_enabled</code> ON without first flipping <code>input_boolean.rc_advanced_mode_confirmed</code> ON; BLOCKS the enable flip + writes an audit-log entry + fires a notification warning the operator that the confirm-flag must be flipped ON first) + §8.2 auto-disable after session timeout (triggers when <code>input_datetime.rc_advanced_mode_session_expires_at</code> timestamp is reached; clears the enable toggle + clears the session_expires_at + resets the session_action_count to 0 + clears the last_action_at to unknown + writes an audit-log entry + fires a notification warning the operator that advanced mode has been auto-disabled) + §8.3 hides-for-non-owners guard (triggers when a non-owner dashboard session attempts to view the advanced-mode dashboard page while <code>input_boolean.rc_advanced_mode_enabled</code> is ON; hides the advanced-mode tiles + surfaces an "advanced mode hidden for non-owners" banner + writes an audit-log entry) + §8.4 audit-log entry on destructive call (triggers on every destructive irreversible service call the operator initiates while <code>input_boolean.rc_advanced_mode_enabled</code> is ON; writes an audit-log entry with the service name + the target entity + the operator identity (if the remote-access session tracks it) + the timestamp + the reason) + §8.5 blocks-destructive-irreversible-service-calls guard (triggers when ANY <code>script.*</code> / <code>automation.*</code> action tries to call a destructive irreversible service (the operator has flagged in <code>input_text.rc_advanced_mode_destructive_call_targets</code>) while <code>input_boolean.rc_advanced_mode_enabled</code> is OFF; BLOCKS the service call + logs a security-style audit entry + flips <code>binary_sensor.rc_advanced_mode_is_blocking_destructive_calls</code> to FALSE + fires a critical notification)); 6 §9 troubleshooting entries (advanced mode is stuck on Confirmed but not Enabled + advanced mode never surfaces the hidden controls + §8.2 auto-disable after session timeout guard never fires + §8.5 blocks-destructive-irreversible-service-calls guard fires unexpectedly + §8.3 hides-for-non-owners guard surfaces banner every time + §8.1 confirm-before-toggle-on guard BLOCKS the operator's own enable); §10 privacy (no RoamCore-side telemetry; the upstream helper entities' logs are operator-owned via the HA core logbook; advanced-mode values are clearly labelled as advanced + never reach the operator's default automations); §11 tier-a promotion outline (real advanced-mode engine + canned fixture responses for session-expired events on CI bench + canned fixture responses for destructive-service-call blocking events + canned fixture responses for non-owner dashboard session events + RoamCore-owned operator-wired setup flow walking the operator through Confirm + Enable + Session window + Audit + declare the upstream destructive irreversible service call targets + the §8 automations + integration tests asserting a session-expired event auto-disables advanced mode + a destructive-service-call attempt on a flagged target triggers the blocks-destructive-irreversible-service-calls guard + a non-owner dashboard session triggers the hides-for-non-owners guard))</li>
+<li>manifest-honesty smoke: <code>connections/advanced-mode/tests/test_connection_yml.py</code> (7/7 PASS via <code>bash scripts/check.sh --core-only</code> — includes the <code>test_tier_b_without_tier_a_markers</code> defensive guard asserting tier=b + <code>wizard.one_tap=false</code> + <code>install.config_flow=true</code> honest because the UPSTREAM HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_datetime</code> + <code>input_button</code> + <code>select</code> helpers + the HA core <code>template:</code> sensor + <code>template:</code> binary_sensor wrappers all expose a GUI flow since 2022.x + <code>install.hacs=false</code> because advanced-mode does NOT depend on a HACS add-on as a required dependency + NO RoamCore-owned <code>config_flow.py</code> + DOMAIN=<code>advanced_mode</code> + the description explicitly documents the reuse-first strategy over the upstream HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_datetime</code> + <code>input_button</code> + <code>select</code> helpers + the HA core <code>template:</code> sensor + <code>template:</code> binary_sensor wrappers + the links.official list includes the HA core <code>input_boolean</code> integration upstream doc URL + the substring guard rephrasing check (the docstring contains <code>operator-wired</code> + <code>GUI flow</code> to avoid the literal <code>config_flow.py</code> substring trap); the <code>test_dashboard_tiles_follow_rc_naming</code> defensive guard asserting exactly 11 vendor-neutral <code>rc_advanced_mode_*</code> tiles (NOT <code>rc_victron_*</code> and NOT <code>rc_see_level_*</code> and NOT <code>rc_seelevel_*</code> and NOT <code>rc_garnet_*</code> and NOT <code>rc_mopeka_*</code> and NOT <code>rc_renogy_*</code> and NOT <code>rc_starlink_*</code> and NOT <code>rc_peplink_*</code> and NOT <code>rc_teltonika_*</code> and NOT <code>rc_unifi_*</code> and NOT <code>rc_ubiquiti_*</code> and NOT <code>rc_input_boolean_*</code> and NOT <code>rc_input_text_*</code> and NOT <code>rc_input_datetime_*</code> and NOT <code>rc_input_button_*</code> and NOT <code>rc_select_*</code> and NOT <code>rc_template_*</code>) + forbidden_substrings covers vendor + hardware + protocol + integration names including <code>victron</code>, <code>renogy</code>, <code>shunt</code>, <code>bms</code>, <code>inverter</code>, <code>mppt</code>, <code>see level</code>, <code>seelevel</code>, <code>garnet</code>, <code>mopeka</code>, <code>icon</code>, <code>resistive</code>, <code>tank</code>, <code>starlink</code>, <code>peplink</code>, <code>teltonika</code>, <code>unifi</code>, <code>ubiquiti</code>, <code>mqtt</code>, <code>webhook</code>, <code>rest</code>, <code>api</code>, <code>http</code>, <code>https</code>, <code>ha core</code>, <code>ha_</code>, <code>hacs</code>, <code>tasmota</code>, <code>esphome</code>, <code>companion</code>, <code>esp32</code>, <code>esp8266</code>, <code>nodemcu</code>, <code>wemos</code>, <code>shelly</code>, <code>sonoff</code>, <code>zwave</code>, <code>zha</code>, <code>zigbee</code>, <code>deconz</code>, <code>conbee</code>, <code>raspbee</code>, <code>nous</code>, <code>aqara</code>, <code>bluetooth</code>, <code>wifi</code>, <code>wi-fi</code>, <code>input_boolean</code>, <code>input_text</code>, <code>input_datetime</code>, <code>input_button</code>, <code>gps</code>, <code>accelerometer</code>, <code>gyroscope</code>, <code>magnetometer</code>, <code>compass</code>, <code>heading</code>, <code>iphone</code>, <code>ios</code>, <code>android</code>, <code>samsung</code>, <code>pixel</code>, <code>oneplus</code>, <code>xiaomi</code>, <code>huawei</code>, <code>phone</code> (note: <code>ble</code>, <code>ble</code>, <code>lte</code>, <code>router</code>, <code>cellular</code>, <code>select</code> deliberately omitted from forbidden_substrings because they're legitimate generic nouns for the advanced-mode contract — <code>select</code> is the modern <code>select:</code> domain helper that's too short for substring matching; the audit catches true BLE / vendor leaks via the longer <code>bluetooth</code> / <code>starlink</code> / <code>peplink</code> / <code>teltonika</code> / <code>unifi</code> / <code>ubiquiti</code> substrings); the <code>test_status_reflects_no_native_advanced_mode_engine</code> defensive guard asserting status=beta + 5 tier_warnings present (<code>no_native_advanced_mode_engine_for_integration_test</code> + <code>recipe_depends_on_user_wiring_session_duration_default</code> + <code>recipe_depends_on_user_declaring_destructive_irreversible_service_call_targets</code> + <code>requires_operator_wiring_confirm_flag_before_first_use</code> + <code>advanced_mode_blocks_destructive_irreversible_calls_guard_must_be_wired</code>); the <code>test_automations_are_documented</code> defensive guard asserting the FIVE §8 MANDATORY automations documented (confirm-before-toggle-on guard + auto-disable after session timeout + hides-for-non-owners guard + audit-log entry + blocks-destructive-irreversible-service-calls guard) + 5 safety tiles wired (<code>input_boolean.rc_advanced_mode_confirmed</code> + <code>input_boolean.rc_advanced_mode_enabled</code> + <code>input_datetime.rc_advanced_mode_session_expires_at</code> + <code>binary_sensor.rc_advanced_mode_is_blocking_destructive_calls</code> + <code>button.rc_advanced_mode_disable_now</code>) + cross-references to time-atomic Wave 3 #55 + home-assistant.io/integrations/input_boolean + template + binary_sensor (HA core <code>template:</code> binary_sensor wrapper) + remote-access Wave 3 #58 + mode Wave 3 #61 + demo-mode Wave 3 #62 + leveling Wave 3 #60 + fans Wave 3 #59)</li>
+<li>vendor-neutrality: 11 <code>rc_advanced_mode_*</code> tiles are vendor-neutral — NO Victron / SeeLevel / Seelevel / Garnet / Mopeka / Renogy / Starlink / Peplink / Teltonika / Unifi / Ubiquiti / MQTT / webhook / REST / API / HTTP / HTTPS / input_boolean / input_text / input_datetime / input_button / select / template / Companion / ESPHome / phone / GPS / accelerometer / gyroscope / magnetometer / compass / heading / iPhone / iOS / Android / Samsung / Pixel / OnePlus / Xiaomi / Huawei names leak into the tile ids</li>
+<li>legacy tier-a-claim catalog page (<code>docs/catalog/ai/advanced-mode.md</code>) now carries the SUPERSEDED banner pointing at the new connection folder (the legacy tier-a "RoamCore native" claim is honest-upstream-truth: RoamCore ships no native advanced-mode engine today)</li>
+<li>legacy package preserved (not touched): <code>homeassistant/packages/roamcore_advanced_mode.yaml</code></li>
+<li>cross-reference to HA core <code>input_boolean</code> integration: §7 <code>input_boolean.rc_advanced_mode_confirmed</code> + <code>input_boolean.rc_advanced_mode_enabled</code> storage uses the HA core <code>input_boolean</code> integration</li>
+<li>cross-reference to HA core <code>input_text</code> integration: §7 <code>input_text.rc_advanced_mode_destructive_call_targets</code> storage uses the HA core <code>input_text</code> integration</li>
+<li>cross-reference to HA core <code>input_datetime</code> integration: §7 <code>input_datetime.rc_advanced_mode_session_expires_at</code> storage uses the HA core <code>input_datetime</code> integration</li>
+<li>cross-reference to HA core <code>input_button</code> integration: §7 <code>button.rc_advanced_mode_enable</code> + <code>button.rc_advanced_mode_disable_now</code> storage uses the HA core <code>input_button</code> integration</li>
+<li>cross-reference to HA core <code>select</code> integration: §7 <code>select.rc_advanced_mode_session_duration</code> storage uses the HA core <code>select</code> integration (since 2024.x)</li>
+<li>cross-reference to HA core <code>template:</code> sensor wrapper: §7 seconds-until-expiry + session-action-count + last-action-at derivation uses the HA core <code>template:</code> sensor wrapper</li>
+<li>cross-reference to HA core <code>template:</code> binary_sensor wrapper: §7 is-active + is-blocking-destructive-calls derivation uses the HA core <code>template:</code> binary_sensor wrapper</li>
+<li>cross-reference to time-atomic Wave 3 #55: §8.2 auto-disable after session timeout guard's expiry timestamp</li>
+<li>cross-reference to remote-access Wave 3 #58: §8.3 hides-for-non-owners guard's VPN primitive</li>
+<li>cross-reference to mode Wave 3 #61: §8.4 audit-log entry's mode-change cross-reference</li>
+<li>cross-reference to demo-mode Wave 3 #62: §8.1 confirm-before-toggle-on guard's confirm-flag pattern</li>
+<li>cross-reference to leveling Wave 3 #60: §8.5 blocks-destructive-irreversible-service-calls guard's levelling-jack protection cross-reference</li>
+<li>cross-reference to fans Wave 3 #59: §8.5 blocks-destructive-irreversible-service-calls guard's fan-protection cross-reference</li>
+<li>new <code>advanced_mode</code> subsystem added to <code>docs/reference/rc-entity-naming.md</code> (the <code>advanced_mode</code> subsystem is OWNED by this slice — the FIRST <code>ai</code>-category <code>advanced_mode</code> slice in the RoamCore connection pipeline; back-fills <code>ventilation</code> + <code>vehicle</code> + <code>mode</code> + <code>demo_mode</code> subsystems since all four were missing from the Allowed subsystems list on the fresh-from-main branch cut)</li>
+<li>Last updated: 2026-08-03</li>
+<li>
+<p>PR #67</p>
+</li>
+<li>
+<p>Map view wiring</p>
+</li>
+<li><code>dashboard/lovelace/storage/lovelace.roamcore.json</code> includes <code>/lovelace/roamcore/map</code></li>
+<li>
+<p><code>homeassistant/packages/roamcore_location.yaml</code> maps a configurable <code>device_tracker</code> → <code>rc_location_*</code></p>
+</li>
+<li>
+<p>Trip Wrapped (MVP HTML export)</p>
+</li>
+<li>tool: <code>homeassistant/tools/trip_wrapped/</code></li>
+<li>HA wiring: <code>homeassistant/packages/roamcore_trip_wrapped.yaml</code></li>
+<li>
+<p>output: <code>/local/roamcore/trip_wrapped/latest.html</code></p>
+</li>
+<li>
+<p>OpenClaw JSON API (HA-native)</p>
+</li>
+<li>endpoint: <code>/api/roamcore/openclaw/summary</code></li>
+<li>
+<p>docs: <code>docs/reference/openclaw-json-api.md</code></p>
+</li>
+<li>
+<p>Traccar live map (embedded)</p>
+</li>
+<li>RoamCore Map page embeds Traccar add-on <strong>web UI</strong> via iframe (configurable).</li>
+<li>
+<p>Helper: <code>input_text.rc_traccar_ui_url</code></p>
+</li>
+<li>
+<p>Agent actions allowlist (safety gateway for agent-driven RoamCore actions)</p>
+</li>
+<li>Connection: <a href="../../connections/agent-actions-allowlist/"><code>connections/agent-actions-allowlist/</code></a> (Wave 3 #65, PR #69)</li>
+<li>Tier-b recipe connection over upstream HA core <code>input_boolean</code> + <code>input_text</code> + <code>input_number</code> + <code>input_select</code> + <code>input_datetime</code> + <code>input_button</code> + <code>script</code> helpers (since 2022.x) + HA core <code>template:</code> sensor wrapper (since 2022.x) + HA core <code>logbook</code> integration (since 2022.x) + the upstream <code>script:</code> integration (since 2022.x). The single <code>input_boolean.rc_agent_actions_enabled</code> kill switch is already shipped in <code>homeassistant/packages/roamcore_agent_actions.yaml</code> and is preserved verbatim by this slice.</li>
+<li>11 vendor-neutral <code>rc_agent_actions_*</code> contract tiles (the kill switch + the policy path + the require-confirmation toggle + the default-duration picker + the session expiry timestamp + the seconds-until-expiry + the last-action-id + last-action-at + the last-action-result + the is-blocked-by-kill-switch + the disable-now button) — no Victron / SeeLevel / Garnet / Mopeka / Renogy / Starlink / Peplink / Teltonika / Unifi / Ubiquiti / OpenAI / Anthropic / Claude / GPT / ChatGPT / LLM / MQTT / webhook / REST / API / HTTP / HTTPS / ESPHome / Companion / phone / GPS / accelerometer / iPhone / iOS / Android / Samsung / Pixel / OnePlus / Xiaomi / Huawei / input_boolean / input_text / input_number / input_select / input_datetime / input_button / script / template / logbook / Z-Wave / Zigbee / ZHA / Deconz / Tasmota / Shelly / Sonoff / ESP32 / ESP8266 / Wi-Fi / BLE / Bluetooth names leak into the tile ids.</li>
+<li>5 §8 MANDATORY automations (kill-switch-blocks-everything guard + session-timeout guard + audit-log entry + require-confirmation guard + outside-allowlist deny-by-default guard).</li>
+<li>Legacy catalog doc <a href="../../catalog/ai/agent-actions-allowlist/"><code>docs/catalog/ai/agent-actions-allowlist.md</code></a> now superseded (the SUPERSEDED banner is appended at the end of the doc).</li>
+<li>Cross-references: time-atomic Wave 3 #55 + remote-access Wave 3 #58 + approach lights Wave 3 #52 + fans Wave 3 #59 + leveling Wave 3 #60 + mode Wave 3 #61 + demo-mode Wave 3 #62 + advanced-mode Wave 3 #63 + openclaw-api Wave 3 #64.</li>
+<li>Verification: <code>bash scripts/check.sh --core-only</code> exit 0 + 7/7 pytest PASS + PR #69 OPEN against <code>main</code>.</li>
+</ul>
+<h2 id="next-steps-needs-haos-setup-ui-wiring">Next steps (needs HAOS setup / UI wiring)</h2>
+<p>1) <strong>Setup Wizard dashboard</strong>
+   - Add a Lovelace dashboard YAML for setup flow.
+   - Wire stubs to OpenWrt API + Victron connect UI.</p>
+<p>2) <strong>Traccar install + integration in HAOS</strong>
+   - Install Traccar add-on (or point to external).
+   - Configure HA Traccar integration so <code>device_tracker.*</code> exists.
+   - Set <code>input_text.rc_location_tracker_entity</code> to the correct entity.</p>
+<p>3) <strong>Trip stats (rc_trip_*) from real Traccar data</strong>
+   - MVP still uses mocks for distance/time/stops.
+   - Implement: odometer-based + utility_meter or periodic report pulls.</p>
+<p>4) <strong>HACS packaging (planned)</strong>
+   - Publish a HACS integration to install RoamCore from the HA UI.
+   - Auto-create dashboard + resources.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tracking", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

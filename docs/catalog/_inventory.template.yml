@@ -1,0 +1,18 @@
+# Catalog inventory (template)
+# Each entry corresponds to one page under docs/catalog/...
+# We’ll use this to generate/validate nav + tags later.
+
+items:
+  - id: example_victron
+    title: Victron (GX + MQTT)
+    type: integration   # feature|integration|recipe
+    category: power
+    support_tier: B      # A|B|C|D
+    install_method: manual # one_click_my_ha|one_line|hacs|manual
+    status: planned      # planned|shipped|deprecated
+    page: catalog/power/victron.md
+    summary: Batteries, solar, inverter telemetry and dashboards via HA + Victron.
+    links:
+      official: []
+      youtube: []
+      repo: []
