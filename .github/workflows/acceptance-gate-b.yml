@@ -1,0 +1,92 @@
+# RoamCore — Acceptance Gate B (connection flow) — Wave 9 #123.d.ii
+#
+# Runs the Gate B acceptance test on every push to main + on every PR
+# + manually via workflow_dispatch + weekly on Mondays at 06:00 UTC.
+# Gate B proves the canonical RoamCore "fresh device connects end-to-end
+# through the pipeline and survives a reboot" contract (Phase 7, Gate B
+# in the 2026-08-03 directive):
+#
+#   detection → click Connect → essential questions →
+#   upstream integration → mapping → verification →
+#   dashboard → reboot-survives
+#
+# This job runs the pytest rig (mocked subprocess + mocked HA instance)
+# on every push. The real bash test (gate_b_connection_flow.sh) runs
+# as an OPTIONAL second step on hosts that set HAS_VICTRON_PTY=true
+# (a self-hosted runner with the existing PTY/socat sandbox rig).
+# The default ubuntu-latest runner only runs the pytest rig — Gate B
+# does not require socat on GitHub-hosted runners.
+#
+# Why split this way: the bash test is the contract (cold-starts a
+# mock Victron device on a real PTY + verifies discovery + mapping +
+# dashboard + reboot-survives end-to-end + tears down). The pytest
+# rig is the fast, mocked-subprocess + mocked-HA-instance coverage
+# that runs anywhere, including the cron host, so every push to main
+# catches a Gate B regression in seconds. Re-running the workflow
+# produces the same outcome on the same input (idempotent — pytest
+# rigs are pure functions of the canned responses).
+#
+# Failure mode: a red Gate B fails the CI job with a plain-English
+# error line so a future release never ships a release that breaks
+# the connection flow. This workflow does NOT touch the production
+# Hub; it runs in the GitHub Actions sandbox only.
+
+name: Acceptance — Gate B (connection flow)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly Monday 06:00 UTC — catches regressions that escape the
+    # per-push + per-PR coverage (e.g. dependency upgrades, base-image
+    # changes that don't trigger a PR).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-b:
+    name: Gate B — connection flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest + PyYAML
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml
+
+      - name: Run Gate B pytest rig (mocked subprocess + mocked HA instance)
+        run: |
+          pytest scripts/tests/acceptance/test_gate_b_connection_flow.py -v
+
+      - name: Run Gate B bash test (real PTY, optional)
+        if: env.HAS_VICTRON_PTY == 'true'
+        run: |
+          bash scripts/tests/acceptance/gate_b_connection_flow.sh
+
+      - name: Upload pytest report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-b-pytest-report
+          path: |
+            scripts/tests/acceptance/gate_b_connection_flow.sh
+            .cache/gate-b/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Gate B — connection flow: ${{ job.status }}"
