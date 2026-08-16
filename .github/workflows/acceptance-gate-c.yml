@@ -1,0 +1,102 @@
+# RoamCore — Acceptance Gate C (dashboard reliability) — Wave 9 #123.d.iii
+#
+# Runs the Gate C acceptance test on every push to main + on every PR
+# + manually via workflow_dispatch + weekly on Mondays at 06:00 UTC.
+# Gate C proves the canonical RoamCore "dashboard shows live data,
+# recovers when something is offline, controls reflect state, and
+# looks the same on phone and tablet" contract (Phase 7, Gate C in
+# the 2026-08-03 directive):
+#
+#   no manual Lovelace, data updates, unavailable data handled,
+#   controls reflect state, phone/tablet work, custom section
+#   stays separate.
+#
+# This job runs the pytest rig on every push. The real bash test
+# (gate_c_dashboard_reliability.sh) runs as an OPTIONAL second step
+# on hosts that set HAS_DASHBOARD_RENDERER=true (a self-hosted runner
+# with a dashboard renderer sandbox). The default ubuntu-latest
+# runner only runs the pytest rig + the bash contract in --mock mode
+# — Gate C does not require a real renderer on GitHub-hosted runners.
+#
+# Why split this way: the bash test is the contract (renders the
+# dashboard from auto-generated YAML + verifies tile updates +
+# verifies plain-English banner + verifies control reflects state +
+# verifies phone viewport + verifies custom section survives +
+# verifies reboot-survives + tears down on EXIT). The pytest rig is
+# the fast, mocked-subprocess + mocked-renderer coverage that runs
+# anywhere, including the cron host, so every push to main catches
+# a Gate C regression in seconds. Re-running the workflow produces
+# the same outcome on the same input (idempotent — pytest rigs are
+# pure functions of the canned responses).
+#
+# Failure mode: a red Gate C fails the CI job with a plain-English
+# error line so a future release never ships a release that breaks
+# the dashboard reliability contract. This workflow does NOT touch
+# the production Hub; it runs in the GitHub Actions sandbox only.
+
+name: Acceptance — Gate C (dashboard reliability)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly Monday 06:00 UTC — catches regressions that escape the
+    # per-push + per-PR coverage (e.g. dependency upgrades,
+    # dashboard-renderer changes that don't trigger a PR).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-c:
+    name: Gate C — dashboard reliability
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest + PyYAML
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml
+
+      - name: Run Gate C pytest rig (mocked subprocess + mocked dashboard renderer)
+        run: |
+          pytest scripts/tests/acceptance/test_gate_c_dashboard_reliability.py -v
+
+      - name: Run Gate C bash test (12-stage contract, --mock mode)
+        # Always run the bash contract in --mock mode so every push
+        # verifies the 12-stage shape end-to-end on a clean cache.
+        run: |
+          bash scripts/tests/acceptance/gate_c_dashboard_reliability.sh --mock
+
+      - name: Run Gate C bash test (real dashboard renderer, optional)
+        if: env.HAS_DASHBOARD_RENDERER == 'true'
+        run: |
+          bash scripts/tests/acceptance/gate_c_dashboard_reliability.sh
+
+      - name: Upload pytest report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-c-pytest-report
+          path: |
+            scripts/tests/acceptance/gate_c_dashboard_reliability.sh
+            scripts/tests/acceptance/test_gate_c_dashboard_reliability.py
+            .cache/gate-c/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Gate C — dashboard reliability: ${{ job.status }}"
