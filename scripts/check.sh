@@ -189,6 +189,11 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #114 — power mock-kill: assert the dev-mock fallback chain is gone from
+# roamcore_power.yaml and the binary_sensor.rc_power_no_real_source banner exists.
+run_if_present "homeassistant/packages/tests/test_power_mock_kill.py" \
+  "Power mock-kill (Wave 9 #114) — strip fallback chain + plain-English banner: smoke check"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true
