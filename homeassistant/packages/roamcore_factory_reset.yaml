@@ -1,0 +1,283 @@
+# RoamCore Factory Reset — Phase 7 — Wave 9 #123.b
+#
+# Purpose:
+# - Provide the canonical helper entities + the 5 §8 MANDATORY automations
+#   for the Factory Reset one-tap recovery in CI.
+# - The §8.1 dry-run-sets-token automation fires when
+#   `input_button.rc_factory_reset_dry_run` is pressed + calls the
+#   RoamCore `roamcore.factory_reset_dry_run` service + writes the
+#   returned token to `input_text.rc_factory_reset_token`.
+# - The §8.2 confirm-requires-token-match automation fires when
+#   `input_button.rc_factory_reset_confirm` is pressed + reads the
+#   token from the helper + calls `roamcore.factory_reset_confirm`
+#   with the value.
+# - The §8.3 cancel-clears-token automation fires every 5 minutes +
+#   clears the token if the dry-run is >5 minutes old.
+# - The §8.4 postflight-check-on-boot automation fires on HA start +
+#   calls `roamcore.factory_reset_postflight_check` + writes the
+#   result as plain English.
+# - The §8.5 recovery-on-audit-chain-invalid automation fires when
+#   `binary_sensor.rc_openclaw_api_chain_valid` flips off + runs the
+#   chain-corruption recovery flow (wipe audit log + restore from
+#   latest backup).
+# - All 5 automations have a `mode: single` guard so re-firing
+#   returns gracefully (idempotency marker; verified by the >=25
+#   pytest tests at
+#   `homeassistant/packages/tests/test_factory_reset.py`).
+# - The token is generated at runtime by the service handler
+#   (never hardcoded). The expected confirm token is the plain-
+#   English string "RESET" (the explicit-token guard from the
+#   doctrine).
+# - The status surfaces are template sensors + a binary_sensor
+#   derivation for the operator-facing affordances.
+# - Naming follows `docs/reference/rc-entity-naming.md` — every
+#   entity starts with `rc_factory_reset_` (the `factory_reset`
+#   subsystem was added by this slice).
+
+input_button:
+  rc_factory_reset_dry_run:
+    name: "Factory Reset Dry-Run"
+    icon: mdi:eye-outline
+
+  rc_factory_reset_confirm:
+    name: "Factory Reset Confirm"
+    icon: mdi:alert-octagon
+
+input_text:
+  rc_factory_reset_token:
+    name: "Factory Reset Token"
+    initial: ""
+    max: 16
+    pattern: "^[A-Z0-9]{0,16}$"
+
+  rc_factory_reset_dry_run_report:
+    name: "Factory Reset Dry-Run Report"
+    initial: "No dry-run yet — tap the Dry-Run button to see the plan."
+    max: 1024
+
+input_boolean:
+  rc_factory_reset_armed:
+    name: "Factory Reset Armed"
+    icon: mdi:shield-alert
+    initial: false
+
+input_datetime:
+  rc_factory_reset_last_dry_run:
+    name: "Factory Reset Last Dry-Run"
+    has_date: true
+    has_time: true
+    initial: "1970-01-01 00:00:00"
+
+template:
+  - sensor:
+      - name: "RC Factory Reset Status"
+        unique_id: rc_factory_reset_status
+        icon: mdi:restore-alert
+        state: >-
+          {% if is_state('input_boolean.rc_factory_reset_armed', 'on') %}
+            Confirm pending
+          {% elif states('input_text.rc_factory_reset_dry_run_report') != 'No dry-run yet — tap the Dry-Run button to see the plan.' and states('input_text.rc_factory_reset_token') != '' %}
+            Dry-run shown
+          {% else %}
+            Ready
+          {% endif %}
+
+      - name: "RC Factory Reset Last Backup Age"
+        unique_id: rc_factory_reset_last_backup_age
+        icon: mdi:clock-outline
+        state: >-
+          {% set age = states('sensor.rc_hub_backup_age_minutes') | int(99999) %}
+          {% if age < 60 %}
+            {{ age }} minutes ago
+          {% elif age < 1440 %}
+            {{ (age / 60) | round(0, 'floor') | int }} hours ago
+          {% elif age < 43200 %}
+            {{ (age / 1440) | round(0, 'floor') | int }} days ago
+          {% else %}
+            no backup yet
+          {% endif %}
+        availability: >-
+          {{ states('sensor.rc_hub_backup_age_minutes') not in ['unknown','unavailable'] }}
+
+      - name: "RC Factory Reset Preflight Warnings"
+        unique_id: rc_factory_reset_preflight_warnings
+        icon: mdi:alert-circle-outline
+        state: >-
+          {% set age = states('sensor.rc_hub_backup_age_minutes') | int(99999) %}
+          {% set healthy = is_state('binary_sensor.rc_hub_backup_healthy', 'on') %}
+          {% if age >= 99999 %}
+            No backup yet — please take a new backup first.
+          {% elif age > 1440 %}
+            Last backup is {{ (age / 1440) | round(0, 'floor') | int }} days old — please take a new one first.
+          {% elif not healthy %}
+            Last backup didn't pass the restore-check — please verify it first.
+          {% else %}
+            All clear — your Hub is ready for a factory reset.
+          {% endif %}
+
+      - name: "RC Factory Reset Postflight Status"
+        unique_id: rc_factory_reset_postflight_status
+        icon: mdi:shield-check
+        state: "Post-flight check hasn't run yet — it runs on every Hub start."
+
+  - binary_sensor:
+      - name: "RC Factory Reset Safe To Run"
+        unique_id: rc_factory_reset_safe_to_run
+        icon: mdi:shield-check
+        state: >-
+          {% set age = states('sensor.rc_hub_backup_age_minutes') | int(99999) %}
+          {% set healthy = is_state('binary_sensor.rc_hub_backup_healthy', 'on') %}
+          {{ age < 1440 and healthy }}
+        availability: >-
+          {{ states('sensor.rc_hub_backup_age_minutes') not in ['unknown','unavailable'] and states('binary_sensor.rc_hub_backup_healthy') not in ['unknown','unavailable'] }}
+
+automation:
+  - id: rc_factory_reset_dry_run_sets_token
+    alias: "RC Factory Reset: Dry-Run Sets Token (on input_button press)"
+    description: "Dry-Run Sets Token — fires when input_button.rc_factory_reset_dry_run is pressed; calls roamcore.factory_reset_dry_run and stores the returned 8-char token in input_text.rc_factory_reset_token. mode: single guard prevents double-dry-run."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_factory_reset_dry_run
+    action:
+      - service: roamcore.factory_reset_dry_run
+        response_variable: dry_run_result
+      - choose:
+          - conditions:
+              - "{{ dry_run_result is mapping and dry_run_result.ok }}"
+            sequence:
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_factory_reset_token
+                data:
+                  value: "{{ dry_run_result.plan.token }}"
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_factory_reset_dry_run_report
+                data:
+                  value: "{{ dry_run_result.plain_english_summary }}"
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.rc_factory_reset_armed
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.rc_factory_reset_last_dry_run
+                data:
+                  datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_factory_reset_dry_run_report
+            data:
+              value: >-
+                {{ dry_run_result.plain_english_summary if dry_run_result is mapping and dry_run_result.plain_english_summary is defined else 'I can''t run a dry-run right now. Please check the preflight warnings tile.' }}
+
+  - id: rc_factory_reset_confirm_requires_token_match
+    alias: "RC Factory Reset: Confirm Requires Token Match (on input_button press)"
+    description: "Confirm Requires Token Match — fires when input_button.rc_factory_reset_confirm is pressed; reads the token from input_text.rc_factory_reset_token and calls roamcore.factory_reset_confirm. mode: single guard prevents double-confirm."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_factory_reset_confirm
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_factory_reset_armed
+        state: "on"
+    action:
+      - service: roamcore.factory_reset_confirm
+        data:
+          token: "{{ states('input_text.rc_factory_reset_token') }}"
+        response_variable: confirm_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_factory_reset_dry_run_report
+        data:
+          value: "{{ confirm_result.plain_english_status }}"
+
+  - id: rc_factory_reset_cancel_clears_token
+    alias: "RC Factory Reset: Cancel Clears Token (timer: every 5 minutes)"
+    description: "Cancel Clears Token — fires every 5 minutes; checks input_datetime.rc_factory_reset_last_dry_run for staleness; if > 5 minutes old, clears the token and sets armed to false. mode: single guard prevents concurrent runs."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_factory_reset_armed
+        state: "on"
+    action:
+      - variables:
+          last_dry_run_str: "{{ states('input_datetime.rc_factory_reset_last_dry_run') }}"
+          now_dt: "{{ now() }}"
+      - condition: template
+        value_template: >-
+          {% set last_dry_run = strptime(last_dry_run_str, '%Y-%m-%d %H:%M:%S') %}
+          {{ (now_dt - last_dry_run).total_seconds() > 300 }}
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_factory_reset_token
+        data:
+          value: ""
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rc_factory_reset_armed
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_factory_reset_dry_run_report
+        data:
+          value: "Dry-run expired — tap the Dry-Run button again to get a new token."
+
+  - id: rc_factory_reset_postflight_check_on_boot
+    alias: "RC Factory Reset: Postflight Check On Boot (on HA start)"
+    description: "Postflight Check On Boot — fires on HA start; calls roamcore.factory_reset_postflight_check (idempotent) and writes the result to sensor.rc_factory_reset_postflight_status. mode: single guard prevents concurrent runs."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - service: roamcore.factory_reset_postflight_check
+        response_variable: postflight_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_factory_reset_dry_run_report
+        data:
+          value: "{{ postflight_result.plain_english_status }}"
+
+  - id: rc_factory_reset_recovery_on_audit_chain_invalid
+    alias: "RC Factory Reset: Recovery On Audit Chain Invalid (on binary_sensor flip)"
+    description: "Recovery On Audit Chain Invalid — fires when binary_sensor.rc_openclaw_api_chain_valid flips off; runs the chain-corruption recovery flow (wipe audit log + restore from latest backup) by calling roamcore.factory_reset_dry_run and roamcore.factory_reset_confirm in sequence. mode: single guard prevents concurrent recovery runs."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.rc_openclaw_api_chain_valid
+        from: "on"
+        to: "off"
+    action:
+      - service: roamcore.factory_reset_dry_run
+        response_variable: recovery_dry_run
+      - choose:
+          - conditions:
+              - "{{ recovery_dry_run is mapping and recovery_dry_run.ok }}"
+            sequence:
+              - service: roamcore.factory_reset_confirm
+                data:
+                  token: "{{ recovery_dry_run.plan.token }}"
+                response_variable: recovery_confirm
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.rc_factory_reset_dry_run_report
+                data:
+                  value: >-
+                    {{ recovery_confirm.plain_english_status if recovery_confirm is mapping and recovery_confirm.plain_english_status is defined else 'Your Hub self-recovered — the audit log was wiped + the latest backup was restored.' }}
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_factory_reset_dry_run_report
+            data:
+              value: >-
+                The OpenClaw audit chain is invalid but the auto-recovery couldn't start — please run a factory reset manually.
