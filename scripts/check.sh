@@ -189,6 +189,17 @@ run_if_present "scripts/checks/pwa-install-smoke.sh" \
 run_if_present "scripts/checks/pwa-install-smoke.sh" \
   "PWA: install/offline/push smoke (manifest + sw.js hooks + offline.html honesty + install banner + profile store + IKEA doc + live http.server fetch)"
 
+# Wave 9 #122.d.ii — Phase 6 Tailscale wizard QR code (mobile pairing).
+# Repo-local verification of the QR package + stdlib QR generator +
+# IKEA user doc + pytest rig. Pure stdlib, no `qrcode` / `segno` /
+# `qrencode` dep; the smoke runs the generator's --self-test +
+# renders a canonical Tailscale login URL + asserts the SVG is
+# well-formed with the right viewBox + dark modules.
+run_if_present "scripts/checks/tailscale-qr-smoke.sh" \
+  "Tailscale wizard QR (mobile pairing): package + stdlib generator + pytest rig + IKEA doc smoke (Phase 6, Wave 9 #122.d.ii)"
+run_if_present "homeassistant/packages/tests/test_tailscale_qr.py" \
+  "Tailscale wizard QR (Phase 6 — Wave 9 #122.d.ii): pytest rig (~30 contract tests for QR generator + YAML helpers + IKEA doc)"
+
 if [ "$CORE_ONLY" -eq 0 ]; then
   banner "RoamCore: repo inventory"
   bash scripts/checks/roamcore-inventory.sh || true

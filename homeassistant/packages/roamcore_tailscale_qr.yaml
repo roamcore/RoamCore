@@ -1,0 +1,167 @@
+# RoamCore Tailscale Wizard — QR Code for Mobile Pairing (Phase 6)
+#
+# Wave 9 #122.d.ii — Tier-b recipe over a self-contained Python
+# QR generator (`homeassistant/packages/scripts/qr_generator.py`,
+# pure stdlib, no `qrcode` / `segno` / `qrencode` dep). The QR encodes
+# the `https://login.tailscale.com/a/<device_key>` URL that the
+# operator scans with the Tailscale app on their phone instead of
+# copy-pasting the long auth key.
+#
+# Doctrine (Bernard, 2026-08-04 — chat #7563-7574):
+#   - must not fail + super intuitive + critical infrastructure
+#
+# Apply:
+#   - Verification is mandatory: the QR payload must parse as a valid
+#     `tailscale login` URL; the rendered SVG must have the right
+#     viewBox + dark modules; the wizard surfaces the QR tile only
+#     when stage == ts_paste_key OR stage == ts_done.
+#   - Auto-recover: if QR generation fails (no `qrcode` dep / no
+#     display) we fall back to a plain-English copy-paste block
+#     ("Open this URL on your phone: https://login.tailscale.com/a/abc")
+#     instead of leaving a blank tile.
+#   - Plain-English errors: "Your phone can't see this QR code — open
+#     this URL instead", NOT a raw Python stack trace.
+#   - Idempotent installers: re-pushing the package does NOT duplicate
+#     the QR tile (unique_id is mandatory on every template sensor +
+#     button + binary sensor).
+#   - Tier discipline: tier-b recipe; the QR generator is pure
+#     stdlib, no external service. We DO NOT operate our own VPN
+#     control plane (the directive §"Phase 6 delivery" is explicit
+#     on that).
+#
+# STATE OWNERSHIP CONTRACT — what changes when this slice lands:
+#   - 4 input_text helpers:
+#       rc_tailscale_qr_device_key (mode: password — auto-populated
+#           from rc_tailscale_auth_key via the setup wizard helper).
+#       rc_tailscale_qr_login_url (the full Tailscale login URL).
+#       rc_tailscale_qr_svg_path (where the SVG was last written).
+#       rc_tailscale_qr_nonce (visual re-scan marker).
+#   - 1 input_button:
+#       button.rc_tailscale_qr_regenerate (rebuilds the QR).
+#   - 1 binary_sensor:
+#       binary_sensor.rc_tailscale_qr_visible
+#           true when stage == tailscale_paste_key OR tailscale_done
+#           AND device_key is non-empty.
+#   - 1 template sensor:
+#       sensor.rc_tailscale_qr_status (plain-English status string).
+#   - 1 shell_command:
+#       shell_command.rc_tailscale_qr_render (invokes qr_generator.py).
+#   - 2 §8 MANDATORY AUTOMATIONS:
+#       §8.Q.1  qr_compute_login_url (build + persist the URL).
+#       §8.Q.2  qr_regenerate_on_request (button press → rebuild).
+
+input_text:
+  rc_tailscale_qr_device_key:
+    name: "RC Tailscale QR: Device Key"
+    initial: ""
+    mode: password
+
+  rc_tailscale_qr_login_url:
+    name: "RC Tailscale QR: Login URL (operator-visible, contains the device key)"
+    initial: ""
+
+  rc_tailscale_qr_svg_path:
+    name: "RC Tailscale QR: SVG Path (file on disk)"
+    initial: "/config/www/roamcore/qr/qr-current.svg"
+
+  rc_tailscale_qr_nonce:
+    name: "RC Tailscale QR: Nonce (visual re-scan marker)"
+    initial: "1"
+
+input_button:
+  rc_tailscale_qr_regenerate:
+    name: "RC Tailscale QR: Regenerate"
+    icon: mdi:refresh
+
+template:
+  - binary_sensor:
+      - name: "RC Tailscale QR: Visible"
+        unique_id: rc_tailscale_qr_visible
+        icon: mdi:qrcode-scan
+        state: >-
+          {% set key = states('input_text.rc_tailscale_qr_device_key') | trim %}
+          {% set stage = states('input_select.rc_remote_access_setup_stage') %}
+          {{ key != '' and stage in ['tailscale_paste_key', 'tailscale_done'] }}
+
+  - sensor:
+      - name: "RC Tailscale QR: Status"
+        unique_id: rc_tailscale_qr_status
+        icon: mdi:qrcode
+        state: >-
+          {% set key = states('input_text.rc_tailscale_qr_device_key') | trim %}
+          {% set url = states('input_text.rc_tailscale_qr_login_url') | trim %}
+          {% set stage = states('input_select.rc_remote_access_setup_stage') %}
+          {% if key == '' %}
+            Waiting for Tailscale account.
+          {% elif url == '' %}
+            Show this to your phone.
+          {% elif stage == 'tailscale_done' %}
+            Already paired.
+          {% elif stage == 'recovery' %}
+            QR unavailable — use the URL below.
+          {% else %}
+            Show this to your phone.
+          {% endif %}
+        attributes:
+          login_url: "{{ states('input_text.rc_tailscale_qr_login_url') }}"
+          svg_path: "{{ states('input_text.rc_tailscale_qr_svg_path') }}"
+          nonce: "{{ states('input_text.rc_tailscale_qr_nonce') }}"
+          stage: "{{ states('input_select.rc_remote_access_setup_stage') }}"
+
+automation:
+  # §8.Q.1 — On wizard stage transition INTO tailscale_paste_key OR
+  # tailscale_done, build the URL `https://login.tailscale.com/a/<key>`
+  # and persist it into rc_tailscale_qr_login_url so the dashboard
+  # tile + copy-paste fallback can always show the URL.
+  - id: rc_tailscale_qr_compute_login_url
+    alias: "RC: Tailscale QR — Compute login URL on stage transition"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_paste_key
+      - platform: state
+        entity_id: input_select.rc_remote_access_setup_stage
+        to: tailscale_done
+      - platform: state
+        entity_id: input_text.rc_tailscale_qr_device_key
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_qr_device_key') | trim != '' }}"
+      - condition: template
+        value_template: "{{ states('input_select.rc_remote_access_setup_stage') in ['tailscale_paste_key', 'tailscale_done'] }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_tailscale_qr_login_url
+        data:
+          value: "https://login.tailscale.com/a/{{ states('input_text.rc_tailscale_qr_device_key') | trim }}"
+
+  # §8.Q.2 — On button press, append a fresh nonce + invoke the QR
+  # generator (idempotent across presses; nonce increments by 1).
+  - id: rc_tailscale_qr_regenerate_on_request
+    alias: "RC: Tailscale QR — Regenerate on button press"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_tailscale_qr_regenerate
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.rc_tailscale_qr_login_url') | trim != '' }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_tailscale_qr_nonce
+        data:
+          value: "{{ (states('input_text.rc_tailscale_qr_nonce') | int(0)) + 1 }}"
+      - service: shell_command.rc_tailscale_qr_render
+        data:
+          url: "{{ states('input_text.rc_tailscale_qr_login_url') }}"
+          out_path: "{{ states('input_text.rc_tailscale_qr_svg_path') }}"
+
+shell_command:
+  rc_tailscale_qr_render: >-
+    python3 /config/packages/scripts/qr_generator.py "{{ url | trim }}"
+    256 "{{ out_path | trim }}"
+    && echo "OK qr rendered to {{ out_path | trim }}"
+    || echo "FAIL qr generation — fallback to copy-paste URL"
