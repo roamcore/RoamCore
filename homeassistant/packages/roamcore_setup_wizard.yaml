@@ -23,6 +23,23 @@ input_select:
       - done
     initial: welcome
 
+# Wave 2 #16 — stage navigation buttons.
+# Pressing `rc_setup_advance_stage` jumps to the next stage that is not yet
+# "ready". If the current stage is already ready, we advance unconditionally
+# so the user can always move forward; if it is not ready, we still allow
+# moving forward (the readiness sensors are guidance, not a hard gate).
+# Pressing `rc_setup_regress_stage` rewinds one stage. The actual select_option
+# call lives in the automation below — input_button can't carry a service
+# payload directly, so the automation binds them.
+input_button:
+  rc_setup_advance_stage:
+    name: "RC Setup: Advance stage"
+    icon: mdi:arrow-right-bold
+
+  rc_setup_regress_stage:
+    name: "RC Setup: Regress stage"
+    icon: mdi:arrow-left-bold
+
 input_boolean:
   # Setup wizard tiles can be disabled for installs that don't have the relevant
   # hardware/integration yet. Disabled tiles are treated as complete.
@@ -207,6 +224,88 @@ template:
           {% if is_state('binary_sensor.rc_setup_levelling_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {% if is_state('binary_sensor.rc_setup_victron_ready', 'on') %}{% set done = done + 1 %}{% endif %}
           {{ done }}/{{ total }}
+
+# Wave 2 #16 — stage navigation automations.
+# These wire the input_button entities to input_select.rc_setup_stage.
+# We compute the next / previous option in pure Jinja so the same pattern
+# works regardless of how many stages exist. The "skip already-ready" rule
+# is enforced here for `advance`: if the current stage's readiness binary
+# sensor is `on`, we land on `next` directly; otherwise we land on the
+# current stage's *next* option (the user can keep clicking to retry).
+automation:
+  - id: rc_setup_advance_stage_button
+    alias: "RC Setup: Advance stage (button)"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_setup_advance_stage
+    variables:
+      options: "{{ state_attr('input_select.rc_setup_stage', 'options') }}"
+      current: "{{ states('input_select.rc_setup_stage') }}"
+      idx: "{{ state_attr('input_select.rc_setup_stage', 'options').index(states('input_select.rc_setup_stage')) }}"
+      # Skip the current stage if its readiness sensor is on.
+      skip_current: >-
+        {% if current == 'owner' %}{{ is_state('binary_sensor.rc_setup_owner_ready', 'on') }}{% endif %}
+        {% if current == 'networking' %}{{ is_state('binary_sensor.rc_setup_networking_ready', 'on') }}{% endif %}
+        {% if current == 'map' %}{{ is_state('binary_sensor.rc_setup_map_ready', 'on') }}{% endif %}
+        {% if current == 'trip_wrapped' %}{{ is_state('binary_sensor.rc_setup_trip_wrapped_ready', 'on') }}{% endif %}
+        {% if current == 'levelling' %}{{ is_state('binary_sensor.rc_setup_levelling_ready', 'on') }}{% endif %}
+        {% if current == 'victron' %}{{ is_state('binary_sensor.rc_setup_victron_ready', 'on') }}{% endif %}
+        {% if current in ['welcome','done','optional'] %}false{% endif %}
+    action:
+      - choose:
+          # Last stage — clamp to itself.
+          - conditions:
+              - "{{ current == 'done' }}"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_setup_stage
+                data:
+                  option: "done"
+        default:
+          - variables:
+              next_idx: >-
+                {% set i = idx | int(0) %}
+                {% set s = skip_current | string | lower == 'true' %}
+                {{ [i + 1 if s else i, (options | length) - 1] | min }}
+              next_opt: "{{ options[next_idx | int(0)] }}"
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.rc_setup_stage
+            data:
+              option: "{{ next_opt }}"
+
+  - id: rc_setup_regress_stage_button
+    alias: "RC Setup: Regress stage (button)"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_setup_regress_stage
+    variables:
+      options: "{{ state_attr('input_select.rc_setup_stage', 'options') }}"
+      current: "{{ states('input_select.rc_setup_stage') }}"
+      idx: "{{ state_attr('input_select.rc_setup_stage', 'options').index(states('input_select.rc_setup_stage')) }}"
+    action:
+      - choose:
+          # First stage — clamp to itself.
+          - conditions:
+              - "{{ current == 'welcome' }}"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.rc_setup_stage
+                data:
+                  option: "welcome"
+        default:
+          - variables:
+              prev_idx: "{{ [idx | int(0) - 1, 0] | max }}"
+              prev_opt: "{{ options[prev_idx | int(0)] }}"
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.rc_setup_stage
+            data:
+              option: "{{ prev_opt }}"
 
 # Token presence check for Trip Wrapped (read-only).
 # We only expose whether a token exists in secrets.yaml, never the value.
