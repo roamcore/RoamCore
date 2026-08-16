@@ -1,0 +1,119 @@
+# Wicann Pro (MeatPi WiCAN Pro OBD2 reader) — tier-b recipe connection.
+#
+# Promoted from docs/catalog/vehicle-obd/wican-pro.md (was tier-c, community only).
+# Stays at tier-b because we have no real Wicann Pro device to integration-test
+# against in CI. The recipe documents the two well-trodden HA paths
+# (MQTT or the ha-wican HACS integration) and links to the howto.
+#
+# NOTE: Wicann Pro is the colloquial spelling used in RoamCore user docs;
+# the upstream product is "MeatPi WiCAN Pro". The folder id keeps the
+# familiar kebab-case "wican-pro" so existing bookmarks stay valid.
+id: wican-pro
+name: MeatPi WiCAN Pro (OBD2 reader)
+tier: b
+category: vehicle-obd
+status: beta
+version: 0.1.0
+description: |
+  Brings vehicle telemetry from a MeatPi WiCAN Pro OBD2 + CAN adapter into
+  Home Assistant. Tier-b recipe: we ship the documented setup for both the
+  MQTT path (publish telemetry to your broker + HA MQTT discovery) and the
+  ha-wican HACS HTTP integration. No config_flow, no auto-discovery — set
+  up via the howto and the device starts streaming on next ignition.
+icon: car
+codeowners:
+  - "@bernardc"
+tags:
+  - wican
+  - wican-pro
+  - obd2
+  - vehicle
+  - can-bus
+  - recipe
+
+wizard:
+  # Recipe = "follow the howto, then come back". No one-tap, no auto-discover.
+  connection_kind: recipe
+  one_tap: false
+  auto_discover: false
+  estimated_time: "~10 min"
+  requires_reboot: false
+  setup_notes: |
+    Plug the WiCAN Pro into your vehicle's OBD2 port and power it up (USB
+    or vehicle bus). Pick MQTT (recommended for RoamCore) or the ha-wican
+    HACS integration in the howto, then come back to enable the dashboard
+    tiles. You'll need your HA MQTT broker credentials handy.
+
+install:
+  # The HA integration domain is the upstream `mqtt` core integration when
+  # using the recipe's MQTT path, OR `ha_wican` (HACS custom) for the HTTP
+  # path. We default to the MQTT domain in this manifest because the MQTT
+  # recipe is the canonical RoamCore path; the ha-wican path is documented
+  # in the same recipe as an alternative.
+  ha_integration_domain: mqtt
+  config_flow: false          # tier-b: no native config_flow
+  hacs: false                  # tier-b: the recipe uses core MQTT (HACS is optional alternative)
+  python_requirements: []
+  min_ha_version: "2024.8"
+  side_effects:
+    - configures_mqtt           # the MQTT recipe publishes the auto-discovery payloads
+    - adds_dashboard_card       # installs the rc_vehicle_* tiles
+
+dashboard:
+  tiles:
+    # Follow the rc_entity_naming.md contract: no vendor names in rc_* ids.
+    # These are the contract entities the WiCAN recipe publishes via MQTT
+    # discovery (see docs/recipe.md for the exact MQTT discovery payload).
+    - id: rc_vehicle_battery_voltage
+      label: Battery
+      unit: "V"
+      source: sensor.rc_vehicle_battery_voltage
+      icon: car-battery
+    - id: rc_vehicle_coolant_temp
+      label: Coolant
+      unit: "°C"
+      source: sensor.rc_vehicle_coolant_temp
+      icon: thermometer
+    - id: rc_vehicle_speed
+      label: Speed
+      unit: "km/h"
+      source: sensor.rc_vehicle_speed
+      icon: gauge
+
+openclaw:
+  queries:
+    - "is the engine overheating?"
+    - "what's the vehicle battery voltage right now?"
+    - "any OBD fault codes?"
+    - "what's the coolant temperature?"
+  summary_keys:
+    - vehicle_battery_v
+    - vehicle_coolant_c
+    - vehicle_speed_kmh
+    - vehicle_obd_fault_count
+
+# Tier-b: tests are optional (and we have no real device to test against).
+# The tests/test_connection_yml.py file below asserts the manifest itself
+# is honest about its tier + requirements; that satisfies the audit without
+# claiming fake integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe doc.
+  # We publish docs/recipe.md (plus docs/howto/wican-pro-setup.md mirrors it).
+  - docs_recipe_published
+
+tier_warnings:
+  - no_real_device_for_integration_test
+  - recipe_depends_on_user_completing_mqtt_or_hacs_setup
+
+links:
+  official:
+    - https://www.meatpi.com/products/wican-pro
+  docs:
+    - https://meatpihq.github.io/wican-fw/home-assistant/
+    - https://meatpihq.github.io/wican-fw/home-assistant/mqtt/
+  repo:
+    - https://github.com/meatpihq/wican-fw
+    - https://github.com/jay-oswald/ha-wican
