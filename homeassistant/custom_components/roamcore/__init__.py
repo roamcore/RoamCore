@@ -795,6 +795,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Hub Backup is best-effort — never break HA startup.
         pass
 
+    # --- Security Review (Phase 7 — Wave 9 #123.c.ii) ---
+    # Register the 3 RoamCore Security Review services via the
+    # RoamCore-owned service handler at
+    # `homeassistant/custom_components/roamcore/security.py`. The
+    # handler exposes `roamcore.rotate_api_token` +
+    # `roamcore.audit_ssh` + `roamcore.audit_firewall` (the
+    # proactive plain-English audit of SSH + firewall + access-code
+    # rotation). The handler is stdlib-only + read-only on
+    # `/etc/ssh/sshd_config` + `/etc/nftables.conf` by design
+    # (backup-before-mutate on the access-code rotation; no
+    # mutation on SSH or firewall). Safe to call repeatedly (HA
+    # overwrites handlers with the same name).
+    try:
+        from .security import register_security_services
+        register_security_services(hass)
+    except Exception:
+        # Security Review is best-effort — never break HA startup.
+        pass
+
     return True
 
 

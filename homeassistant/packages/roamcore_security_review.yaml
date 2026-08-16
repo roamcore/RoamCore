@@ -1,0 +1,362 @@
+# RoamCore Security Review — Phase 7 — Wave 9 #123.c.ii
+#
+# Purpose:
+# - Provide the canonical helper entities + the 4 §8 MANDATORY automations
+#   for the Security Review proactive plain-English audit in CI.
+# - The §8.1 rotate-token automation fires via cron every 90 days when
+#   `input_boolean.rc_security_review_enabled` is ON + calls the RoamCore
+#   `roamcore.rotate_api_token` service + writes the result to
+#   `input_text.rc_security_review_status`.
+# - The §8.2 audit-ssh automation fires at 02:30 daily when
+#   `input_boolean.rc_security_review_enabled` is ON + calls the RoamCore
+#   `roamcore.audit_ssh` service + writes the warnings list to
+#   `input_text.rc_security_review_warnings` + writes the timestamp to
+#   `input_datetime.rc_security_review_last_audit`.
+# - The §8.3 audit-firewall automation fires at 02:45 daily when
+#   `input_boolean.rc_security_review_enabled` is ON + calls the RoamCore
+#   `roamcore.audit_firewall` service + writes the warnings list to
+#   `input_text.rc_security_review_warnings` + writes the timestamp to
+#   `input_datetime.rc_security_review_last_audit`.
+# - The §8.4 warn-rotation-age automation fires at 09:00 daily when
+#   `input_boolean.rc_security_review_enabled` is ON + checks
+#   `sensor.rc_security_review_token_age_days` + when token age >= 75 days,
+#   writes a plain-English warning to `input_text.rc_security_review_status`.
+# - All 4 automations have a `mode: single` guard so re-firing returns
+#   gracefully (idempotency marker; verified by the ~20 pytest tests at
+#   `homeassistant/packages/tests/test_security_review.py`).
+# - The status + warnings surfaces are `input_text` mode text (the
+#   operator owns the value; secrets-leak grep verifies no hardcoded
+#   URLs/passwords).
+# - The status surfaces are template sensors + a binary_sensor derivation
+#   + 3 buttons for the operator-facing affordances.
+# - Naming follows `docs/reference/rc-entity-naming.md` — every entity
+#   starts with `rc_security_review_` (the `security_review` subsystem
+#   was added by this slice).
+
+input_boolean:
+  rc_security_review_enabled:
+    name: "Security Review enabled"
+    icon: mdi:shield-check
+    initial: true
+
+input_datetime:
+  rc_security_review_last_audit:
+    name: "Security Review last audit"
+    has_date: true
+    has_time: true
+    initial: "{{ (now() - timedelta(days=1)).replace(hour=2, minute=30, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S') }}"
+
+input_text:
+  rc_security_review_status:
+    name: "Security Review status"
+    initial: "Security review hasn't run yet — check back tomorrow."
+
+  rc_security_review_warnings:
+    name: "Security Review warnings"
+    initial: "No warnings yet — the audit will run tonight at 02:30."
+
+template:
+  - sensor:
+      - name: "RC Security Review Last Status"
+        unique_id: rc_security_review_last_status
+        icon: mdi:shield-check
+        state: "{{ states('input_text.rc_security_review_status') }}"
+
+      - name: "RC Security Review Token Age Days"
+        unique_id: rc_security_review_token_age_days
+        icon: mdi:clock-outline
+        state: >-
+          {% set status = states('input_text.rc_security_review_status') %}
+          {% if 'rotated' in status.lower() %}
+            0
+          {% elif 'days old' in status.lower() %}
+            {{ status.split('are ')[1].split(' ')[0] | int(0) }}
+          {% else %}
+            99999
+          {% endif %}
+        availability: >-
+          {{ states('input_text.rc_security_review_status') not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Security Review SSH Warnings"
+        unique_id: rc_security_review_ssh_warnings
+        icon: mdi:lock-alert
+        state: >-
+          {% set warnings = states('input_text.rc_security_review_warnings') %}
+          {% if 'None' in warnings or 'no warnings' in warnings.lower() or 'locked down' in warnings.lower() %}
+            0
+          {% else %}
+            {{ warnings.split(';') | length }}
+          {% endif %}
+        availability: >-
+          {{ states('input_text.rc_security_review_warnings') not in ['unknown','unavailable','none',''] }}
+
+      - name: "RC Security Review Firewall Warnings"
+        unique_id: rc_security_review_firewall_warnings
+        icon: mdi:firewall-alert
+        state: >-
+          {% set warnings = states('input_text.rc_security_review_warnings') %}
+          {% if 'None' in warnings or 'no warnings' in warnings.lower() or 'locked down' in warnings.lower() %}
+            0
+          {% else %}
+            {{ warnings.split(';') | length }}
+          {% endif %}
+        availability: >-
+          {{ states('input_text.rc_security_review_warnings') not in ['unknown','unavailable','none',''] }}
+
+  - binary_sensor:
+      - name: "RC Security Review Healthy"
+        unique_id: rc_security_review_healthy
+        icon: mdi:shield-check
+        state: >-
+          {% set age = states('sensor.rc_security_review_token_age_days') | int(99999) %}
+          {% set ssh_w = states('sensor.rc_security_review_ssh_warnings') | int(0) %}
+          {% set fw_w = states('sensor.rc_security_review_firewall_warnings') | int(0) %}
+          {{ age < 75 and ssh_w == 0 and fw_w == 0 }}
+        availability: >-
+          {{ states('sensor.rc_security_review_token_age_days') not in ['unknown','unavailable'] }}
+
+button:
+  - platform: template
+    buttons:
+      rc_security_review_rotate_token_now:
+        name: "RC Security Review Rotate Token Now"
+        unique_id: rc_security_review_rotate_token_now
+        icon: mdi:key-refresh
+        press:
+          - service: roamcore.rotate_api_token
+            data:
+              reason: "manual"
+            response_variable: rotate_result
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_security_review_status
+            data:
+              value: >-
+                {% if rotate_result and rotate_result.ok %}
+                  Access codes rotated successfully.
+                {% else %}
+                  Access code rotation failed — check the Hub is plugged in.
+                {% endif %}
+
+      rc_security_review_audit_ssh_now:
+        name: "RC Security Review Audit SSH Now"
+        unique_id: rc_security_review_audit_ssh_now
+        icon: mdi:lock-alert
+        press:
+          - service: roamcore.audit_ssh
+            response_variable: ssh_result
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_security_review_warnings
+            data:
+              value: >-
+                {% if ssh_result and ssh_result.warnings %}
+                  {{ ssh_result.warnings | join('; ') }}
+                {% else %}
+                  Your SSH is locked down — keys only, no password login.
+                {% endif %}
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_security_review_status
+            data:
+              value: >-
+                {% if ssh_result and ssh_result.warnings %}
+                  Your SSH needs attention: {{ ssh_result.warnings | join('; ') }}
+                {% else %}
+                  Your SSH is locked down — keys only, no password login.
+                {% endif %}
+
+      rc_security_review_audit_firewall_now:
+        name: "RC Security Review Audit Firewall Now"
+        unique_id: rc_security_review_audit_firewall_now
+        icon: mdi:firewall-alert
+        press:
+          - service: roamcore.audit_firewall
+            response_variable: fw_result
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_security_review_warnings
+            data:
+              value: >-
+                {% if fw_result and fw_result.warnings %}
+                  {{ fw_result.warnings | join('; ') }}
+                {% else %}
+                  Your firewall is locked down — no wide-open ports.
+                {% endif %}
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.rc_security_review_status
+            data:
+              value: >-
+                {% if fw_result and fw_result.warnings %}
+                  Your firewall needs attention: {{ fw_result.warnings | join('; ') }}
+                {% else %}
+                  Your firewall is locked down — no wide-open ports.
+                {% endif %}
+
+automation:
+  - id: rc_security_review_rotate_token
+    alias: "RC Security Review: Rotate Token (cron every 90 days, mode: single guard)"
+    description: >-
+      Rotate Token — fires via cron every 90 days when
+      `input_boolean.rc_security_review_enabled` is ON + calls the
+      RoamCore `roamcore.rotate_api_token` service with
+      `reason: "scheduled_90_day"` + writes the result
+      (rotated_at + reason + rotation_count) to
+      `input_text.rc_security_review_status` as plain English. The
+      `mode: single` guard prevents double-rotation if a rotation is
+      already running.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "02:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_security_review_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ now().day == 1 and now().month % 3 == 0 }}"
+    action:
+      - service: roamcore.rotate_api_token
+        data:
+          reason: "scheduled_90_day"
+        response_variable: rotate_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_status
+        data:
+          value: >-
+            {% if rotate_result and rotate_result.ok %}
+              Access codes rotated successfully.
+            {% else %}
+              Access code rotation failed — check the Hub is plugged in.
+            {% endif %}
+
+  - id: rc_security_review_audit_ssh
+    alias: "RC Security Review: Audit SSH (02:30 daily, calls roamcore.audit_ssh)"
+    description: >-
+      Audit SSH — fires at 02:30 daily when
+      `input_boolean.rc_security_review_enabled` is ON + calls the
+      RoamCore `roamcore.audit_ssh` service + writes the warnings
+      list to `input_text.rc_security_review_warnings` + writes the
+      timestamp to `input_datetime.rc_security_review_last_audit` +
+      writes the plain-English status to
+      `input_text.rc_security_review_status`. The `mode: single`
+      guard prevents concurrent audit runs.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "02:30:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_security_review_enabled
+        state: "on"
+    action:
+      - service: roamcore.audit_ssh
+        response_variable: ssh_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_warnings
+        data:
+          value: >-
+            {% if ssh_result and ssh_result.warnings %}
+              {{ ssh_result.warnings | join('; ') }}
+            {% else %}
+              Your SSH is locked down — keys only, no password login.
+            {% endif %}
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_status
+        data:
+          value: >-
+            {% if ssh_result and ssh_result.warnings %}
+              Your SSH needs attention: {{ ssh_result.warnings | join('; ') }}
+            {% else %}
+              Your SSH is locked down — keys only, no password login.
+            {% endif %}
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.rc_security_review_last_audit
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  - id: rc_security_review_audit_firewall
+    alias: "RC Security Review: Audit Firewall (02:45 daily, calls roamcore.audit_firewall)"
+    description: >-
+      Audit Firewall — fires at 02:45 daily when
+      `input_boolean.rc_security_review_enabled` is ON + calls the
+      RoamCore `roamcore.audit_firewall` service + writes the
+      warnings list to `input_text.rc_security_review_warnings` +
+      writes the timestamp to
+      `input_datetime.rc_security_review_last_audit` + writes the
+      plain-English status to
+      `input_text.rc_security_review_status`. The `mode: single`
+      guard prevents concurrent audit runs.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "02:45:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_security_review_enabled
+        state: "on"
+    action:
+      - service: roamcore.audit_firewall
+        response_variable: fw_result
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_warnings
+        data:
+          value: >-
+            {% if fw_result and fw_result.warnings %}
+              {{ fw_result.warnings | join('; ') }}
+            {% else %}
+              Your firewall is locked down — no wide-open ports.
+            {% endif %}
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_status
+        data:
+          value: >-
+            {% if fw_result and fw_result.warnings %}
+              Your firewall needs attention: {{ fw_result.warnings | join('; ') }}
+            {% else %}
+              Your firewall is locked down — no wide-open ports.
+            {% endif %}
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.rc_security_review_last_audit
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  - id: rc_security_review_warn_rotation_age
+    alias: "RC Security Review: Warn Rotation Age (09:00 daily, plain-English notification when token age >= 75 days)"
+    description: >-
+      Warn Rotation Age — fires at 09:00 daily when
+      `input_boolean.rc_security_review_enabled` is ON + reads
+      `sensor.rc_security_review_token_age_days` + when token age
+      >= 75 days, writes a plain-English warning to
+      `input_text.rc_security_review_status` ("Your access codes are
+      N days old — rotate soon"). The `mode: single` guard prevents
+      double-notification.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_security_review_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ states('sensor.rc_security_review_token_age_days') | int(99999) >= 75 }}"
+    action:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.rc_security_review_status
+        data:
+          value: >-
+            Your access codes are {{ states('sensor.rc_security_review_token_age_days') | int(0) }} days old — rotate soon.
