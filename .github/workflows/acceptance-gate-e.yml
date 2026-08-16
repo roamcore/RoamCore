@@ -1,0 +1,95 @@
+# RoamCore — Acceptance Gate E (remote access) — Wave 9 #123.d.v
+#
+# Runs the Gate E acceptance test on every push to main + on every PR
+# + manually via workflow_dispatch + weekly on Mondays at 06:00 UTC.
+# Gate E proves the canonical RoamCore "you can reach your dashboard
+# from anywhere, and your local connection still works even if the
+# remote one drops" contract (Phase 7, Gate E in the 2026-08-03
+# directive):
+#
+#   Tailscale setup, same PWA local+remote, no IP selection,
+#   local survives Tailscale failure
+#
+# This job runs the pytest rig (mocked subprocess + mocked tunnel +
+# mocked HA instance) on every push. The real bash test
+# (gate_e_remote_access.sh) runs as an OPTIONAL second step on hosts
+# that set HAS_REMOTE_ACCESS_HELPER=true (a self-hosted runner with
+# the mock-tunnel helper available). The default ubuntu-latest runner
+# only runs the pytest rig — Gate E does not require the
+# roamcore-mock-tunnel helper on GitHub-hosted runners.
+#
+# Why split this way: the bash test is the contract (asserts the 13-
+# stage remote-access contract end-to-end: wizard reachable + QR pairing
+# format + 4 wizard paths + same PWA local+remote + mDNS fallback +
+# round-trip self-test + plain-English recovery + reboot-survives +
+# idempotent + cleanup trap + no secrets + rc-entity-naming). The
+# pytest rig is the fast, mocked-subprocess + mocked-tunnel coverage
+# that runs anywhere, including the cron host, so every push to main
+# catches a Gate E regression in seconds. Re-running the workflow
+# produces the same outcome on the same input (idempotent — pytest
+# rigs are pure functions of the canned responses).
+#
+# Failure mode: a red Gate E fails the CI job with a plain-English
+# error line so a future release never ships a release that breaks
+# remote access. This workflow does NOT touch the production Hub;
+# it runs in the GitHub Actions sandbox only.
+
+name: Acceptance — Gate E (remote access)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly Monday 06:00 UTC — catches regressions that escape the
+    # per-push + per-PR coverage (e.g. dependency upgrades, base-image
+    # changes that don't trigger a PR).
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-e:
+    name: Gate E — remote access
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest + PyYAML
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml
+
+      - name: Run Gate E pytest rig (mocked subprocess + mocked tunnel + mocked HA instance)
+        run: |
+          pytest scripts/tests/acceptance/test_gate_e_remote_access.py -v
+
+      - name: Run Gate E bash test (real mock-tunnel, optional)
+        if: env.HAS_REMOTE_ACCESS_HELPER == 'true'
+        run: |
+          bash scripts/tests/acceptance/gate_e_remote_access.sh
+
+      - name: Upload pytest report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-e-pytest-report
+          path: |
+            scripts/tests/acceptance/gate_e_remote_access.sh
+            .cache/gate-e/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Gate E — remote access: ${{ job.status }}"
