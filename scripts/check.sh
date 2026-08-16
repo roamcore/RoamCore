@@ -76,6 +76,7 @@ run_if_present "scripts/checks/advanced-mode-smoke.sh"         "Advanced mode: s
 run_if_present "scripts/checks/automation-apply-smoke.sh"      "Automation apply: smoke check"
 run_if_present "scripts/checks/mode-builder-smoke.sh"          "Mode builder: smoke check"
 run_if_present "scripts/checks/remote-access-setup-smoke.sh"    "Remote access setup wizard (Tailscale Path A): smoke check"
+run_if_present "scripts/checks/tailscale-self-test-smoke.sh"    "Tailscale self-test (Phase 6 — Wave 9 #122.d.iii) — round-trip HA → tunnel → phone → tunnel → HA: smoke check (10 bash assertions + pytest contract)"
 
 # Connection manifest smokes live under connections/<id>/tests/. We probe
 # for the well-known names so the chain picks them up automatically once
