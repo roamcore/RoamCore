@@ -1,13 +1,14 @@
 # Security
 
-NFC tags and other quick-access controls.
+Each item below shows a colour chip telling you whether the connection is ready to use, needs a small action from you, or has hit a problem — and a small pill telling you who built it (RoamCore, community, or experimental).
 
-<!-- RC_FEATURE_LIST_START -->
+## [NFC tags](nfc-tags.md)
 
-## Features
+Cheap + simple NFC tags make the van feel magical: tap your phone to run a scene (Lights off, Bedtime, Leave camp).
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="nfc-tags/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">NFC tags (tap to run a scene)</div><div class="rc-feature-sub">Cheap NFC tags you can stick anywhere — tap your phone and run a scene like Lights off, Bedtime, or Leave camp.</div></div><div class="rc-feature-right"><span class="rc-tier c" title="3rd party">C</span></div></a>
+<div class="rc-state-chip-row" data-connection-name="NFC tags">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--experimental rc-chip rc-chip--experimental" title="It builds but hasn&#x27;t been integration-tested yet.">Experimental</span>
+  <a class="rc-connect-button" href="nfc-tags/" title="Open the setup page for nfc-tags">Connect →</a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->

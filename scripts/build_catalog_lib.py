@@ -227,6 +227,13 @@ class Connection:
     needs_curation_review: bool = False
     excluded: bool = False
     src_path: Path | None = None
+    # The connection state (one of the 10 standard connection states
+    # from connection_card.STANDARD_STATES — defaults to "Available"
+    # for back-compat with any future YAML that omits the field).
+    state: str = "Available"
+    # The human-readable reason snippet that surfaces beside the state
+    # chip on the catalog card (e.g. "needs an MQTT password"). Optional.
+    reason: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -827,6 +834,16 @@ def curate_connection(slug: str, raw: dict[str, Any], src_path: Path | None = No
         },
         excluded=False,
         src_path=src_path,
+        # State + reason: read straight from the YAML's `state:` /
+        # `reason:` fields if present. The defaults ("Available" /
+        # blank) are the neutral fallbacks per Wave 9 #125 so the
+        # catalog render layer never crashes on a missing field.
+        # A follow-up slice will wire state from
+        # connections/_all_connections_inventory.yml — for now the
+        # YAML `state:` IS the source of truth (33/33 manifests
+        # carry it as of 2026-08-11).
+        state=str(raw.get("state", "Available")).strip() or "Available",
+        reason=str(raw.get("reason", "")).strip(),
     )
 
 

@@ -1,14 +1,24 @@
 # Maintenance
 
-Tablet dashboards, leveling, and other keep-the-van-working features.
+Each item below shows a colour chip telling you whether the connection is ready to use, needs a small action from you, or has hit a problem — and a small pill telling you who built it (RoamCore, community, or experimental).
 
-<!-- RC_FEATURE_LIST_START -->
+## [In-cab tablet dashboard](in-cab-tablet-dashboard.md)
 
-## Features
+Mount a small tablet in the cab that shows the handful of controls and readouts you care about while driving + a richer control surface on arrival + a battery-friendly lock screen while parked.
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="in-cab-tablet-dashboard/" data-tier="c"><div class="rc-feature-left"><div class="rc-feature-title">In-cab tablet dashboard</div><div class="rc-feature-sub">Mount a small tablet in the cab that shows the controls and readouts you care about while driving, with a richer surface on arrival.</div></div><div class="rc-feature-right"><span class="rc-tier c" title="3rd party">C</span></div></a>
-  <a class="rc-feature" href="leveling/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Leveling (good-enough check before parking)</div><div class="rc-feature-sub">Better sleep and cooking. Quick 'good enough' check before you park for the night, without guessing.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
+<div class="rc-state-chip-row" data-connection-name="In-cab tablet dashboard">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--experimental rc-chip rc-chip--experimental" title="It builds but hasn&#x27;t been integration-tested yet.">Experimental</span>
+  <a class="rc-connect-button" href="in-cab-tablet-dashboard/" title="Open the setup page for in-cab-tablet-dashboard">Connect →</a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## [Leveling](leveling.md)
+
+Better sleep and cooking. Quick 'good enough' check without guessing.
+
+<div class="rc-state-chip-row" data-connection-name="Leveling">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="leveling/" title="Open the setup page for leveling">Connect →</a>
+</div>
+

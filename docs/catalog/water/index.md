@@ -1,16 +1,24 @@
 # Water
 
-Fresh and grey water tanks, pump status, leak detection, and freeze-risk
-monitoring. The two most practical things to know: how much water you
-have left, and whether anything is leaking.
+Each item below shows a colour chip telling you whether the connection is ready to use, needs a small action from you, or has hit a problem — and a small pill telling you who built it (RoamCore, community, or experimental).
 
-<!-- RC_FEATURE_LIST_START -->
+## [Electronic valves + auto tank switching](electronic-valves.md)
 
-## Features
+Electronic valves + auto tank switching — fresh / aux tank routing, grey drain valve auto-close, freeze-risk / leak-detected / low- voltage lockout safety interlocks — is the vendor-neutral surface that turns "which tank am I drawing from right now?" + "is the grey valve about to overflow?" + "can I safely open a…
 
-<div class="rc-feature-list">
-  <a class="rc-feature" href="water-tanks/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Water tanks (fresh + grey level monitoring)</div><div class="rc-feature-sub">See how much fresh water is left and how full the grey tank is, with alerts before you run out or before the grey tank overflows.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
-  <a class="rc-feature" href="electronic-valves/" data-tier="b"><div class="rc-feature-left"><div class="rc-feature-title">Electronic valves + auto tank switching</div><div class="rc-feature-sub">Switch between fresh and aux water tanks automatically, and auto-close the grey drain valve to prevent accidental overflow.</div></div><div class="rc-feature-right"><span class="rc-tier b" title="Partial">B</span></div></a>
+<div class="rc-state-chip-row" data-connection-name="Electronic valves + auto tank switching">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="electronic-valves/" title="Open the setup page for electronic-valves">Connect →</a>
 </div>
 
-<!-- RC_FEATURE_LIST_END -->
+## [Water tanks](water-tanks.md)
+
+Water tanks — fresh + grey water telemetry + pump runtime + leak detection + freeze-risk monitoring for vans — is the vendor-neutral surface that turns "is the fresh tank still full enough to last the night?" into a dashboard tile + a push notification + a mode-aware automation.
+
+<div class="rc-state-chip-row" data-connection-name="Water tanks">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="water-tanks/" title="Open the setup page for water-tanks">Connect →</a>
+</div>
+
