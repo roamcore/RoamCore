@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" width="1100" height="720" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <title>Starlink — what plugs into what</title>
+  <desc>Three setup paths (A: Starlink Mini only; B: Separate router with smart plug; C: VM router inside Proxmox) showing the data + power flow from the dish to Home Assistant to RoamCore.</desc>
+
+  <style>
+    .box        { fill: #ffffff; stroke: #2c3e50; stroke-width: 2; rx: 10; ry: 10; }
+    .box-accent { fill: #eef6ff; stroke: #1f5fbf; stroke-width: 2; rx: 10; ry: 10; }
+    .box-final  { fill: #f3e9ff; stroke: #5b2ca0; stroke-width: 2; rx: 10; ry: 10; }
+    .box-plug   { fill: #fff7e6; stroke: #b86e00; stroke-width: 2; rx: 10; ry: 10; }
+    .label      { font-size: 16px; font-weight: 600; fill: #1f2933; text-anchor: middle; }
+    .sublabel   { font-size: 12px; fill: #52606d; text-anchor: middle; }
+    .arrow      { stroke: #2c3e50; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .arrow-a    { stroke: #1f5fbf; stroke-width: 3; fill: none; marker-end: url(#arrowhead-a); }
+    .arrow-b    { stroke: #b86e00; stroke-width: 3; fill: none; marker-end: url(#arrowhead-b); }
+    .arrow-c    { stroke: #1f8a4c; stroke-width: 3; fill: none; marker-end: url(#arrowhead-c); }
+    .path-band  { fill: #f8fafc; stroke: #cbd2d9; stroke-width: 1; rx: 10; ry: 10; }
+    .path-label { font-size: 14px; font-weight: 700; text-anchor: middle; }
+    .path-desc  { font-size: 12px; fill: #52606d; text-anchor: middle; }
+    .title      { font-size: 22px; font-weight: 700; fill: #1f2933; text-anchor: middle; }
+    .subtitle   { font-size: 13px; fill: #52606d; text-anchor: middle; }
+    .legend-box { font-size: 12px; fill: #1f2933; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3e50" />
+    </marker>
+    <marker id="arrowhead-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5fbf" />
+    </marker>
+    <marker id="arrowhead-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b86e00" />
+    </marker>
+    <marker id="arrowhead-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f8a4c" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="30" class="title">Starlink — what plugs into what</text>
+  <text x="550" y="52" class="subtitle">Three setup paths. Pick the one that matches your van.</text>
+
+  <!-- ======================== PATH A ======================== -->
+  <rect x="30" y="80"  width="340" height="290" class="path-band" />
+  <text x="200" y="105" class="path-label" fill="#1f5fbf">PATH A — Starlink Mini only</text>
+  <text x="200" y="123" class="path-desc">(dish IS the router — simplest setup)</text>
+
+  <!-- Dish/Mini node -->
+  <rect x="60"  y="150" width="140" height="80" class="box-accent" />
+  <text x="130" y="183" class="label">Starlink Mini</text>
+  <text x="130" y="202" class="sublabel">(dish + router)</text>
+
+  <!-- Wi-Fi fanout label -->
+  <line x1="200" y1="190" x2="280" y2="190" class="arrow-a" />
+  <text x="240" y="183" class="sublabel" fill="#1f5fbf">Wi-Fi</text>
+  <text x="320" y="183" class="sublabel" text-anchor="start">to your</text>
+  <text x="320" y="198" class="sublabel" text-anchor="start">laptop / phone</text>
+
+  <!-- Local API arrow down -->
+  <line x1="130" y1="230" x2="130" y2="270" class="arrow-a" />
+  <text x="135" y="253" class="sublabel" text-anchor="start" fill="#1f5fbf">local API at 192.168.100.1</text>
+
+  <!-- HA node for Path A -->
+  <rect x="60"  y="270" width="140" height="70" class="box" />
+  <text x="130" y="300" class="label">Home Assistant</text>
+  <text x="130" y="318" class="sublabel">(tiles appear)</text>
+
+  <!-- Arrow to RoamCore -->
+  <line x1="130" y1="340" x2="130" y2="370" class="arrow-a" />
+
+  <!-- ======================== PATH B ======================== -->
+  <rect x="390" y="80" width="340" height="290" class="path-band" />
+  <text x="560" y="105" class="path-label" fill="#b86e00">PATH B — Separate router</text>
+  <text x="560" y="123" class="path-desc" font-size="11px">(Gen-2/Gen-3 dish + Wi-Fi router + smart plug)</text>
+
+  <!-- Dish -->
+  <rect x="410" y="150" width="100" height="70" class="box-accent" />
+  <text x="460" y="180" class="label">Dish</text>
+  <text x="460" y="198" class="sublabel">(Gen-2/Gen-3)</text>
+
+  <!-- Router -->
+  <rect x="535" y="150" width="100" height="70" class="box" />
+  <text x="585" y="180" class="label">Router</text>
+  <text x="585" y="198" class="sublabel">(Wi-Fi box)</text>
+
+  <!-- Smart plug -->
+  <rect x="660" y="150" width="60" height="70" class="box-plug" />
+  <text x="690" y="178" class="label" style="font-size:13px">Smart</text>
+  <text x="690" y="194" class="label" style="font-size:13px">plug</text>
+
+  <line x1="510" y1="185" x2="535" y2="185" class="arrow-b" />
+  <line x1="635" y1="185" x2="660" y2="185" class="arrow-b" />
+
+  <!-- Mains/12V label under plug -->
+  <line x1="690" y1="220" x2="690" y2="245" class="arrow-b" />
+  <text x="690" y="265" class="sublabel">mains / 12V</text>
+
+  <!-- HA flips the plug (small annotation near plug) -->
+  <text x="690" y="143" class="sublabel" fill="#b86e00">↑ HA flips</text>
+
+  <!-- HA -->
+  <rect x="465" y="280" width="190" height="60" class="box" />
+  <text x="560" y="308" class="label">Home Assistant</text>
+  <text x="560" y="326" class="sublabel">(plug + signal tile)</text>
+
+  <line x1="585" y1="220" x2="585" y2="280" class="arrow-b" stroke-dasharray="4 4" />
+  <line x1="465" y1="310" x2="200" y2="310" class="arrow-b" stroke-dasharray="4 4" />
+
+  <!-- ======================== PATH C ======================== -->
+  <rect x="750" y="80" width="320" height="290" class="path-band" />
+  <text x="910" y="105" class="path-label" fill="#1f8a4c">PATH C — VM router</text>
+  <text x="910" y="123" class="path-desc">(OpenWrt VM inside Proxmox talks to Starlink)</text>
+
+  <!-- Dish -->
+  <rect x="770" y="170" width="100" height="70" class="box-accent" />
+  <text x="820" y="200" class="label">Dish</text>
+  <text x="820" y="218" class="sublabel">(Gen-2/Gen-3)</text>
+
+  <!-- OpenWrt VM -->
+  <rect x="895" y="170" width="150" height="70" class="box" />
+  <text x="970" y="200" class="label">OpenWrt VM</text>
+  <text x="970" y="218" class="sublabel">(Proxmox, VMID 100)</text>
+
+  <line x1="870" y1="205" x2="895" y2="205" class="arrow-c" />
+
+  <!-- Firewall rule note -->
+  <text x="970" y="258" class="sublabel" fill="#1f8a4c">firewall rule (RoamCore toggles)</text>
+  <line x1="970" y1="240" x2="970" y2="265" class="arrow-c" />
+
+  <!-- LAN output -->
+  <line x1="1045" y1="205" x2="1075" y2="205" class="arrow-c" />
+  <text x="1078" y="200" class="sublabel" text-anchor="start">LAN</text>
+  <text x="1078" y="216" class="sublabel" text-anchor="start">(devices)</text>
+
+  <!-- API + bearer note (kept clear of path label) -->
+  <text x="855" y="158" class="sublabel" fill="#1f8a4c" text-anchor="end">API + bearer token (HA &lt;-&gt; OpenWrt)</text>
+  <line x1="860" y1="170" x2="910" y2="170" class="arrow-c" stroke-dasharray="4 4" />
+
+  <!-- HA for path C -->
+  <rect x="845" y="280" width="130" height="60" class="box" />
+  <text x="910" y="308" class="label">Home Assistant</text>
+  <text x="910" y="326" class="sublabel">(firewall + signal)</text>
+
+  <line x1="910" y1="265" x2="910" y2="280" class="arrow-c" stroke-dasharray="4 4" />
+
+  <!-- ======================== ROAMCORE BAR (bottom) ======================== -->
+  <line x1="130" y1="385" x2="910" y2="385" class="arrow-a" />
+  <rect x="380" y="395" width="340" height="80" class="box-final" />
+  <text x="550" y="425" class="label" style="font-size:18px">RoamCore dashboard</text>
+  <text x="550" y="447" class="sublabel">Sleep state · Allow sleep · Wake 30 min · Reachable · Signal % · Quiet hours</text>
+  <text x="550" y="465" class="sublabel">All three paths land here. Tiles update on their own.</text>
+
+  <line x1="130" y1="370" x2="130" y2="385" class="arrow-a" />
+  <line x1="560" y1="370" x2="560" y2="385" class="arrow-a" />
+  <line x1="910" y1="370" x2="910" y2="385" class="arrow-a" />
+
+  <!-- ======================== LEGEND ======================== -->
+  <rect x="30" y="500" width="1040" height="200" class="path-band" />
+  <text x="550" y="525" class="path-label">Legend &amp; path cheat-sheet</text>
+
+  <!-- Legend swatches -->
+  <rect x="60" y="545" width="22" height="14" class="box-accent" />
+  <text x="92" y="557" class="legend-box">Starlink hardware (dish / Mini)</text>
+
+  <rect x="320" y="545" width="22" height="14" class="box" />
+  <text x="352" y="557" class="legend-box">Wi-Fi router / VM / Home Assistant</text>
+
+  <rect x="640" y="545" width="22" height="14" class="box-plug" />
+  <text x="672" y="557" class="legend-box">Operator-supplied smart plug (any brand)</text>
+
+  <rect x="60"  y="572" width="22" height="14" class="box-final" />
+  <text x="92"  y="584" class="legend-box">RoamCore contract layer</text>
+
+  <line x1="345" y1="580" x2="370" y2="580" class="arrow-a" stroke-width="3" />
+  <text x="377" y="584" class="legend-box">Path A flow</text>
+
+  <line x1="525" y1="580" x2="550" y2="580" class="arrow-b" stroke-width="3" />
+  <text x="557" y="584" class="legend-box">Path B flow</text>
+
+  <line x1="705" y1="580" x2="730" y2="580" class="arrow-c" stroke-width="3" />
+  <text x="737" y="584" class="legend-box">Path C flow</text>
+
+  <!-- Cheat-sheet table -->
+  <text x="60" y="620" class="legend-box" style="font-weight:600">Which path am I?</text>
+  <text x="60"  y="640" class="legend-box">• Path A: your Starlink Mini IS your only Wi-Fi router (or you have a single-box install).</text>
+  <text x="60"  y="658" class="legend-box">• Path B: Gen-2/Gen-3 dish PLUS a separate Wi-Fi router (Gl.iNet / Peplink / Teltonika / your own).</text>
+  <text x="60"  y="676" class="legend-box">• Path C: your LAN router is an OpenWrt VM inside the Proxmox box (RoamCore networking recipe).</text>
+</svg>
