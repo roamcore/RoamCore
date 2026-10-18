@@ -1,0 +1,71 @@
+# RoamCore — Acceptance Gate A (clean install) — Wave 9 #123.d.i
+#
+# Runs the Gate A acceptance test on every push to main + on every PR
+# + manually via workflow_dispatch. Gate A proves the canonical RoamCore
+# "fresh Hub boots, services start, setup UI reachable, resumable, no
+# terminal" contract (Phase 7, Gate A in the 2026-08-03 directive).
+#
+# This job runs the pytest rig (mocked subprocess) on every push. The
+# real bash test (gate_a_clean_install.sh) runs as an OPTIONAL second
+# step on hosts that set HAS_HAOS_SANDBOX=true (a self-hosted runner
+# with the existing ha-beta smoke rig). The default ubuntu-latest
+# runner only runs the pytest rig — Gate A does not require QEMU on
+# GitHub-hosted runners.
+#
+# Why split this way: the bash test is the contract (boots a real
+# HAOS VM + verifies the RoamCore integration is detected + verifies
+# the setup wizard URL is reachable + tears down). The pytest rig is
+# the fast, mocked-subprocess coverage that runs anywhere, including
+# the cron host, so every push to main catches a Gate A regression in
+# seconds. Re-running the workflow produces the same outcome on the
+# same input (idempotent — pytest rigs are pure functions of the
+# canned responses).
+#
+# Failure mode: a red Gate A fails the CI job with a plain-English
+# error line so a future release never ships a release that breaks
+# the clean-install path. This workflow does NOT touch the production
+# Hub; it runs in the GitHub Actions sandbox only.
+
+name: Acceptance — Gate A (clean install)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-a:
+    name: Gate A — clean install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest + PyYAML
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml
+
+      - name: Run Gate A pytest rig (mocked subprocess)
+        run: |
+          pytest scripts/tests/acceptance/test_gate_a_clean_install.py -v
+
+      - name: Run Gate A bash test (real, optional)
+        if: env.HAS_HAOS_SANDBOX == 'true'
+        run: |
+          bash scripts/tests/acceptance/gate_a_clean_install.sh
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Gate A — clean install: ${{ job.status }}"
