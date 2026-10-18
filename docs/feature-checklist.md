@@ -66,7 +66,7 @@ Legend:
 
 ## Platform
 
-- [ ] Networking controls (VP2430 specific) via OpenWrt API
+- [x] Networking controls (VP2430 specific) via OpenWrt API — slice #28 (Controls tab + Restart confirmation; see `docs/catalog/networking/openwrt-controls.md` + `homeassistant/packages/roamcore_openwrt_api.yaml`)
 - [ ] Remote access
 - [ ] OTA updates (GitHub-based channel, rollback-aware)
 - [ ] Additional hardware support (OBD, lighting, etc)
