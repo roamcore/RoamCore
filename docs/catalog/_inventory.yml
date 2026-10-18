@@ -338,6 +338,24 @@ items:
       - roll
       - imu
       - accelerometer
+  - id: factory_reset
+    title: Factory Reset
+    category: misc
+    yaml_category: system
+    support_tier: A
+    install_method: hacs
+    status: beta
+    state: Needs information
+    reason: ""
+    page: catalog/misc/factory-reset.md
+    summary: Factory Reset — RoamCore catalog entry.
+    tags:
+      - factory-reset
+      - reset
+      - panic-button
+      - restore
+      - recovery
+      - hub-backup
   - id: hub_backup
     title: Hub Backup
     category: misc

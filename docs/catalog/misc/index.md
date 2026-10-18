@@ -2,6 +2,16 @@
 
 Each item below shows a colour chip telling you whether the connection is ready to use, needs a small action from you, or has hit a problem — and a small pill telling you who built it (RoamCore, community, or experimental).
 
+## [Factory Reset](factory-reset.md)
+
+Factory Reset — RoamCore catalog entry.
+
+<div class="rc-state-chip-row" data-connection-name="Factory Reset">
+  <span class="rc-state-chip rc-state-chip--needs-information" title="The device needs a small piece of information from you.">Needs info</span>
+  <span class="rc-tier rc-tier--certified rc-chip rc-chip--certified" title="RoamCore builds and maintains this end-to-end.">RoamCore Certified</span>
+  <a class="rc-connect-button" href="factory-reset/" title="Open the setup page for factory-reset">Connect →</a>
+</div>
+
 ## [Hub Backup](hub-backup.md)
 
 Hub Backup — RoamCore catalog entry.
