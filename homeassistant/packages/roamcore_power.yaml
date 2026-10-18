@@ -2,9 +2,31 @@
 # Naming convention reference:
 #   RoamCore/docs/reference/rc-entity-naming.md
 #
-# Mapping strategy (MVP):
-# - Prefer vendor-specific entities if present (e.g. Victron)
-# - Otherwise fall back to dev mock helpers (from roamcore_dev_mocks.yaml)
+# Mapping strategy (Wave 9 #114 — "power mock-kill"):
+# - Prefer the canonical RoamCore Victron Auto add-on entity (sensor.vt_*).
+# - Otherwise fall back to the legacy user-side Victron integration (sensor.victron_*).
+# - If BOTH are unavailable/unknown → emit "unavailable" literally.
+# - There is NO mock fallback in this package. The previous legacy fallback
+#   chain (input_number.<legacy-mock-prefix>.*) silently produced plausible-
+#   looking tiles on broken installs, which violated Directive Rule 4
+#   ("Don't mark successful if automated action can't be verified") and
+#   gave the user a lie instead of a setup prompt.
+# - When the canonical vt_* source is missing, the dashboard reads
+#   binary_sensor.rc_power_no_real_source and shows
+#   "Power not connected — go to Setup" instead of a tile.
+#
+# Recovery banner entity (also defined below):
+#   binary_sensor.rc_power_no_real_source
+#   - on when ANY of sensor.vt_battery_soc_percent, sensor.vt_solar_power_w,
+#     sensor.vt_dc_load_power_w, sensor.vt_ac_in_power_w, sensor.vt_ac_out_power_w
+#     is unavailable/unknown.
+#   - consumed by the RoamCore Power dashboard card to switch from the numeric
+#     tile to the "Power not connected — go to Setup" banner.
+#
+# The dev-mock helpers still exist in homeassistant/packages/roamcore_dev_mocks.yaml
+# for non-power demos; this package just no longer uses them. Removing the
+# references here makes the tile honest: a broken install cannot present a
+# plausible-but-fake value.
 
 template:
   - sensor:
@@ -12,7 +34,6 @@ template:
         unique_id: rc_power_battery_soc
         unit_of_measurement: "%"
         state: >-
-          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
           {% set v = states('sensor.vt_battery_soc_percent') %}
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
@@ -21,7 +42,7 @@ template:
             {% if v2 not in ['unknown','unavailable','none',''] %}
               {{ v2 }}
             {% else %}
-              {{ states('input_number.rc_mock_power_battery_soc') }}
+              unavailable
             {% endif %}
           {% endif %}
 
@@ -38,7 +59,7 @@ template:
             {% if v2 not in ['unknown','unavailable','none',''] %}
               {{ v2 }}
             {% else %}
-              {{ states('input_number.rc_mock_power_solar_power') }}
+              unavailable
             {% endif %}
           {% endif %}
 
@@ -55,7 +76,7 @@ template:
             {% if v2 not in ['unknown','unavailable','none',''] %}
               {{ v2 }}
             {% else %}
-              {{ states('input_number.rc_mock_power_load_power') }}
+              unavailable
             {% endif %}
           {% endif %}
 
@@ -68,7 +89,8 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states('input_number.rc_mock_power_shore_power_w') }}
+            {# No legacy victron_* mapping for AC in; missing source = unavailable. #}
+            unavailable
           {% endif %}
 
       - name: "RC Power AC Out Power"
@@ -80,14 +102,13 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states('input_number.rc_mock_power_inverter_output_power_w') }}
+            unavailable
           {% endif %}
 
       - name: "RC Power Inverter Status"
         unique_id: rc_power_inverter_status
         icon: mdi:power
         state: >-
-          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
           {% set code = states('sensor.vt_inverter_state_code') %}
           {% if code not in ['unknown','unavailable','none',''] %}
             {# Map common VE.Bus codes to friendly labels; otherwise keep the code. #}
@@ -108,11 +129,14 @@ template:
             {% if v2 not in ['unknown','unavailable','none',''] %}
               {{ v2 }}
             {% else %}
-              {{ states('input_select.rc_mock_power_inverter_status') }}
+              unavailable
             {% endif %}
           {% endif %}
 
       # --- Power detail metrics ---
+      # These have no vt_* mapping today; with no real source they surface
+      # as "unavailable" instead of a fake mock value. The user's correct
+      # next step is "go to Setup" — driven by rc_power_no_real_source.
       - name: "RC Power Battery Voltage"
         unique_id: rc_power_battery_voltage
         unit_of_measurement: "V"
@@ -121,7 +145,7 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states('input_number.rc_mock_power_battery_voltage') }}
+            unavailable
           {% endif %}
 
       - name: "RC Power Battery Current"
@@ -132,7 +156,7 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states('input_number.rc_mock_power_battery_current') }}
+            unavailable
           {% endif %}
 
       - name: "RC Power Battery Power"
@@ -144,10 +168,7 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {# Best-effort fallback for mocks: V * A #}
-            {% set vv = states('input_number.rc_mock_power_battery_voltage') | float(0) %}
-            {% set aa = states('input_number.rc_mock_power_battery_current') | float(0) %}
-            {{ (vv * aa) | round(1) }}
+            unavailable
           {% endif %}
 
       - name: "RC Power Battery State"
@@ -155,13 +176,18 @@ template:
         icon: mdi:battery
         state: >-
           {# Derived from battery power sign. Positive => charging, negative => discharging. #}
-          {% set p = states('sensor.rc_power_battery_power') | float(0) %}
-          {% if p > 50 %}
-            charging
-          {% elif p < -50 %}
-            discharging
+          {% set p_raw = states('sensor.rc_power_battery_power') %}
+          {% if p_raw in ['unknown','unavailable','none',''] %}
+            unavailable
           {% else %}
-            idle
+            {% set p = p_raw | float(0) %}
+            {% if p > 50 %}
+              charging
+            {% elif p < -50 %}
+              discharging
+            {% else %}
+              idle
+            {% endif %}
           {% endif %}
 
       - name: "RC Power Battery Temperature"
@@ -172,151 +198,151 @@ template:
           {% if v not in ['unknown','unavailable','none',''] %}
             {{ v }}
           {% else %}
-            {{ states("input_number.rc_mock_power_battery_temperature_c") }}
+            unavailable
           {% endif %}
 
       - name: "RC Power Battery Capacity"
         unique_id: rc_power_battery_capacity_ah
         unit_of_measurement: "Ah"
         state: >-
-          {{ states("input_number.rc_mock_power_battery_capacity_ah") }}
+          {# No vt_* mapping today; surface as unavailable until one exists. #}
+          unavailable
 
       - name: "RC Power Battery Cycle Count"
         unique_id: rc_power_battery_cycle_count
         state: >-
-          {{ states("input_number.rc_mock_power_battery_cycle_count") }}
+          unavailable
 
       - name: "RC Power Battery Health"
         unique_id: rc_power_battery_health
         unit_of_measurement: "%"
         state: >-
-          {{ states("input_number.rc_mock_power_battery_health_pct") }}
+          unavailable
 
       - name: "RC Power Solar Energy Today"
         unique_id: rc_power_solar_energy_today_kwh
         unit_of_measurement: "kWh"
         state: >-
-          {{ states("input_number.rc_mock_power_solar_energy_today_kwh") }}
+          unavailable
 
       - name: "RC Power Solar Energy Total"
         unique_id: rc_power_solar_energy_total_kwh
         unit_of_measurement: "kWh"
         state: >-
-          {{ states("input_number.rc_mock_power_solar_energy_total_kwh") }}
+          unavailable
 
       - name: "RC Power Solar Panel Voltage"
         unique_id: rc_power_solar_panel_voltage
         unit_of_measurement: "V"
         state: >-
-          {{ states("input_number.rc_mock_power_solar_panel_voltage") }}
+          unavailable
 
       - name: "RC Power Solar Panel Current"
         unique_id: rc_power_solar_panel_current
         unit_of_measurement: "A"
         state: >-
-          {{ states("input_number.rc_mock_power_solar_panel_current") }}
+          unavailable
 
       - name: "RC Power Solar Efficiency"
         unique_id: rc_power_solar_efficiency
         unit_of_measurement: "%"
         state: >-
-          {{ states("input_number.rc_mock_power_solar_efficiency_pct") }}
+          unavailable
 
       - name: "RC Power Load Fridge"
         unique_id: rc_power_load_fridge_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_load_fridge_w") }}
+          unavailable
 
       - name: "RC Power Load Lights"
         unique_id: rc_power_load_lights_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_load_lights_w") }}
+          unavailable
 
       - name: "RC Power Load Heater"
         unique_id: rc_power_load_heater_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_load_heater_w") }}
+          unavailable
 
       - name: "RC Power Load Water Pump"
         unique_id: rc_power_load_water_pump_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_load_water_pump_w") }}
+          unavailable
 
       - name: "RC Power Load Other"
         unique_id: rc_power_load_other_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_load_other_w") }}
+          unavailable
 
       - name: "RC Power Inverter Output Power"
         unique_id: rc_power_inverter_output_power_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_inverter_output_power_w") }}
+          unavailable
 
       - name: "RC Power Inverter Output Voltage"
         unique_id: rc_power_inverter_output_voltage_v
         unit_of_measurement: "V"
         state: >-
-          {{ states("input_number.rc_mock_power_inverter_output_voltage_v") }}
+          unavailable
 
       - name: "RC Power Inverter Frequency"
         unique_id: rc_power_inverter_frequency_hz
         unit_of_measurement: "Hz"
         state: >-
-          {{ states("input_number.rc_mock_power_inverter_frequency_hz") }}
+          unavailable
 
       - name: "RC Power Inverter Temperature"
         unique_id: rc_power_inverter_temperature_c
         unit_of_measurement: "°C"
         state: >-
-          {{ states("input_number.rc_mock_power_inverter_temperature_c") }}
+          unavailable
 
       - name: "RC Power Shore Voltage"
         unique_id: rc_power_shore_voltage_v
         unit_of_measurement: "V"
         state: >-
-          {{ states("input_number.rc_mock_power_shore_voltage_v") }}
+          unavailable
 
       - name: "RC Power Shore Current"
         unique_id: rc_power_shore_current_a
         unit_of_measurement: "A"
         state: >-
-          {{ states("input_number.rc_mock_power_shore_current_a") }}
+          unavailable
 
       - name: "RC Power Shore Power"
         unique_id: rc_power_shore_power_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_shore_power_w") }}
+          unavailable
 
       - name: "RC Power Alternator Voltage"
         unique_id: rc_power_alt_voltage_v
         unit_of_measurement: "V"
         state: >-
-          {{ states("input_number.rc_mock_power_alt_voltage_v") }}
+          unavailable
 
       - name: "RC Power Alternator Current"
         unique_id: rc_power_alt_current_a
         unit_of_measurement: "A"
         state: >-
-          {{ states("input_number.rc_mock_power_alt_current_a") }}
+          unavailable
 
       - name: "RC Power Alternator Power"
         unique_id: rc_power_alt_power_w
         unit_of_measurement: "W"
         state: >-
-          {{ states("input_number.rc_mock_power_alt_power_w") }}
+          unavailable
 
   - binary_sensor:
       - name: "RC Power Shore Connected"
         unique_id: rc_power_shore_connected
         state: >-
-          {# Prefer vt_* (RoamCore Victron Auto add-on), then legacy victron_*, then dev mocks #}
           {% set v = states('binary_sensor.vt_shore_connected') %}
           {% if v in ['on','off'] %}
             {{ true if v == 'on' else false }}
@@ -325,6 +351,33 @@ template:
             {% if src in ['on','off'] %}
               {{ true if src == 'on' else false }}
             {% else %}
-              {{ is_state('input_boolean.rc_mock_power_shore_connected', 'on') }}
+              unavailable
             {% endif %}
           {% endif %}
+
+      # --- Recovery banner for the Power dashboard card ---
+      # Aggregates the unavailability of the 5 canonical vt_* sensors that
+      # drive the headline Power tiles. When any of them is unavailable/unknown
+      # (i.e. the user has no real Victron / battery-monitor source registered),
+      # this binary sensor turns on and the RoamCore Power dashboard card
+      # switches to "Power not connected — go to Setup" instead of a fake
+      # value. Surfaced clearly in the entity registry under rc_power_no_real_source.
+      - name: "RC Power No Real Source"
+        unique_id: rc_power_no_real_source
+        device_class: problem
+        icon: mdi:alert-circle-outline
+        state: >-
+          {% set sources = [
+            'sensor.vt_battery_soc_percent',
+            'sensor.vt_solar_power_w',
+            'sensor.vt_dc_load_power_w',
+            'sensor.vt_ac_in_power_w',
+            'sensor.vt_ac_out_power_w',
+          ] %}
+          {% set ns = namespace(missing=false) %}
+          {% for s in sources %}
+            {% if states(s) in ['unknown','unavailable','none',''] %}
+              {% set ns.missing = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.missing }}

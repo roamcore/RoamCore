@@ -60,6 +60,7 @@ run_if_present() {
 
 banner "HA-only beta: smoke check"
 bash scripts/checks/ha-beta-smoke.sh
+run_if_present "scripts/checks/power-no-mocks.sh" "Power package: no mock fallback chain (Wave 9 #114)"
 
 # Wave 2 #23-#33 smokes live on their own stacked branches. We probe for
 # the well-known names so the chain stays portable; once those PRs land
