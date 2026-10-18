@@ -795,6 +795,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Hub Backup is best-effort — never break HA startup.
         pass
 
+    # --- Factory Reset (Phase 7 — Wave 9 #123.b) ---
+    # Register the 4 RoamCore Factory Reset services + the HTTP view via
+    # the RoamCore-owned service handler at
+    # `homeassistant/custom_components/roamcore/factory_reset.py`. The
+    # handler implements the 2-step confirm flow (dry-run + confirm +
+    # cancel + postflight) + the `RoamCoreFactoryResetView` HTTP view at
+    # `/api/roamcore/factory_reset/{action}` + the chain-corruption
+    # recovery path. Safe to call repeatedly (HA overwrites handlers
+    # with the same name).
+    try:
+        from .factory_reset import (
+            register_factory_reset_services,
+            RoamCoreFactoryResetView,
+        )
+        register_factory_reset_services(hass)
+        hass.http.register_view(RoamCoreFactoryResetView())
+    except Exception:
+        # Factory Reset is best-effort — never break HA startup.
+        pass
+
     return True
 
 

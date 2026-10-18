@@ -188,3 +188,56 @@ test_restore:
       required: false
       selector:
         text: {}
+
+factory_reset_dry_run:
+  name: Preview a factory reset
+  description: >-
+    Run a dry-run of a factory reset — RoamCore shows you the planned
+    post-reset state + the last backup + the integrations that will
+    restart, and gives you a short token you must type in the Confirm
+    field. The reset never starts until you tap Confirm. RoamCore
+    refuses to run a dry-run without a recent verified Hub Backup
+    (less than 24 hours old) — your data is always safe.
+  fields: {}
+
+factory_reset_confirm:
+  name: Confirm a factory reset
+  description: >-
+    Confirm a factory reset using the token from the dry-run. The Hub
+    will restart and come back exactly as it was at the last backup.
+    The token is one-time use — once you confirm, the dry-run expires
+    and you'll need to run a new dry-run if you want to reset again.
+    RoamCore refuses to confirm without a matching dry-run.
+  fields:
+    token:
+      name: Confirm token
+      description: The 8-character token shown after the dry-run. Type RESET to confirm. The token is only valid for 5 minutes.
+      required: true
+      example: "A7K9MPX2"
+      selector:
+        text: {}
+
+factory_reset_cancel:
+  name: Cancel a pending factory reset
+  description: >-
+    Cancel a factory reset you started with the dry-run but changed
+    your mind about. After cancel, the token expires and you'll need
+    to run a new dry-run if you want to reset again. Your Hub stays
+    exactly as it is.
+  fields:
+    token:
+      name: Token to cancel
+      description: The 8-character token from the dry-run you want to cancel.
+      required: true
+      example: "A7K9MPX2"
+      selector:
+        text: {}
+
+factory_reset_postflight_check:
+  name: Check the Hub is healthy after a factory reset
+  description: >-
+    Run a post-flight check after a factory reset — RoamCore verifies
+    the Hub is reachable, the latest backup is in place, and the
+    integrations are healthy. The result shows up on the Factory Reset
+    tile as plain English. Safe to re-run anytime.
+  fields: {}
