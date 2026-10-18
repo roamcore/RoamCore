@@ -12,6 +12,39 @@ catalog cron (`scripts/build_catalog.py`) so it shows up under the
 public docs site's "Connections" section. Keep this recipe as the
 source of truth.
 
+## Howto link (user-facing doc)
+
+The **end-user-facing** Starlink howto lives at
+[`docs/catalog/connectivity/starlink.md`](../../../docs/catalog/connectivity/starlink.md)
+(5-step IKEA guide with an SVG "what plugs into what" diagram, a
+3-path decision tree for the wizard, and a plain-English troubleshoot
+section). **This recipe does not duplicate that doc** — the user
+doc is for the van owner who wants the 5-step overview; this
+recipe is for the developer / power user who is wiring the
+`rc_net_starlink_*` contract entities, the helpers, the
+automations, and the 3-path wizard. If you are a normal user
+installing Starlink in your van, **read the user doc first**, then
+come back here for the plumbing.
+
+The 3 paths from the user doc map to wizard `setup_paths` keys here:
+
+- **Path A — Starlink Mini as the only router** → `wizard.setup_paths[id=starlink_mini_only]`
+  (tier-a promotion candidate; no operator wiring required; RoamCore
+  reads signal + reachability straight from `http://192.168.100.1/`).
+- **Path B — Separate router + smart plug behind PSU** → `wizard.setup_paths[id=separate_router]`
+  (recipe; requires the operator smart-plug entity id; the legacy
+  Path A / Path B power-cycle distinction is collapsed into this single
+  wizard path — pick "router only" or "full PSU" inside the recipe).
+- **Path C — VM router inside the VP2430 (OpenWrt API)** → `wizard.setup_paths[id=vp2430_vm_router]`
+  (recipe; requires the OpenWrt API URL + bearer token; the contract
+  talks to OpenWrt for WAN state instead of a smart plug).
+
+The wizard entry point is `homeassistant/custom_components/roamcore/config_flow.py:async_step_starlink`;
+re-running it is safe (idempotent — re-detects, re-confirms, no duplicate
+entities). The wiring for all three paths is exported by
+`connections/starlink/__init__.py:apply_setup_path()` +
+`describe_setup_paths()`.
+
 ## What is Starlink in RoamCore?
 
 Starlink (<https://www.starlink.com/>) is SpaceX's low-earth-orbit
