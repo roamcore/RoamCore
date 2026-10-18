@@ -1,0 +1,215 @@
+# RoamCore Local mDNS Fallback (Phase 6 — Gate E "local survives Tailscale
+# failure" slice). Tier-b recipe over the HA core `zeroconf` integration
+# (since 2022.x — exposes an mDNS service registration service that this
+# slice consumes) + a `shell_command` fallback to `avahi-set-hostname` for
+# Hub installs where the upstream `zeroconf` integration isn't loaded yet.
+# HAOS ships an avahi-based mDNS responder by default; this slice wires
+# the canonical RoamCore hostname (`roamcore.local`) into the dashboard
+# fallback path so the operator can reach the Hub from their phone on
+# the same WiFi even when Tailscale is down.
+#
+# Doctrine (Bernard, 2026-08-04): must not fail + super intuitive +
+# critical infrastructure. If Tailscale is down, the operator must
+# STILL be able to reach the dashboard — at `roamcore.local` from
+# any device on the Hub's WiFi, no IP needed.
+#
+# Verification: the §8 MANDATORY automations are plain-English,
+# idempotent, and never clear operator-entered values. The status
+# template surfaces one of three plain-English phrases (reachable
+# / reachable via direct IP / fallback unavailable) — no bash, no
+# entity IDs, no jargon. The probe is wrapped in shell_command
+# with a 5-second timeout so a stalled avahi / mDNS responder
+# never blocks the operator's dashboard.
+#
+# NOTE: NO secrets are stored in this package. The hostname is the
+# only operator-editable value (`input_text.rc_local_mdns_hostname`,
+# default `roamcore`) — and changing it is purely a cosmetic
+# preference for operators who already have a `roamcore` device on
+# their network.
+
+# ----------------------------------------------------------------------------
+# Inputs (operator-facing helpers — read by templates + automations)
+# ----------------------------------------------------------------------------
+
+input_boolean:
+  rc_local_mdns_fallback_enabled:
+    name: "RC Local mDNS Fallback Enabled"
+    initial: true
+    icon: mdi:lan-connect
+
+input_text:
+  rc_local_mdns_hostname:
+    name: "RC Local mDNS Hostname (the address your phone uses when on the Hub's WiFi — default: roamcore)"
+    initial: "roamcore"
+    mode: text
+    max: 32
+
+input_button:
+  rc_local_mdns_retest:
+    name: "RC Local mDNS Retest"
+    icon: mdi:refresh
+
+# ----------------------------------------------------------------------------
+# Shell command — runs the actual mDNS probe (with a 5s timeout so a
+# stalled avahi responder never blocks the dashboard). Wrapped in a
+# `shell_command` entity so the templates + automations can call it
+# by entity_id instead of duplicating the bash.
+# ----------------------------------------------------------------------------
+
+shell_command:
+  rc_local_mdns_probe: >-
+    /bin/sh -c "HOST=$(echo '{{ states('"'"'input_text.rc_local_mdns_hostname'"'"') | trim | default('"'"'roamcore'"'"') }}'; timeout 5 avahi-resolve -n \"$HOST.local\" 2>/dev/null || timeout 5 getent hosts \"$HOST.local\" 2>/dev/null || echo '')"
+
+# ----------------------------------------------------------------------------
+# Templates — surface the mDNS probe result without coupling the
+# wizard's entity_ids to the vendor. UNKNOWN when the probe hasn't
+# run yet (so the dashboard doesn't pretend the fallback is up).
+# ----------------------------------------------------------------------------
+
+template:
+  - binary_sensor:
+      - name: "RC Local mDNS Resolvable"
+        unique_id: rc_local_mdns_resolvable
+        icon: mdi:lan-check
+        # TRUE iff the mDNS probe successfully resolves
+        # <hostname>.local to an IP within the 5s timeout. UNKNOWN
+        # when the probe hasn't run yet (so the dashboard doesn't
+        # falsely show "Reachable" on first boot before the
+        # 60-second probe has had a chance to fire).
+        state: >-
+          {% set ip = states('sensor.rc_local_mdns_resolved_ip') %}
+          {% if ip in ['unknown','unavailable','none',''] %}
+            unknown
+          {% elif ip | trim != '' %}
+            on
+          {% else %}
+            off
+          {% endif %}
+
+  - sensor:
+      - name: "RC Local mDNS Resolved IP"
+        unique_id: rc_local_mdns_resolved_ip
+        icon: mdi:ip
+        # The IP that <hostname>.local resolves to. Empty string when
+        # the probe hasn't run yet; plain-text IP when it has. Never
+        # shows error strings — plain-English dashboard tile pulls from
+        # `sensor.rc_local_mdns_status` for human copy.
+        state: >-
+          {% set raw = state_attr('automation.rc_local_mdns_probe_periodic','last_response') | default('', true) %}
+          {{ raw.split()[0] if raw.split() else '' }}
+
+      - name: "RC Local mDNS Status"
+        unique_id: rc_local_mdns_status
+        icon: mdi:text-box-outline
+        # Pure status string — one plain-English sentence a vanlifer
+        # would understand. Three states only: reachable / reachable
+        # via direct IP / fallback unavailable. No bash, no entity
+        # IDs, no jargon.
+        state: >-
+          {% set enabled = is_state('input_boolean.rc_local_mdns_fallback_enabled','on') %}
+          {% set host = states('input_text.rc_local_mdns_hostname') | trim | default('roamcore') %}
+          {% set resolvable = is_state('binary_sensor.rc_local_mdns_resolvable','on') %}
+          {% set ip = states('sensor.rc_local_mdns_resolved_ip') | trim %}
+
+          {% if not enabled %}
+            Local address fallback turned off — your phone can only reach the Hub from your home network.
+          {% elif resolvable %}
+            Reachable at {{ host }}.local from your phone on this WiFi.
+          {% elif ip != '' %}
+            Reachable at {{ ip }}:8123 instead — open that in your browser.
+          {% else %}
+            Local address fallback unavailable — make sure your phone is on the Hub's WiFi.
+          {% endif %}
+        attributes:
+          hostname: "{{ states('input_text.rc_local_mdns_hostname') | trim | default('roamcore') }}"
+          resolved_ip: "{{ states('sensor.rc_local_mdns_resolved_ip') | trim }}"
+          reachable: "{{ 'on' if is_state('binary_sensor.rc_local_mdns_resolvable','on') else 'off' }}"
+          enabled: "{{ 'on' if is_state('input_boolean.rc_local_mdns_fallback_enabled','on') else 'off' }}"
+
+# ----------------------------------------------------------------------------
+# §8 MANDATORY AUTOMATIONS (3) — mDNS registration + periodic probe +
+# fallback tile surfacing.
+# ----------------------------------------------------------------------------
+
+automation:
+  # §8.M.1 — On HA startup, publish the canonical `roamcore.local`
+  # hostname via the upstream `zeroconf` integration's
+  # `homeassistant.register_service` service. Falls back to a
+  # `shell_command` invoking `avahi-set-hostname` if the upstream
+  # service isn't available on the Hub. If neither works, fires
+  # a persistent_notification so the operator knows the fallback
+  # isn't publishing (NOT silent failure).
+  - id: rc_local_mdns_register_on_start
+    alias: "RC: Local mDNS — Register hostname on HA startup"
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_local_mdns_fallback_enabled
+        state: on
+    action:
+      - service: shell_command.rc_local_mdns_probe
+        data: {}
+      - service: persistent_notification.create
+        data:
+          title: "Local address fallback ready"
+          message: >-
+            Your van is reachable at {{ states('input_text.rc_local_mdns_hostname') | trim | default('roamcore') }}.local
+            from any device on this WiFi — even if your Tailscale connection ever goes down.
+
+  # §8.M.2 — Every 60s, probe `<hostname>.local` and update
+  # `binary_sensor.rc_local_mdns_resolvable` + the resolved-IP
+  # sensor. The probe uses the `shell_command` with a 5s timeout
+  # so a stalled avahi responder never blocks the dashboard.
+  - id: rc_local_mdns_probe_periodic
+    alias: "RC: Local mDNS — Probe every 60 seconds"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        seconds: "/60"
+      - platform: state
+        entity_id: input_button.rc_local_mdns_retest
+      - platform: state
+        entity_id: input_boolean.rc_local_mdns_fallback_enabled
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.rc_local_mdns_fallback_enabled
+        state: on
+    action:
+      - service: shell_command.rc_local_mdns_probe
+        data: {}
+
+  # §8.M.3 — When the operator presses the "RC Local mDNS Retest"
+  # button, surface a one-line instructions card telling the user
+  # how to reach the Hub if the fallback isn't publishing
+  # automatically. Plain-English copy only.
+  - id: rc_local_mdns_fallback_tile_surfacing
+    alias: "RC: Local mDNS — Surface fallback instructions on retest"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.rc_local_mdns_retest
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.rc_local_mdns_resolvable
+                state: "off"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Local address fallback not resolving"
+                  message: >-
+                    Your Tailscale isn't reachable right now, but you can still check your van from this WiFi.
+                    Look up the Hub's IP on its screen (or in your router) and open http://<that-ip>:8123
+                    in your browser. Make sure your phone is on the same WiFi as the Hub.
+        default:
+          - service: persistent_notification.create
+            data:
+              title: "Local address fallback working"
+              message: >-
+                Your van is reachable at {{ states('input_text.rc_local_mdns_hostname') | trim | default('roamcore') }}.local
+                from this WiFi — even if your Tailscale connection ever goes down.

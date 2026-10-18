@@ -444,6 +444,41 @@ wizard:
       setup_notes: |
         Skip remote access entirely — your van stays reachable only on home Wi-Fi.
 
+    # Local mDNS fallback (Wave 9 #122.d.iv — Gate E "local survives
+    # Tailscale failure" safety net). This entry is separate from the
+    # four remote-access paths above (A/B/C/D) — the fallback is NOT a
+    # remote-access path; it's a safety net that lets the operator
+    # still reach the Hub from their phone on the same WiFi even when
+    # Tailscale is down. Default ON, no operator input required, no
+    # external dependency. Tier-b recipe over the HA core `zeroconf`
+    # integration + a `shell_command` fallback to `avahi-set-hostname`.
+    - id: local_mdns_fallback
+      label: "Local mDNS fallback (safety net — recommended, always on)"
+      connection_kind: recipe
+      tier: b
+      recipe_over: "HA core `zeroconf` integration (since 2022.x) + `shell_command` to `avahi-set-hostname` on Hub installs where the upstream `zeroconf` integration isn't loaded yet (HAOS ships an avahi-based mDNS responder by default)"
+      estimated_time: "~1 min"
+      requires_reboot: false
+      requires_inputs: []
+      side_effects:
+        - registers_local_mdns_fallback_enabled_input_boolean
+        - registers_local_mdns_hostname_input_text_default_roamcore
+        - registers_local_mdns_retest_input_button
+        - registers_local_mdns_resolvable_binary_sensor
+        - registers_local_mdns_resolved_ip_sensor
+        - registers_local_mdns_status_sensor_plain_english
+        - registers_local_mdns_probe_shell_command_with_5s_timeout
+        - registers_local_mdns_register_on_start_automation
+        - registers_local_mdns_probe_periodic_every_60s_automation
+        - registers_local_mdns_fallback_tile_surfacing_automation
+        - surfaces_persistent_notification_on_mdns_failure_with_direct_ip_fallback
+      setup_notes: |
+        Always-on safety net so you can still reach your dashboard at
+        `roamcore.local` from your phone on the Hub's WiFi — even if
+        Tailscale is down. No operator input required, no external
+        dependency. If the friendly name doesn't resolve, the dashboard
+        shows you the Hub's direct IP so you can reach it anyway.
+
 install:
   ha_integration_domain: tailscale
   config_flow: true
