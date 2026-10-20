@@ -22,3 +22,13 @@ Better sleep and cooking. Quick 'good enough' check without guessing.
   <a class="rc-connect-button" href="leveling/" title="Open the setup page for leveling">Connect →</a>
 </div>
 
+## [MeatPi WiCAN Pro](wican-pro.md)
+
+Brings vehicle telemetry from a MeatPi WiCAN Pro OBD2 + CAN adapter into Home Assistant.
+
+<div class="rc-state-chip-row" data-connection-name="MeatPi WiCAN Pro">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="wican-pro/" title="Open the setup page for wican-pro">Connect →</a>
+</div>
+

@@ -338,6 +338,24 @@ items:
       - roll
       - imu
       - accelerometer
+  - id: wican-pro
+    title: MeatPi WiCAN Pro
+    category: maintenance
+    yaml_category: vehicle-obd
+    support_tier: B
+    install_method: manual
+    status: beta
+    state: Available
+    reason: ""
+    page: catalog/maintenance/wican-pro.md
+    summary: Brings vehicle telemetry from a MeatPi WiCAN Pro OBD2 + CAN adapter into Home Assistant.
+    tags:
+      - wican
+      - wican-pro
+      - obd2
+      - vehicle
+      - can-bus
+      - recipe
   - id: factory_reset
     title: Factory Reset
     category: misc

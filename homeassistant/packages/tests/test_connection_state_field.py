@@ -126,23 +126,24 @@ def manifests_by_id(manifest_paths: list[Path]) -> dict[str, dict]:
     return out
 
 
-def test_manifest_count_is_thirty_four(manifest_count: int) -> None:
-    """The connection surface is 34 manifests.
+def test_manifest_count_is_thirty_five(manifest_count: int) -> None:
+    """The connection surface is 35 manifests.
 
-    Locked at 34 because (a) the directive §"App-store-style catalog
+    Locked at 35 because (a) the directive §"App-store-style catalog
     UI" explicitly lists the 32 surface tiles, and (b) the catalog
     index page (`docs/catalog/index.md`) renders one entry per
     connection. Wave 9 #123.a adds `connections/hub-backup/` as the
     33rd manifest; Wave 9 #123.b (Phase 7 Factory Reset) adds
-    `connections/factory-reset/` as the 34th. If a future slice adds
-    a new connection, update this count AND the catalog index AND
-    the inventory build in lockstep.
+    `connections/factory-reset/` as the 34th; the Wicann Pro OBD2
+    reader adds `connections/wican-pro/` as the 35th. If a future
+    slice adds a new connection, update this count AND the catalog
+    index AND the inventory build in lockstep.
     """
-    assert manifest_count == 34, (
-        f"expected exactly 34 connection manifests (per the directive "
+    assert manifest_count == 35, (
+        f"expected exactly 35 connection manifests (per the directive "
         f"§'App-store-style catalog UI' surface tile list + the "
         f"catalog index page + Wave 9 #123.a hub-backup + Wave 9 "
-        f"#123.b factory-reset); got "
+        f"#123.b factory-reset + the Wicann Pro OBD2 reader); got "
         f"{manifest_count}. The slice's primary value is uniform "
         f"data, not bespoke configuration — adding a connection is a "
         f"deliberate action."
