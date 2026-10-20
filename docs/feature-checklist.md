@@ -58,6 +58,7 @@ Legend:
 
 ## System UX
 
+- [x] Setup wizard dashboard YAML + Lovelace (stage-aware collapse + Next/Previous CTAs)
 - [ ] Advanced mode (clearly separated + safe recovery)
 - [ ] Deterministic system summary (boring, consistent, trustworthy)
 - [ ] AI chat (opt-in; API/Auth based)
