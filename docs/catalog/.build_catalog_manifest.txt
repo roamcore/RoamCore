@@ -30,6 +30,8 @@ misc/index.md
 misc/nas.md
 misc/time-atomic.md
 misc/timezone-geolocator.md
+power/alternator-charge-control.md
+power/index.md
 safety/deadbolts.md
 safety/index.md
 safety/smart-automations.md

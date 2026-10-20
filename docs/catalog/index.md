@@ -294,6 +294,18 @@ Smoke / CO / gas safety sensors — van life safety monitoring — are the found
   <a class="rc-connect-button" href="smoke-co-gas-sensors/" title="Open the setup page for smoke-co-gas-sensors">Connect →</a>
 </div>
 
+## Power
+
+### [Alternator charge control](power/alternator-charge-control.md)
+
+Show me at a glance whether my alternator is charging the house battery while I drive, and turn charging off on its own when it would do more harm than good.
+
+<div class="rc-state-chip-row" data-connection-name="Alternator charge control">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="alternator-charge-control/" title="Open the setup page for alternator-charge-control">Connect →</a>
+</div>
+
 ## Security
 
 ### [NFC tags](security/nfc-tags.md)

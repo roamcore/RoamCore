@@ -15,3 +15,15 @@ Batteries, solar, shore power, and inverter control. See state of charge, how fa
 </div>
 
 <!-- RC_FEATURE_LIST_END -->
+
+## Power connections (new format)
+
+## [Alternator charge control](alternator-charge-control-wakespeed.md)
+
+Show me at a glance whether my alternator is charging the house battery while I drive, and turn charging off on its own when it would do more harm than good.
+
+<div class="rc-state-chip-row" data-connection-name="Alternator charge control">
+  <span class="rc-state-chip rc-state-chip--available" title="Code is shipped and the device is ready to install.">Available</span>
+  <span class="rc-tier rc-tier--verified rc-chip rc-chip--verified" title="A member of the community tested this on a real van.">Community Verified</span>
+  <a class="rc-connect-button" href="alternator-charge-control/" title="Open the setup page for alternator-charge-control">Connect →</a>
+</div>

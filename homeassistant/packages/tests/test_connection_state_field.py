@@ -126,27 +126,30 @@ def manifests_by_id(manifest_paths: list[Path]) -> dict[str, dict]:
     return out
 
 
-def test_manifest_count_is_thirty_five(manifest_count: int) -> None:
-    """The connection surface is 35 manifests.
+def test_manifest_count_is_thirty_six(manifest_count: int) -> None:
+    """The connection surface is 36 manifests.
 
-    Locked at 35 because (a) the directive §"App-store-style catalog
+    Locked at 36 because (a) the directive §"App-store-style catalog
     UI" explicitly lists the 32 surface tiles, and (b) the catalog
     index page (`docs/catalog/index.md`) renders one entry per
     connection. Wave 9 #123.a adds `connections/hub-backup/` as the
     33rd manifest; Wave 9 #123.b (Phase 7 Factory Reset) adds
     `connections/factory-reset/` as the 34th; the Wicann Pro OBD2
-    reader adds `connections/wican-pro/` as the 35th. If a future
+    reader adds `connections/wican-pro/` as the 35th; the
+    alternator-charge-control (backlog row #307) adds
+    `connections/alternator-charge-control/` as the 36th. If a future
     slice adds a new connection, update this count AND the catalog
     index AND the inventory build in lockstep.
     """
-    assert manifest_count == 35, (
-        f"expected exactly 35 connection manifests (per the directive "
+    assert manifest_count == 36, (
+        f"expected exactly 36 connection manifests (per the directive "
         f"§'App-store-style catalog UI' surface tile list + the "
         f"catalog index page + Wave 9 #123.a hub-backup + Wave 9 "
-        f"#123.b factory-reset + the Wicann Pro OBD2 reader); got "
-        f"{manifest_count}. The slice's primary value is uniform "
-        f"data, not bespoke configuration — adding a connection is a "
-        f"deliberate action."
+        f"#123.b factory-reset + the Wicann Pro OBD2 reader + the "
+        f"alternator-charge-control connection slice (backlog row "
+        f"#307)); got {manifest_count}. The slice's primary value "
+        f"is uniform data, not bespoke configuration — adding a "
+        f"connection is a deliberate action."
     )
 
 

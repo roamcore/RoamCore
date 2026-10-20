@@ -542,6 +542,24 @@ items:
       - gps
       - zone
       - travel
+  - id: alternator-charge-control
+    title: Alternator charge control
+    category: power
+    yaml_category: power
+    support_tier: B
+    install_method: one_line
+    status: beta
+    state: Available
+    reason: ""
+    page: catalog/power/alternator-charge-control.md
+    summary: Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power / ARCO / OEM smart alternator regulators.
+    tags:
+      - power
+      - alternator
+      - regulator
+      - charging
+      - wakespeed
+      - balmar
   - id: deadbolts
     title: Deadbolts
     category: safety

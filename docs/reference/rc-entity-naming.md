@@ -77,6 +77,7 @@ Extended subsystems added by the Wave 3 connection pipeline (each subsystem is O
 
 - `ventilation` — fans (rooftop + circulation). OWNED by `connections/fans/` (Wave 3 #59).
 - `vehicle` — vehicle-mounted pitch/roll / levelling / fridge-safe gate. OWNED by `connections/leveling/` (Wave 3 #60).
+- `alternator` — vendor-neutral alternator-side charge control (smart regulator / DC-DC charger / field relay / read-only ignition signal — Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power / ARCO / OEM / DC-DC charger / B2B / BCDC); vendor-neutral `rc_power_alternator_*` ids (charging_enabled, charge_mode, target_voltage_v, charge_current_a, temp_compensation_active, fault, last_trigger_reason, manual_override). OWNED by `connections/alternator-charge-control/` (backlog row #307).
 - `mode` — operator-facing mode state (Off / Auto / Travel / Camp / Stealth). OWNED by `connections/mode/` (Wave 3 #61).
 - `demo_mode` — demo-mode state for the operator-facing demo scenarios. OWNED by `connections/demo-mode/` (Wave 3 #62).
 - `advanced_mode` — power-user toggle state. OWNED by `connections/advanced-mode/` (Wave 3 #63).
