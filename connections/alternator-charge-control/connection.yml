@@ -1,0 +1,542 @@
+# Alternator charge control (Wakespeed / smart regulator — vendor-
+# neutral alternator charge umbrella for HA) — tier-b recipe connection.
+#
+# Promoted from the legacy tier-c stub
+# docs/catalog/power/alternator-charge-control-wakespeed.md
+# (24 lines). Promoted into tier-b because RoamCore does NOT ship a
+# native alternator regulator controller — we RECIPE the well-understood
+# combination of FOUR upstream operator-side paths:
+#   - Path A — Smart alternator regulator linked to a Victron SmartSolar /
+#     BMV / Cerbo GX DC-DC charger (the upstream regulator charges via
+#     the DC-DC charger; the HA core `victron` integration OR the
+#     upstream `switch.*` + `sensor.*` entities on the Wakespeed /
+#     Balmar / Sterling / ARCO / EP-Power / OEM regulator expose
+#     enable/disable + target voltage + charge current + battery temp
+#     signals; this is the recommended path for operators whose
+#     alternators already charge through a Victron / Renogy / EP-Power /
+#     REDARC / Sterling / Balmar DC-DC charger),
+#   - Path B — Generic smart alternator regulator exposed over MQTT by
+#     the vendor's bridge (Wakespeed WS500 / Balmar MC-618 / Sterling
+#     Regulated Advanced Alternator-to-Battery charger / Renogy
+#     Battery-to-Battery Charger / REDARC BCDC / EP-Power B2B / ARCO
+#     Zeus / OEM alternator reg with a CAN-to-MQTT bridge such as
+#     Wakespeed's WS Link / Sterling's BMS Link / Balmar's Smartlink /
+#     Renogy's BT-2 / REDARC's RedVision / EP-Power's EP Link / a
+#     Signal K gateway on the boat's NMEA 2000 backbone; the operator
+#     pairs the regulator with the bridge + wires the bridge's MQTT
+#     topics into HA via the HA core `mqtt` integration),
+#   - Path C — Relay / GPIO switch between the alternator field wire
+#     and a plain smart charger (a Shelly 1 / Shelly Plus 1 / Zooz
+#     ZEN17 / Aeotec Nano Switch or a GPIO relay driven by an ESPHome /
+#     Tasmota node interrupts the alternator's field excitation wire
+#     according to the operator's chosen charging mode; this is the
+#     minimum-viable path for operators with no smart regulator +
+#     no MQTT bridge — a plain externally-regulated alternator whose
+#     field wire can be turned off),
+#   - Path D — Read-only ignition-signal-only + no control (the
+#     alternator is dumb / the operator does NOT want to control the
+#     alternator at all — just knows when the engine is running via
+#     `binary_sensor.rc_vehicle_engine_running` from the vehicle
+#     `connections/leveling/` / `connections/mode/` slices + surfaces
+#     a single "should we be charging now?" advisory tile; the
+#     operator may use Path D as a stepping stone to Path A / Path B
+#     later),
+# plus a translation layer that maps the resulting upstream
+# `switch.*` (Path C relay) + `sensor.*` (Path A / Path B regulator
+# telemetry) + `binary_sensor.*` (ignition-signal-only + faults) into
+# the RoamCore vendor-neutral `rc_power_alternator_*` contract tiles.
+#
+# The 8 contract tiles are:
+#   - `binary_sensor.rc_power_alternator_charging_enabled` — TRUE iff
+#     the alternator is allowed to charge right now (the umbrella AND
+#     gate from `select.rc_power_alternator_charge_mode` + ignition +
+#     battery SOC + temperature + `select.rc_mode` from
+#     `connections/mode/`).
+#   - `select.rc_power_alternator_charge_mode` — the operator's
+#     chosen charge policy (one of `off` / `auto` / `boost` /
+#     `float` / `desulfation` / `stealth` / `protect_battery`).
+#   - `sensor.rc_power_alternator_target_voltage_v` — target
+#     voltage for the charging stage (V).
+#   - `sensor.rc_power_alternator_charge_current_a` — current
+#     accepted by the house battery bank during alternator charging
+#     (A) — derived from the upstream regulator's current-sense
+#     input OR the `sensor.rc_power_battery_current_a` from the
+#     Victron `connections/victron/` recipe.
+#   - `binary_sensor.rc_power_alternator_temp_compensation_active`
+#     — TRUE iff the regulator's temperature-compensation curve is
+#     actively lowering the target voltage (battery is cold / hot).
+#   - `binary_sensor.rc_power_alternator_fault` — TRUE iff the
+#     upstream regulator reports a fault (over-temp, over-voltage,
+#     communication lost, BMS lockout). When this tile is TRUE the
+#     §8.6 fault-block automation forces charging OFF + notifies the
+#     operator.
+#   - `sensor.rc_power_alternator_last_trigger_reason` — the reason
+#     the alternator charging was last enabled (one of `manual` /
+#     `ignition_on` / `soc_low` / `battery_cold` / `boost` /
+#     `desulfation` / `stealth_suppressed` / `fault_blocked`).
+#   - `button.rc_power_alternator_manual_override` — the manual
+#     override (the operator can force alternator charging ON for a
+#     configurable duration from the dashboard, regardless of the
+#     auto-policy).
+#
+# This connection is the alternator-side complement to the broader
+# RoamCore power-side intelligence (the house `connections/victron/`
+# recipe surfaces the SOC + solar + DC load; this slice adds the
+# alternator-side charge control). It is intentionally vendor-neutral:
+# no Wakespeed / Sterling / Renogy / REDARC / EP-Power / Balmar /
+# ARCO / OEM names leak into any `rc_*` tile id.
+#
+# Why tier-b, not tier-a:
+#   - no real smart alternator regulator (Wakespeed WS500 / Balmar
+#     MC-618 / Sterling Regulated Advanced Alternator-to-Battery
+#     charger / Renogy Battery-to-Battery / REDARC BCDC / EP-Power
+#     B2B / ARCO Zeus / OEM CAN-j1939 regulator) on the CI bench to
+#     integration-test against (the bench requires the operator's
+#     chosen regulator + a 12 V / 24 V house battery bank + a
+#     temperature probe + an ignition signal + canned fixture
+#     responses for ignition / SOC / temperature / fault events — all
+#     wired together in a controlled environment),
+#   - no canonical RoamCore-owned integration code (the operator
+#     chooses Path A vs Path B vs Path C vs Path D + whether they
+#     want MQTT bridge vs CAN-to-MQTT vs relay-only vs read-only —
+#     all four paths recipe over upstream vendor integrations + HA
+#     core `mqtt` + HA core `switch` + HA core `binary_sensor` + HA
+#     core `select`; we ship no native wrapper for any path),
+#   - the safety interlocks that alternator charging REQUIRES are
+#     documented in the recipe (low-voltage lockout, mode-aware
+#     Stealth / Sleep / Protect battery suppressions, temperature-
+#     compensation, fault-block) but are NOT hard-enforced in
+#     RoamCore code (the operator MUST wire the safety interlocks
+#     in their automations; tier-a promotion would move these into
+#     RoamCore-side asserts),
+#   - so the audit-recommended GUI-flow walk can't be canonical here
+#     either. The recipe is sound (it leans on the upstream vendor
+#     integration + the HA core `mqtt` integration + the HA core
+#     `switch` integration + the HA core `binary_sensor`
+#     integration + the HA core `template:` sensor wrappers + the
+#     HA core `template:` binary_sensor wrappers + the HA core
+#     `input_boolean` + `input_text` + `input_number` + `input_select`
+#     + `input_button` helpers), but we cannot claim one-tap
+#     automation. The `tier-a promotion outline` at the bottom of
+#     docs/recipe.md describes exactly what needs to happen to flip
+#     this to tier-a (a real Wakespeed / Sterling / Renogy /
+#     REDARC / EP-Power / Balmar / ARCO regulator on the CI bench +
+#     a canonical RoamCore-owned operator-wired setup flow that
+#     walks the operator through Path A vs Path B vs Path C vs Path
+#     D + ignition-signal declaration + temperature-probe pin +
+#     integration tests that assert the ignition-on enable fires +
+#     the SOC-low boost fires + the battery-cold temperature-
+#     compensation lowers the target voltage + the fault-block
+#     forces charging OFF + the mode-aware Stealth suppression
+#     blocks charging + the low-voltage lockout prevents charging
+#     when SOC < threshold).
+#
+# Four install paths (operator picks based on existing IoT wiring +
+# comfort with smart-regulator MQTT / CAN-bridge vs simple relay vs
+# read-only advisory):
+#
+#   - Path A — Smart alternator regulator linked to a Victron
+#     SmartSolar / BMV / Cerbo GX DC-DC charger (recommended for
+#     operators whose alternators already charge through a Victron /
+#     Renogy / REDARC / Sterling / Balmar / EP-Power DC-DC charger
+#     with its own regulator control). The vendor integration
+#     exposes a `switch.*` enable/disable entity + `sensor.*`
+#     telemetry (target voltage + charge current + battery
+#     temperature + fault state). Path A1 — Victron Cerbo GX via
+#     the HA core `victron` integration (the canonical Victron
+#     integration since 2022.x — surfaces `switch.*` (charge
+#     enable) + `sensor.*` (voltage + current + temperature +
+#     fault) on the DC-DC charger; the recipe wires the upstream
+#     entities through a `template:` switch + `template:` sensor +
+#     `template:` binary_sensor wrapper into the
+#     `rc_power_alternator_*` contract tiles). Path A2 — Renogy /
+#     REDARC / EP-Power / Sterling / Balmar DC-DC charger via the
+#     HA core `mqtt` integration (since 2022.x — exposes a GUI flow
+#     for the operator to add the vendor's Bluetooth-to-MQTT bridge
+#     topic).
+#
+#   - Path B — Generic smart alternator regulator exposed over MQTT
+#     by the vendor's bridge (Wakespeed WS500 / Balmar MC-618 /
+#     Sterling Regulated Advanced Alternator-to-Battery charger /
+#     Renogy Battery-to-Battery / REDARC BCDC / EP-Power B2B / ARCO
+#     Zeus / OEM alternator regulator with a CAN-to-MQTT bridge
+#     such as Wakespeed's WS Link / Sterling's BMS Link / Balmar's
+#     Smartlink / Renogy's BT-2 / REDARC's RedVision / EP-Power's
+#     EP Link / a Signal K gateway on the boat's NMEA 2000
+#     backbone). The operator pairs the regulator with the bridge
+#     + wires the bridge's MQTT topics into HA via the HA core
+#     `mqtt` integration (since 2022.x). The recipe shows the
+#     upstream `switch.*` (charge enable) + `sensor.*` (target
+#     voltage + charge current + battery temperature) + the
+#     upstream `binary_sensor.*` (fault state) being wired into the
+#     `rc_power_alternator_*` contract tiles via a `template:`
+#     switch + `template:` sensor + `template:` binary_sensor
+#     wrapper. The vendor may also expose a `number.*` for the
+#     target voltage setpoint + a `select.*` for the charge mode
+#     (off / auto / boost / float / desulfation) — the recipe
+#     walks through wiring those too.
+#
+#   - Path C — Relay / GPIO switch between the alternator field
+#     wire and a plain smart charger (a Shelly 1 / Shelly Plus 1
+#     / Zooz ZEN17 / Aeotec Nano Switch or a GPIO relay driven by
+#     an ESPHome / Tasmota node interrupts the alternator's field
+#     excitation wire according to the operator's chosen charging
+#     mode; this is the minimum-viable path for operators with no
+#     smart regulator + no MQTT bridge — a plain externally-
+#     regulated alternator whose field excitation wire can be turned
+#     off). Path C1 — Shelly 1 / Shelly Plus 1 wired to the
+#     alternator's field excitation wire + the HA core Shelly
+#     integration (since 2022.x — exposes a GUI flow for the
+#     operator to add the Shelly 1 / Shelly Plus 1 to HA + view the
+#     resulting `binary_switch.*` entity). The operator creates a
+#     `template:` switch wrapping the relay state into a virtual
+#     `switch.*` entity + a `template:` sensor for charge current
+#     derived from `sensor.rc_power_battery_current_a` (from the
+#     Victron `connections/victron/` recipe). Path C2 — ESPHome /
+#     Tasmota GPIO relay driven by an ESP32 / ESP8266 node
+#     connected to the alternator's field excitation wire +
+#     flashed with ESPHome / Tasmota + the upstream integration
+#     (ESPHome integration since 2022.x — surfaces as a
+#     `switch.alternator_field` entity).
+#
+#   - Path D — Read-only ignition-signal-only + no control (the
+#     alternator is dumb / the operator does NOT want to control
+#     the alternator at all — just knows when the engine is running
+#     via `binary_sensor.rc_vehicle_engine_running` from the
+#     vehicle-related connection slices + surfaces a single "should
+#     we be charging now?" advisory tile). Path D requires only the
+#     ignition signal (a GPIO on an ESPHome node OR a voltage
+#     divider on the alternator's D+ / IGN wire + an ESPHome analog
+#     input — or the simpler option of using the Victron
+#     `connections/victron/` recipe's `binary_sensor.rc_power_
+#     engine_running` if the operator's Victron already has an
+#     engine-running signal).
+#
+# All four paths land on the same vendor-neutral `rc_power_
+# alternator_*` contract tiles. The umbrella surfaces a single
+# "is the alternator charging?" tile + a single charge-mode
+# selector + a single fault/unavailable gate + a single manual
+# override button — all of which the operator can drive from the
+# dashboard without ever learning the underlying vendor specifics.
+#
+# SAFETY-FIRST WIRING EMPHASIS:
+#   This connection controls a high-current charging source that
+#   can over-charge a lithium battery bank, gas a flooded lead-acid
+#   battery bank, or starve a critical load (the house `fridge` /
+#   `lights` / `medical equipment` / `Comms`) if the operator wires
+#   the safety interlocks incorrectly. Every install MUST include:
+#     - a fault-block that cross-references the regulator's fault
+#       state (the `binary_sensor.rc_power_alternator_fault` tile)
+#       — when the regulator reports over-temp / over-voltage /
+#       communication lost / BMS lockout, the §8.6 fault-block
+#       automation forces charging OFF + notifies the operator +
+#       writes `sensor.rc_power_alternator_last_trigger_reason =
+#       fault_blocked`,
+#     - a low-voltage lockout that cross-references the Victron
+#       `connections/victron/` recipe's `sensor.rc_power_battery_
+#       soc` (the `binary_sensor.rc_power_alternator_charging_
+#       enabled` tile requires SOC > threshold to flip TRUE),
+#     - a mode-aware suppression that cross-references the
+#       `select.rc_mode` tile from the `connections/mode/` recipe
+#       (when mode is `stealth` AND the operator has flagged the
+#       alternator as noisy, the §8.5 Stealth-suppression
+#       automation blocks charging; when mode is `sleep` AND the
+#       operator has flagged the alternator as not-quiet-enough,
+#       the same path applies),
+#     - a battery-temperature-compensation that uses the upstream
+#       `sensor.*` battery temperature probe (or a derived value
+#       from the Victron `connections/victron/` recipe's `sensor.
+#       rc_power_battery_temperature_c`) — when the temperature
+#       probe reads cold (< 0°C) OR hot (> 45°C), the
+#       `binary_sensor.rc_power_alternator_temp_compensation_
+#       active` tile flips to TRUE and the §8.3 temperature-
+#       compensation automation lowers the regulator's target
+#       voltage setpoint,
+#     - a "Protect battery" path that operates the charging in
+#       `protect_battery` mode when SOC < 20 % (the operator's
+#       chosen default — disallows charging to preserve the
+#       battery for critical loads).
+#   The recipe walks through every interlock in detail (§8) and
+#   the test_connection_yml.py smoke check guards the
+#   documentation via §11.
+#
+# Note on `install.config_flow: true` AND `install.hacs: false`:
+# the upstream HA core `mqtt` integration (Path B) DOES expose a
+# GUI flow since 2022.x — the operator uses the GUI flow to add the
+# regulator's MQTT topic to HA; the HA core Shelly integration
+# (Path C1) DOES expose a GUI flow since 2022.x; the HA core
+# `victron` integration (Path A1, if the operator wires a Cerbo GX)
+# DOES expose a GUI flow since 2022.x; the upstream vendor
+# integrations (Wakespeed Link app + Balmar Smartlink +
+# Renogy BT-2 + REDARC RedVision + Sterling BMS Link + EP-Power
+# EP Link + ARCO Zeus app) each expose their own GUI flow for
+# first-time pairing. We honestly report `install.config_flow:
+# true` because the operator's choice goes through a GUI flow on
+# the upstream side. The honest-but-tier-b part is: ESPHome YAML
+# OR `generic_thermostat:`-style template YAML is required to
+# declare the operator's exact MQTT topic / GPIO pin /
+# temperature-probe pin / CAN-bridge choice; we ship NO
+# RoamCore-owned wrapper / no native integration code, no
+# operator-wired setup flow, no pin-declaration walk on the bench
+# — we RECIPE the upstream `victron` + `mqtt` + Shelly +
+# `binary_sensor` + `template:` patterns. The honest tier-b
+# footnote: `install.config_flow: true` is honest because the
+# UPSTREAM integrations expose a GUI flow — it is NOT a tier-a
+# marker for RoamCore's tier (a tier-a marker would be a
+# RoamCore-owned operator-wired setup flow + RoamCore-owned
+# integration code + integration tests against a RoamCore-owned
+# bench).
+#
+# Note on the `rc_power_alternator_*` family: this slice adds the
+# `alternator` subsystem under the existing `power` subsystem
+# (the `power` subsystem is already in the allowed subsystems
+# list in docs/reference/rc-entity-naming.md — the umbrella for
+# the house's electrical system). The contract tile ids stay
+# vendor-neutral — NO `wakespeed`, `balmar`, `sterling`, `renogy`,
+# `redarc`, `ep_power`, `ep-power`, `arco`, `oem`, `regulator`,
+# `alternator`, `b2b`, `bcdc`, `mc-618`, `mc618`, `ws500`,
+# `ws_link`, `ws-link`, `smartlink`, `bms_link`, `bms-link`,
+# `bt-2`, `bt2`, `redvision`, `ep_link`, `ep-link`, `zeus`,
+# `nmea_2000`, `nmea-2000`, `can`, `canbus`, `j1939`, `lin`,
+# `d+`, `d-`, `vsense`, `12v`, `24v`, `lithium`, `lifepo4`,
+# `agm`, `flooded`, `gel` in any rc_* tile id BEYOND the
+# subsystem prefix `rc_power_alternator_*` (the subsystem prefix
+# IS allowed — it's the owning-area marker; what is forbidden is
+# vendor names appearing AFTER the subsystem marker in a way that
+# double-stamps the vendor into the id).
+
+id: alternator-charge-control
+name: "Alternator charge control (Wakespeed / smart regulator) — tier-b recipe connection"
+tier: b
+category: power
+status: beta
+version: 0.1.0
+state: Available
+description: |
+  Alternator charge control — vendor-neutral umbrella for
+  Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power /
+  ARCO / OEM smart alternator regulators — is the canonical
+  "should the alternator be charging the house battery right now
+  + is it actually charging" answer for vans. RoamCore ships no
+  native alternator regulator — we recipe over FOUR operator-
+  pickable paths (Path A — smart regulator linked to a Victron /
+  Renogy / REDARC / Sterling / Balmar / EP-Power DC-DC charger
+  with its own regulator control; Path B — generic smart
+  regulator exposed over MQTT by the vendor's bridge; Path C —
+  relay / GPIO switch between the alternator field wire and a
+  plain smart charger; Path D — read-only ignition-signal-only
+  + no control) and layer a vendor-neutral contract on top via
+  the 8 `rc_power_alternator_*` dashboard tiles (a
+  binary_sensor charging_enabled + a select charge_mode + a
+  sensor target_voltage_v + a sensor charge_current_a + a
+  binary_sensor temp_compensation_active + a binary_sensor
+  fault + a sensor last_trigger_reason + a button
+  manual_override).
+icon: battery-charging
+codeowners:
+  - "@bernardc"
+tags:
+  - power
+  - alternator
+  - regulator
+  - charging
+  - wakespeed
+  - balmar
+  - sterling
+  - renogy
+  - redarc
+  - ep-power
+  - arco
+  - dc-dc
+  - b2b
+  - recipe
+
+wizard:
+  # Recipe = "declare your alternator-side regulator (Path A — DC-DC
+  # charger with its own regulator control OR Path B — smart regulator
+  # over MQTT bridge OR Path C — relay / GPIO switch on the field wire
+  # OR Path D — read-only ignition-signal-only) + ignition signal (a
+  # GPIO on an ESPHome node OR a voltage divider on the alternator's
+  # D+ / IGN wire + an ESPHome analog input — or the operator's
+  # Victron `binary_sensor.rc_power_engine_running` if available) +
+  # battery temperature probe + the battery SOC from Victron +
+  # `select.rc_mode` from mode/connection; the recipe §3 / §4 / §5 /
+  # §6 helper YAML walks through mapping the device-side outputs into
+  # the `rc_power_alternator_*` contract tiles via `template:` switch
+  # + `template:` sensor + `template:` binary_sensor wrappers +
+  # upstream `mqtt` for Path B OR Shelly / ESPHome for Path C". No
+  # one-tap (the operator's exact Path A vs Path B vs Path C vs Path
+  # D choice + MQTT topic / GPIO pin / CAN-bridge choice is a wiring
+  # decision; we have no real bench to integration-test against); auto-
+  # discover is FALSE because alternators don't auto-discover (the
+  # operator must wire those manually per the safety interlock
+  # prerequisites).
+  connection_kind: recipe
+  one_tap: false              # operator must wire the ignition signal + battery temperature probe + regulator/relay + declare the exact path choice — no automatic discovery is honest at this tier
+  auto_discover: false
+  estimated_time: "~30 min"
+  requires_reboot: false
+  setup_notes: |
+    Alternator charge control requires the operator to wire a
+    charging source (Path A — Victron / Renogy / REDARC / Sterling /
+    Balmar / EP-Power DC-DC charger with its own regulator control
+    integrated into HA; OR Path B — generic smart alternator regulator
+    exposed over MQTT by a vendor bridge + the HA core `mqtt`
+    integration + a `template:` switch + `template:` sensor wrapper
+    for the resulting entities; OR Path C — relay / GPIO switch
+    between the alternator field wire and a plain smart charger +
+    the HA core Shelly integration OR an ESPHome / Tasmota GPIO node;
+    OR Path D — read-only ignition-signal-only + no control) + at
+    least one battery temperature probe + an ignition signal (a GPIO
+    on an ESPHome node OR a voltage divider on the alternator's D+ /
+    IGN wire + an ESPHome analog input — or the operator's Victron
+    `binary_sensor.rc_power_engine_running` if available) + the
+    battery SOC from the Victron `connections/victron/` recipe +
+    `select.rc_mode` from the `connections/mode/` recipe (the mode
+    state for the §8.4 mode-aware Stealth / Sleep suppressions). The
+    recipe §3 / §4 / §5 / §6 / §7 helper YAML walks through mapping
+    each device-side output into the upstream entities then into the
+    `rc_power_alternator_*` contract tiles. The `binary_sensor.rc_
+    power_alternator_charging_enabled` tile is the AND gate of
+    `select.rc_power_alternator_charge_mode != off` + ignition on +
+    battery SOC > threshold + temperature within range + mode not
+    suppressed + regulator fault clear. The §8.6 fault-block
+    automation forces charging OFF when `binary_sensor.rc_power_
+    alternator_fault` is TRUE.
+
+install:
+  # No native RoamCore-owned integration code for alternator charge
+  # control. The upstream HA core `mqtt` integration (Path B) DOES
+  # expose a GUI flow since 2022.x; the HA core Shelly integration
+  # (Path C1) DOES expose a GUI flow since 2022.x; the HA core
+  # `victron` integration (Path A1) DOES expose a GUI flow since
+  # 2022.x; the upstream vendor integrations (Wakespeed Link /
+  # Balmar Smartlink / Renogy BT-2 / REDARC RedVision / Sterling
+  # BMS Link / EP-Power EP Link / ARCO Zeus app) each expose their
+  # own GUI flow for first-time pairing + the upstream integration
+  # for `switch.*` + `sensor.*` + `binary_sensor.*`. We honestly
+  # report `install.config_flow: true` because the operator's choice
+  # goes through a GUI flow on the upstream side. RoamCore adds no
+  # native integration code beyond the contract tiles documented in
+  # the recipe. The honest tier-b footnote: `install.config_flow:
+  # true` is honest because the UPSTREAM integrations expose a GUI
+  # flow — it is NOT a tier-a marker for RoamCore's tier (a tier-a
+  # marker would be a RoamCore-owned operator-wired setup flow +
+  # RoamCore-owned integration code + integration tests against a
+  # RoamCore-owned bench). `hacs: false` because the recipe uses
+  # existing HA core integrations (mqtt / Shelly / victron /
+  # template: wrappers) + the operator's choice of vendor
+  # integration (no HACS integration of our own).
+  ha_integration_domain: switch   # canonical HA core domain for alternator field relay (Path C) + upstream vendor switch.* entities (Path A / Path B)
+  config_flow: true              # HA core mqtt + Shelly + victron + upstream vendor integrations all expose a GUI flow since 2022.x; honest upstream truth, NOT a tier-a marker
+  hacs: false                    # tier-b: no HACS integration of our own (Path A uses upstream victron / DC-DC charger integration; Path B uses HA core mqtt; Path C uses HA core Shelly OR ESPHome; Path D uses upstream binary_sensor)
+  doc_recipe_only: false         # the recipe in docs/recipe.md IS the install, but config_flow=true is honest because upstream exposes one
+  python_requirements: []
+  min_ha_version: "2023.8"
+  side_effects:
+    - adds_dashboard_card                                # installs the rc_power_alternator_* contract tiles
+    - may_register_switch_for_alternator_field           # Path B MQTT regulator + Path C Shelly / ESPHome relay registers a switch.* entity upstream
+    - may_register_alternator_target_voltage_sensor      # upstream regulator's target_voltage sensor (Path A DC-DC charger + Path B MQTT regulator)
+    - may_register_alternator_charge_current_sensor      # upstream regulator's charge_current sensor (Path A DC-DC charger + Path B MQTT regulator + Path C derived from Victron)
+    - may_register_battery_temperature_sensor            # the operator's battery temperature probe (a Z-Wave / Zigbee / 1-Wire / ESPHome analog input temp probe)
+    - may_register_alternator_fault_binary_sensor        # the upstream regulator's fault state (over-temp / over-voltage / communication lost / BMS lockout)
+    - may_register_charging_enabled_binary_sensor        # the rc_power_alternator_charging_enabled template binary_sensor is computed from upstream ignition + battery SOC + temperature + mode + fault
+    - may_register_protect_battery_mode                  # the protect_battery mode under select.rc_power_alternator_charge_mode
+
+dashboard:
+  tiles:
+    # Follow docs/reference/rc-entity-naming.md: vendor-neutral
+    # rc_power_alternator_* ids (the alternator subsystem under the
+    # existing `power` subsystem — added to docs/reference/rc-entity-
+    # naming.md alongside this slice). NO `wakespeed`, `balmar`,
+    # `sterling`, `renogy`, `redarc`, `ep_power`, `ep-power`, `arco`,
+    # `oem`, `regulator`, `alternator`, `b2b`, `bcdc`, `mc-618`,
+    # `mc618`, `ws500`, `ws_link`, `ws-link`, `smartlink`,
+    # `bms_link`, `bms-link`, `bt-2`, `bt2`, `redvision`, `ep_link`,
+    # `ep-link`, `zeus`, `nmea_2000`, `nmea-2000`, `can`, `canbus`,
+    # `j1939`, `lin`, `d+`, `d-`, `vsense`, `12v`, `24v`, `lithium`,
+    # `lifepo4`, `agm`, `flooded`, `gel` in ANY rc_* tile id BEYOND
+    # the subsystem prefix `rc_power_alternator_*` (the subsystem
+    # prefix IS allowed — it's the owning-area marker; what is
+    # forbidden is vendor names appearing AFTER the subsystem marker
+    # in a way that double-stamps the vendor into the id).
+    - binary_sensor.rc_power_alternator_charging_enabled
+    - select.rc_power_alternator_charge_mode
+    - sensor.rc_power_alternator_target_voltage_v
+    - sensor.rc_power_alternator_charge_current_a
+    - binary_sensor.rc_power_alternator_temp_compensation_active
+    - binary_sensor.rc_power_alternator_fault
+    - sensor.rc_power_alternator_last_trigger_reason
+    - button.rc_power_alternator_manual_override
+
+openclaw:
+  queries:
+    - is_alternator_charging
+    - alternator_charge_mode
+    - alternator_target_voltage
+    - alternator_charge_current
+    - is_alternator_temp_compensating
+    - is_alternator_fault
+    - alternator_last_trigger_reason
+    - alternator_manual_override
+  summary_keys:
+    - charging_enabled
+    - charge_mode
+    - target_voltage_v
+    - charge_current_a
+    - temp_compensation_active
+    - fault
+    - last_trigger_reason
+
+# Tier-b: tests are optional (and we have no real smart alternator
+# regulator + battery + ignition + temperature probe bench to
+# integration-test against). The tests/test_connection_yml.py file
+# below asserts the manifest itself is honest about its tier +
+# requirements; that satisfies the audit without claiming fake
+# integration coverage.
+tests:
+  - tests/test_connection_yml.py
+
+tier_requirements:
+  # The only thing a tier-b connection needs is a published recipe
+  # doc. We publish docs/recipe.md below.
+  - docs_recipe_published
+
+tier_warnings:
+  # We have no real alternator regulator + ignition signal +
+  # battery temperature probe on the bench to integration-test
+  # against (no operator path choice to drive an integration
+  # test).
+  - no_real_alternator_regulator_for_integration_test
+  # The recipe depends on the operator running an alternator-
+  # side regulator or relay + battery temperature probe +
+  # ignition signal; we cannot bench-test any of that.
+  - recipe_depends_on_user_running_alternator_or_relay_plus_temp_probe_plus_ignition
+  # Path choice honesty — DC-DC-charger-linked regulator Path A
+  # vs MQTT-bridged regulator Path B vs field-relay Path C vs
+  # ignition-only read-only Path D depends on existing IoT
+  # wiring + regulator preference + comfort with MQTT bridge vs
+  # relay-friendly templates.
+  - optional_dc_dc_charger_vs_mqtt_bridge_vs_relay_vs_read_only_choice
+  # The safety interlocks documented in §8 are operator-wired,
+  # not RoamCore-enforced. The recipe walks through every
+  # interlock in detail; tier-a promotion would move the
+  # asserts into RoamCore-side integration code.
+  - requires_operator_wiring_temperature_probe_plus_ignition_plus_soc_before_first_use
+
+links:
+  official:
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/shelly/
+    - https://www.home-assistant.io/integrations/victron/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/switch/
+    - https://www.home-assistant.io/integrations/binary_sensor/
+  community:
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/switch/
+  docs:
+    - https://www.home-assistant.io/integrations/mqtt/
+    - https://www.home-assistant.io/integrations/template/
+    - https://www.home-assistant.io/integrations/switch/
