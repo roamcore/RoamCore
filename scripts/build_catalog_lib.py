@@ -623,59 +623,168 @@ def map_category(yaml_category: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def sensible_hardware_defaults(slug: str, title: str) -> list[str]:
+def _slug_tokens(slug: str) -> set[str]:
+    """Return the lowercase token set for a kebab/snake slug.
+
+    Splits on ``-`` and ``_`` so each token is a whole word. The
+    previous substring matcher mis-classified ``alternator-charge-
+    control`` as a smoke/CO slug (because ``"co" in "…control"``) and
+    ``dns-blocker`` as a deadbolt slug (because ``"lock" in
+    "dns-b…locker"``). Token matching closes both holes — only whole
+    tokens, never raw substrings.
+    """
+
+    return {tok for tok in re.split(r"[-_]+", slug.lower()) if tok}
+
+
+def _matches(tokens: set[str], *wanted: str) -> bool:
+    """Return True if any of the ``wanted`` strings appears as a token.
+
+    Each ``wanted`` entry may itself contain multiple stems separated
+    by ``/`` — so callers can write ``_matches(tokens, "lock",
+    "deadbolt")`` and we handle each stem cleanly. Equality only —
+    no substrings — so ``co`` never matches ``control``.
+    """
+
+    for w in wanted:
+        for stem in w.split("/"):
+            stem = stem.strip().lower()
+            if stem and stem in tokens:
+                return True
+    return False
+
+
+def sensible_hardware_defaults(slug: str, title: str, catalog_category: str = "") -> list[str]:
     """Return a sensible list of optional additional-hardware items.
 
     The YAML files don't always list hardware; when they don't, we
     generate a short, cost-range-aware list from the slug / title so the
     catalog page isn't empty. This is the kind of thing Bernard will
     tweak by hand.
+
+    Matching is **token-based**, never raw-substring. The slug is
+    split on ``-`` / ``_`` into a token set, and a rule fires only
+    when one of its tokens appears as a whole token in the slug.
+    For example, ``smoke-co-gas-sensors`` legitimately tokenises to
+    ``{smoke, co, gas}`` and matches the smoke rule, but
+    ``alternator-charge-control`` tokenises to ``{alternator,
+    charge, control}`` and only matches the alternator rule — the
+    substring ``"co" in "…control"`` that shipped in v1 is now
+    correctly inert.
+
+    The optional ``catalog_category`` is used for a power-category
+    safety net: if a power slug fires zero rules we still emit a
+    honest power-hardware line rather than the misleading
+    "Nothing extra" fallback. Other categories do not get this
+    safety net (we'd rather show "Nothing extra" than invent gear
+    that doesn't apply).
     """
 
-    s = slug.lower()
-    t = title.lower()
+    tokens = _slug_tokens(slug)
     defaults: list[str] = []
 
-    if "fan" in s or "vent" in s:
+    # Existing category rules — token-based equivalents of the
+    # original substrings. Each ``_matches(...)`` call accepts one
+    # or more ``stem[/stem]`` patterns.
+    if _matches(tokens, "fan", "fans", "vent", "vents", "ventilation"):
         defaults += [
             "MaxxAir / Fan-Tastic rooftop vent fan ($250–$450)",
             "Generic 12 V circulation fan + Shelly 1 relay ($30–$80)",
         ]
-    if "light" in s or "approach" in s:
+    if _matches(tokens, "light", "lights", "lighting", "approach"):
         defaults += [
             "Zigbee / Z-Wave exterior light or relay ($20–$60)",
             "Shelly 1 / Shelly Plus 1 ($15–$25)",
         ]
-    if "water" in s or "tank" in s:
+    if _matches(tokens, "water", "tank", "tanks"):
         defaults += [
             "SeeLevel / Garnet tank sensor ($80–$200)",
             "12 V solenoid valve ($25–$60)",
         ]
-    if "level" in s:
+    # ``level`` covers both ``leveling`` and any future
+    # ``self-level`` slugs — the token is its own stem.
+    if _matches(tokens, "level", "leveling"):
         defaults += [
             "Phone IMU (no cost — uses the HA Companion app)",
             "Dedicated MPU-6050 / BNO085 IMU module ($10–$40)",
         ]
-    if "lock" in s or "deadbolt" in s:
+    if _matches(tokens, "lock", "locks", "deadbolt", "deadbolts"):
         defaults += [
             "Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)",
         ]
-    if "remote" in s or "tailscale" in s or "networking" in s:
+    if _matches(tokens, "remote", "tailscale", "networking"):
         defaults += [
             "Tailscale account (free for personal use)",
             "Cloudflare account for Cloudflare Tunnel (free tier)",
         ]
-    if "smoke" in s or "co" in s or "gas" in s:
+    # IMPORTANT: ``co`` must ONLY match the literal token ``co`` —
+    # tokens split on ``-`` guarantee it will never match
+    # ``control`` etc. (smoke-co-gas-sensors tokenises to
+    # {smoke, co, gas} and legitimately fires.)
+    if _matches(tokens, "smoke", "co", "gas"):
         defaults += [
             "Zigbee smoke / CO detector ($30–$80 each)",
         ]
-    if "music" in s or "media" in s:
+    if _matches(tokens, "music", "media"):
         defaults += [
             "Any AirPlay / Chromecast / Snapcast-capable speaker",
         ]
-    if "traccar" in s or "map" in s or "gps" in s:
+    if _matches(tokens, "traccar", "map", "gps"):
         defaults += [
             "Teltonika or other GPS tracker (often already in the LTE router)",
+        ]
+
+    # --- Power-category rules (Wave 9 follow-up to #307) ---
+    # Power slugs were previously falling through to the
+    # ``Nothing extra — uses what's already in the van.`` fallback,
+    # which is actively misleading: most power gear requires you
+    # to buy hardware. These rules are token-based so a slug like
+    # ``inverter-idle-shutdown`` (tokens {inverter, idle, shutdown})
+    # still picks up the inverter hardware.
+    if _matches(tokens, "alternator"):
+        defaults += [
+            "Wakespeed / Balmar / Sterling / REDARC smart alternator regulator ($300–$700)",
+        ]
+    if _matches(tokens, "inverter"):
+        defaults += [
+            "Victron MultiPlus / Renogy / EcoFlow inverter-charger ($700–$2,000)",
+        ]
+    if _matches(tokens, "victron"):
+        defaults += [
+            "Victron Cerbo GX / Ekrano GX hub ($700–$1,200)",
+            "Victron SmartSolar MPPT charge controller ($150–$500)",
+        ]
+    # ``charging`` covers generic charging-side slugs (e.g.
+    # inverter-idle-shutdown doesn't match this — but a future
+    # ``battery-charging-profile`` slug would).
+    if _matches(tokens, "solar", "battery", "charging"):
+        defaults += [
+            "Victron SmartSolar MPPT or Renogy solar charge controller ($150–$500)",
+            "Victron SmartShunt / BMV-712 battery monitor ($100–$300)",
+        ]
+
+    # --- DNS / homelab rule (Wave 9 follow-up to #307) ---
+    # ``dns-blocker`` previously matched the deadbolt rule because
+    # ``"lock" in "dns-blocker"``. The token matcher fixes that and
+    # now emits DNS-specific gear instead.
+    if _matches(tokens, "dns"):
+        defaults += [
+            "Raspberry Pi or small Linux box to host Pi-hole / AdGuard Home ($50–$150)",
+            "A spare phone or tablet for setup + first configuration ($0–$100)",
+        ]
+
+    # --- Power-category safety net (Wave 9 follow-up to #307) ---
+    # A power-category connection with no token rules matched is a
+    # very good signal that we're missing a rule; emitting an
+    # honest "you will need to buy a battery monitor + a fuse
+    # block" line is better than the misleading "Nothing extra".
+    # We deliberately do NOT do this for non-power categories —
+    # "Nothing extra" is honest for a recipe that genuinely needs
+    # no new gear, and we'd rather be silent than invent gear.
+    if not defaults and catalog_category == "power":
+        defaults += [
+            "Victron SmartShunt / BMV-712 battery monitor ($100–$300)",
+            "Blue Sea Systems blade fuse block + ANL fuse ($30–$80)",
         ]
 
     # De-duplicate while preserving order
@@ -794,7 +903,7 @@ def curate_connection(slug: str, raw: dict[str, Any], src_path: Path | None = No
     hacs = bool(install_block_raw.get("hacs", False)) if isinstance(install_block_raw, dict) else False
     config_flow = bool(install_block_raw.get("config_flow", False)) if isinstance(install_block_raw, dict) else False
     method = _install_method(install_block_raw if isinstance(install_block_raw, dict) else {}, hacs, config_flow)
-    hardware = sensible_hardware_defaults(slug, title)
+    hardware = sensible_hardware_defaults(slug, title, catalog_category=catalog_category)
 
     return Connection(
         slug=slug,

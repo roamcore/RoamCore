@@ -169,6 +169,19 @@ run_if_present "scripts/checks/canonical-capabilities-smoke.sh" \
 run_if_present "scripts/checks/catalog-ui-cards-smoke.sh" \
   "Catalog UI cards (Phase 1 proper): ≥20 cards + state chip + tier chip + Connect button + per-category counts + IKEA shape + CSS lockstep (Wave 9 #125)"
 
+# Wave 9 follow-up to Wave 8 row #307 — the previous substring matcher
+# in scripts/build_catalog_lib.sensible_hardware_defaults() shipped two
+# live mis-classifications (alternator-charge-control → smoke detector;
+# dns-blocker → Z-Wave deadbolt). This smoke rebuilds the catalog, then
+# asserts the two regression pins hold on the generated .md files,
+# every existing correct rule still fires, and no power/* page lists a
+# smoke detector. Repo-local only.
+run_if_present "scripts/checks/catalog-hardware-accuracy-smoke.sh" \
+  "Catalog hardware-list accuracy (Wave 9 follow-up to #307): token matcher + 2 regression pins + per-category safety net + no power/* mentions smoke + idempotent regeneration + pytest rig passes"
+
+run_if_present "homeassistant/packages/tests/test_catalog_hardware_accuracy.py" \
+  "Catalog hardware-list accuracy (Wave 9 follow-up to #307): pytest rig — token-matcher pins + 2 regression pins + invariant no contradictory hardware + idempotency + power safety net"
+
 # Wave 9 #120b — Phase 3 Hub restart-stability smoke test rig.
 # Reads scripts/build/hub-services.yml + the 5 addon config.yaml files
 # + spawns a real port-bind regression to prove every Hub service comes
