@@ -1,0 +1,2488 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="RoamCore Docs — Home Assistant for van life">
+      
+      
+      
+        <link rel="canonical" href="https://roamcore.co.uk/docs/catalog/power/alternator-charge-control-wakespeed/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../None">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Alternator charge control (Wakespeed / smart regulator) - RoamCore</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../styles/rc.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#alternator-charge-control-wakespeed-smart-regulator" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="RoamCore" class="md-header__button md-logo" aria-label="RoamCore" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            RoamCore
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Alternator charge control (Wakespeed / smart regulator)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="teal"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="RoamCore" class="md-nav__button md-logo" aria-label="RoamCore" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    RoamCore
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Catalog
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Catalog
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browse all
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Power
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Water
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Water
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../water/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Water
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../level-sensor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Level Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comfort
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Comfort
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../comfort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comfort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lighting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bed-lift/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bed Lift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audio-media/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audio/Media
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hvac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HVAC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connectivity
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Connectivity
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../connectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connectivity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../remote-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Homelab
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Homelab
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../homelab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Homelab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Location
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Location
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../location/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Location
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../presence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Presence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../weather/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weather
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Safety
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cctv/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CCTV
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nfc-tags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    NFC Tags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Automations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../automations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../time/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vehicle-obd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicle OBD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Miscellaneous
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Miscellaneous
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../misc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Misc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical (advanced)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical (advanced)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../howto/homeassistant-installer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../howto/support-bundle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support bundle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/rc-connection-states/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection states
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/rc-connection-state-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection state chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/rc-entity-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entity naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/rc-hub/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RoamCore Hub
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/openclaw-json-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenClaw JSON API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../setup/pwa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RoamCore on your phone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1 What it does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2 Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3 Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§3 Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-option-1-recommended-dc-dc-charger-linked-regulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.1 Option 1 (recommended) — DC-DC charger-linked regulator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-option-2-vendor-messaging-system-bridge-wakespeed-balmar-sterling-renogy-redarc-ep-power-arco" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.2 Option 2 — Vendor messaging-system bridge (Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power / ARCO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-option-3-relay-or-gpio-switch-the-minimum-viable-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.3 Option 3 — Relay or GPIO switch (the minimum-viable path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-option-4-read-only-ignition-signal-only-just-want-to-know" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3.4 Option 4 — Read-only ignition-signal-only (just want to know)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-recommended-dashboard-tile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 Recommended dashboard tile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5 Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§5 Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-is-charging-tile-never-goes-green" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.1 The "is charging?" tile never goes green
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-the-alternator-keeps-charging-after-the-engine-is-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.2 The alternator keeps charging after the engine is off
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-a-fault-fires-on-the-very-first-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.3 A fault fires on the very first start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-the-protect-battery-mode-stays-engaged-even-though-the-battery-has-plenty-of-charge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.4 The protect-battery mode stays engaged even though the battery has plenty of charge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-the-manual-override-button-doesnt-force-the-alternator-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.5 The manual override button doesn't force the alternator on
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-the-temperature-compensation-never-kicks-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.6 The temperature compensation never kicks in
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-the-mode-aware-suppression-doesnt-actually-suppress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.7 The mode-aware suppression doesn't actually suppress
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#58-the-fault-tile-stays-true-even-after-the-regulator-reports-the-fault-cleared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.8 The fault tile stays TRUE even after the regulator reports the fault cleared
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-useful-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Useful links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="alternator-charge-control-wakespeed-smart-regulator">Alternator charge control (Wakespeed / smart regulator)</h1>
+<p><strong>Support:</strong> B (recipe)
+<strong>Install:</strong> one-line</p>
+<p>Shows you at a glance whether your alternator is charging the house battery while you drive, and turns charging off on its own when it would do more harm than good — so you wake up to a charged battery instead of a flat one.</p>
+<h2 id="1-what-it-does">§1 What it does</h2>
+<ul>
+<li>The dashboard surfaces a single "is the alternator allowed to charge right now?" tile that aggregates your chosen charging mode + whether the engine is running + your battery's state of charge + your battery's temperature + your current RoamCore mode + any regulator fault into one big YES / NO indicator.</li>
+<li>A "charging mode" selector lets you pick off / auto / boost / float / desulfation / stealth / protect_battery from the dashboard (advanced mode shows the per-vendor mode names; the default mode is auto).</li>
+<li>A "target voltage" tile shows the regulator's voltage setpoint (volts). When the battery is cold or hot, this number automatically lowers itself so the regulator doesn't over-charge or under-charge.</li>
+<li>A "charge current" tile shows how many amps the alternator is currently pushing into your house battery bank.</li>
+<li>A "temperature compensation active" tile tells you when the regulator's cold-battery / hot-battery protection curve is actively adjusting the target voltage.</li>
+<li>A "fault" tile warns you when the regulator reports an over-temp / over-voltage / communication-lost / BMS-lockout fault (when this is TRUE, the system forces charging OFF and pings your phone so you can investigate before something gets damaged).</li>
+<li>A "last trigger reason" tile tells you why the alternator was last enabled (manual / ignition_on / soc_low / battery_cold / boost / desulfation / stealth_suppressed / fault_blocked).</li>
+<li>A "manual override" button lets you force alternator charging ON for a configurable duration from the dashboard — useful when you know you need a top-off before tonight.</li>
+</ul>
+<p>The system watches five safety interlocks at the same time and refuses to enable charging unless all five hold:</p>
+<ol>
+<li>The engine is running (so the alternator is actually turning).</li>
+<li>Your battery's state of charge is above your chosen protect-battery threshold (default 20 %).</li>
+<li>Your battery's temperature is inside the safe range (cold cutoff default −10 °C, hot cutoff default +50 °C).</li>
+<li>The current RoamCore mode isn't set to suppress the alternator (stealth + sleep only block charging if you've flagged the alternator as noisy).</li>
+<li>The regulator isn't reporting a fault.</li>
+</ol>
+<p>It also follows the broader RoamCore power patterns: when the inverter battery's state of charge drops below 60 %, the regulator automatically switches to boost charging until you hit 80 %; when the state of charge drops below 20 %, the system flips into a protect-battery mode that disables charging so you keep enough power for the fridge + lights + medical + comms.</p>
+<h2 id="2-prerequisites">§2 Prerequisites</h2>
+<ul>
+<li><strong>A charging source.</strong> Pick ONE of:</li>
+<li>A smart alternator regulator linked to a Victron / Renogy / REDARC / Sterling / Balmar / EP-Power DC-DC charger (the recommended path for vans with a DC-DC charger). The DC-DC charger exposes its enable/disable + voltage + current + temperature + fault state through its own integration.</li>
+<li>A generic smart alternator regulator exposed over the messaging system by the vendor's bridge (Wakespeed WS500 + WS Link / Balmar MC-618 + Smartlink / Renogy Battery-to-Battery + BT-2 / REDARC BCDC + RedVision / Sterling regulated advanced alternator-to-battery charger + BMS Link / EP-Power B2B + EP Link / ARCO Zeus + Zeus app / an OEM CAN-j1939 regulator + a CAN-to-MQTT bridge such as a Signal K gateway on the boat's NMEA 2000 backbone).</li>
+<li>A relay or GPIO switch on the alternator's field wire (the wire that tells the alternator's internal regulator when to charge). A Shelly 1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch or an ESPHome / Tasmota GPIO relay works. The wire connects through the relay; flipping the relay off tells the alternator to stop charging.</li>
+<li>
+<p>Just an ignition signal (read-only; no actual alternator control). You just want to know when the engine is running and let the existing dumb alternator do its thing.</p>
+</li>
+<li>
+<p><strong>A battery temperature probe.</strong> A Z-Wave / Zigbee / 1-Wire / ESPHome analog-input probe attached to the house battery bank. The Victron's built-in temperature sensor works if you already have one.</p>
+</li>
+<li>
+<p><strong>An ignition signal.</strong> Either a GPIO on an ESPHome node wired to the alternator's D+ wire with a voltage divider, or the existing signal that RoamCore already gets from your van's leveling + mode automations.</p>
+</li>
+<li>
+<p><strong>The Victron battery monitor + battery current reading.</strong> The system reads your house battery's state of charge + current from your existing Victron setup. If you don't have a Victron system yet, see the Victron power monitoring recipe first.</p>
+</li>
+<li>
+<p><strong>The mode selector set up.</strong> The system reads your current mode (home / away / stealth / sleep / off) from the RoamCore mode recipe so it can decide whether to suppress the alternator when you're trying to be quiet.</p>
+</li>
+<li>
+<p><strong>An always-on Home Assistant instance.</strong> The canonical RoamCore setup.</p>
+</li>
+</ul>
+<h2 id="3-install">§3 Install</h2>
+<h3 id="31-option-1-recommended-dc-dc-charger-linked-regulator">§3.1 Option 1 (recommended) — DC-DC charger-linked regulator</h3>
+<ol>
+<li><strong>Pick your DC-DC charger.</strong> If your alternator already charges through a Victron SmartSolar charger / BMV battery monitor / Cerbo GX, or a Renogy Battery-to-Battery charger, or a REDARC BCDC, or a Sterling regulated advanced alternator-to-battery charger, or a Balmar MC-618, or an EP-Power B2B — that path is the easiest one.</li>
+<li><strong>Wire the DC-DC charger per the manufacturer's instructions.</strong> Most DC-DC chargers need three wires: battery positive (from the house battery), alternator input (from the alternator's B+ terminal), and a thin ignition sense wire (from the vehicle's ignition).</li>
+<li><strong>Pair the DC-DC charger with your home assistant.</strong> If it's a Victron Cerbo GX, install the Victron integration from the app store for Home Assistant. If it's a Renogy / REDARC / Sterling / Balmar / EP-Power, install the messaging system integration and add the vendor's Bluetooth-to-MQTT bridge.</li>
+<li><strong>Verify the upstream entities exist.</strong> Open Settings → Devices &amp; Services and confirm the DC-DC charger shows up as a device with a switch (charge enable) and several sensors (voltage, current, temperature) and a binary sensor (fault state).</li>
+<li><strong>Set the charge mode to <code>auto</code>.</strong> Open the RoamCore dashboard → Power → Alternator → Charge Mode → pick <code>auto</code> (the default; the automations take over from here).</li>
+<li><strong>Turn on the engine and watch the dashboard.</strong> The "is charging?" tile flips to YES, the "charge current" tile starts showing amps flowing into your batteries, and the "last trigger reason" tile shows "ignition_on".</li>
+<li><strong>Wire the safety interlocks.</strong> Follow the recipe's full howto for the temperature compensation + protect-battery mode + fault-block automations (these are the rules that prevent over-charge + fault damage + critical-load starvation).</li>
+</ol>
+<h3 id="32-option-2-vendor-messaging-system-bridge-wakespeed-balmar-sterling-renogy-redarc-ep-power-arco">§3.2 Option 2 — Vendor messaging-system bridge (Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power / ARCO)</h3>
+<ol>
+<li><strong>Install the regulator.</strong> Wire the regulator to your alternator's field wire + battery sense + (if supported) CAN bus.</li>
+<li><strong>Pair the regulator with the vendor's bridge.</strong> Wakespeed WS Link / Sterling BMS Link / Balmar Smartlink / Renogy BT-2 / REDARC RedVision / EP-Power EP Link / ARCO Zeus app / Signal K gateway on a boat's NMEA 2000 backbone. Each one has its own pairing instructions in the box.</li>
+<li><strong>Configure the bridge to publish over the messaging system.</strong> Open the bridge's web UI → MQTT settings → set the topic prefix to e.g. <code>roamcore/regulator/</code>. Set the home assistant MQTT broker as the destination.</li>
+<li><strong>Add the messaging system integration to home assistant.</strong> Settings → Devices &amp; Services → Add Integration → MQTT. Enter your broker credentials (or accept the auto-discovered broker).</li>
+<li><strong>Verify the upstream entities.</strong> Look for a switch (charge enable) + sensors (target voltage, charge current, battery temperature) + a binary sensor (fault state) + a number (voltage setpoint) + a select (charge mode).</li>
+<li><strong>Set the charge mode to <code>auto</code>.</strong> Same as Option 1.</li>
+<li><strong>Turn on the engine and watch the dashboard.</strong> Same as Option 1.</li>
+</ol>
+<h3 id="33-option-3-relay-or-gpio-switch-the-minimum-viable-path">§3.3 Option 3 — Relay or GPIO switch (the minimum-viable path)</h3>
+<p>This is the simplest path if you have no smart regulator and no messaging-system bridge — just a plain externally-regulated alternator whose field wire can be turned off.</p>
+<ol>
+<li><strong>Pick the relay.</strong> A Shelly 1 / Shelly Plus 1 / Zooz ZEN17 / Aeotec Nano Switch or an ESPHome / Tasmota GPIO relay driven by an ESP32 / ESP8266 node.</li>
+<li><strong>Wire the relay in series with the alternator's field excitation wire.</strong> The wire goes: alternator field terminal → relay common → relay normally-open → regulator (or ignition feed, depending on your alternator). When the relay is open, no field excitation = alternator stops charging.</li>
+<li><strong>Pair the relay with home assistant.</strong> For a Shelly 1 / Shelly Plus 1: Settings → Devices &amp; Services → Add Integration → Shelly. For an ESPHome / Tasmota node: same → Add Integration → ESPHome (or MQTT for Tasmota).</li>
+<li><strong>Verify the switch entity.</strong> Look for a switch.* or binary_switch.* entity representing the relay.</li>
+<li><strong>Set the charge mode to <code>auto</code>.</strong> Same as the other options. Note that with this path, the "target voltage" tile is hard-coded to your chosen nominal voltage (14.4 V for a 12 V system) — there's no smart regulator to negotiate with.</li>
+<li><strong>Turn on the engine and watch the dashboard.</strong> Same as the other options.</li>
+</ol>
+<h3 id="34-option-4-read-only-ignition-signal-only-just-want-to-know">§3.4 Option 4 — Read-only ignition-signal-only (just want to know)</h3>
+<p>If your alternator is dumb and you don't want to add any control hardware, this path gives you a single dashboard tile that tells you when the engine is running + when the system thinks the alternator <em>should</em> be charging.</p>
+<ol>
+<li><strong>Skip the regulator / relay entirely.</strong> Your dumb alternator stays dumb.</li>
+<li><strong>Pick an ignition signal source.</strong> The easiest option is to use the existing RoamCore engine-running signal from the leveling + mode recipes. Alternative: wire a GPIO on an ESPHome node to the alternator's D+ wire with a voltage divider.</li>
+<li><strong>Set the charge mode to <code>auto</code></strong> (the only mode that does anything on this path).</li>
+<li><strong>Turn on the engine and watch the dashboard.</strong> The "is charging?" tile flips to YES as a <em>recommendation</em>. Your existing alternator continues doing whatever it does. The other tiles (target voltage, charge current, fault) are advisory-only on this path.</li>
+</ol>
+<h2 id="4-recommended-dashboard-tile">§4 Recommended dashboard tile</h2>
+<ul>
+<li><strong>Card type:</strong> entities card under the Power section.</li>
+<li><strong>Entities:</strong></li>
+<li><code>binary_sensor.rc_power_alternator_charging_enabled</code> — the big YES / NO indicator (green when allowed, red when blocked).</li>
+<li><code>select.rc_power_alternator_charge_mode</code> — the mode selector.</li>
+<li><code>sensor.rc_power_alternator_target_voltage_v</code> — V (turns red and changes when temperature compensation lowers the value).</li>
+<li><code>sensor.rc_power_alternator_charge_current_a</code> — A.</li>
+<li><code>binary_sensor.rc_power_alternator_temp_compensation_active</code> — small dot; on when the temperature protection curve is active.</li>
+<li><code>binary_sensor.rc_power_alternator_fault</code> — small dot; red when there's a fault.</li>
+<li><code>sensor.rc_power_alternator_last_trigger_reason</code> — text explaining why the alternator is enabled right now.</li>
+<li><code>button.rc_power_alternator_manual_override</code> — the big "force charge for X minutes" button.</li>
+</ul>
+<h2 id="5-troubleshooting">§5 Troubleshooting</h2>
+<h3 id="51-the-is-charging-tile-never-goes-green">§5.1 The "is charging?" tile never goes green</h3>
+<ul>
+<li>The operator's upstream regulator / relay isn't connected to home assistant (Settings → Devices &amp; Services → verify the integration is configured).</li>
+<li>The protect-battery mode is engaged (the battery's state of charge is below your threshold). Wait for solar / shore to recharge, OR press the manual override button.</li>
+<li>The fault tile is TRUE. Check the regulator's fault display and clear the fault before retrying.</li>
+<li>The mode is set to stealth or sleep and the alternator has been flagged as noisy. Either change mode, or press the manual override button.</li>
+</ul>
+<h3 id="52-the-alternator-keeps-charging-after-the-engine-is-off">§5.2 The alternator keeps charging after the engine is off</h3>
+<ul>
+<li>The engine-running signal is stuck. The leveling + mode recipes' engine-running tile should flip OFF when the engine stops; if it doesn't, check the leveling recipe's IMU + drive-state signal.</li>
+</ul>
+<h3 id="53-a-fault-fires-on-the-very-first-start">§5.3 A fault fires on the very first start</h3>
+<ul>
+<li>The field wire polarity is reversed. Many regulators are negative-ground only; check the polarity.</li>
+<li>The battery sense wire isn't connected. The regulator reads a phantom battery voltage and reports over-voltage.</li>
+<li>The CAN bus termination is wrong. Add a 120 Ω resistor at each end of the bus.</li>
+</ul>
+<h3 id="54-the-protect-battery-mode-stays-engaged-even-though-the-battery-has-plenty-of-charge">§5.4 The protect-battery mode stays engaged even though the battery has plenty of charge</h3>
+<ul>
+<li>The Victron battery state-of-charge reading is reporting stale data (the battery monitor hasn't received a fresh reading in over five minutes). Check the battery monitor's status.</li>
+</ul>
+<h3 id="55-the-manual-override-button-doesnt-force-the-alternator-on">§5.5 The manual override button doesn't force the alternator on</h3>
+<ul>
+<li>The fault tile is TRUE (the manual override is intentionally suppressed while a fault is active). Clear the fault first.</li>
+<li>The upstream switch entity isn't configured. Verify the relay integration shows up in Settings → Devices &amp; Services.</li>
+</ul>
+<h3 id="56-the-temperature-compensation-never-kicks-in">§5.6 The temperature compensation never kicks in</h3>
+<ul>
+<li>The battery temperature probe isn't connected. Check the wiring.</li>
+<li>The probe is reading ambient air instead of the battery case. Attach it directly to one of the house battery's terminals.</li>
+</ul>
+<h3 id="57-the-mode-aware-suppression-doesnt-actually-suppress">§5.7 The mode-aware suppression doesn't actually suppress</h3>
+<ul>
+<li>The mode selector isn't set up (check Settings → Devices &amp; Services → mode/automation-builder).</li>
+<li>The selected mode is actually <code>home</code> / <code>away</code>, not <code>stealth</code> / <code>sleep</code>.</li>
+<li>The alternator hasn't been flagged as noisy in the selected mode. Either flag it (input_boolean.rc_power_alternator_noisy_in_stealth or _in_sleep) or press the manual override button.</li>
+</ul>
+<h3 id="58-the-fault-tile-stays-true-even-after-the-regulator-reports-the-fault-cleared">§5.8 The fault tile stays TRUE even after the regulator reports the fault cleared</h3>
+<ul>
+<li>The upstream fault entity is reporting <code>unknown</code> (the bridge or integration has lost contact with the regulator). Check the bridge's status.</li>
+<li>The upstream integration has a stale state bug. Restart the bridge / integration.</li>
+</ul>
+<h2 id="6-useful-links">§6 Useful links</h2>
+<ul>
+<li>Recipe (the canonical full howto with all four paths + all six automations + the safety interlocks): <a href="../../connections/alternator-charge-control/docs/recipe.md"><code>../../connections/alternator-charge-control/docs/recipe.md</code></a></li>
+<li>Connection overview (folder README): <a href="../../connections/alternator-charge-control/README.md"><code>../../connections/alternator-charge-control/README.md</code></a></li>
+<li>Source manifest: <a href="../../connections/alternator-charge-control/connection.yml"><code>../../connections/alternator-charge-control/connection.yml</code></a></li>
+<li>Manifest-honesty tests: <a href="../../connections/alternator-charge-control/tests/test_connection_yml.py"><code>../../connections/alternator-charge-control/tests/test_connection_yml.py</code></a></li>
+<li>RoamCore entity naming: <a href="../../../reference/rc-entity-naming/"><code>../../reference/rc-entity-naming.md</code></a> (the <code>alternator</code> subsystem under the existing <code>power</code> subsystem was added by this slice)</li>
+<li>Victron recipe (the source of battery state-of-charge + battery current + battery temperature used by the safety interlocks): <a href="../../connections/victron/README.md"><code>../../connections/victron/README.md</code></a></li>
+<li>Mode recipe (the source of the mode selector for the stealth / sleep suppression): <a href="../../connections/mode/README.md"><code>../../connections/mode/README.md</code></a></li>
+<li>Leveling recipe (the source of the engine-running signal): <a href="../../connections/leveling/README.md"><code>../../connections/leveling/README.md</code></a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tracking", "navigation.sections", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

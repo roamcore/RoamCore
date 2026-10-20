@@ -1,0 +1,428 @@
+:root{
+  --rc-accent: #7CFFB2;
+  --rc-accent2: #5BE3FF;
+}
+
+/* Make the site feel closer to RoamCore UI: darker + glassy */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #070A0F;
+  --md-default-fg-color: rgba(255,255,255,.92);
+  --md-default-fg-color--light: rgba(255,255,255,.75);
+  --md-default-fg-color--lighter: rgba(255,255,255,.60);
+  --md-default-fg-color--lightest: rgba(255,255,255,.45);
+
+  --md-primary-fg-color: #0B0F16;
+  --md-primary-bg-color: rgba(255,255,255,.92);
+
+  --md-accent-fg-color: var(--rc-accent2);
+}
+
+/* Hide the "Made with Material for MkDocs" footer attribution — pure noise */
+.md-footer-meta__inner .md-copyright { display: none; }
+.md-footer-meta__inner { justify-content: center; }
+.md-footer { padding-bottom: 0.5rem; }
+
+.md-header {
+  background: rgba(7,10,15,0.72);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.md-tabs {
+  background: rgba(7,10,15,0.40);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.md-content__inner {
+  padding-bottom: 2.5rem;
+}
+
+/* Reduce clutter: remove the right-hand TOC sidebar (we integrate TOC into left nav) */
+.md-sidebar--secondary,
+.md-nav--secondary,
+nav[aria-label="Table of contents"] {
+  display: none !important;
+}
+
+/* Hide "On this page" label that sometimes appears with the TOC */
+.md-sidebar__inner .md-nav--secondary {
+  display: none !important;
+}
+
+/* Slightly widen main content since we removed the right sidebar */
+@media (min-width: 1220px) {
+  .md-grid {
+    max-width: 1100px;
+  }
+}
+
+/* Collapse "Technical (advanced)" by default — Material auto-expands it
+   when you're on a Technical page (because aria-expanded flips),
+   but on Catalog pages it's noise. We use the input id pattern
+   to target it specifically. */
+li.md-nav__item--section.md-nav__item--nested:has(> input[id="__nav_3"]) > nav.md-nav {
+  display: none;
+}
+li.md-nav__item--section.md-nav__item--nested:has(> input[id="__nav_3"]:checked) > nav.md-nav {
+  display: block;
+}
+
+/* Hide the "Made with Material for MkDocs" footer attribution */
+.md-footer-meta__inner .md-copyright {
+  display: none;
+}
+
+
+/* Tier badges (A/B/C) - kept because they answer "does RoamCore maintain this, or am I relying on someone else?" */
+.rc-feature-right {
+  margin-left: auto;
+  padding-left: 10px;
+  flex-shrink: 0;
+}
+
+.rc-feature {
+  display: flex !important;
+  align-items: center;
+}
+
+.rc-feature-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-tier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  min-width: 22px;
+  text-transform: uppercase;
+  /* Override any inherited link color from Material */
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.rc-tier.a {
+  background: rgba(124, 255, 178, 0.18);
+  border: 1px solid rgba(124, 255, 178, 0.40);
+  color: #7CFFB2 !important;
+}
+
+.rc-tier.b {
+  background: rgba(91, 227, 255, 0.15);
+  border: 1px solid rgba(91, 227, 255, 0.35);
+  color: #5BE3FF !important;
+}
+
+.rc-tier.c {
+  background: rgba(255, 210, 117, 0.12);
+  border: 1px solid rgba(255, 210, 117, 0.30);
+  color: #FFD275 !important;
+}
+
+
+/* Visual catalog cards */
+.rc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0 0;
+}
+
+@media (max-width: 900px) {
+  .rc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .rc-grid { grid-template-columns: 1fr; }
+}
+
+.rc-card {
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  text-decoration: none;
+  display: block;
+}
+
+.rc-card:hover {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+}
+
+.rc-card-title {
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  color: rgba(255,255,255,0.92);
+}
+
+.rc-card-sub {
+  margin-top: 6px;
+  color: rgba(255,255,255,0.70);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* Category feature list (wide bubbles) */
+.rc-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rc-feature {
+  display: block;
+  padding: 14px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  text-decoration: none;
+  color: rgba(255,255,255,0.90);
+}
+
+.rc-feature:hover {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+}
+
+.rc-feature-title { font-weight: 950; color: rgba(255,255,255,0.92); }
+.rc-feature-sub { margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.70); line-height: 1.35; }
+
+/* Prevent markdown from adding underline styles inside our feature bubbles */
+.rc-feature * { text-decoration: none !important; }
+
+
+/* ---------------------------------------------------------------------------
+ * Catalog UI: connection state chip primitive + tier vocabulary rebrand.
+ *
+ * Wave 9 #118 — Phase 1 catalog UI foundation.
+ *
+ * Three primitives are rendered together as a single horizontal row:
+ *   .rc-state-chip       — coloured chip naming the connection state
+ *                          (10 standard states, each with its own
+ *                          .rc-state-chip--<kebab> modifier)
+ *   .rc-tier / .rc-chip  — small pill that names WHO BUILT THIS in the
+ *                          new vocabulary (certified / verified /
+ *                          experimental — replaces the legacy a/b/c
+ *                          tier-a/b/c prose at the user-facing layer;
+ *                          the legacy .rc-tier.a/.b/.c selectors are
+ *                          KEPT INTACT above for back-compat with
+ *                          every existing catalog fixture that still
+ *                          emits the single-letter class)
+ *   .rc-connect-button   — one-tap "Connect →" anchor to the device's
+ *                          setup page
+ *
+ * The render layer that emits these classes is `scripts/connection_card.py`.
+ * The 10-state kebab allowlist + the new tier vocabulary are locked
+ * across the data layer (every connections/*/connection.yml carries
+ * `state:` + `tier:`), the render layer (connection_card.py), this
+ * CSS file, the bash smoke (`scripts/checks/catalog-state-chip-smoke.sh`),
+ * the pytest rig (`homeassistant/packages/tests/test_connection_card.py`),
+ * and the IKEA user-facing doc
+ * (`docs/reference/rc-connection-state-chip.md`). Adding a state OR a
+ * tier vocabulary word requires updating ALL of these in lockstep.
+ * --------------------------------------------------------------------------- */
+
+/* The horizontal row wrapper that holds the chip, the tier pill, and
+   the Connect button side-by-side. Sets a small flex gap so the three
+   primitives read as one visual unit on the catalog page. */
+.rc-state-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+/* Base state chip — small coloured pill beside a device's name. The
+   10 sibling classes below pick up the colour treatment. */
+.rc-state-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  border: 1px solid transparent;
+  /* Override any inherited link color from Material */
+  color: inherit !important;
+  text-decoration: none !important;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Optional inline reason note that explains WHY a chip is in a
+   non-default state. Rendered as a sibling span after the chip itself.
+   Plain grey — the chip carries the colour, the reason carries the
+   prose. */
+.rc-state-chip-reason {
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* 10 sibling modifier classes — one per standard state. The colour
+   treatment mirrors the IKEA doc legend (green = good, yellow =
+   needs you, red = problem, grey = informational). */
+
+/* "Available" — code is shipped, ready to install. Green. */
+.rc-state-chip--available {
+  background: rgba(124, 255, 178, 0.14);
+  border-color: rgba(124, 255, 178, 0.35);
+  color: #7CFFB2 !important;
+}
+
+/* "Detected" — the system has seen the device on your van. Cyan. */
+.rc-state-chip--detected {
+  background: rgba(91, 227, 255, 0.12);
+  border-color: rgba(91, 227, 255, 0.32);
+  color: #5BE3FF !important;
+}
+
+/* "Ready to connect" — the device is set up and waiting for you.
+   Green-blue, the "do something small" cue. */
+.rc-state-chip--ready-to-connect {
+  background: rgba(124, 255, 178, 0.18);
+  border-color: rgba(124, 255, 178, 0.45);
+  color: #7CFFB2 !important;
+}
+
+/* "Connecting" — the device is linking up right now. Cyan, with a
+   subtle pulse animation so the operator sees it's transient. */
+.rc-state-chip--connecting {
+  background: rgba(91, 227, 255, 0.18);
+  border-color: rgba(91, 227, 255, 0.45);
+  color: #5BE3FF !important;
+  animation: rc-state-chip-pulse 1.6s ease-in-out infinite;
+}
+
+/* "Connected" — the device is wired into RoamCore and showing live
+   readings. Bright green, the "everything is fine" cue. */
+.rc-state-chip--connected {
+  background: rgba(124, 255, 178, 0.22);
+  border-color: rgba(124, 255, 178, 0.55);
+  color: #7CFFB2 !important;
+  font-weight: 900;
+}
+
+/* "Needs information" — needs a small piece of information from you.
+   Yellow. */
+.rc-state-chip--needs-information {
+  background: rgba(255, 210, 117, 0.14);
+  border-color: rgba(255, 210, 117, 0.40);
+  color: #FFD275 !important;
+}
+
+/* "Needs attention" — something needs a quick look from you. Amber. */
+.rc-state-chip--needs-attention {
+  background: rgba(255, 167, 81, 0.14);
+  border-color: rgba(255, 167, 81, 0.42);
+  color: #FFA751 !important;
+}
+
+/* "Unsupported" — RoamCore cannot work with this device yet. Grey. */
+.rc-state-chip--unsupported {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.65) !important;
+}
+
+/* "Offline" — the device is not reachable right now. Red. */
+.rc-state-chip--offline {
+  background: rgba(255, 107, 107, 0.14);
+  border-color: rgba(255, 107, 107, 0.40);
+  color: #FF6B6B !important;
+}
+
+/* "Update available" — a newer version is ready to install. Purple. */
+.rc-state-chip--update-available {
+  background: rgba(190, 140, 255, 0.14);
+  border-color: rgba(190, 140, 255, 0.40);
+  color: #BE8CFF !important;
+}
+
+/* Pulse animation for the transient "Connecting" state — keeps the
+   operator informed that the chip is current, not stale. Honours
+   prefers-reduced-motion. */
+@keyframes rc-state-chip-pulse {
+  0%, 100% { opacity: 1.0; }
+  50%      { opacity: 0.62; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-state-chip--connecting {
+    animation: none;
+  }
+}
+
+/* One-tap Connect button — the third primitive in the row wrapper.
+   Renders as a small anchor with a soft border + the device's setup
+   page as its href. */
+.rc-connect-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.92) !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none !important;
+  line-height: 1.4;
+  white-space: nowrap;
+  margin-left: auto;  /* pushes the button to the right end of the row */
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.rc-connect-button:hover {
+  border-color: rgba(124, 255, 178, 0.45);
+  background: rgba(124, 255, 178, 0.06);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tier vocabulary rebrand — new vocabulary (certified / verified /
+ * experimental) gets its own modifier classes on BOTH .rc-tier (the
+ * catalog-page pill) and .rc-chip (the dashboard badge). The legacy
+ * .rc-tier.a/.b/.c selectors above are kept intact for back-compat
+ * with every existing catalog fixture that still emits the single-
+ * letter class — adding the new vocabulary is purely additive.
+ * --------------------------------------------------------------------------- */
+
+/* "RoamCore Certified" — RoamCore builds + maintains this end-to-end.
+   Bright green, the strongest trust signal. */
+.rc-tier--certified,
+.rc-chip--certified {
+  background: rgba(124, 255, 178, 0.22);
+  border: 1px solid rgba(124, 255, 178, 0.55);
+  color: #7CFFB2 !important;
+}
+
+/* "Community Verified" — a member of the community tested this on a
+   real van. Cyan, the "works in the wild" cue. */
+.rc-tier--verified,
+.rc-chip--verified {
+  background: rgba(91, 227, 255, 0.18);
+  border: 1px solid rgba(91, 227, 255, 0.45);
+  color: #5BE3FF !important;
+}
+
+/* "Experimental" — it builds but hasn't been integration-tested yet.
+   Amber, the "use with care" cue. */
+.rc-tier--experimental,
+.rc-chip--experimental {
+  background: rgba(255, 210, 117, 0.16);
+  border: 1px solid rgba(255, 210, 117, 0.42);
+  color: #FFD275 !important;
+}
