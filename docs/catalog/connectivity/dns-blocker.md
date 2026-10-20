@@ -4,7 +4,8 @@ Pi-hole and AdGuard Home are self-hosted DNS-level ad/tracker blockers (DNS sink
 
 ## What you need
 
-- Z-Wave smart deadbolt (Yale / Schlage) ($120–$250)
+- Raspberry Pi or small Linux box to host Pi-hole / AdGuard Home ($50–$150)
+- A spare phone or tablet for setup + first configuration ($0–$100)
 
 ## Install
 

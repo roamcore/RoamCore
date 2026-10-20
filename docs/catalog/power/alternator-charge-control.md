@@ -4,7 +4,7 @@ Wakespeed / Balmar / Sterling / Renogy / REDARC / EP-Power / ARCO / OEM smart al
 
 ## What you need
 
-- Zigbee smoke / CO detector ($30–$80 each)
+- Wakespeed / Balmar / Sterling / REDARC smart alternator regulator ($300–$700)
 
 ## Install
 
